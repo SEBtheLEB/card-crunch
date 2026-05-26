@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+    <meta name="theme-color" content="#07111f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Card Crunch">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <title>Card Crunch</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.svg">
+    <link rel="icon" href="assets/icons/icon-192.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles/main.css">
+  </head>
+  <body>
+    <main class="game-shell" id="gameShell">
+      <header class="hud" aria-label="Game status">
+        <section class="hud-panel score-panel" aria-label="Score">
+          <span class="hud-label"><span class="hud-star">*</span> Score <span class="hud-star">*</span></span>
+          <strong id="scoreValue">0</strong>
+        </section>
+        <section class="hud-panel streak-panel" aria-label="Streak">
+          <span class="hud-label"><span class="hud-star">*</span> Streak <span class="hud-star">*</span></span>
+          <strong><span class="flame-icon" aria-hidden="true">F</span> x<span id="streakValue">0</span></strong>
+        </section>
+      </header>
+
+      <section class="timer-strip" id="timerShell" aria-label="Turn timer">
+        <span class="timer-icon" aria-hidden="true">T</span>
+        <span class="timer-copy">Turn ends in</span>
+        <strong id="timerValue">10s</strong>
+        <div class="timer-track">
+          <div class="timer-fill" id="timerRing"></div>
+        </div>
+      </section>
+
+      <section class="target-strip" aria-label="Level target">
+        <div>
+          <span>Level <strong id="levelValue">1</strong></span>
+          <span>Target <strong id="targetValue">5,000</strong></span>
+        </div>
+        <div class="target-track">
+          <div class="target-fill" id="targetFill"></div>
+        </div>
+      </section>
+
+      <section class="table-zone stack-zone" id="tableZone" aria-label="Stack cards">
+        <div class="combo-line" id="comboLine"></div>
+      </section>
+
+      <section class="message-zone" aria-live="polite" aria-atomic="true">
+        <div class="combo-label" id="comboLabel"></div>
+      </section>
+
+      <section class="crunch-panel" aria-label="Stack and Crunch">
+        <div class="stored-panel">
+          <span>Stored</span>
+          <strong id="storedValue">0</strong>
+        </div>
+        <button class="crunch-button" id="crunchButton" type="button" disabled>SELECT CARDS</button>
+        <div class="stored-panel">
+          <span>Stack</span>
+          <strong id="stackMultiplierValue">x1</strong>
+        </div>
+      </section>
+
+      <section class="hand-zone" id="handZone" aria-label="Your hand"></section>
+
+      <footer class="bottom-status" aria-label="Run status">
+        <section>
+          <span>Misses</span>
+          <strong id="missValue">0/3</strong>
+        </section>
+        <section>
+          <span>Deck</span>
+          <strong id="deckValue">52</strong>
+        </section>
+      </footer>
+    </main>
+
+    <section class="modal-screen is-visible" id="startScreen" aria-labelledby="startTitle">
+      <div class="modal-card">
+        <p class="eyebrow">High Score Arcade Cards</p>
+        <h1 id="startTitle">Card Crunch</h1>
+        <p class="modal-copy">Pick the cards you trust, slam Crunch, and watch the run explode if your sequence holds.</p>
+        <button class="primary-button" id="startButton" type="button">Start Game</button>
+      </div>
+    </section>
+
+    <section class="modal-screen" id="gameOverScreen" aria-labelledby="gameOverTitle" aria-hidden="true">
+      <div class="modal-card">
+        <p class="eyebrow">Game Over</p>
+        <h2 id="gameOverTitle">Final Score</h2>
+        <strong class="final-score" id="finalScore">0</strong>
+        <button class="primary-button" id="restartButton" type="button">Restart</button>
+      </div>
+    </section>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
