@@ -146,10 +146,6 @@ function createCard(card, options = {}) {
     element.dataset.stackCard = String(options.stackIndex);
   }
 
-  const numericPips = Number.isInteger(card.value) && card.value > 1 && card.value <= 10
-    ? Array.from({ length: card.value }, () => `<span>${card.suitSymbol}</span>`).join("")
-    : `<span class="hero-pip">${card.suitSymbol}</span>`;
-
   element.innerHTML = `
     <span class="card-corner card-corner-top">
       <span>${card.rank}</span>
@@ -157,7 +153,7 @@ function createCard(card, options = {}) {
     </span>
     <span class="card-center">
       <span class="card-rank">${card.rank}</span>
-      <span class="card-pips" aria-hidden="true">${numericPips}</span>
+      <span class="card-pips" aria-hidden="true"><span class="hero-pip">${card.suitSymbol}</span></span>
     </span>
     <span class="card-corner card-corner-bottom">
       <span>${card.rank}</span>
