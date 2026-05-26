@@ -1,4 +1,4 @@
-const CACHE_NAME = "card-crunch-v14";
+const CACHE_NAME = "card-crunch-v16";
 const ASSETS = [
   "./",
   "./index.html",
@@ -9,7 +9,6 @@ const ASSETS = [
   "./src/scoring.js",
   "./src/animations.js",
   "./src/ui.js",
-  "./src/progression.js",
   "./manifest.json",
   "./assets/icons/icon-192.svg",
   "./assets/icons/icon-512.svg"

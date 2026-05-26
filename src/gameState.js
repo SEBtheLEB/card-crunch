@@ -1,11 +1,9 @@
-import { drawCards, shuffle, createDeck } from "./deck.js";
+import { drawCards, drawTableCards, shuffle, createDeck } from "./deck.js";
 import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js";
-import { getTargetForLevel } from "./progression.js";
 import {
   animateBust,
   animateCrunch,
   animateSelectionResolve,
-  animateTargetClear,
   playSfx,
   spawnSparkBurst
 } from "./animations.js";
@@ -23,8 +21,6 @@ export function createGame(ui) {
     streak: 0,
     misses: 0,
     maxMisses: 3,
-    level: 1,
-    target: getTargetForLevel(1),
     fever: false,
     turnSeconds: 10,
     timeLeft: 10,
@@ -38,14 +34,12 @@ export function createGame(ui) {
     stopTimer();
     state.deck = shuffle(createDeck());
     state.discard = [];
-    state.stack = drawCards(state, state.baseStackCount);
+    state.stack = drawTableCards(state, state.baseStackCount);
     state.hand = drawCards(state, 4);
     state.selectedHandIndexes = [];
     state.score = 0;
     state.streak = 0;
     state.misses = 0;
-    state.level = 1;
-    state.target = getTargetForLevel(state.level);
     state.fever = false;
     state.timeLeft = state.turnSeconds;
     state.locked = false;
@@ -123,11 +117,6 @@ export function createGame(ui) {
     refillHand();
     ui.render(state, handlers);
 
-    if (state.score >= state.target) {
-      await clearTarget();
-      return;
-    }
-
     startNewRound();
   }
 
@@ -162,23 +151,9 @@ export function createGame(ui) {
     startNewRound();
   }
 
-  async function clearTarget() {
-    stopTimer();
-    state.locked = true;
-    state.status = "levelClear";
-    ui.render(state, handlers);
-    ui.setMessage("Target Cleared!", "good");
-    playSfx("level_clear");
-    await animateTargetClear(ui.elements.shell);
-    state.level += 1;
-    state.target = getTargetForLevel(state.level);
-    state.misses = 0;
-    startNewRound();
-  }
-
   function startNewRound() {
     state.stack.forEach((card) => state.discard.push(card));
-    state.stack = drawCards(state, state.baseStackCount);
+    state.stack = drawTableCards(state, state.baseStackCount);
     state.selectedHandIndexes = [];
     state.timeLeft = state.turnSeconds;
     state.status = "playing";

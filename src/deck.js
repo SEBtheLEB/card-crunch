@@ -1,37 +1,65 @@
-export const SUITS = [
-  { id: "diamonds", symbol: "♦", color: "red" },
-  { id: "hearts", symbol: "♥", color: "red" },
-  { id: "spades", symbol: "♠", color: "black" },
-  { id: "clubs", symbol: "♣", color: "black" }
+export const CARD_COLORS = [
+  { id: "red", label: "Red", accent: "#e34b3f" },
+  { id: "blue", label: "Blue", accent: "#3f8cff" },
+  { id: "green", label: "Green", accent: "#36a85f" },
+  { id: "yellow", label: "Yellow", accent: "#f2c94c" },
+  { id: "purple", label: "Purple", accent: "#9b62ff" }
 ];
 
-export const RANKS = [
-  { label: "A", value: 1 },
-  { label: "2", value: 2 },
-  { label: "3", value: 3 },
-  { label: "4", value: 4 },
-  { label: "5", value: 5 },
-  { label: "6", value: 6 },
-  { label: "7", value: 7 },
-  { label: "8", value: 8 },
-  { label: "9", value: 9 },
-  { label: "10", value: 10 },
-  { label: "J", value: 11 },
-  { label: "Q", value: 12 },
-  { label: "K", value: 13 }
+export const BASIC_SYMBOLS = [
+  { id: "flame", label: "Flame" },
+  { id: "drop", label: "Drop" },
+  { id: "leaf", label: "Leaf" },
+  { id: "star", label: "Star" },
+  { id: "moon", label: "Moon" }
+];
+
+export const FUSIONS = [
+  { id: "steam", label: "Steam", ingredients: ["flame", "drop"] },
+  { id: "bloom", label: "Bloom", ingredients: ["drop", "leaf"] },
+  { id: "ash", label: "Ash", ingredients: ["flame", "leaf"] },
+  { id: "eclipse", label: "Eclipse", ingredients: ["star", "moon"] },
+  { id: "nova", label: "Nova", ingredients: ["flame", "star"] },
+  { id: "tide", label: "Tide", ingredients: ["drop", "moon"] },
+  { id: "fruit", label: "Fruit", ingredients: ["leaf", "star"] },
+  { id: "lantern", label: "Lantern", ingredients: ["moon", "flame"] },
+  { id: "prism", label: "Prism", ingredients: ["drop", "star"] },
+  { id: "root", label: "Root", ingredients: ["leaf", "moon"] }
 ];
 
 export function createDeck() {
-  return SUITS.flatMap((suit) =>
-    RANKS.map((rank) => ({
-      id: `${rank.label}-${suit.id}-${crypto.randomUUID()}`,
-      rank: rank.label,
-      value: rank.value,
-      suit: suit.id,
-      suitSymbol: suit.symbol,
-      color: suit.color
-    }))
+  const basicCards = CARD_COLORS.flatMap((color) =>
+    BASIC_SYMBOLS.map((symbol) => createBasicCard(color, symbol))
   );
+  const fusionCards = FUSIONS.map((fusion) => createFusionCard(fusion));
+  return [...basicCards, ...fusionCards];
+}
+
+export function createBasicCard(color, symbol) {
+  return {
+    id: `${color.id}-${symbol.id}-${crypto.randomUUID()}`,
+    type: "basic",
+    name: `${color.label} ${symbol.label}`,
+    color: color.id,
+    colorLabel: color.label,
+    accent: color.accent,
+    symbol: symbol.id,
+    symbolLabel: symbol.label
+  };
+}
+
+export function createFusionCard(fusion) {
+  return {
+    id: `${fusion.id}-${crypto.randomUUID()}`,
+    type: "fusion",
+    name: fusion.label,
+    color: "fusion",
+    colorLabel: "Fusion",
+    accent: "#ffd166",
+    symbol: fusion.id,
+    symbolLabel: fusion.label,
+    ingredients: [...fusion.ingredients]
+  };
 }
 
 export function shuffle(cards) {
@@ -44,6 +72,34 @@ export function shuffle(cards) {
 }
 
 export function drawCard(state) {
+  ensureDeck(state);
+  return state.deck.pop();
+}
+
+export function drawCards(state, count) {
+  return Array.from({ length: count }, () => drawCard(state));
+}
+
+export function drawTableCards(state, count) {
+  return Array.from({ length: count }, () => drawBasicCardFromDeck(state));
+}
+
+function drawBasicCardFromDeck(state) {
+  ensureDeck(state);
+  let index = state.deck.findIndex((card) => card.type === "basic");
+  if (index < 0) {
+    state.deck = shuffle([...state.deck, ...state.discard]);
+    state.discard = [];
+    index = state.deck.findIndex((card) => card.type === "basic");
+  }
+  if (index < 0) {
+    state.deck = shuffle(createDeck());
+    index = state.deck.findIndex((card) => card.type === "basic");
+  }
+  return state.deck.splice(index, 1)[0];
+}
+
+function ensureDeck(state) {
   if (state.deck.length === 0) {
     state.deck = shuffle(state.discard);
     state.discard = [];
@@ -52,10 +108,4 @@ export function drawCard(state) {
   if (state.deck.length === 0) {
     state.deck = shuffle(createDeck());
   }
-
-  return state.deck.pop();
-}
-
-export function drawCards(state, count) {
-  return Array.from({ length: count }, () => drawCard(state));
 }

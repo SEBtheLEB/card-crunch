@@ -5,11 +5,11 @@ export const soundHooks = {
   card_deselect: null,
   valid_add: null,
   invalid_card: null,
+  fusion: null,
   bust: null,
   crunch_start: null,
-  suit_match: null,
-  rank_match: null,
-  math_combo: null,
+  color_match: null,
+  symbol_match: null,
   double_match: null,
   score_step: null,
   score_total: null,
@@ -31,7 +31,7 @@ export function playSfx(name) {
 export function playHook(name) {
   const aliases = {
     cardSelect: "card_select",
-    matchGlow: "rank_match",
+    matchGlow: "symbol_match",
     pointsFly: "score_total",
     scoreArrive: "score_arrive",
     noMatch: "no_match",
@@ -43,7 +43,7 @@ export function playHook(name) {
 
 export async function animateValidMove({ handCard, tableCards, tableSlots, scoreEl, points, type, breakdown = [], fever = false, onPointsArrive }) {
   const isDouble = tableCards.length > 1;
-  const particleType = fever ? "fever" : type === "suit" ? "suit" : type === "rank" ? "rank" : "math";
+  const particleType = fever ? "fever" : getParticleType(type);
   playSfx("card_select");
   handCard?.classList.add("card-selected", "is-selected", "is-vibrating");
   if (handCard) {
@@ -52,7 +52,7 @@ export async function animateValidMove({ handCard, tableCards, tableSlots, score
   }
   await sleep(170);
 
-  playSfx(isDouble ? "double_match" : type === "suit" ? "suit_match" : type === "rank" ? "rank_match" : "math_combo");
+  playSfx(isDouble ? "double_match" : type === "color" ? "color_match" : type === "fusion" ? "fusion" : "symbol_match");
   tableCards.forEach((card) => {
     card.classList.add("card-match-glow", "is-matched", "is-vibrating");
     const rect = card.getBoundingClientRect();
@@ -60,7 +60,7 @@ export async function animateValidMove({ handCard, tableCards, tableSlots, score
   });
   tableSlots.forEach((slot) => slot.classList.add("case-match-glow", "slot-matched"));
 
-  if (type === "add" || type === "subtract") {
+  if (type === "fusion") {
     document.body.classList.add("screen-bump");
     drawComboStreak(handCard, tableCards);
   }
@@ -84,7 +84,7 @@ export async function animateValidMove({ handCard, tableCards, tableSlots, score
 }
 
 export async function animateStackAdd({ handCard, matchedCards, matchedSlots, matchType, label }) {
-  const particleType = matchType === "suit" ? "suit" : matchType === "rank" ? "rank" : "math";
+  const particleType = getParticleType(matchType);
   playSfx("card_select");
   handCard?.classList.add("card-selected", "is-selected", "is-vibrating");
   burstAround(handCard, 14, particleType);
@@ -93,7 +93,7 @@ export async function animateStackAdd({ handCard, matchedCards, matchedSlots, ma
   matchedCards.forEach((card) => card.classList.add("card-match-glow", "is-matched", "is-vibrating"));
   matchedSlots.forEach((slot) => slot.classList.add("case-match-glow", "slot-matched"));
   matchedCards.forEach((card) => burstAround(card, 10, particleType));
-  if (matchType === "add" || matchType === "subtract") drawComboStreak(handCard, matchedCards);
+  if (matchType === "fusion") drawComboStreak(handCard, matchedCards);
   await popStoredLabel(handCard ?? matchedCards[0], label, particleType);
   await sleep(180);
 
@@ -111,11 +111,12 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
     const entry = resolution.history[i];
     const matchedCards = entry.matchedIndexes.map((index) => activeVisualCards[index]).filter(Boolean);
     playSfx("card_resolve");
+    if (entry.matchType === "fusion") playSfx("fusion");
     handCard?.classList.add("card-selected", "is-vibrating");
     matchedCards.forEach((card) => card.classList.add("card-match-glow", "is-vibrating"));
-    matchedCards.forEach((card) => burstAround(card, 8, entry.matchType === "suit" ? "suit" : entry.matchType === "rank" ? "rank" : "math"));
-    if (entry.matchType === "add" || entry.matchType === "subtract") drawComboStreak(handCard, matchedCards);
-    await popStoredLabel(handCard, `+${entry.basePoints} ${getShortMatchLabel(entry.matchType)}`, entry.matchType === "suit" ? "suit" : entry.matchType === "rank" ? "rank" : "math");
+    matchedCards.forEach((card) => burstAround(card, 8, getParticleType(entry.matchType)));
+    if (entry.matchType === "fusion") drawComboStreak(handCard, matchedCards);
+    await popStoredLabel(handCard, `+${entry.basePoints} ${getShortMatchLabel(entry.matchType)}`, getParticleType(entry.matchType));
     matchedCards.forEach((card) => card.classList.remove("card-match-glow", "is-vibrating"));
     handCard?.classList.remove("card-selected", "is-vibrating");
     if (handCard) activeVisualCards.push(handCard);
@@ -261,9 +262,10 @@ async function showScoreBreakdown({ fromElements, steps }) {
 export function spawnSparkBurst(x, y, amount = 12, colorMode = "gold") {
   const palette = {
     gold: ["#fff2a8", "#ffd166", "#ff9f1c"],
-    suit: ["#9bd6ff", "#42a1ff", "#ffd166"],
-    rank: ["#fff2a8", "#ffd166", "#ff9f1c"],
-    math: ["#f0b7ff", "#b66cff", "#ffd166"],
+    color: ["#9bd6ff", "#ffd166", "#ff6b6b", "#79e28b", "#b66cff"],
+    symbol: ["#fff2a8", "#ffd166", "#ff9f1c"],
+    fusion: ["#ffffff", "#f0b7ff", "#b66cff", "#ffd166"],
+    rainbow: ["#ff4f6d", "#42a1ff", "#36d66f", "#ffd166", "#b66cff"],
     double: ["#ffffff", "#ffe894", "#ff9f1c"],
     fever: ["#ffffff", "#ffe894", "#ff4f6d", "#42e8ff", "#b66cff"],
     impact: ["#ffffff", "#ffe8a6", "#42e8ff"],
@@ -346,8 +348,14 @@ function getCombinedRect(elements) {
 }
 
 function getShortMatchLabel(type) {
-  if (type === "add") return "SUM";
-  if (type === "subtract") return "MINUS";
-  if (type === "rank") return "RANK";
-  return "SUIT";
+  if (type === "fusion") return "FUSION";
+  if (type === "symbol") return "SYMBOL";
+  return "COLOR";
+}
+
+function getParticleType(type) {
+  if (type === "fusion") return "fusion";
+  if (type === "symbol") return "symbol";
+  if (type === "color") return "color";
+  return "gold";
 }
