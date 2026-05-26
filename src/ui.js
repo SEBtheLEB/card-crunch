@@ -1,4 +1,5 @@
 import { getCrunchPreview } from "./gameState.js";
+import { getLevelProgress } from "./progression.js";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "" };
@@ -73,14 +74,15 @@ export function createUI() {
 }
 
 function renderHud(elements, state) {
+  const levelProgress = getLevelProgress(state.score, state.level ?? 1);
   elements.scoreValue.textContent = state.score.toLocaleString();
   elements.streakValue.textContent = String(state.streak ?? 0);
   elements.timerValue.textContent = `${Math.ceil(state.timeLeft)}s`;
   elements.missValue.textContent = `${state.misses}/${state.maxMisses}`;
   elements.deckValue.textContent = String(state.deck.length);
-  elements.levelValue.textContent = String(state.deck.length);
-  elements.targetValue.textContent = state.bestScore.toLocaleString();
-  elements.targetFill.style.setProperty("--target-progress", "0");
+  elements.levelValue.textContent = String(state.level ?? 1);
+  elements.targetValue.textContent = levelProgress.target.toLocaleString();
+  elements.targetFill.style.setProperty("--target-progress", `${levelProgress.progress}`);
   elements.timerRing.style.setProperty("--timer-progress", `${state.timeLeft / state.turnSeconds}`);
   elements.timerShell.classList.toggle("timer-danger", state.timeLeft <= 3 && state.status === "playing");
   elements.shell.classList.toggle("fever-mode", Boolean(state.fever));
@@ -132,10 +134,9 @@ function renderHand(elements, state, handlers) {
 
 function createCard(card, options = {}) {
   const element = document.createElement(options.isButton ? "button" : "div");
-  element.className = `card card-${card.type} card-color-${card.color} card-symbol-${card.symbol}`;
+  element.className = `card card-${card.color} card-${card.suit}`;
   element.type = options.isButton ? "button" : undefined;
-  element.setAttribute("aria-label", card.name);
-  element.style.setProperty("--card-accent", card.accent ?? "#ffd166");
+  element.setAttribute("aria-label", `${card.rank} of ${card.suit}`);
 
   if (Number.isInteger(options.handIndex)) {
     element.dataset.handIndex = String(options.handIndex);
@@ -145,21 +146,22 @@ function createCard(card, options = {}) {
     element.dataset.stackCard = String(options.stackIndex);
   }
 
-  const ingredientMarkup = card.type === "fusion"
-    ? `<span class="card-ingredients">${card.ingredients.map((ingredient) => `<i class="mini-symbol symbol-${ingredient}" aria-hidden="true"></i>`).join("")}</span>`
-    : `<span class="card-color-chip">${card.colorLabel}</span>`;
+  const numericPips = Number.isInteger(card.value) && card.value > 1 && card.value <= 10
+    ? Array.from({ length: card.value }, () => `<span>${card.suitSymbol}</span>`).join("")
+    : `<span class="hero-pip">${card.suitSymbol}</span>`;
 
   element.innerHTML = `
     <span class="card-corner card-corner-top">
-      <span>${card.colorLabel}</span>
-      <i class="mini-symbol symbol-${card.symbol}" aria-hidden="true"></i>
+      <span>${card.rank}</span>
+      <span>${card.suitSymbol}</span>
     </span>
     <span class="card-center">
-      <span class="symbol-glyph symbol-${card.symbol}" aria-hidden="true"></span>
-      <span class="card-name">${card.name}</span>
+      <span class="card-rank">${card.rank}</span>
+      <span class="card-pips" aria-hidden="true">${numericPips}</span>
     </span>
     <span class="card-corner card-corner-bottom">
-      ${ingredientMarkup}
+      <span>${card.rank}</span>
+      <span>${card.suitSymbol}</span>
     </span>
   `;
 

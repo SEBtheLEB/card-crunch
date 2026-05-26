@@ -1,14 +1,15 @@
 export const MATCH_TYPES = {
-  FUSION: "fusion",
-  SYMBOL: "symbol",
-  COLOR: "color",
+  ADD: "add",
+  SUBTRACT: "subtract",
+  RANK: "rank",
+  SUIT: "suit",
   MISS: "miss"
 };
 
 export const SCORE_CONFIG = {
-  color: 100,
-  symbol: 300,
-  fusion: 700
+  suit: 100,
+  rank: 300,
+  math: 500
 };
 
 export const SELECTION_MULTIPLIERS = {
@@ -19,57 +20,67 @@ export const SELECTION_MULTIPLIERS = {
 };
 
 export const STACK_TYPE_CONFIG = {
-  colorFlood: { minSameColor: 4, multiplier: 2 },
-  symbolChain: { minSameSymbol: 3, multiplier: 2 },
-  fusionFeast: { minFusionCards: 2, multiplier: 3 },
-  rainbowCrunch: { requiredColors: ["red", "blue", "green", "yellow", "purple"], multiplier: 5 },
-  eclipseCrunch: { requiredSymbols: ["star", "moon", "eclipse"], multiplier: 4 },
+  flushCrunch: { minCardsSameSuit: 4, multiplier: 2 },
+  pairCrunch: { flatBonus: 1000 },
+  tripleRank: { multiplier: 2 },
+  chainCrunch: { minMathLinks: 2, multiplier: 3 },
+  mathFeast: { minMathCards: 3, multiplier: 2 },
+  suitStorm: { minSuitCards: 3, multiplier: 1.5 },
   perfectHand: { minSelectedCards: 4, multiplier: 2 },
-  greedCrunch: { minSelectedCards: 3, multiplier: 1.5 }
+  greedCrunch: { minSelectedCards: 3, flatBonus: 500 }
 };
 
 export function evaluateStackAdd(stackCards, selectedCard) {
-  if (selectedCard.type === "fusion") {
-    const ingredientMatches = findIngredientMatches(stackCards, selectedCard.ingredients ?? []);
-    if (ingredientMatches.length === (selectedCard.ingredients ?? []).length) {
-      return createMatch({
-        type: MATCH_TYPES.FUSION,
-        label: `${selectedCard.symbolLabel.toUpperCase()} FUSION`,
-        basePoints: SCORE_CONFIG.fusion,
-        matchedIndexes: ingredientMatches.map((match) => match.index),
-        matchedCards: ingredientMatches.map((match) => match.card)
-      });
-    }
-  }
+  const pairs = getStackPairs(stackCards);
 
-  const symbolMatches = stackCards
-    .map((card, index) => (card.symbol === selectedCard.symbol ? index : -1))
-    .filter((index) => index >= 0);
-
-  if (symbolMatches.length > 0) {
+  const addPair = pairs.find(({ a, b }) => a.card.value + b.card.value === selectedCard.value);
+  if (addPair) {
     return createMatch({
-      type: MATCH_TYPES.SYMBOL,
-      label: "SYMBOL MATCH",
-      basePoints: SCORE_CONFIG.symbol,
-      matchedIndexes: symbolMatches,
-      matchedCards: symbolMatches.map((index) => stackCards[index])
+      type: MATCH_TYPES.ADD,
+      label: "SUM COMBO",
+      basePoints: SCORE_CONFIG.math,
+      matchedIndexes: [addPair.a.index, addPair.b.index],
+      matchedCards: [addPair.a.card, addPair.b.card]
     });
   }
 
-  if (selectedCard.type === "basic") {
-    const colorMatches = stackCards
-      .map((card, index) => (card.type === "basic" && card.color === selectedCard.color ? index : -1))
-      .filter((index) => index >= 0);
+  const subtractPair = pairs.find(({ a, b }) => Math.abs(a.card.value - b.card.value) === selectedCard.value);
+  if (subtractPair) {
+    return createMatch({
+      type: MATCH_TYPES.SUBTRACT,
+      label: "MINUS COMBO",
+      basePoints: SCORE_CONFIG.math,
+      matchedIndexes: [subtractPair.a.index, subtractPair.b.index],
+      matchedCards: [subtractPair.a.card, subtractPair.b.card]
+    });
+  }
 
-    if (colorMatches.length > 0) {
-      return createMatch({
-        type: MATCH_TYPES.COLOR,
-        label: "COLOR MATCH",
-        basePoints: SCORE_CONFIG.color,
-        matchedIndexes: colorMatches,
-        matchedCards: colorMatches.map((index) => stackCards[index])
-      });
-    }
+  const rankMatches = stackCards
+    .map((card, index) => (card.value === selectedCard.value ? index : -1))
+    .filter((index) => index >= 0);
+
+  if (rankMatches.length > 0) {
+    return createMatch({
+      type: MATCH_TYPES.RANK,
+      label: "RANK MATCH",
+      basePoints: SCORE_CONFIG.rank,
+      matchedIndexes: rankMatches,
+      matchedCards: rankMatches.map((index) => stackCards[index])
+    });
+  }
+
+  const suitMatches = stackCards
+    .map((card, index) => (card.suit === selectedCard.suit ? index : -1))
+    .filter((index) => index >= 0);
+
+  if (suitMatches.length > 0) {
+    return createMatch({
+      type: MATCH_TYPES.SUIT,
+      label: "SUIT MATCH",
+      basePoints: SCORE_CONFIG.suit,
+      matchedIndexes: suitMatches,
+      matchedCards: suitMatches.map((index) => stackCards[index])
+    });
   }
 
   return {
@@ -181,87 +192,55 @@ export function getStreakMultiplier(streak) {
 
 export function detectStackTypes(stackCards, history, selectedCount) {
   const bonuses = [];
-  const colorCounts = countBy(stackCards.filter((card) => card.type === "basic"), "color");
-  const symbolCounts = countBy(stackCards, "symbol");
-  const maxColor = Math.max(0, ...Object.values(colorCounts));
-  const maxSymbol = Math.max(0, ...Object.values(symbolCounts));
-  const fusionCards = history.filter((entry) => entry.matchType === MATCH_TYPES.FUSION).length;
-  const colorsInStack = new Set(stackCards.filter((card) => card.type === "basic").map((card) => card.color));
-  const symbolsInStack = new Set(stackCards.map((card) => card.symbol));
+  const suitCounts = countBy(stackCards, "suit");
+  const rankCounts = countBy(stackCards, "value");
+  const maxSuit = Math.max(0, ...Object.values(suitCounts));
+  const maxRank = Math.max(0, ...Object.values(rankCounts));
+  const mathCards = history.filter((entry) => entry.matchType === MATCH_TYPES.ADD || entry.matchType === MATCH_TYPES.SUBTRACT).length;
+  const suitCards = history.filter((entry) => entry.matchType === MATCH_TYPES.SUIT).length;
 
-  if (maxColor >= STACK_TYPE_CONFIG.colorFlood.minSameColor) bonuses.push({ label: "COLOR FLOOD", value: "x2", multiplier: STACK_TYPE_CONFIG.colorFlood.multiplier, tone: "color" });
-  if (maxSymbol >= STACK_TYPE_CONFIG.symbolChain.minSameSymbol) bonuses.push({ label: "SYMBOL CHAIN", value: "x2", multiplier: STACK_TYPE_CONFIG.symbolChain.multiplier, tone: "symbol" });
-  if (fusionCards >= STACK_TYPE_CONFIG.fusionFeast.minFusionCards) bonuses.push({ label: "FUSION FEAST", value: "x3", multiplier: STACK_TYPE_CONFIG.fusionFeast.multiplier, tone: "fusion" });
-  if (STACK_TYPE_CONFIG.rainbowCrunch.requiredColors.every((color) => colorsInStack.has(color))) bonuses.push({ label: "RAINBOW CRUNCH", value: "x5", multiplier: STACK_TYPE_CONFIG.rainbowCrunch.multiplier, tone: "rainbow" });
-  if (STACK_TYPE_CONFIG.eclipseCrunch.requiredSymbols.every((symbol) => symbolsInStack.has(symbol))) bonuses.push({ label: "ECLIPSE CRUNCH", value: "x4", multiplier: STACK_TYPE_CONFIG.eclipseCrunch.multiplier, tone: "fusion" });
+  if (maxSuit >= STACK_TYPE_CONFIG.flushCrunch.minCardsSameSuit) bonuses.push({ label: "FLUSH CRUNCH", value: "x2", multiplier: STACK_TYPE_CONFIG.flushCrunch.multiplier, tone: "suit" });
+  if (maxRank >= 2) bonuses.push({ label: "PAIR BONUS", value: "+1000", flatBonus: STACK_TYPE_CONFIG.pairCrunch.flatBonus, tone: "rank" });
+  if (maxRank >= 3) bonuses.push({ label: "TRIPLE RANK", value: "x2", multiplier: STACK_TYPE_CONFIG.tripleRank.multiplier, tone: "rank" });
+  if (mathCards >= STACK_TYPE_CONFIG.chainCrunch.minMathLinks) bonuses.push({ label: "CHAIN CRUNCH", value: "x3", multiplier: STACK_TYPE_CONFIG.chainCrunch.multiplier, tone: "math" });
+  if (mathCards >= STACK_TYPE_CONFIG.mathFeast.minMathCards) bonuses.push({ label: "MATH FEAST", value: "x2", multiplier: STACK_TYPE_CONFIG.mathFeast.multiplier, tone: "math" });
+  if (suitCards >= STACK_TYPE_CONFIG.suitStorm.minSuitCards) bonuses.push({ label: "SUIT STORM", value: "x1.5", multiplier: STACK_TYPE_CONFIG.suitStorm.multiplier, tone: "suit" });
   if (selectedCount >= STACK_TYPE_CONFIG.perfectHand.minSelectedCards) bonuses.push({ label: "PERFECT HAND", value: "x2", multiplier: STACK_TYPE_CONFIG.perfectHand.multiplier, tone: "double" });
-  if (selectedCount >= STACK_TYPE_CONFIG.greedCrunch.minSelectedCards) bonuses.push({ label: "GREED CRUNCH", value: "x1.5", multiplier: STACK_TYPE_CONFIG.greedCrunch.multiplier, tone: "fever" });
+  if (selectedCount >= STACK_TYPE_CONFIG.greedCrunch.minSelectedCards) bonuses.push({ label: "GREED CRUNCH", value: "+500", flatBonus: STACK_TYPE_CONFIG.greedCrunch.flatBonus, tone: "fever" });
 
   return bonuses;
 }
 
 export function runScoringSelfTests() {
-  const basic = (color, symbol) => ({
-    id: `${color}-${symbol}`,
-    type: "basic",
-    name: `${color} ${symbol}`,
-    color,
-    colorLabel: color,
-    symbol,
-    symbolLabel: symbol
-  });
-  const fusion = (symbol, ingredients) => ({
-    id: symbol,
-    type: "fusion",
-    name: symbol,
-    color: "fusion",
-    colorLabel: "Fusion",
-    symbol,
-    symbolLabel: symbol,
-    ingredients
-  });
-
-  const base = [basic("red", "flame"), basic("blue", "drop")];
-  const colorMatch = calculateCrunchScore({ baseStack: base, selectedCards: [basic("red", "moon")], timeLeft: 5, streak: 0 });
-  const symbolMatch = calculateCrunchScore({ baseStack: base, selectedCards: [basic("green", "flame")], timeLeft: 5, streak: 0 });
-  const fusionMatch = calculateCrunchScore({ baseStack: base, selectedCards: [fusion("steam", ["flame", "drop"])], timeLeft: 5, streak: 0 });
-  const fail = calculateCrunchScore({ baseStack: base, selectedCards: [basic("purple", "leaf")], timeLeft: 5, streak: 0 });
-  const multi = calculateCrunchScore({ baseStack: base, selectedCards: [fusion("steam", ["flame", "drop"]), basic("yellow", "steam")], timeLeft: 7, streak: 0 });
-  const four = calculateCrunchScore({
-    baseStack: [basic("red", "flame"), basic("red", "drop")],
-    selectedCards: [basic("red", "moon"), basic("red", "star"), basic("blue", "star"), fusion("steam", ["flame", "drop"])],
-    timeLeft: 9,
-    streak: 5
-  });
+  const card = (rank, suit, value = rank) => ({ id: `${rank}-${suit}`, rank: String(rank), value, suit, suitSymbol: "", color: "red" });
+  const base = [card(3, "diamonds"), card(5, "spades")];
+  const success = calculateCrunchScore({ baseStack: base, selectedCards: [card(8, "hearts"), card("K", "spades", 13)], timeLeft: 7, streak: 0 });
+  const fail = calculateCrunchScore({ baseStack: base, selectedCards: [card(8, "hearts"), card("Q", "clubs", 12)], timeLeft: 7, streak: 0 });
+  const one = calculateCrunchScore({ baseStack: base, selectedCards: [card("K", "diamonds", 13)], timeLeft: 3, streak: 0 });
 
   const cases = [
-    { name: "basic color match", pass: colorMatch.success && colorMatch.resolution.history[0].matchType === MATCH_TYPES.COLOR && colorMatch.storedBase === 100 },
-    { name: "basic symbol match", pass: symbolMatch.success && symbolMatch.resolution.history[0].matchType === MATCH_TYPES.SYMBOL && symbolMatch.storedBase === 300 },
-    { name: "fusion match", pass: fusionMatch.success && fusionMatch.resolution.history[0].matchType === MATCH_TYPES.FUSION && fusionMatch.storedBase === 700 },
-    { name: "failed crunch", pass: !fail.success && fail.resolution.failedIndex === 0 },
-    { name: "multi-card updated stack", pass: multi.success && multi.resolution.history.length === 2 && multi.handMultiplier === 2 },
-    { name: "perfect hand bonus", pass: four.success && four.stackTypes.some((bonus) => bonus.label === "PERFECT HAND") },
-    { name: "speed bonus", pass: four.speedBonus.multiplier === 3 },
-    { name: "streak bonus", pass: four.streakMultiplier === 3 }
+    { name: "success sequence", pass: success.success && success.resolution.history.length === 2 },
+    { name: "fail sequence", pass: !fail.success && fail.resolution.failedIndex === 1 },
+    { name: "one card crunch", pass: one.success && one.handMultiplier === 1 },
+    { name: "two card multiplier", pass: success.handMultiplier === 2 },
+    { name: "speed bonus", pass: success.speedBonus.multiplier === 2 }
   ];
 
-  return cases.map((test) => ({ ...test, result: test.name.includes("failed") ? fail : test.name.includes("fusion") ? fusionMatch : multi }));
+  return cases.map((test) => ({ ...test, result: test.name.includes("fail") ? fail : success }));
 }
 
 function createMatch({ type, label, basePoints, matchedIndexes, matchedCards }) {
   return { valid: true, type, label, basePoints, matchedIndexes, matchedCards };
 }
 
-function findIngredientMatches(stackCards, ingredients) {
-  const usedIndexes = new Set();
-  return ingredients
-    .map((ingredient) => {
-      const index = stackCards.findIndex((card, cardIndex) => !usedIndexes.has(cardIndex) && card.symbol === ingredient);
-      if (index < 0) return null;
-      usedIndexes.add(index);
-      return { index, card: stackCards[index] };
-    })
-    .filter(Boolean);
+function getStackPairs(cards) {
+  const pairs = [];
+  for (let i = 0; i < cards.length; i += 1) {
+    for (let j = i + 1; j < cards.length; j += 1) {
+      pairs.push({ a: { card: cards[i], index: i }, b: { card: cards[j], index: j } });
+    }
+  }
+  return pairs;
 }
 
 function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, total }) {
