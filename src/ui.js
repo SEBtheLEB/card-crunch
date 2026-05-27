@@ -1,5 +1,5 @@
-import { getCrunchPreview } from "./gameState.js?v=41";
-import { getLevelProgress } from "./progression.js?v=41";
+import { getCrunchPreview } from "./gameState.js?v=43";
+import { getLevelProgress } from "./progression.js?v=43";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "" };

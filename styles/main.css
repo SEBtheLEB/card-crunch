@@ -298,7 +298,7 @@ button {
   place-items: center;
   justify-self: center;
   transform: rotate(var(--stack-rotate, 0deg));
-  transition: transform .18s ease, filter .18s ease;
+  transition: transform .1s cubic-bezier(.2, 1.35, .28, 1), filter .1s ease;
   border: 6px solid #214a73;
   border-radius: 12px;
   background:
@@ -374,6 +374,7 @@ button {
   color: var(--charcoal);
   cursor: pointer;
   transform: translateZ(0);
+  transition: filter .1s ease, box-shadow .1s ease;
 }
 
 .card::before {
@@ -416,7 +417,7 @@ button {
   justify-self: center;
   transform: translateY(0) rotate(var(--fan-rotate));
   transform-origin: 50% 90%;
-  transition: transform .16s ease, filter .16s ease, box-shadow .16s ease;
+  transition: transform .09s cubic-bezier(.18, 1.5, .28, 1), filter .09s ease, box-shadow .09s ease;
 }
 
 .hand-zone .card .card-center {
@@ -431,12 +432,13 @@ button {
 
 .hand-zone .card:not(:disabled):hover,
 .hand-zone .card:not(:disabled):focus-visible {
-  transform: translateY(-13px) scale(1.04) rotate(var(--fan-rotate));
-  filter: drop-shadow(0 0 14px rgba(255, 191, 63, .62));
+  transform: translateY(-16px) scale(1.055) rotate(var(--fan-rotate));
+  filter: drop-shadow(0 0 18px rgba(255, 191, 63, .72)) brightness(1.04);
 }
 
 .hand-zone .card:not(:disabled):active {
-  transform: translateY(-7px) scale(1.01) rotate(var(--fan-rotate));
+  transform: translateY(-10px) scale(.985) rotate(var(--fan-rotate));
+  filter: drop-shadow(0 0 20px rgba(255, 232, 148, .8)) brightness(1.08);
 }
 
 .hand-zone .card.is-hand-selected {
@@ -668,6 +670,8 @@ button {
 }
 
 .crunch-button {
+  position: relative;
+  overflow: hidden;
   min-height: clamp(58px, 8dvh, 78px);
   border: 5px solid #1b1004;
   border-radius: 10px;
@@ -680,7 +684,7 @@ button {
   line-height: 1;
   text-transform: uppercase;
   text-shadow: 0 2px 0 #05070a;
-  transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+  transition: transform .08s cubic-bezier(.2, 1.35, .28, 1), filter .08s ease, box-shadow .08s ease;
 }
 
 .crunch-button.crunch-ready {
@@ -707,8 +711,9 @@ button {
 
 .crunch-button:not(:disabled):active,
 .crunch-button.crunch-slam {
-  transform: translateY(6px) scale(.97);
-  box-shadow: 0 2px 0 #4e2a03, 0 0 18px rgba(255, 191, 63, .32);
+  transform: translateY(7px) scale(.95);
+  filter: brightness(1.12) saturate(1.18);
+  box-shadow: 0 1px 0 #4e2a03, 0 0 26px rgba(255, 232, 148, .6);
 }
 
 .flying-points,
@@ -1412,6 +1417,8 @@ h2 {
 }
 
 .primary-button {
+  position: relative;
+  overflow: hidden;
   min-width: 196px;
   min-height: 58px;
   padding: 0 22px;
@@ -1425,11 +1432,14 @@ h2 {
   font-size: 1.25rem;
   text-transform: uppercase;
   text-shadow: 0 1px 0 rgba(255, 255, 255, .42);
-  transition: transform .12s ease, box-shadow .12s ease;
+  transition: transform .08s cubic-bezier(.2, 1.35, .28, 1), filter .08s ease, box-shadow .08s ease;
 }
 
 .primary-button:active {
   animation: buttonPress .18s ease;
+  transform: translateY(6px) scale(.96);
+  filter: brightness(1.12) saturate(1.18);
+  box-shadow: 0 2px 0 #4e2a03, 0 0 28px rgba(255, 232, 148, .62);
 }
 
 .final-score {
@@ -1592,6 +1602,23 @@ h2 {
   50% { transform: translateY(5px); box-shadow: 0 3px 0 #4e2a03, 0 0 18px rgba(255, 191, 63, .24); }
 }
 
+@keyframes tapPop {
+  0% { transform: translateY(0) scale(1); filter: brightness(1); }
+  42% { transform: translateY(5px) scale(.94); filter: brightness(1.16) saturate(1.18); }
+  100% { transform: translateY(0) scale(1); filter: brightness(1); }
+}
+
+@keyframes cardTapPop {
+  0% { transform: translateY(0) rotate(var(--fan-rotate, 0deg)) scale(1); }
+  38% { transform: translateY(-18px) rotate(var(--fan-rotate, 0deg)) scale(1.08); filter: brightness(1.12) drop-shadow(0 0 22px rgba(255, 232, 148, .85)); }
+  100% { transform: translateY(0) rotate(var(--fan-rotate, 0deg)) scale(1); }
+}
+
+@keyframes tapRipple {
+  0% { opacity: .9; transform: translate(-50%, -50%) scale(.3); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(6.5); }
+}
+
 .secondary-button {
   min-height: 46px;
   margin-top: 14px;
@@ -1620,6 +1647,8 @@ h2 {
 
 .map-pot {
   display: grid;
+  position: relative;
+  overflow: hidden;
   gap: 7px;
   padding: 12px;
   border: 1px solid rgba(255, 232, 148, .22);
@@ -2044,7 +2073,8 @@ h2 {
 .bottom-status span,
 .stored-panel span {
   color: rgba(246, 230, 189, .72);
-  text-shadow: none;
+  font-weight: 900;
+  text-shadow: 0 1px 0 rgba(2, 6, 12, .9);
 }
 
 .hud-star,
@@ -2143,10 +2173,7 @@ h2 {
 body,
 button {
   font-weight: 900;
-  text-shadow:
-    0 2px 0 rgba(3, 8, 18, .92),
-    2px 3px 0 rgba(3, 8, 18, .5),
-    0 0 12px rgba(255, 232, 148, .22);
+  text-shadow: 0 1px 0 rgba(2, 6, 12, .9), 0 0 8px rgba(255, 232, 148, .16);
 }
 
 .hud-label,
@@ -2157,10 +2184,9 @@ button {
 .map-pot strong,
 .exit-level-button {
   font-weight: 900;
+  font-size: clamp(.86rem, 3.5vw, 1.12rem);
   color: rgba(246, 230, 189, .88);
-  text-shadow:
-    0 2px 0 rgba(2, 6, 12, .96),
-    0 0 10px rgba(162, 217, 255, .22);
+  text-shadow: 0 1px 0 rgba(2, 6, 12, .92), 0 0 7px rgba(162, 217, 255, .2);
 }
 
 .hud-panel strong,
@@ -2172,10 +2198,7 @@ button {
 .primary-button,
 .crunch-button {
   font-weight: 900;
-  text-shadow:
-    0 3px 0 rgba(2, 6, 12, .96),
-    3px 4px 0 rgba(2, 6, 12, .45),
-    0 0 18px rgba(255, 232, 148, .56);
+  text-shadow: 0 2px 0 rgba(2, 6, 12, .92), 0 0 12px rgba(255, 232, 148, .42);
 }
 
 .game-shell.streak-warm .hud-panel strong,
@@ -2183,10 +2206,7 @@ button {
 .game-shell.streak-warm .combo-label,
 .game-shell.streak-warm .stored-panel strong {
   color: #ffe894;
-  text-shadow:
-    0 3px 0 rgba(2, 6, 12, .96),
-    3px 4px 0 rgba(122, 70, 4, .5),
-    0 0 22px rgba(255, 191, 63, .72);
+  text-shadow: 0 2px 0 rgba(2, 6, 12, .92), 0 0 14px rgba(255, 191, 63, .6);
 }
 
 .game-shell.streak-hot .hud-panel,
@@ -2229,4 +2249,34 @@ button {
 .game-shell.streak-blaze .table-zone .card,
 .game-shell.fever-mode .table-zone .card {
   filter: drop-shadow(0 14px 0 rgba(2, 5, 10, .8)) drop-shadow(0 0 22px rgba(255, 191, 63, .22));
+}
+
+.card.tap-pop {
+  animation: cardTapPop .2s cubic-bezier(.18, 1.5, .28, 1) both;
+}
+
+.crunch-button.tap-pop,
+.primary-button.tap-pop,
+.map-pot.tap-pop,
+.exit-level-button.tap-pop {
+  animation: tapPop .18s cubic-bezier(.18, 1.5, .28, 1) both;
+}
+
+.card.tap-pop::after,
+.crunch-button.tap-pop::after,
+.primary-button.tap-pop::after,
+.map-pot.tap-pop::after,
+.exit-level-button.tap-pop::after {
+  content: "";
+  position: absolute;
+  left: var(--tap-x, 50%);
+  top: var(--tap-y, 50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: rgba(255, 232, 148, .72);
+  box-shadow: 0 0 18px rgba(255, 232, 148, .72);
+  transform: translate(-50%, -50%) scale(.3);
+  animation: tapRipple .32s ease-out both;
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = "card-crunch-v41";
+const CACHE_NAME = "card-crunch-v43";
 const ASSETS = [
   "./",
   "./index.html",
