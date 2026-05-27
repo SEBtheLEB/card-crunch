@@ -1,9 +1,9 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=43";
-import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=43";
-import { createDefaultPots, getTargetForLevel } from "./progression.js?v=43";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=43";
-import { ensurePlayableHand } from "./handSafety.js?v=43";
-import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=43";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=46";
+import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=46";
+import { createDefaultPots, getTargetForLevel } from "./progression.js?v=46";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=46";
+import { ensurePlayableHand } from "./handSafety.js?v=46";
+import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=46";
 import {
   animateBust,
   animateSelectionResolve,
@@ -33,6 +33,7 @@ export function createGame(ui) {
     sessionCrunches: 0,
     fever: false,
     turnSeconds: 10,
+    timerGraceSeconds: 1,
     timeLeft: 10,
     timerId: null,
     timerToken: 0,
@@ -43,11 +44,11 @@ export function createGame(ui) {
   function showMap() {
     stopTimer();
     state.locked = true;
-    state.status = "map";
+    state.status = "menu";
     ui.renderMap(state.pots, handlers, pendingRunSave?.activePotId);
-    ui.showStart(false);
+    ui.showStart(true);
     ui.showGameOver(false);
-    ui.showMap(true);
+    ui.showMap(false);
   }
 
   function enterLevel(levelId) {
@@ -70,10 +71,10 @@ export function createGame(ui) {
     state.score = 0;
     state.streak = 0;
     state.misses = 0;
-    state.level = pot.id;
-    state.activePot = pot;
+    state.level = pot?.id ?? 0;
+    state.activePot = pot ?? null;
     state.sessionCrunches = 0;
-    state.target = pot.target;
+    state.target = pot?.target ?? getTargetForLevel(1);
     state.fever = false;
     state.timeLeft = state.turnSeconds;
     state.locked = false;
@@ -85,6 +86,12 @@ export function createGame(ui) {
     ui.render(state, handlers);
     persistRun();
     startTimer();
+  }
+
+  function startEndless() {
+    pendingRunSave = null;
+    clearRunSave();
+    start(null);
   }
 
   function onCardSelect(handIndex) {
@@ -236,10 +243,11 @@ export function createGame(ui) {
     pendingRunSave = null;
     clearRunSave();
     state.locked = true;
-    state.status = "map";
+    state.status = "menu";
     ui.render(state, handlers);
     ui.renderMap(state.pots, handlers);
-    ui.showMap(true);
+    ui.showStart(true);
+    ui.showMap(false);
   }
 
   function startNewRound() {
@@ -259,13 +267,14 @@ export function createGame(ui) {
     stopTimer();
     const token = state.timerToken;
     const startedAt = performance.now();
-    const totalMs = Math.max(0, state.timeLeft) * 1000;
+    const totalMs = Math.max(0, state.timeLeft + state.timerGraceSeconds) * 1000;
     let warned = false;
 
     state.timerId = window.setInterval(() => {
       if (token !== state.timerToken || state.locked || state.status !== "playing") return;
       const elapsed = performance.now() - startedAt;
-      state.timeLeft = Math.max(0, (totalMs - elapsed) / 1000);
+      const rawRemaining = Math.max(0, (totalMs - elapsed) / 1000);
+      state.timeLeft = Math.max(0, rawRemaining - state.timerGraceSeconds);
       if (!warned && state.timeLeft <= 3) {
         warned = true;
         playSfx("timer_warning");
@@ -273,7 +282,7 @@ export function createGame(ui) {
         spawnSparkBurst(rect.left + rect.width * .82, rect.top + rect.height / 2, state.fever ? 18 : 10, state.fever ? "fever" : "red");
       }
       ui.render(state, handlers);
-      if (state.timeLeft <= 0) handleTimeout();
+      if (rawRemaining <= 0) handleTimeout();
     }, 100);
   }
 
@@ -374,7 +383,7 @@ export function createGame(ui) {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") persistRun();
   });
-  return { state, start, showMap, enterLevel, returnToMap, onCardSelect, onCrunch };
+  return { state, start, startEndless, showMap, enterLevel, returnToMap, onCardSelect, onCrunch };
 }
 
 export function getCrunchPreview(state) {

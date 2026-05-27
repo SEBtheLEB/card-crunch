@@ -82,12 +82,15 @@
       </footer>
     </main>
 
-    <section class="modal-screen is-visible" id="startScreen" aria-labelledby="startTitle">
-      <div class="modal-card">
-        <p class="eyebrow">Fill the Pots</p>
+    <section class="modal-screen main-menu-screen is-visible" id="startScreen" aria-labelledby="startTitle">
+      <div class="main-menu-card">
+        <p class="eyebrow">Push your luck</p>
         <h1 id="startTitle">Card Crunch</h1>
-        <p class="modal-copy">Choose a pot, crunch cards, and come back anytime to keep filling it.</p>
-        <button class="primary-button menu-crunch-button" id="startButton" type="button">CRUNCH</button>
+        <button class="primary-button menu-crunch-button" id="startButton" type="button">Endless Crunch</button>
+        <section class="menu-pots" aria-label="Pots">
+          <h2>Pots</h2>
+          <div class="level-map" id="levelMap"></div>
+        </section>
       </div>
     </section>
 
@@ -95,7 +98,7 @@
       <div class="modal-card map-card">
         <p class="eyebrow">Level Map</p>
         <h2 id="mapTitle">Choose a Pot</h2>
-        <div class="level-map" id="levelMap"></div>
+        <div class="level-map" id="legacyLevelMap"></div>
         <button class="secondary-button" id="backToMenuButton" type="button">Back</button>
       </div>
     </section>
@@ -109,6 +112,6 @@
       </div>
     </section>
 
-    <script type="module" src="src/main.js?v=43"></script>
+    <script type="module" src="src/main.js?v=46"></script>
   </body>
 </html>

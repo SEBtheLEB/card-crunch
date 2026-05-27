@@ -1,8 +1,8 @@
-import { getCrunchPreview } from "./gameState.js?v=43";
-import { getLevelProgress } from "./progression.js?v=43";
+import { getCrunchPreview } from "./gameState.js?v=46";
+import { getLevelProgress } from "./progression.js?v=46";
 
 export function createUI() {
-  const renderCache = { hand: "", stack: "" };
+  const renderCache = { hand: "", stack: "", counters: null };
   const elements = {
     shell: document.querySelector("#gameShell"),
     tableZone: document.querySelector("#tableZone"),
@@ -99,7 +99,11 @@ export function createUI() {
 }
 
 function renderHud(elements, state) {
-  const levelProgress = state.activePot
+  const previousCounters = elements._counterCache ?? null;
+  const isEndless = !state.activePot && state.level === 0;
+  const levelProgress = isEndless
+    ? { target: 0, progress: 0, remaining: "Endless" }
+    : state.activePot
     ? {
         target: state.activePot.target,
         progress: Math.min(1, state.activePot.progress / state.activePot.target),
@@ -111,8 +115,8 @@ function renderHud(elements, state) {
   elements.timerValue.textContent = `${Math.ceil(state.timeLeft)}s`;
   elements.missValue.textContent = `${state.misses}/${state.maxMisses}`;
   elements.deckValue.textContent = String(state.deck.length);
-  elements.levelValue.textContent = String(state.level ?? 1);
-  elements.targetValue.textContent = levelProgress.remaining.toLocaleString();
+  elements.levelValue.textContent = isEndless ? "∞" : String(state.level ?? 1);
+  elements.targetValue.textContent = typeof levelProgress.remaining === "number" ? levelProgress.remaining.toLocaleString() : levelProgress.remaining;
   elements.targetFill.style.setProperty("--target-progress", `${levelProgress.progress}`);
   elements.timerRing.style.setProperty("--timer-progress", `${state.timeLeft / state.turnSeconds}`);
   elements.timerShell.classList.toggle("timer-danger", state.timeLeft <= 3 && state.status === "playing");
@@ -120,6 +124,55 @@ function renderHud(elements, state) {
   elements.shell.classList.toggle("streak-warm", state.streak >= 3);
   elements.shell.classList.toggle("streak-hot", state.streak >= 6);
   elements.shell.classList.toggle("streak-blaze", state.streak >= 10);
+
+  if (previousCounters) {
+    if (state.score > previousCounters.score) popCounter(elements.scoreValue, "gold");
+    if (state.streak > previousCounters.streak) popCounter(elements.streakValue, state.streak >= 10 ? "fever" : "gold");
+    if (state.misses > previousCounters.misses) popCounter(elements.missValue, "red");
+    if (state.deck.length > previousCounters.deck) popCounter(elements.deckValue, "blue");
+  }
+
+  elements._counterCache = {
+    score: state.score,
+    streak: state.streak,
+    misses: state.misses,
+    deck: state.deck.length
+  };
+}
+
+function popCounter(element, tone = "gold") {
+  if (!element) return;
+  element.classList.remove("counter-juice", "counter-juice-gold", "counter-juice-red", "counter-juice-blue", "counter-juice-fever");
+  void element.offsetWidth;
+  element.classList.add("counter-juice", `counter-juice-${tone}`);
+  sprayFromElement(element, tone);
+}
+
+function sprayFromElement(element, tone = "gold") {
+  const rect = element.getBoundingClientRect();
+  const x = rect.left + rect.width / 2;
+  const y = rect.top + rect.height / 2;
+  const colors = {
+    gold: ["#ffe894", "#ffbf3f", "#fff8d0"],
+    red: ["#ff746f", "#ff443d", "#ffd2d0"],
+    blue: ["#76c6ff", "#42a1ff", "#e0f3ff"],
+    fever: ["#ffe894", "#ff7439", "#fff8d0"]
+  }[tone] ?? ["#ffe894", "#ffbf3f"];
+
+  for (let i = 0; i < 16; i += 1) {
+    const spark = document.createElement("i");
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 18 + Math.random() * 42;
+    spark.className = "counter-spark";
+    spark.style.left = `${x}px`;
+    spark.style.top = `${y}px`;
+    spark.style.color = colors[i % colors.length];
+    spark.style.setProperty("--spark-x", `${Math.cos(angle) * distance}px`);
+    spark.style.setProperty("--spark-y", `${Math.sin(angle) * distance}px`);
+    spark.style.setProperty("--spark-scale", `${.7 + Math.random() * .9}`);
+    document.body.appendChild(spark);
+    spark.addEventListener("animationend", () => spark.remove(), { once: true });
+  }
 }
 
 function renderStack(elements, state) {

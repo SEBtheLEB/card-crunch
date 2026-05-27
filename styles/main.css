@@ -711,7 +711,7 @@ button {
 
 .crunch-button:not(:disabled):active,
 .crunch-button.crunch-slam {
-  transform: translateY(7px) scale(.95);
+  transform: scale(.94);
   filter: brightness(1.12) saturate(1.18);
   box-shadow: 0 1px 0 #4e2a03, 0 0 26px rgba(255, 232, 148, .6);
 }
@@ -1383,6 +1383,47 @@ button {
   display: grid;
 }
 
+.main-menu-screen {
+  align-items: start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 232, 148, .2), transparent 28%),
+    radial-gradient(circle at 20% 56%, rgba(118, 198, 255, .24), transparent 30%),
+    linear-gradient(180deg, rgba(30, 70, 105, .96), rgba(9, 24, 43, .98));
+  backdrop-filter: none;
+}
+
+.main-menu-card {
+  display: grid;
+  width: min(100%, 560px);
+  min-height: calc(100dvh - 40px - var(--safe-top) - var(--safe-bottom));
+  align-content: start;
+  gap: clamp(18px, 3dvh, 28px);
+  padding-top: clamp(24px, 7dvh, 72px);
+  text-align: center;
+}
+
+.main-menu-card h1 {
+  font-size: clamp(3.6rem, 18vw, 7.4rem);
+  letter-spacing: 0;
+}
+
+.menu-pots {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.menu-pots h2 {
+  font-size: clamp(1.9rem, 8vw, 3.2rem);
+}
+
+.main-menu-card .level-map {
+  margin-top: 0;
+}
+
 .modal-card {
   width: min(100%, 430px);
   padding: 25px 18px 21px;
@@ -1437,7 +1478,7 @@ h2 {
 
 .primary-button:active {
   animation: buttonPress .18s ease;
-  transform: translateY(6px) scale(.96);
+  transform: scale(.94);
   filter: brightness(1.12) saturate(1.18);
   box-shadow: 0 2px 0 #4e2a03, 0 0 28px rgba(255, 232, 148, .62);
 }
@@ -1598,13 +1639,13 @@ h2 {
 }
 
 @keyframes buttonPress {
-  0%, 100% { transform: translateY(0); box-shadow: 0 8px 0 #4e2a03, 0 0 25px rgba(255, 191, 63, .34); }
-  50% { transform: translateY(5px); box-shadow: 0 3px 0 #4e2a03, 0 0 18px rgba(255, 191, 63, .24); }
+  0%, 100% { transform: scale(1); box-shadow: 0 8px 0 #4e2a03, 0 0 25px rgba(255, 191, 63, .34); }
+  50% { transform: scale(.94); box-shadow: 0 3px 0 #4e2a03, 0 0 18px rgba(255, 191, 63, .24); }
 }
 
 @keyframes tapPop {
   0% { transform: translateY(0) scale(1); filter: brightness(1); }
-  42% { transform: translateY(5px) scale(.94); filter: brightness(1.16) saturate(1.18); }
+  42% { transform: translateY(0) scale(.92); filter: brightness(1.16) saturate(1.18); }
   100% { transform: translateY(0) scale(1); filter: brightness(1); }
 }
 
@@ -1632,6 +1673,8 @@ h2 {
 
 .menu-crunch-button {
   min-height: 72px;
+  width: min(100%, 390px);
+  justify-self: center;
   font-size: clamp(1.35rem, 7vw, 2.4rem);
 }
 
@@ -2257,6 +2300,7 @@ button {
 
 .crunch-button.tap-pop,
 .primary-button.tap-pop,
+.secondary-button.tap-pop,
 .map-pot.tap-pop,
 .exit-level-button.tap-pop {
   animation: tapPop .18s cubic-bezier(.18, 1.5, .28, 1) both;
@@ -2265,6 +2309,7 @@ button {
 .card.tap-pop::after,
 .crunch-button.tap-pop::after,
 .primary-button.tap-pop::after,
+.secondary-button.tap-pop::after,
 .map-pot.tap-pop::after,
 .exit-level-button.tap-pop::after {
   content: "";
@@ -2279,4 +2324,135 @@ button {
   box-shadow: 0 0 18px rgba(255, 232, 148, .72);
   transform: translate(-50%, -50%) scale(.3);
   animation: tapRipple .32s ease-out both;
+}
+
+/* Final tactile tuning: soft shadows, centered bounces, clear button text. */
+body,
+button,
+.hud-label,
+.timer-copy,
+.target-strip > div:first-child,
+.bottom-status span,
+.stored-panel span,
+.map-pot strong,
+.exit-level-button,
+.hud-panel strong,
+.timer-strip > strong,
+.bottom-status strong,
+.stored-panel strong,
+.combo-label,
+.map-pot span,
+.primary-button,
+.crunch-button {
+  text-shadow: 0 0 8px rgba(2, 6, 12, .72), 0 0 14px rgba(255, 232, 148, .14);
+}
+
+.crunch-button,
+.crunch-button.crunch-ready,
+.crunch-button.crunch-danger,
+#restartButton {
+  color: #fff;
+  font-weight: 900;
+}
+
+.crunch-button,
+.primary-button,
+.secondary-button,
+.map-pot,
+.exit-level-button,
+.hand-zone .card,
+.card {
+  transform-origin: center center;
+}
+
+.crunch-button,
+.primary-button,
+.secondary-button,
+.map-pot,
+.exit-level-button {
+  will-change: transform, filter;
+}
+
+.counter-juice {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  transform-origin: center;
+  animation: counterJuice .42s cubic-bezier(.16, 1.5, .28, 1) both;
+}
+
+.counter-juice-gold {
+  color: #ffe894 !important;
+  filter: drop-shadow(0 0 16px rgba(255, 191, 63, .72));
+}
+
+.counter-juice-red {
+  color: #ff746f !important;
+  filter: drop-shadow(0 0 16px rgba(255, 68, 61, .72));
+}
+
+.counter-juice-blue {
+  color: #bce8ff !important;
+  filter: drop-shadow(0 0 16px rgba(66, 161, 255, .72));
+}
+
+.counter-juice-fever {
+  color: #fff8d0 !important;
+  filter: drop-shadow(0 0 18px rgba(255, 191, 63, .9)) drop-shadow(0 0 26px rgba(255, 116, 57, .58));
+}
+
+.tap-spray-particle,
+.counter-spark {
+  position: fixed;
+  z-index: 90;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  pointer-events: none;
+  background: currentColor;
+  box-shadow: 0 0 9px currentColor, 0 0 18px currentColor;
+}
+
+.tap-spray-particle {
+  animation: tapSpray .46s cubic-bezier(.16, 1, .3, 1) forwards;
+}
+
+.counter-spark {
+  animation: counterSpark .58s cubic-bezier(.16, 1, .3, 1) forwards;
+}
+
+.tap-spray-particle:nth-child(3n),
+.counter-spark:nth-child(3n) {
+  width: 4px;
+  height: 13px;
+  border-radius: 3px;
+}
+
+@keyframes counterJuice {
+  0% { transform: scale(1); }
+  38% { transform: scale(1.32) rotate(-1deg); }
+  68% { transform: scale(.94) rotate(1deg); }
+  100% { transform: scale(1); }
+}
+
+@keyframes tapSpray {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(var(--spray-scale)) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--spray-x)), calc(-50% + var(--spray-y))) scale(.12) rotate(var(--spray-rotate));
+  }
+}
+
+@keyframes counterSpark {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(var(--spark-scale));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--spark-x)), calc(-50% + var(--spark-y))) scale(.1);
+  }
 }
