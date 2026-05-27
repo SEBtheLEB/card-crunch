@@ -102,7 +102,7 @@ export async function animateStackAdd({ handCard, matchedCards, matchedSlots, ma
   matchedSlots.forEach((slot) => slot.classList.remove("case-match-glow", "slot-matched"));
 }
 
-export async function animateSelectionResolve({ selectedHandCards, baseStackCards, resolution, fail }) {
+export async function animateSelectionResolve({ selectedHandCards, baseStackCards, resolution, fail, onEntryResolved }) {
   const activeVisualCards = [...baseStackCards];
   const limit = fail ? resolution.failedIndex : selectedHandCards.length;
 
@@ -116,6 +116,7 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
     matchedCards.forEach((card) => burstAround(card, 8, entry.matchType === "suit" ? "suit" : entry.matchType === "rank" ? "rank" : "math"));
     if (entry.matchType === "add" || entry.matchType === "subtract") drawComboStreak(handCard, matchedCards);
     await popStoredLabel(handCard, `+${entry.basePoints} ${getShortMatchLabel(entry.matchType)}`, entry.matchType === "suit" ? "suit" : entry.matchType === "rank" ? "rank" : "math");
+    await onEntryResolved?.(entry, i);
     matchedCards.forEach((card) => card.classList.remove("card-match-glow", "is-vibrating"));
     handCard?.classList.remove("card-selected", "is-vibrating");
     if (handCard) activeVisualCards.push(handCard);

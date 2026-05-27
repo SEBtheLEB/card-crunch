@@ -1,47 +1,93 @@
 const CUTSCENE_CONFIG = {
   showEveryResolvedCard: true,
   maxFullCutinsPerCrunch: 2,
-  cutinDuration: 720,
-  miniDuration: 260,
-  finalCrunchDuration: 720
+  cutinDuration: 1900,
+  fullCutinExtraDuration: 420,
+  miniDuration: 900,
+  finalCrunchDuration: 1900,
+  finalPreFlyDelay: 560,
+  bustDuration: 1500,
+  fadeOutDuration: 160
 };
 
 export async function playCrunchExplanation({ cutscene, scoreEl }) {
   if (!cutscene?.entries?.length) return;
 
   const overlay = createOverlay(cutscene.tier);
+  const advance = createAdvanceController(overlay);
   document.body.appendChild(overlay);
 
-  const fullEntries = chooseFullEntries(cutscene.entries);
-  for (const entry of cutscene.entries) {
-    if (fullEntries.includes(entry)) {
-      await playEntryCutin(overlay, entry, cutscene.tier);
-    } else {
-      await playMiniEntry(overlay, entry);
+  try {
+    const fullEntries = chooseFullEntries(cutscene.entries);
+    for (const entry of cutscene.entries) {
+      if (fullEntries.includes(entry)) {
+        await playEntryCutin(overlay, entry, cutscene.tier, advance);
+      } else {
+        await playMiniEntry(overlay, entry, advance);
+      }
     }
-  }
 
-  await playFinalTotal(overlay, cutscene.total, scoreEl, cutscene.tier);
-  overlay.classList.add("is-leaving");
-  await sleep(160);
-  overlay.remove();
+    await playFinalTotal(overlay, cutscene.total, scoreEl, cutscene.tier, advance);
+    overlay.classList.add("is-leaving");
+    await sleep(CUTSCENE_CONFIG.fadeOutDuration);
+  } finally {
+    advance.destroy();
+    overlay.remove();
+  }
+}
+
+export async function playCrunchEntryExplanation({ entry, tier = "normal" }) {
+  if (!entry) return;
+
+  const overlay = createOverlay(tier);
+  const advance = createAdvanceController(overlay);
+  document.body.appendChild(overlay);
+
+  try {
+    await playEntryCutin(overlay, entry, tier, advance);
+    overlay.classList.add("is-leaving");
+    await sleep(CUTSCENE_CONFIG.fadeOutDuration);
+  } finally {
+    advance.destroy();
+    overlay.remove();
+  }
+}
+
+export async function playCrunchTotalExplanation({ total, scoreEl, tier = "normal" }) {
+  const overlay = createOverlay(tier);
+  const advance = createAdvanceController(overlay);
+  document.body.appendChild(overlay);
+
+  try {
+    await playFinalTotal(overlay, total, scoreEl, tier, advance);
+    overlay.classList.add("is-leaving");
+    await sleep(CUTSCENE_CONFIG.fadeOutDuration);
+  } finally {
+    advance.destroy();
+    overlay.remove();
+  }
 }
 
 export async function playBustCutin({ failedCard, activeStack = [] }) {
   const overlay = createOverlay("fail");
+  const advance = createAdvanceController(overlay);
   document.body.appendChild(overlay);
-  overlay.innerHTML = `
-    <div class="cutin-stage cutin-fail-stage">
-      <div class="cutin-dim-stack">${activeStack.slice(0, 4).map((card) => createCutinCardMarkup(card, "dim")).join("")}</div>
-      ${failedCard ? createCutinCardMarkup(failedCard, "answer fail") : ""}
-      <div class="cutin-label cutin-bust">BUST!</div>
-      <div class="cutin-subtitle">NO MATCH FOUND</div>
-    </div>
-  `;
-  await sleep(520);
-  overlay.classList.add("is-leaving");
-  await sleep(160);
-  overlay.remove();
+  try {
+    overlay.innerHTML = `
+      <div class="cutin-stage cutin-fail-stage">
+        <div class="cutin-dim-stack">${activeStack.slice(0, 4).map((card) => createCutinCardMarkup(card, "dim")).join("")}</div>
+        ${failedCard ? createCutinCardMarkup(failedCard, "answer fail") : ""}
+        <div class="cutin-label cutin-bust">BUST!</div>
+        <div class="cutin-subtitle">NO MATCH FOUND</div>
+      </div>
+    `;
+    await advance.wait(CUTSCENE_CONFIG.bustDuration);
+    overlay.classList.add("is-leaving");
+    await sleep(CUTSCENE_CONFIG.fadeOutDuration);
+  } finally {
+    advance.destroy();
+    overlay.remove();
+  }
 }
 
 function chooseFullEntries(entries) {
@@ -53,7 +99,7 @@ function chooseFullEntries(entries) {
     .slice(0, CUTSCENE_CONFIG.maxFullCutinsPerCrunch);
 }
 
-async function playEntryCutin(overlay, entry, tier) {
+async function playEntryCutin(overlay, entry, tier, advance) {
   const matched = orderMatchedCardsForEquation(entry);
   const operator = getOperatorText(entry);
   const equation = getEquationText(entry);
@@ -71,10 +117,10 @@ async function playEntryCutin(overlay, entry, tier) {
       <div class="cutin-points">+${entry.points.toLocaleString()}</div>
     </div>
   `;
-  await sleep(tier === "full" ? CUTSCENE_CONFIG.cutinDuration + 180 : CUTSCENE_CONFIG.cutinDuration);
+  await advance.wait(tier === "full" ? CUTSCENE_CONFIG.cutinDuration + CUTSCENE_CONFIG.fullCutinExtraDuration : CUTSCENE_CONFIG.cutinDuration);
 }
 
-async function playMiniEntry(overlay, entry) {
+async function playMiniEntry(overlay, entry, advance) {
   overlay.innerHTML = `
     <div class="cutin-mini">
       ${createCutinCardMarkup(entry.card, "answer mini-card")}
@@ -84,10 +130,10 @@ async function playMiniEntry(overlay, entry) {
       </div>
     </div>
   `;
-  await sleep(CUTSCENE_CONFIG.miniDuration);
+  await advance.wait(CUTSCENE_CONFIG.miniDuration);
 }
 
-async function playFinalTotal(overlay, total, scoreEl, tier) {
+async function playFinalTotal(overlay, total, scoreEl, tier, advance) {
   const scoreRect = scoreEl.getBoundingClientRect();
   overlay.innerHTML = `
     <div class="cutin-final ${tier === "full" ? "cutin-final-full" : ""}">
@@ -98,16 +144,49 @@ async function playFinalTotal(overlay, total, scoreEl, tier) {
   `;
 
   const totalEl = overlay.querySelector(".cutin-final strong");
-  await sleep(240);
+  await advance.wait(CUTSCENE_CONFIG.finalPreFlyDelay);
   flyGhostToScore(totalEl, scoreRect);
-  await sleep(CUTSCENE_CONFIG.finalCrunchDuration);
+  await advance.wait(CUTSCENE_CONFIG.finalCrunchDuration);
 }
 
 function createOverlay(tier) {
   const overlay = document.createElement("section");
   overlay.className = `crunch-cutscene-overlay cutscene-${tier}`;
   overlay.setAttribute("aria-live", "assertive");
+  overlay.setAttribute("aria-label", "Crunch explanation. Tap to advance.");
   return overlay;
+}
+
+function createAdvanceController(overlay) {
+  const waiters = new Set();
+  const onAdvance = (event) => {
+    event.preventDefault();
+    const [next] = waiters;
+    if (next) next();
+  };
+
+  overlay.addEventListener("pointerup", onAdvance);
+
+  return {
+    wait(ms) {
+      return new Promise((resolve) => {
+        let finished = false;
+        const finish = () => {
+          if (finished) return;
+          finished = true;
+          window.clearTimeout(timeoutId);
+          waiters.delete(finish);
+          resolve();
+        };
+        const timeoutId = window.setTimeout(finish, ms);
+        waiters.add(finish);
+      });
+    },
+    destroy() {
+      waiters.clear();
+      overlay.removeEventListener("pointerup", onAdvance);
+    }
+  };
 }
 
 function createCutinCardMarkup(card, extraClass = "") {

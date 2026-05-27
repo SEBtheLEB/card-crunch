@@ -1,7 +1,8 @@
 import { drawCards, shuffle, createDeck } from "./deck.js";
 import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js";
 import { getTargetForLevel } from "./progression.js";
-import { playBustCutin, playCrunchExplanation } from "./crunchCutscene.js";
+import { playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js";
+import { ensurePlayableHand } from "./handSafety.js";
 import {
   animateBust,
   animateCrunch,
@@ -41,6 +42,7 @@ export function createGame(ui) {
     state.discard = [];
     state.stack = drawCards(state, state.baseStackCount);
     state.hand = drawCards(state, 4);
+    ensurePlayableHand(state);
     state.selectedHandIndexes = [];
     state.score = 0;
     state.streak = 0;
@@ -91,7 +93,13 @@ export function createGame(ui) {
         selectedHandCards: state.selectedHandIndexes.map((index) => ui.getHandCardElement(index)),
         baseStackCards: ui.getAllStackCardElements(),
         resolution: crunch.resolution,
-        fail: true
+        fail: true,
+        onEntryResolved: async (entry) => {
+          await playCrunchEntryExplanation({
+            entry: createCutsceneEntry(entry),
+            tier: "normal"
+          });
+        }
       });
       await playBustCutin({
         failedCard: crunch.resolution.failedCard,
@@ -105,12 +113,19 @@ export function createGame(ui) {
       selectedHandCards: state.selectedHandIndexes.map((index) => ui.getHandCardElement(index)),
       baseStackCards: ui.getAllStackCardElements(),
       resolution: crunch.resolution,
-      fail: false
+      fail: false,
+      onEntryResolved: async (entry, index) => {
+        await playCrunchEntryExplanation({
+          entry: crunch.cutscene.entries[index] ?? createCutsceneEntry(entry),
+          tier: crunch.cutscene.tier
+        });
+      }
     });
 
-    await playCrunchExplanation({
-      cutscene: crunch.cutscene,
-      scoreEl: ui.elements.scoreValue
+    await playCrunchTotalExplanation({
+      total: crunch.cutscene.total,
+      scoreEl: ui.elements.scoreValue,
+      tier: crunch.cutscene.tier
     });
 
     await animateCrunch({
@@ -189,6 +204,7 @@ export function createGame(ui) {
   function startNewRound() {
     state.stack.forEach((card) => state.discard.push(card));
     state.stack = drawCards(state, state.baseStackCount);
+    ensurePlayableHand(state);
     state.selectedHandIndexes = [];
     state.timeLeft = state.turnSeconds;
     state.status = "playing";
@@ -264,5 +280,19 @@ export function getCrunchPreview(state) {
     canCrunch: selectedCount > 0,
     selectedCount,
     selectionMultiplier: getSelectionMultiplier(selectedCount)
+  };
+}
+
+function createCutsceneEntry(entry) {
+  const isDouble = entry.matchedCards.length > 1 && (entry.matchType === "rank" || entry.matchType === "suit");
+  return {
+    card: entry.card,
+    matchType: entry.matchType,
+    points: entry.basePoints,
+    matchedCards: entry.matchedCards,
+    equation: entry.equation,
+    label: entry.cutinLabel ?? entry.label,
+    isDouble,
+    multiplier: isDouble ? 2 : 1
   };
 }
