@@ -40,18 +40,34 @@ export function evaluateStackAdd(stackCards, selectedCard) {
       label: "SUM COMBO",
       basePoints: SCORE_CONFIG.math,
       matchedIndexes: [addPair.a.index, addPair.b.index],
-      matchedCards: [addPair.a.card, addPair.b.card]
+      matchedCards: [addPair.a.card, addPair.b.card],
+      equation: {
+        left: addPair.a.card.value,
+        operator: "+",
+        right: addPair.b.card.value,
+        result: selectedCard.value
+      },
+      cutinLabel: "SUM CRUNCH"
     });
   }
 
   const subtractPair = pairs.find(({ a, b }) => Math.abs(a.card.value - b.card.value) === selectedCard.value);
   if (subtractPair) {
+    const left = Math.max(subtractPair.a.card.value, subtractPair.b.card.value);
+    const right = Math.min(subtractPair.a.card.value, subtractPair.b.card.value);
     return createMatch({
       type: MATCH_TYPES.SUBTRACT,
       label: "MINUS COMBO",
       basePoints: SCORE_CONFIG.math,
       matchedIndexes: [subtractPair.a.index, subtractPair.b.index],
-      matchedCards: [subtractPair.a.card, subtractPair.b.card]
+      matchedCards: [subtractPair.a.card, subtractPair.b.card],
+      equation: {
+        left,
+        operator: "-",
+        right,
+        result: selectedCard.value
+      },
+      cutinLabel: "MINUS CRUNCH"
     });
   }
 
@@ -65,7 +81,14 @@ export function evaluateStackAdd(stackCards, selectedCard) {
       label: "RANK MATCH",
       basePoints: SCORE_CONFIG.rank,
       matchedIndexes: rankMatches,
-      matchedCards: rankMatches.map((index) => stackCards[index])
+      matchedCards: rankMatches.map((index) => stackCards[index]),
+      equation: {
+        left: selectedCard.rank,
+        operator: "=",
+        right: selectedCard.rank,
+        result: selectedCard.rank
+      },
+      cutinLabel: "NUMBER MATCH"
     });
   }
 
@@ -79,7 +102,14 @@ export function evaluateStackAdd(stackCards, selectedCard) {
       label: "SUIT MATCH",
       basePoints: SCORE_CONFIG.suit,
       matchedIndexes: suitMatches,
-      matchedCards: suitMatches.map((index) => stackCards[index])
+      matchedCards: suitMatches.map((index) => stackCards[index]),
+      equation: {
+        left: selectedCard.suitSymbol,
+        operator: "=",
+        right: selectedCard.suitSymbol,
+        result: selectedCard.suitSymbol
+      },
+      cutinLabel: `${selectedCard.suit.toUpperCase()} MATCH`
     });
   }
 
@@ -132,7 +162,9 @@ export function createStackEntry(card, match) {
     basePoints: match.basePoints,
     matchedCards: match.matchedCards,
     matchedIndexes: match.matchedIndexes,
-    label: match.label
+    label: match.label,
+    equation: match.equation,
+    cutinLabel: match.cutinLabel
   };
 }
 
@@ -160,6 +192,21 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
     streakMultiplier,
     stackTypes,
     total,
+    cutscene: {
+      entries: resolution.history.map((entry) => ({
+        card: entry.card,
+        matchType: entry.matchType,
+        points: entry.basePoints,
+        matchedCards: entry.matchedCards,
+        equation: entry.equation,
+        label: entry.cutinLabel ?? entry.label,
+        isDouble: entry.matchedCards.length > 1 && (entry.matchType === MATCH_TYPES.RANK || entry.matchType === MATCH_TYPES.SUIT),
+        multiplier: entry.matchedCards.length > 1 && (entry.matchType === MATCH_TYPES.RANK || entry.matchType === MATCH_TYPES.SUIT) ? 2 : 1
+      })),
+      total,
+      selectedCount: selectedCards.length,
+      tier: selectedCards.length === 4 ? "full" : selectedCards.length >= 3 ? "big" : "normal"
+    },
     breakdown: buildCrunchBreakdown({
       storedBase,
       handMultiplier,
@@ -229,8 +276,8 @@ export function runScoringSelfTests() {
   return cases.map((test) => ({ ...test, result: test.name.includes("fail") ? fail : success }));
 }
 
-function createMatch({ type, label, basePoints, matchedIndexes, matchedCards }) {
-  return { valid: true, type, label, basePoints, matchedIndexes, matchedCards };
+function createMatch({ type, label, basePoints, matchedIndexes, matchedCards, equation, cutinLabel }) {
+  return { valid: true, type, label, basePoints, matchedIndexes, matchedCards, equation, cutinLabel };
 }
 
 function getStackPairs(cards) {

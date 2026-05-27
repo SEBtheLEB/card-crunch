@@ -1,6 +1,7 @@
 import { drawCards, shuffle, createDeck } from "./deck.js";
 import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js";
 import { getTargetForLevel } from "./progression.js";
+import { playBustCutin, playCrunchExplanation } from "./crunchCutscene.js";
 import {
   animateBust,
   animateCrunch,
@@ -92,6 +93,10 @@ export function createGame(ui) {
         resolution: crunch.resolution,
         fail: true
       });
+      await playBustCutin({
+        failedCard: crunch.resolution.failedCard,
+        activeStack: crunch.resolution.activeStack
+      });
       await bust("BUST!", crunch.resolution.failedIndex);
       return;
     }
@@ -101,6 +106,11 @@ export function createGame(ui) {
       baseStackCards: ui.getAllStackCardElements(),
       resolution: crunch.resolution,
       fail: false
+    });
+
+    await playCrunchExplanation({
+      cutscene: crunch.cutscene,
+      scoreEl: ui.elements.scoreValue
     });
 
     await animateCrunch({

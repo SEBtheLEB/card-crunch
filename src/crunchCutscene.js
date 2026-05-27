@@ -1,0 +1,161 @@
+const CUTSCENE_CONFIG = {
+  showEveryResolvedCard: true,
+  maxFullCutinsPerCrunch: 2,
+  cutinDuration: 720,
+  miniDuration: 260,
+  finalCrunchDuration: 720
+};
+
+export async function playCrunchExplanation({ cutscene, scoreEl }) {
+  if (!cutscene?.entries?.length) return;
+
+  const overlay = createOverlay(cutscene.tier);
+  document.body.appendChild(overlay);
+
+  const fullEntries = chooseFullEntries(cutscene.entries);
+  for (const entry of cutscene.entries) {
+    if (fullEntries.includes(entry)) {
+      await playEntryCutin(overlay, entry, cutscene.tier);
+    } else {
+      await playMiniEntry(overlay, entry);
+    }
+  }
+
+  await playFinalTotal(overlay, cutscene.total, scoreEl, cutscene.tier);
+  overlay.classList.add("is-leaving");
+  await sleep(160);
+  overlay.remove();
+}
+
+export async function playBustCutin({ failedCard, activeStack = [] }) {
+  const overlay = createOverlay("fail");
+  document.body.appendChild(overlay);
+  overlay.innerHTML = `
+    <div class="cutin-stage cutin-fail-stage">
+      <div class="cutin-dim-stack">${activeStack.slice(0, 4).map((card) => createCutinCardMarkup(card, "dim")).join("")}</div>
+      ${failedCard ? createCutinCardMarkup(failedCard, "answer fail") : ""}
+      <div class="cutin-label cutin-bust">BUST!</div>
+      <div class="cutin-subtitle">NO MATCH FOUND</div>
+    </div>
+  `;
+  await sleep(520);
+  overlay.classList.add("is-leaving");
+  await sleep(160);
+  overlay.remove();
+}
+
+function chooseFullEntries(entries) {
+  if (CUTSCENE_CONFIG.showEveryResolvedCard && entries.length <= CUTSCENE_CONFIG.maxFullCutinsPerCrunch) {
+    return entries;
+  }
+  return [...entries]
+    .sort((a, b) => b.points - a.points)
+    .slice(0, CUTSCENE_CONFIG.maxFullCutinsPerCrunch);
+}
+
+async function playEntryCutin(overlay, entry, tier) {
+  const matched = orderMatchedCardsForEquation(entry);
+  const operator = getOperatorText(entry);
+  const equation = getEquationText(entry);
+  overlay.innerHTML = `
+    <div class="cutin-stage ${tier === "full" ? "cutin-full" : ""}">
+      <div class="cutin-card-row">
+        ${matched.map((card, index) => createCutinCardMarkup(card, `source source-${index + 1}`)).join("")}
+      </div>
+      <div class="cutin-operator">${operator}</div>
+      <div class="cutin-equation">${equation}</div>
+      <div class="cutin-answer-wrap">
+        ${createCutinCardMarkup(entry.card, "answer")}
+      </div>
+      <div class="cutin-label">${entry.isDouble ? "DOUBLE MATCH x2" : entry.label}</div>
+      <div class="cutin-points">+${entry.points.toLocaleString()}</div>
+    </div>
+  `;
+  await sleep(tier === "full" ? CUTSCENE_CONFIG.cutinDuration + 180 : CUTSCENE_CONFIG.cutinDuration);
+}
+
+async function playMiniEntry(overlay, entry) {
+  overlay.innerHTML = `
+    <div class="cutin-mini">
+      ${createCutinCardMarkup(entry.card, "answer mini-card")}
+      <div>
+        <strong>${entry.label}</strong>
+        <span>+${entry.points.toLocaleString()}</span>
+      </div>
+    </div>
+  `;
+  await sleep(CUTSCENE_CONFIG.miniDuration);
+}
+
+async function playFinalTotal(overlay, total, scoreEl, tier) {
+  const scoreRect = scoreEl.getBoundingClientRect();
+  overlay.innerHTML = `
+    <div class="cutin-final ${tier === "full" ? "cutin-final-full" : ""}">
+      <span>${tier === "full" ? "FULL CRUNCH!" : "CRUNCH!"}</span>
+      <strong>+${total.toLocaleString()}</strong>
+      ${tier === "full" ? "<em>ALL 4 CARDS USED</em>" : ""}
+    </div>
+  `;
+
+  const totalEl = overlay.querySelector(".cutin-final strong");
+  await sleep(240);
+  flyGhostToScore(totalEl, scoreRect);
+  await sleep(CUTSCENE_CONFIG.finalCrunchDuration);
+}
+
+function createOverlay(tier) {
+  const overlay = document.createElement("section");
+  overlay.className = `crunch-cutscene-overlay cutscene-${tier}`;
+  overlay.setAttribute("aria-live", "assertive");
+  return overlay;
+}
+
+function createCutinCardMarkup(card, extraClass = "") {
+  if (!card) return "";
+  return `
+    <div class="cutin-card card-${card.color} card-${card.suit} ${extraClass}">
+      <span class="cutin-corner">${card.rank}${card.suitSymbol}</span>
+      <strong>${card.rank}</strong>
+      <span class="cutin-suit">${card.suitSymbol}</span>
+    </div>
+  `;
+}
+
+function orderMatchedCardsForEquation(entry) {
+  if (entry.matchType !== "subtract" || entry.matchedCards.length < 2) return entry.matchedCards;
+  return [...entry.matchedCards].sort((a, b) => b.value - a.value);
+}
+
+function getOperatorText(entry) {
+  if (entry.matchType === "add") return "+";
+  if (entry.matchType === "subtract") return "-";
+  if (entry.matchType === "rank") return "MATCH";
+  if (entry.matchType === "suit") return entry.isDouble ? "DOUBLE" : "=";
+  return "CRUNCH";
+}
+
+function getEquationText(entry) {
+  if (entry.equation) {
+    return `${entry.equation.left} ${entry.equation.operator} ${entry.equation.right} = ${entry.equation.result}`;
+  }
+  if (entry.matchType === "rank") return `${entry.card.rank} = ${entry.card.rank}`;
+  if (entry.matchType === "suit") return `${entry.card.suitSymbol} = ${entry.card.suitSymbol}`;
+  return entry.label;
+}
+
+function flyGhostToScore(sourceEl, scoreRect) {
+  if (!sourceEl) return;
+  const sourceRect = sourceEl.getBoundingClientRect();
+  const ghost = sourceEl.cloneNode(true);
+  ghost.className = "cutin-flying-points";
+  ghost.style.left = `${sourceRect.left + sourceRect.width / 2}px`;
+  ghost.style.top = `${sourceRect.top + sourceRect.height / 2}px`;
+  ghost.style.setProperty("--fly-x", `${scoreRect.left + scoreRect.width / 2 - (sourceRect.left + sourceRect.width / 2)}px`);
+  ghost.style.setProperty("--fly-y", `${scoreRect.top + scoreRect.height / 2 - (sourceRect.top + sourceRect.height / 2)}px`);
+  document.body.appendChild(ghost);
+  window.setTimeout(() => ghost.remove(), 620);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
