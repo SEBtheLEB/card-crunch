@@ -733,8 +733,30 @@ button {
   will-change: filter;
 }
 
+.resolve-selected-card {
+  z-index: 12;
+  transform: translateY(-30px) scale(1.15) rotate(var(--fan-rotate, 0deg));
+  outline: 4px solid rgba(255, 232, 148, .95);
+  outline-offset: 4px;
+  box-shadow:
+    0 12px 0 #02050a,
+    0 0 0 6px rgba(255, 191, 63, .18),
+    0 0 32px rgba(255, 191, 63, .9),
+    0 0 58px rgba(255, 159, 28, .75);
+}
+
+.resolve-reference-card {
+  z-index: 11;
+  outline: 4px solid rgba(255, 232, 148, .85);
+  outline-offset: 4px;
+  box-shadow:
+    0 0 0 6px rgba(255, 191, 63, .16),
+    0 0 30px rgba(255, 191, 63, .85),
+    0 0 54px rgba(255, 159, 28, .62);
+}
+
 .is-vibrating {
-  animation: shinePulse .36s ease-in-out infinite alternate;
+  animation: shinePulse .62s ease-in-out infinite alternate;
 }
 
 .is-invalid {
@@ -938,11 +960,57 @@ button {
 }
 
 .cutin-card-row,
+.cutin-expression-row,
+.cutin-match-row,
 .cutin-dim-stack {
   display: flex;
   justify-content: center;
-  gap: clamp(10px, 3vw, 22px);
   width: 100%;
+}
+
+.cutin-card-row,
+.cutin-dim-stack {
+  gap: clamp(10px, 3vw, 22px);
+}
+
+.cutin-expression-row {
+  align-items: center;
+  gap: clamp(8px, 2.2vw, 18px);
+}
+
+.cutin-match-row {
+  align-items: center;
+  width: auto;
+  max-width: min(100%, 540px);
+  isolation: isolate;
+}
+
+.cutin-match-row .cutin-card {
+  margin-inline: clamp(-18px, -3vw, -8px);
+  transform-origin: 50% 100%;
+}
+
+.cutin-match-row .cutin-card.source-1 {
+  rotate: -7deg;
+}
+
+.cutin-match-row .cutin-card.source-2 {
+  rotate: -2deg;
+}
+
+.cutin-match-row .cutin-card.source-3 {
+  rotate: 3deg;
+}
+
+.cutin-match-row .cutin-card.answer {
+  z-index: 3;
+  rotate: 7deg;
+}
+
+.cutin-answer-wrap {
+  display: grid;
+  place-items: center;
+  margin-top: clamp(-4px, -.8dvh, 0px);
 }
 
 .cutin-card {
@@ -1037,6 +1105,11 @@ button {
 
 .cutin-operator {
   animation: cutinOperatorSlam .28s cubic-bezier(.16, 1.45, .3, 1) .18s both;
+}
+
+.cutin-inline-operator {
+  min-width: clamp(42px, 12vw, 86px);
+  font-size: clamp(3.2rem, 14vw, 7rem);
 }
 
 .cutin-label {

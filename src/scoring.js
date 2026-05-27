@@ -37,7 +37,7 @@ export function evaluateStackAdd(stackCards, selectedCard) {
   if (addPair) {
     return createMatch({
       type: MATCH_TYPES.ADD,
-      label: "SUM COMBO",
+      label: "SUM CRUNCH",
       basePoints: SCORE_CONFIG.math,
       matchedIndexes: [addPair.a.index, addPair.b.index],
       matchedCards: [addPair.a.card, addPair.b.card],
@@ -57,7 +57,7 @@ export function evaluateStackAdd(stackCards, selectedCard) {
     const right = Math.min(subtractPair.a.card.value, subtractPair.b.card.value);
     return createMatch({
       type: MATCH_TYPES.SUBTRACT,
-      label: "MINUS COMBO",
+      label: "MINUS CRUNCH",
       basePoints: SCORE_CONFIG.math,
       matchedIndexes: [subtractPair.a.index, subtractPair.b.index],
       matchedCards: [subtractPair.a.card, subtractPair.b.card],
@@ -76,9 +76,10 @@ export function evaluateStackAdd(stackCards, selectedCard) {
     .filter((index) => index >= 0);
 
   if (rankMatches.length > 0) {
+    const label = getNumberMatchLabel(rankMatches.length + 1);
     return createMatch({
       type: MATCH_TYPES.RANK,
-      label: "RANK MATCH",
+      label,
       basePoints: SCORE_CONFIG.rank,
       matchedIndexes: rankMatches,
       matchedCards: rankMatches.map((index) => stackCards[index]),
@@ -88,7 +89,7 @@ export function evaluateStackAdd(stackCards, selectedCard) {
         right: selectedCard.rank,
         result: selectedCard.rank
       },
-      cutinLabel: "NUMBER MATCH"
+      cutinLabel: label
     });
   }
 
@@ -97,9 +98,10 @@ export function evaluateStackAdd(stackCards, selectedCard) {
     .filter((index) => index >= 0);
 
   if (suitMatches.length > 0) {
+    const label = getSuitMatchLabel(suitMatches.length + 1);
     return createMatch({
       type: MATCH_TYPES.SUIT,
-      label: "SUIT MATCH",
+      label,
       basePoints: SCORE_CONFIG.suit,
       matchedIndexes: suitMatches,
       matchedCards: suitMatches.map((index) => stackCards[index]),
@@ -109,7 +111,7 @@ export function evaluateStackAdd(stackCards, selectedCard) {
         right: selectedCard.suitSymbol,
         result: selectedCard.suitSymbol
       },
-      cutinLabel: `${selectedCard.suit.toUpperCase()} MATCH`
+      cutinLabel: label
     });
   }
 
@@ -278,6 +280,23 @@ export function runScoringSelfTests() {
 
 function createMatch({ type, label, basePoints, matchedIndexes, matchedCards, equation, cutinLabel }) {
   return { valid: true, type, label, basePoints, matchedIndexes, matchedCards, equation, cutinLabel };
+}
+
+function getNumberMatchLabel(matchCount) {
+  if (matchCount <= 2) return "NUMBER MATCH";
+  return `${getMatchCountName(matchCount)} MATCH`;
+}
+
+function getSuitMatchLabel(matchCount) {
+  if (matchCount <= 2) return "SUIT MATCH";
+  return `${getMatchCountName(matchCount)} SUIT MATCH`;
+}
+
+function getMatchCountName(count) {
+  if (count === 3) return "TRIPLE";
+  if (count === 4) return "QUAD";
+  if (count === 5) return "FIVE-WAY";
+  return `${count}X`;
 }
 
 function getStackPairs(cards) {

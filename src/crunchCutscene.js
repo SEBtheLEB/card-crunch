@@ -103,21 +103,43 @@ async function playEntryCutin(overlay, entry, tier, advance) {
   const matched = orderMatchedCardsForEquation(entry);
   const operator = getOperatorText(entry);
   const equation = getEquationText(entry);
-  overlay.innerHTML = `
-    <div class="cutin-stage ${tier === "full" ? "cutin-full" : ""}">
-      <div class="cutin-card-row">
-        ${matched.map((card, index) => createCutinCardMarkup(card, `source source-${index + 1}`)).join("")}
+  overlay.innerHTML = isMathEntry(entry)
+    ? createMathCutinMarkup({ entry, matched, operator, equation, tier })
+    : createMatchCutinMarkup({ entry, matched, operator, equation, tier });
+  await advance.waitForTap(tier === "full" ? CUTSCENE_CONFIG.minFullCutinAdvanceDelay : CUTSCENE_CONFIG.minCutinAdvanceDelay);
+}
+
+function createMathCutinMarkup({ entry, matched, operator, equation, tier }) {
+  return `
+    <div class="cutin-stage cutin-math-stage ${tier === "full" ? "cutin-full" : ""}">
+      <div class="cutin-expression-row">
+        ${createCutinCardMarkup(matched[0], "source source-1")}
+        <div class="cutin-operator cutin-inline-operator">${operator}</div>
+        ${createCutinCardMarkup(matched[1], "source source-2")}
       </div>
-      <div class="cutin-operator">${operator}</div>
-      <div class="cutin-equation">${equation}</div>
       <div class="cutin-answer-wrap">
         ${createCutinCardMarkup(entry.card, "answer")}
       </div>
-      <div class="cutin-label">${entry.isDouble ? "DOUBLE MATCH x2" : entry.label}</div>
+      <div class="cutin-equation">${equation}</div>
+      <div class="cutin-label">${entry.label}</div>
       <div class="cutin-points">+${entry.points.toLocaleString()}</div>
     </div>
   `;
-  await advance.waitForTap(tier === "full" ? CUTSCENE_CONFIG.minFullCutinAdvanceDelay : CUTSCENE_CONFIG.minCutinAdvanceDelay);
+}
+
+function createMatchCutinMarkup({ entry, matched, operator, equation, tier }) {
+  return `
+    <div class="cutin-stage cutin-match-stage ${tier === "full" ? "cutin-full" : ""}">
+      <div class="cutin-match-row">
+        ${matched.map((card, index) => createCutinCardMarkup(card, `source source-${index + 1}`)).join("")}
+        ${createCutinCardMarkup(entry.card, "answer")}
+      </div>
+      <div class="cutin-operator">${operator}</div>
+      <div class="cutin-equation">${equation}</div>
+      <div class="cutin-label">${entry.label}</div>
+      <div class="cutin-points">+${entry.points.toLocaleString()}</div>
+    </div>
+  `;
 }
 
 async function playMiniEntry(overlay, entry, advance) {
@@ -243,6 +265,10 @@ function getEquationText(entry) {
   if (entry.matchType === "rank") return `${entry.card.rank} = ${entry.card.rank}`;
   if (entry.matchType === "suit") return `${entry.card.suitSymbol} = ${entry.card.suitSymbol}`;
   return entry.label;
+}
+
+function isMathEntry(entry) {
+  return entry.matchType === "add" || entry.matchType === "subtract";
 }
 
 function flyGhostToScore(sourceEl, scoreRect) {

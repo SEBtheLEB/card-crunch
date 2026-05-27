@@ -111,14 +111,17 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
     const entry = resolution.history[i];
     const matchedCards = entry.matchedIndexes.map((index) => activeVisualCards[index]).filter(Boolean);
     playSfx("card_resolve");
-    handCard?.classList.add("card-selected", "is-vibrating");
-    matchedCards.forEach((card) => card.classList.add("card-match-glow", "is-vibrating"));
-    matchedCards.forEach((card) => burstAround(card, 8, entry.matchType === "suit" ? "suit" : entry.matchType === "rank" ? "rank" : "math"));
+    const particleType = entry.matchType === "suit" ? "suit" : entry.matchType === "rank" ? "rank" : "math";
+    handCard?.classList.add("card-selected", "resolve-selected-card", "is-vibrating");
+    matchedCards.forEach((card) => card.classList.add("card-match-glow", "resolve-reference-card", "is-vibrating"));
+    burstAround(handCard, 14, particleType);
+    matchedCards.forEach((card) => burstAround(card, 14, particleType));
     if (entry.matchType === "add" || entry.matchType === "subtract") drawComboStreak(handCard, matchedCards);
-    await popStoredLabel(handCard, `+${entry.basePoints} ${getShortMatchLabel(entry.matchType)}`, entry.matchType === "suit" ? "suit" : entry.matchType === "rank" ? "rank" : "math");
+    await sleep(560);
+    await popStoredLabel(handCard, `+${entry.basePoints} ${getShortMatchLabel(entry)}`, particleType);
     await onEntryResolved?.(entry, i);
-    matchedCards.forEach((card) => card.classList.remove("card-match-glow", "is-vibrating"));
-    handCard?.classList.remove("card-selected", "is-vibrating");
+    matchedCards.forEach((card) => card.classList.remove("card-match-glow", "resolve-reference-card", "is-vibrating"));
+    handCard?.classList.remove("card-selected", "resolve-selected-card", "is-vibrating");
     if (handCard) activeVisualCards.push(handCard);
     await sleep(120);
   }
@@ -346,9 +349,8 @@ function getCombinedRect(elements) {
   return { left, top, width: right - left, height: bottom - top };
 }
 
-function getShortMatchLabel(type) {
-  if (type === "add") return "SUM";
-  if (type === "subtract") return "MINUS";
-  if (type === "rank") return "RANK";
-  return "SUIT";
+function getShortMatchLabel(entry) {
+  if (entry.matchType === "add") return "SUM";
+  if (entry.matchType === "subtract") return "MINUS";
+  return entry.label;
 }
