@@ -1,12 +1,12 @@
 const CUTSCENE_CONFIG = {
   showEveryResolvedCard: true,
   maxFullCutinsPerCrunch: 2,
-  cutinDuration: 1900,
-  fullCutinExtraDuration: 420,
-  miniDuration: 900,
-  finalCrunchDuration: 1900,
-  finalPreFlyDelay: 560,
-  bustDuration: 1500,
+  minCutinAdvanceDelay: 650,
+  minFullCutinAdvanceDelay: 820,
+  minMiniAdvanceDelay: 420,
+  minFinalFlyDelay: 520,
+  minFinalCloseDelay: 620,
+  minBustAdvanceDelay: 620,
   fadeOutDuration: 160
 };
 
@@ -81,7 +81,7 @@ export async function playBustCutin({ failedCard, activeStack = [] }) {
         <div class="cutin-subtitle">NO MATCH FOUND</div>
       </div>
     `;
-    await advance.wait(CUTSCENE_CONFIG.bustDuration);
+    await advance.waitForTap(CUTSCENE_CONFIG.minBustAdvanceDelay);
     overlay.classList.add("is-leaving");
     await sleep(CUTSCENE_CONFIG.fadeOutDuration);
   } finally {
@@ -117,7 +117,7 @@ async function playEntryCutin(overlay, entry, tier, advance) {
       <div class="cutin-points">+${entry.points.toLocaleString()}</div>
     </div>
   `;
-  await advance.wait(tier === "full" ? CUTSCENE_CONFIG.cutinDuration + CUTSCENE_CONFIG.fullCutinExtraDuration : CUTSCENE_CONFIG.cutinDuration);
+  await advance.waitForTap(tier === "full" ? CUTSCENE_CONFIG.minFullCutinAdvanceDelay : CUTSCENE_CONFIG.minCutinAdvanceDelay);
 }
 
 async function playMiniEntry(overlay, entry, advance) {
@@ -130,7 +130,7 @@ async function playMiniEntry(overlay, entry, advance) {
       </div>
     </div>
   `;
-  await advance.wait(CUTSCENE_CONFIG.miniDuration);
+  await advance.waitForTap(CUTSCENE_CONFIG.minMiniAdvanceDelay);
 }
 
 async function playFinalTotal(overlay, total, scoreEl, tier, advance) {
@@ -144,9 +144,9 @@ async function playFinalTotal(overlay, total, scoreEl, tier, advance) {
   `;
 
   const totalEl = overlay.querySelector(".cutin-final strong");
-  await advance.wait(CUTSCENE_CONFIG.finalPreFlyDelay);
+  await advance.waitForTap(CUTSCENE_CONFIG.minFinalFlyDelay);
   flyGhostToScore(totalEl, scoreRect);
-  await advance.wait(CUTSCENE_CONFIG.finalCrunchDuration);
+  await advance.waitForTap(CUTSCENE_CONFIG.minFinalCloseDelay);
 }
 
 function createOverlay(tier) {
@@ -168,6 +168,29 @@ function createAdvanceController(overlay) {
   overlay.addEventListener("pointerup", onAdvance);
 
   return {
+    waitForTap(minMs = 0) {
+      return new Promise((resolve) => {
+        let finished = false;
+        let canAdvance = minMs <= 0;
+        let tapped = false;
+        const finish = () => {
+          if (finished || !canAdvance || !tapped) return;
+          finished = true;
+          window.clearTimeout(timeoutId);
+          waiters.delete(tapToAdvance);
+          resolve();
+        };
+        const timeoutId = window.setTimeout(() => {
+          canAdvance = true;
+          finish();
+        }, minMs);
+        const tapToAdvance = () => {
+          tapped = true;
+          finish();
+        };
+        waiters.add(tapToAdvance);
+      });
+    },
     wait(ms) {
       return new Promise((resolve) => {
         let finished = false;
