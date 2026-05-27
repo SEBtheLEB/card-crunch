@@ -10,6 +10,53 @@ const CUTSCENE_CONFIG = {
   fadeOutDuration: 160
 };
 
+export function createCrunchBankCounter() {
+  const element = document.createElement("div");
+  element.className = "cutin-bank-counter";
+  element.innerHTML = `
+    <span>Crunch Bank</span>
+    <strong>0</strong>
+  `;
+  document.body.appendChild(element);
+
+  let value = 0;
+  const valueEl = element.querySelector("strong");
+
+  return {
+    element,
+    get value() {
+      return value;
+    },
+    async add(amount, sourceEl) {
+      await flyValueToBank(sourceEl, element, amount);
+      value += amount;
+      await countBankTo(valueEl, value - amount, value);
+      element.classList.add("bank-bump");
+      await sleep(180);
+      element.classList.remove("bank-bump");
+    },
+    async setValue(nextValue, sourceEl, flyLabel = nextValue) {
+      await flyValueToBank(sourceEl, element, flyLabel);
+      const previous = value;
+      value = nextValue;
+      await countBankTo(valueEl, previous, value);
+      element.classList.add("bank-bump");
+      await sleep(180);
+      element.classList.remove("bank-bump");
+    },
+    async finishToScore(scoreEl) {
+      element.classList.add("bank-final-flash");
+      await sleep(260);
+      flyGhostToScore(valueEl, scoreEl.getBoundingClientRect());
+      await sleep(620);
+      element.remove();
+    },
+    remove() {
+      element.remove();
+    }
+  };
+}
+
 export async function playCrunchExplanation({ cutscene, scoreEl }) {
   if (!cutscene?.entries?.length) return;
 
@@ -36,7 +83,7 @@ export async function playCrunchExplanation({ cutscene, scoreEl }) {
   }
 }
 
-export async function playCrunchEntryExplanation({ entry, tier = "normal" }) {
+export async function playCrunchEntryExplanation({ entry, tier = "normal", bank = null }) {
   if (!entry) return;
 
   const overlay = createOverlay(tier);
@@ -45,6 +92,7 @@ export async function playCrunchEntryExplanation({ entry, tier = "normal" }) {
 
   try {
     await playEntryCutin(overlay, entry, tier, advance);
+    if (bank) await bank.add(entry.points, overlay.querySelector(".cutin-points"));
     overlay.classList.add("is-leaving");
     await sleep(CUTSCENE_CONFIG.fadeOutDuration);
   } finally {
@@ -53,13 +101,16 @@ export async function playCrunchEntryExplanation({ entry, tier = "normal" }) {
   }
 }
 
-export async function playCrunchTotalExplanation({ total, scoreEl, tier = "normal" }) {
+export async function playCrunchTotalExplanation({ total, scoreEl, tier = "normal", breakdown = [], bank = null }) {
   const overlay = createOverlay(tier);
   const advance = createAdvanceController(overlay);
   document.body.appendChild(overlay);
 
   try {
-    await playFinalTotal(overlay, total, scoreEl, tier, advance);
+    if (bank) {
+      await playCrunchBonusSteps(overlay, breakdown, total, tier, advance, bank);
+    }
+    await playFinalTotal(overlay, total, scoreEl, tier, advance, bank);
     overlay.classList.add("is-leaving");
     await sleep(CUTSCENE_CONFIG.fadeOutDuration);
   } finally {
@@ -155,8 +206,7 @@ async function playMiniEntry(overlay, entry, advance) {
   await advance.waitForTap(CUTSCENE_CONFIG.minMiniAdvanceDelay);
 }
 
-async function playFinalTotal(overlay, total, scoreEl, tier, advance) {
-  const scoreRect = scoreEl.getBoundingClientRect();
+async function playFinalTotal(overlay, total, scoreEl, tier, advance, bank = null) {
   overlay.innerHTML = `
     <div class="cutin-final ${tier === "full" ? "cutin-final-full" : ""}">
       <span>${tier === "full" ? "FULL CRUNCH!" : "CRUNCH!"}</span>
@@ -167,8 +217,32 @@ async function playFinalTotal(overlay, total, scoreEl, tier, advance) {
 
   const totalEl = overlay.querySelector(".cutin-final strong");
   await advance.waitForTap(CUTSCENE_CONFIG.minFinalFlyDelay);
-  flyGhostToScore(totalEl, scoreRect);
+  if (bank) {
+    await bank.setValue(total, totalEl);
+  } else {
+    flyGhostToScore(totalEl, scoreEl.getBoundingClientRect());
+  }
   await advance.waitForTap(CUTSCENE_CONFIG.minFinalCloseDelay);
+  if (bank) await bank.finishToScore(scoreEl);
+}
+
+async function playCrunchBonusSteps(overlay, breakdown, total, tier, advance, bank) {
+  const steps = breakdown.filter((step) => step.kind !== "base" && step.kind !== "total");
+  if (!steps.length) return;
+
+  const startValue = bank.value;
+  for (let i = 0; i < steps.length; i += 1) {
+    const step = steps[i];
+    overlay.innerHTML = `
+      <div class="cutin-bonus-step cutin-bonus-${step.tone ?? "total"} ${tier === "full" ? "cutin-full" : ""}">
+        <span>${step.label}</span>
+        <strong>${step.value}</strong>
+      </div>
+    `;
+    await advance.waitForTap(CUTSCENE_CONFIG.minMiniAdvanceDelay);
+    const nextValue = Math.round(startValue + ((total - startValue) * (i + 1)) / (steps.length + 1));
+    await bank.setValue(nextValue, overlay.querySelector(".cutin-bonus-step strong"), step.value);
+  }
 }
 
 function createOverlay(tier) {
@@ -253,8 +327,8 @@ function orderMatchedCardsForEquation(entry) {
 function getOperatorText(entry) {
   if (entry.matchType === "add") return "+";
   if (entry.matchType === "subtract") return "-";
-  if (entry.matchType === "rank") return "MATCH";
-  if (entry.matchType === "suit") return entry.isDouble ? "DOUBLE" : "=";
+  if (entry.matchType === "rank") return getMatchOperatorText(entry, "MATCH");
+  if (entry.matchType === "suit") return getMatchOperatorText(entry, "SUIT");
   return "CRUNCH";
 }
 
@@ -271,6 +345,19 @@ function isMathEntry(entry) {
   return entry.matchType === "add" || entry.matchType === "subtract";
 }
 
+function getMatchOperatorText(entry, fallback) {
+  const matchCount = (entry.matchedCards?.length ?? 0) + 1;
+  if (matchCount >= 3) return getMatchCountName(matchCount);
+  return fallback;
+}
+
+function getMatchCountName(count) {
+  if (count === 3) return "TRIPLE";
+  if (count === 4) return "QUAD";
+  if (count === 5) return "FIVE-WAY";
+  return `${count}X`;
+}
+
 function flyGhostToScore(sourceEl, scoreRect) {
   if (!sourceEl) return;
   const sourceRect = sourceEl.getBoundingClientRect();
@@ -282,6 +369,43 @@ function flyGhostToScore(sourceEl, scoreRect) {
   ghost.style.setProperty("--fly-y", `${scoreRect.top + scoreRect.height / 2 - (sourceRect.top + sourceRect.height / 2)}px`);
   document.body.appendChild(ghost);
   window.setTimeout(() => ghost.remove(), 620);
+}
+
+async function flyValueToBank(sourceEl, bankEl, value) {
+  if (!sourceEl || !bankEl) return;
+  const sourceRect = sourceEl.getBoundingClientRect();
+  const bankRect = bankEl.getBoundingClientRect();
+  const ghost = document.createElement("div");
+  ghost.className = "cutin-bank-fly";
+  ghost.textContent = typeof value === "number" ? `+${value.toLocaleString()}` : String(value);
+  ghost.style.left = `${sourceRect.left + sourceRect.width / 2}px`;
+  ghost.style.top = `${sourceRect.top + sourceRect.height / 2}px`;
+  ghost.style.setProperty("--fly-x", `${bankRect.left + bankRect.width / 2 - (sourceRect.left + sourceRect.width / 2)}px`);
+  ghost.style.setProperty("--fly-y", `${bankRect.top + bankRect.height / 2 - (sourceRect.top + sourceRect.height / 2)}px`);
+  document.body.appendChild(ghost);
+  await sleep(520);
+  ghost.remove();
+}
+
+async function countBankTo(valueEl, from, to) {
+  const duration = 520;
+  const startedAt = performance.now();
+
+  return new Promise((resolve) => {
+    const tick = (now) => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const value = Math.round(from + (to - from) * eased);
+      valueEl.textContent = value.toLocaleString();
+      if (progress < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        valueEl.textContent = to.toLocaleString();
+        resolve();
+      }
+    };
+    requestAnimationFrame(tick);
+  });
 }
 
 function sleep(ms) {

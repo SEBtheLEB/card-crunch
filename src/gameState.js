@@ -1,11 +1,10 @@
 import { drawCards, shuffle, createDeck } from "./deck.js";
 import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js";
 import { getTargetForLevel } from "./progression.js";
-import { playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js";
 import { ensurePlayableHand } from "./handSafety.js";
 import {
   animateBust,
-  animateCrunch,
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
@@ -109,33 +108,33 @@ export function createGame(ui) {
       return;
     }
 
-    await animateSelectionResolve({
-      selectedHandCards: state.selectedHandIndexes.map((index) => ui.getHandCardElement(index)),
-      baseStackCards: ui.getAllStackCardElements(),
-      resolution: crunch.resolution,
-      fail: false,
-      onEntryResolved: async (entry, index) => {
-        await playCrunchEntryExplanation({
-          entry: crunch.cutscene.entries[index] ?? createCutsceneEntry(entry),
-          tier: crunch.cutscene.tier
-        });
-      }
-    });
+    const crunchBank = createCrunchBankCounter();
+    try {
+      await animateSelectionResolve({
+        selectedHandCards: state.selectedHandIndexes.map((index) => ui.getHandCardElement(index)),
+        baseStackCards: ui.getAllStackCardElements(),
+        resolution: crunch.resolution,
+        fail: false,
+        onEntryResolved: async (entry, index) => {
+          await playCrunchEntryExplanation({
+            entry: crunch.cutscene.entries[index] ?? createCutsceneEntry(entry),
+            tier: crunch.cutscene.tier,
+            bank: crunchBank
+          });
+        }
+      });
 
-    await playCrunchTotalExplanation({
-      total: crunch.cutscene.total,
-      scoreEl: ui.elements.scoreValue,
-      tier: crunch.cutscene.tier
-    });
-
-    await animateCrunch({
-      stackCards: ui.getAllStackCardElements(),
-      crunchButton: ui.elements.crunchButton,
-      scoreEl: ui.elements.scoreValue,
-      breakdown: crunch.breakdown,
-      points: crunch.total,
-      fever: crunch.streakAfterCrunch >= 15
-    });
+      await playCrunchTotalExplanation({
+        total: crunch.cutscene.total,
+        scoreEl: ui.elements.scoreValue,
+        tier: crunch.cutscene.tier,
+        breakdown: crunch.breakdown,
+        bank: crunchBank
+      });
+    } catch (error) {
+      crunchBank.remove();
+      throw error;
+    }
 
     state.score += crunch.total;
     state.bestScore = Math.max(state.bestScore, state.score);
