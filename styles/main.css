@@ -949,7 +949,7 @@ button {
 }
 
 .crunch-cutscene-overlay::after {
-  content: "TAP TO ADVANCE";
+  content: "TAP TO SKIP";
   position: fixed;
   right: calc(16px + var(--safe-right));
   bottom: calc(14px + var(--safe-bottom));
@@ -1607,6 +1607,11 @@ h2 {
 .map-pot.is-complete {
   border-color: rgba(255, 232, 148, .58);
   background: rgba(255, 191, 63, .12);
+}
+
+.map-pot.has-save {
+  border-color: rgba(255, 210, 94, .9);
+  box-shadow: 0 0 24px rgba(255, 196, 54, .22);
 }
 
 @keyframes cutsceneFadeIn {

@@ -1,4 +1,4 @@
-const CACHE_NAME = "card-crunch-v37";
+const CACHE_NAME = "card-crunch-v40";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,6 +7,7 @@ const ASSETS = [
   "./src/gameState.js",
   "./src/deck.js",
   "./src/scoring.js",
+  "./src/save.js",
   "./src/handSafety.js",
   "./src/animations.js",
   "./src/crunchCutscene.js",

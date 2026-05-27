@@ -1,5 +1,5 @@
-import { getCrunchPreview } from "./gameState.js?v=35";
-import { getLevelProgress } from "./progression.js?v=35";
+import { getCrunchPreview } from "./gameState.js?v=39";
+import { getLevelProgress } from "./progression.js?v=39";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "" };
@@ -67,16 +67,17 @@ export function createUI() {
       elements.mapScreen.classList.toggle("is-visible", show);
       elements.mapScreen.setAttribute("aria-hidden", String(!show));
     },
-    renderMap(pots, handlers) {
+    renderMap(pots, handlers, savedLevelId = null) {
       elements.levelMap.innerHTML = "";
       pots.forEach((pot) => {
         const button = document.createElement("button");
         const progress = pot.target > 0 ? Math.min(1, pot.progress / pot.target) : 0;
-        button.className = `map-pot ${pot.complete ? "is-complete" : ""}`;
+        const hasSavedRun = savedLevelId === pot.id && !pot.complete;
+        button.className = `map-pot ${pot.complete ? "is-complete" : ""} ${hasSavedRun ? "has-save" : ""}`;
         button.type = "button";
         button.innerHTML = `
-          <span>Pot ${pot.id}</span>
-          <strong>${pot.complete ? "Full" : `${Math.max(0, pot.target - pot.progress).toLocaleString()} left`}</strong>
+          <span>${hasSavedRun ? "Continue Pot" : "Pot"} ${pot.id}</span>
+          <strong>${hasSavedRun ? "Saved Run" : pot.complete ? "Full" : `${Math.max(0, pot.target - pot.progress).toLocaleString()} left`}</strong>
           <i><b style="width: ${progress * 100}%"></b></i>
         `;
         button.addEventListener("click", () => handlers.onLevelSelect(pot.id));

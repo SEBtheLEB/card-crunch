@@ -297,6 +297,7 @@ function createAdvanceController(overlay) {
         }, minMs);
         const tapToAdvance = () => {
           tapped = true;
+          canAdvance = true;
           finish();
         };
         waiters.add(tapToAdvance);
