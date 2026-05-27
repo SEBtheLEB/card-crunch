@@ -26,8 +26,8 @@ export const STACK_TYPE_CONFIG = {
   chainCrunch: { minMathLinks: 2, multiplier: 3 },
   mathFeast: { minMathCards: 3, multiplier: 2 },
   suitStorm: { minSuitCards: 3, multiplier: 1.5 },
-  perfectHand: { minSelectedCards: 4, multiplier: 4 },
-  greedCrunch: { minSelectedCards: 3, flatBonus: 1500 }
+  perfectHand: { minSelectedCards: 4, multiplier: 2 },
+  greedCrunch: { minSelectedCards: 3, flatBonus: 500 }
 };
 
 export function evaluateStackAdd(stackCards, selectedCard) {
@@ -40,9 +40,7 @@ export function evaluateStackAdd(stackCards, selectedCard) {
       label: "SUM COMBO",
       basePoints: SCORE_CONFIG.math,
       matchedIndexes: [addPair.a.index, addPair.b.index],
-      matchedCards: [addPair.a.card, addPair.b.card],
-      equationText: `${addPair.a.card.value} + ${addPair.b.card.value} = ${selectedCard.value}`,
-      reasonText: `${cardLabel(addPair.a.card)} plus ${cardLabel(addPair.b.card)} makes ${selectedCard.rank}.`
+      matchedCards: [addPair.a.card, addPair.b.card]
     });
   }
 
@@ -53,9 +51,7 @@ export function evaluateStackAdd(stackCards, selectedCard) {
       label: "MINUS COMBO",
       basePoints: SCORE_CONFIG.math,
       matchedIndexes: [subtractPair.a.index, subtractPair.b.index],
-      matchedCards: [subtractPair.a.card, subtractPair.b.card],
-      equationText: `${Math.max(subtractPair.a.card.value, subtractPair.b.card.value)} - ${Math.min(subtractPair.a.card.value, subtractPair.b.card.value)} = ${selectedCard.value}`,
-      reasonText: `${cardLabel(subtractPair.a.card)} and ${cardLabel(subtractPair.b.card)} differ by ${selectedCard.rank}.`
+      matchedCards: [subtractPair.a.card, subtractPair.b.card]
     });
   }
 
@@ -69,9 +65,7 @@ export function evaluateStackAdd(stackCards, selectedCard) {
       label: "RANK MATCH",
       basePoints: SCORE_CONFIG.rank,
       matchedIndexes: rankMatches,
-      matchedCards: rankMatches.map((index) => stackCards[index]),
-      equationText: `${selectedCard.rank} = ${selectedCard.rank}`,
-      reasonText: `${cardLabel(selectedCard)} matches a table/stack rank.`
+      matchedCards: rankMatches.map((index) => stackCards[index])
     });
   }
 
@@ -85,9 +79,7 @@ export function evaluateStackAdd(stackCards, selectedCard) {
       label: "SUIT MATCH",
       basePoints: SCORE_CONFIG.suit,
       matchedIndexes: suitMatches,
-      matchedCards: suitMatches.map((index) => stackCards[index]),
-      equationText: `${selectedCard.suitSymbol} suit match`,
-      reasonText: `${cardLabel(selectedCard)} matches a table/stack suit.`
+      matchedCards: suitMatches.map((index) => stackCards[index])
     });
   }
 
@@ -140,9 +132,7 @@ export function createStackEntry(card, match) {
     basePoints: match.basePoints,
     matchedCards: match.matchedCards,
     matchedIndexes: match.matchedIndexes,
-    label: match.label,
-    equationText: match.equationText,
-    reasonText: match.reasonText
+    label: match.label
   };
 }
 
@@ -170,13 +160,6 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
     streakMultiplier,
     stackTypes,
     total,
-    basePoints: storedBase,
-    bonuses: stackTypes,
-    multiplier: handMultiplier * speedBonus.multiplier * streakMultiplier * stackTypeMultiplier,
-    finalPoints: total,
-    explanationSteps: buildExplanationSteps({ resolution, storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, total }),
-    equationText: resolution.history.map((entry) => entry.equationText).filter(Boolean).join("  |  "),
-    crunchTier: selectedCards.length === 4 ? "full" : selectedCards.length >= 3 ? "greedy" : "standard",
     breakdown: buildCrunchBreakdown({
       storedBase,
       handMultiplier,
@@ -193,9 +176,9 @@ export function getSelectionMultiplier(count) {
 }
 
 export function getSpeedBonus(timeLeft) {
-  if (timeLeft >= 5.5) return { label: "LIGHTNING", multiplier: 3 };
-  if (timeLeft >= 4) return { label: "FAST", multiplier: 2 };
-  if (timeLeft >= 2.5) return { label: "QUICK", multiplier: 1.5 };
+  if (timeLeft >= 8) return { label: "LIGHTNING", multiplier: 3 };
+  if (timeLeft >= 6) return { label: "FAST", multiplier: 2 };
+  if (timeLeft >= 4) return { label: "QUICK", multiplier: 1.5 };
   return { label: null, multiplier: 1 };
 }
 
@@ -222,8 +205,8 @@ export function detectStackTypes(stackCards, history, selectedCount) {
   if (mathCards >= STACK_TYPE_CONFIG.chainCrunch.minMathLinks) bonuses.push({ label: "CHAIN CRUNCH", value: "x3", multiplier: STACK_TYPE_CONFIG.chainCrunch.multiplier, tone: "math" });
   if (mathCards >= STACK_TYPE_CONFIG.mathFeast.minMathCards) bonuses.push({ label: "MATH FEAST", value: "x2", multiplier: STACK_TYPE_CONFIG.mathFeast.multiplier, tone: "math" });
   if (suitCards >= STACK_TYPE_CONFIG.suitStorm.minSuitCards) bonuses.push({ label: "SUIT STORM", value: "x1.5", multiplier: STACK_TYPE_CONFIG.suitStorm.multiplier, tone: "suit" });
-  if (selectedCount >= STACK_TYPE_CONFIG.perfectHand.minSelectedCards) bonuses.push({ label: "PERFECT HAND", value: "x4", multiplier: STACK_TYPE_CONFIG.perfectHand.multiplier, tone: "double" });
-  if (selectedCount >= STACK_TYPE_CONFIG.greedCrunch.minSelectedCards) bonuses.push({ label: "GREED CRUNCH", value: "+1500", flatBonus: STACK_TYPE_CONFIG.greedCrunch.flatBonus, tone: "fever" });
+  if (selectedCount >= STACK_TYPE_CONFIG.perfectHand.minSelectedCards) bonuses.push({ label: "PERFECT HAND", value: "x2", multiplier: STACK_TYPE_CONFIG.perfectHand.multiplier, tone: "double" });
+  if (selectedCount >= STACK_TYPE_CONFIG.greedCrunch.minSelectedCards) bonuses.push({ label: "GREED CRUNCH", value: "+500", flatBonus: STACK_TYPE_CONFIG.greedCrunch.flatBonus, tone: "fever" });
 
   return bonuses;
 }
@@ -240,15 +223,14 @@ export function runScoringSelfTests() {
     { name: "fail sequence", pass: !fail.success && fail.resolution.failedIndex === 1 },
     { name: "one card crunch", pass: one.success && one.handMultiplier === 1 },
     { name: "two card multiplier", pass: success.handMultiplier === 2 },
-    { name: "speed bonus", pass: success.speedBonus.multiplier === 3 },
-    { name: "structured explanation", pass: success.explanationSteps.length > 0 && Boolean(success.equationText) }
+    { name: "speed bonus", pass: success.speedBonus.multiplier === 2 }
   ];
 
   return cases.map((test) => ({ ...test, result: test.name.includes("fail") ? fail : success }));
 }
 
-function createMatch({ type, label, basePoints, matchedIndexes, matchedCards, equationText, reasonText }) {
-  return { valid: true, type, label, basePoints, matchedIndexes, matchedCards, equationText, reasonText };
+function createMatch({ type, label, basePoints, matchedIndexes, matchedCards }) {
+  return { valid: true, type, label, basePoints, matchedIndexes, matchedCards };
 }
 
 function getStackPairs(cards) {
@@ -271,23 +253,6 @@ function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMu
   return steps;
 }
 
-function buildExplanationSteps({ resolution, storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, total }) {
-  const steps = resolution.history.map((entry, index) => ({
-    label: `Card ${index + 1}: ${entry.label}`,
-    value: `+${entry.basePoints.toLocaleString()}`,
-    detail: entry.reasonText ?? entry.equationText ?? "Valid crunch.",
-    tone: entry.matchType
-  }));
-
-  steps.push({ label: "Base Crunch", value: `+${storedBase.toLocaleString()}`, detail: "Valid cards banked before multipliers.", tone: "total" });
-  if (handMultiplier > 1) steps.push({ label: "Hand Multiplier", value: `x${handMultiplier}`, detail: "More selected cards means bigger risk and bigger reward.", tone: "double" });
-  if (speedBonus.multiplier > 1) steps.push({ label: speedBonus.label, value: `x${formatMultiplier(speedBonus.multiplier)}`, detail: "Fast Crunch speed bonus.", tone: "speed" });
-  if (streakMultiplier > 1) steps.push({ label: "Streak Multiplier", value: `x${streakMultiplier}`, detail: "Consecutive successful Crunches increase payout.", tone: "streak" });
-  stackTypes.forEach((bonus) => steps.push({ label: bonus.label, value: bonus.value, detail: "Stack bonus earned from the final resolved stack.", tone: bonus.tone }));
-  steps.push({ label: "Final Score", value: `+${total.toLocaleString()}`, detail: "Total points earned by this Crunch.", tone: "total" });
-  return steps;
-}
-
 function countBy(cards, key) {
   return cards.reduce((counts, card) => {
     counts[card[key]] = (counts[card[key]] ?? 0) + 1;
@@ -297,8 +262,4 @@ function countBy(cards, key) {
 
 function formatMultiplier(value) {
   return Number.isInteger(value) ? String(value) : String(value).replace(/\.0$/, "");
-}
-
-function cardLabel(card) {
-  return `${card.rank}${card.suitSymbol}`;
 }

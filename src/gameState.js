@@ -1,11 +1,6 @@
 import { drawCards, shuffle, createDeck } from "./deck.js";
-import { calculateCrunchScore } from "./scoring.js";
+import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js";
 import { getTargetForLevel } from "./progression.js";
-import { GAME_CONFIG } from "./config.js";
-import { discardSelectedCards, getSelectedCards, refillHand, toggleSelectedIndex } from "./hand.js";
-import { loadBestScore, saveBestScore } from "./storage.js";
-import { createTurnTimer } from "./timer.js";
-import { showCrunchFailResult, showCrunchSuccessResult } from "./resultOverlay.js";
 import {
   animateBust,
   animateCrunch,
@@ -20,40 +15,31 @@ export function createGame(ui) {
     deck: [],
     discard: [],
     stack: [],
-    baseStackCount: GAME_CONFIG.baseStackCount,
+    baseStackCount: 2,
     hand: [],
     selectedHandIndexes: [],
     score: 0,
-    bestScore: loadBestScore(),
+    bestScore: Number(localStorage.getItem("cardCrunchBestScore") ?? 0),
     streak: 0,
     misses: 0,
-    maxMisses: GAME_CONFIG.maxMisses,
+    maxMisses: 3,
     level: 1,
     target: getTargetForLevel(1),
     fever: false,
-    turnSeconds: GAME_CONFIG.turnSeconds,
-    timeLeft: GAME_CONFIG.turnSeconds,
+    turnSeconds: 10,
+    timeLeft: 10,
+    timerId: null,
+    timerToken: 0,
     locked: true,
     status: "start"
   };
 
-  const timer = createTurnTimer({
-    getState: () => state,
-    onTick: () => ui.render(state, handlers),
-    onWarning: () => {
-      playSfx("timer_warning");
-      const rect = ui.elements.timerShell.getBoundingClientRect();
-      spawnSparkBurst(rect.left + rect.width * .82, rect.top + rect.height / 2, state.fever ? 18 : 10, state.fever ? "fever" : "red");
-    },
-    onTimeout: handleTimeout
-  });
-
   function start() {
-    timer.stop();
+    stopTimer();
     state.deck = shuffle(createDeck());
     state.discard = [];
     state.stack = drawCards(state, state.baseStackCount);
-    state.hand = drawCards(state, GAME_CONFIG.handSize);
+    state.hand = drawCards(state, 4);
     state.selectedHandIndexes = [];
     state.score = 0;
     state.streak = 0;
@@ -68,13 +54,17 @@ export function createGame(ui) {
     ui.showGameOver(false);
     ui.clearMessage();
     ui.render(state, handlers);
-    timer.start();
+    startTimer();
   }
 
   function onCardSelect(handIndex) {
     if (state.locked || state.status !== "playing") return;
     playSfx(state.selectedHandIndexes.includes(handIndex) ? "card_deselect" : "card_select");
-    state.selectedHandIndexes = toggleSelectedIndex(state.selectedHandIndexes, handIndex);
+    if (state.selectedHandIndexes.includes(handIndex)) {
+      state.selectedHandIndexes = state.selectedHandIndexes.filter((index) => index !== handIndex);
+    } else {
+      state.selectedHandIndexes.push(handIndex);
+    }
     ui.render(state, handlers);
   }
 
@@ -82,10 +72,10 @@ export function createGame(ui) {
     if (state.locked || state.status !== "playing" || state.selectedHandIndexes.length === 0) return;
     state.locked = true;
     state.status = "crunching";
-    timer.stop();
+    stopTimer();
     ui.render(state, handlers);
 
-    const selectedCards = getSelectedCards(state.hand, state.selectedHandIndexes);
+    const selectedCards = state.selectedHandIndexes.map((index) => state.hand[index]);
     const crunch = calculateCrunchScore({
       baseStack: state.stack,
       selectedCards,
@@ -96,46 +86,41 @@ export function createGame(ui) {
     playSfx("crunch_start");
 
     if (!crunch.success) {
-      const selectedHandCards = state.selectedHandIndexes.map((index) => ui.getHandCardElement(index));
       await animateSelectionResolve({
-        selectedHandCards,
+        selectedHandCards: state.selectedHandIndexes.map((index) => ui.getHandCardElement(index)),
         baseStackCards: ui.getAllStackCardElements(),
         resolution: crunch.resolution,
         fail: true
       });
-      await showCrunchFailResult({ resolution: crunch.resolution, selectedCards, message: "Crunch Failed" });
       await bust("BUST!", crunch.resolution.failedIndex);
       return;
     }
 
-    const selectedHandCards = state.selectedHandIndexes.map((index) => ui.getHandCardElement(index));
     await animateSelectionResolve({
-      selectedHandCards,
+      selectedHandCards: state.selectedHandIndexes.map((index) => ui.getHandCardElement(index)),
       baseStackCards: ui.getAllStackCardElements(),
       resolution: crunch.resolution,
       fail: false
     });
 
-    await showCrunchSuccessResult(crunch, selectedCards);
-
     await animateCrunch({
       stackCards: ui.getAllStackCardElements(),
       crunchButton: ui.elements.crunchButton,
       scoreEl: ui.elements.scoreValue,
-      breakdown: [],
+      breakdown: crunch.breakdown,
       points: crunch.total,
       fever: crunch.streakAfterCrunch >= 15
     });
 
     state.score += crunch.total;
     state.bestScore = Math.max(state.bestScore, state.score);
-    saveBestScore(state.bestScore);
+    localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
     state.streak = crunch.streakAfterCrunch;
     state.fever = state.streak >= 15;
     ui.elements.scoreValue.textContent = state.score.toLocaleString();
     ui.elements.streakValue.textContent = String(state.streak);
-    discardSelectedCards(state);
-    refillHand(state, GAME_CONFIG.handSize);
+    discardSelectedCards();
+    refillHand();
     ui.render(state, handlers);
 
     if (state.score >= state.target) {
@@ -154,7 +139,7 @@ export function createGame(ui) {
   async function bust(message, failedSelectionIndex = -1) {
     state.locked = true;
     state.status = "busted";
-    timer.stop();
+    stopTimer();
     if (state.fever) playSfx("fever_end");
     playSfx("bust");
     state.misses += 1;
@@ -168,8 +153,8 @@ export function createGame(ui) {
       handCard: failedSelectionIndex >= 0 ? ui.getHandCardElement(state.selectedHandIndexes[failedSelectionIndex]) : null,
       protectedBust: false
     });
-    discardSelectedCards(state);
-    refillHand(state, GAME_CONFIG.handSize);
+    discardSelectedCards();
+    refillHand();
     if (state.misses >= state.maxMisses) {
       gameOver();
       return;
@@ -178,7 +163,7 @@ export function createGame(ui) {
   }
 
   async function clearTarget() {
-    timer.stop();
+    stopTimer();
     state.locked = true;
     state.status = "levelClear";
     ui.render(state, handlers);
@@ -199,11 +184,59 @@ export function createGame(ui) {
     state.status = "playing";
     state.locked = false;
     ui.render(state, handlers);
-    timer.start();
+    startTimer();
+  }
+
+  function startTimer() {
+    stopTimer();
+    const token = state.timerToken;
+    const startedAt = performance.now();
+    const totalMs = state.turnSeconds * 1000;
+    let warned = false;
+
+    state.timerId = window.setInterval(() => {
+      if (token !== state.timerToken || state.locked || state.status !== "playing") return;
+      const elapsed = performance.now() - startedAt;
+      state.timeLeft = Math.max(0, (totalMs - elapsed) / 1000);
+      if (!warned && state.timeLeft <= 3) {
+        warned = true;
+        playSfx("timer_warning");
+        const rect = ui.elements.timerShell.getBoundingClientRect();
+        spawnSparkBurst(rect.left + rect.width * .82, rect.top + rect.height / 2, state.fever ? 18 : 10, state.fever ? "fever" : "red");
+      }
+      ui.render(state, handlers);
+      if (state.timeLeft <= 0) handleTimeout();
+    }, 100);
+  }
+
+  function stopTimer() {
+    state.timerToken += 1;
+    if (state.timerId) {
+      window.clearInterval(state.timerId);
+      state.timerId = null;
+    }
+  }
+
+  function discardSelectedCards() {
+    const selected = new Set(state.selectedHandIndexes);
+    state.hand = state.hand.filter((card, index) => {
+      if (selected.has(index)) {
+        state.discard.push(card);
+        return false;
+      }
+      return true;
+    });
+    state.selectedHandIndexes = [];
+  }
+
+  function refillHand() {
+    while (state.hand.length < 4) {
+      state.hand.push(drawCards(state, 1)[0]);
+    }
   }
 
   function gameOver() {
-    timer.stop();
+    stopTimer();
     state.locked = true;
     state.status = "gameOver";
     playSfx("game_over");
@@ -215,3 +248,11 @@ export function createGame(ui) {
   return { state, start, onCardSelect, onCrunch };
 }
 
+export function getCrunchPreview(state) {
+  const selectedCount = state.selectedHandIndexes.length;
+  return {
+    canCrunch: selectedCount > 0,
+    selectedCount,
+    selectionMultiplier: getSelectionMultiplier(selectedCount)
+  };
+}
