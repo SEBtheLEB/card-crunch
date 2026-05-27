@@ -24,7 +24,7 @@
         </section>
         <section class="hud-panel streak-panel" aria-label="Streak">
           <span class="hud-label"><span class="hud-star">*</span> Streak <span class="hud-star">*</span></span>
-          <strong><span class="flame-icon" aria-hidden="true">F</span> x<span id="streakValue">0</span></strong>
+          <strong>x<span id="streakValue">0</span></strong>
         </section>
       </header>
 
@@ -39,8 +39,8 @@
 
       <section class="target-strip" aria-label="Level target">
         <div>
-          <span>Level <strong id="levelValue">1</strong></span>
-          <span>Target <strong id="targetValue">5,000</strong></span>
+          <span>Pot <strong id="levelValue">1</strong></span>
+          <span>Left <strong id="targetValue">1,000,000</strong></span>
         </div>
         <div class="target-track">
           <div class="target-fill" id="targetFill"></div>
@@ -74,6 +74,7 @@
           <span>Misses</span>
           <strong id="missValue">0/3</strong>
         </section>
+        <button class="exit-level-button" id="exitLevelButton" type="button">Exit Pot</button>
         <section>
           <span>Deck</span>
           <strong id="deckValue">52</strong>
@@ -83,10 +84,19 @@
 
     <section class="modal-screen is-visible" id="startScreen" aria-labelledby="startTitle">
       <div class="modal-card">
-        <p class="eyebrow">High Score Arcade Cards</p>
+        <p class="eyebrow">Fill the Pots</p>
         <h1 id="startTitle">Card Crunch</h1>
-        <p class="modal-copy">Pick the cards you trust, slam Crunch, and watch the run explode if your sequence holds.</p>
-        <button class="primary-button" id="startButton" type="button">Start Game</button>
+        <p class="modal-copy">Choose a pot, crunch cards, and come back anytime to keep filling it.</p>
+        <button class="primary-button menu-crunch-button" id="startButton" type="button">CRUNCH</button>
+      </div>
+    </section>
+
+    <section class="modal-screen" id="mapScreen" aria-labelledby="mapTitle" aria-hidden="true">
+      <div class="modal-card map-card">
+        <p class="eyebrow">Level Map</p>
+        <h2 id="mapTitle">Choose a Pot</h2>
+        <div class="level-map" id="levelMap"></div>
+        <button class="secondary-button" id="backToMenuButton" type="button">Back</button>
       </div>
     </section>
 
@@ -99,6 +109,6 @@
       </div>
     </section>
 
-    <script type="module" src="src/main.js"></script>
+    <script type="module" src="src/main.js?v=35"></script>
   </body>
 </html>

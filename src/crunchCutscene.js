@@ -7,6 +7,7 @@ const CUTSCENE_CONFIG = {
   minFinalFlyDelay: 520,
   minFinalCloseDelay: 620,
   minBustAdvanceDelay: 620,
+  autoBonusStepDuration: 520,
   fadeOutDuration: 160
 };
 
@@ -37,6 +38,14 @@ export function createCrunchBankCounter() {
     },
     async setValue(nextValue, sourceEl, flyLabel = nextValue) {
       await flyValueToBank(sourceEl, element, flyLabel);
+      const previous = value;
+      value = nextValue;
+      await countBankTo(valueEl, previous, value);
+      element.classList.add("bank-bump");
+      await sleep(180);
+      element.classList.remove("bank-bump");
+    },
+    async rampTo(nextValue) {
       const previous = value;
       value = nextValue;
       await countBankTo(valueEl, previous, value);
@@ -109,8 +118,11 @@ export async function playCrunchTotalExplanation({ total, scoreEl, tier = "norma
   try {
     if (bank) {
       await playCrunchBonusSteps(overlay, breakdown, total, tier, advance, bank);
+      if (bank.value !== total) await bank.rampTo(total);
+      await bank.finishToScore(scoreEl);
+    } else {
+      await playFinalTotal(overlay, total, scoreEl, tier, advance);
     }
-    await playFinalTotal(overlay, total, scoreEl, tier, advance, bank);
     overlay.classList.add("is-leaving");
     await sleep(CUTSCENE_CONFIG.fadeOutDuration);
   } finally {
@@ -219,11 +231,11 @@ async function playFinalTotal(overlay, total, scoreEl, tier, advance, bank = nul
   await advance.waitForTap(CUTSCENE_CONFIG.minFinalFlyDelay);
   if (bank) {
     await bank.setValue(total, totalEl);
+    await bank.finishToScore(scoreEl);
   } else {
     flyGhostToScore(totalEl, scoreEl.getBoundingClientRect());
+    await advance.waitForTap(CUTSCENE_CONFIG.minFinalCloseDelay);
   }
-  await advance.waitForTap(CUTSCENE_CONFIG.minFinalCloseDelay);
-  if (bank) await bank.finishToScore(scoreEl);
 }
 
 async function playCrunchBonusSteps(overlay, breakdown, total, tier, advance, bank) {
@@ -239,8 +251,8 @@ async function playCrunchBonusSteps(overlay, breakdown, total, tier, advance, ba
         <strong>${step.value}</strong>
       </div>
     `;
-    await advance.waitForTap(CUTSCENE_CONFIG.minMiniAdvanceDelay);
-    const nextValue = Math.round(startValue + ((total - startValue) * (i + 1)) / (steps.length + 1));
+    await sleep(CUTSCENE_CONFIG.autoBonusStepDuration);
+    const nextValue = Math.round(startValue + ((total - startValue) * (i + 1)) / steps.length);
     await bank.setValue(nextValue, overlay.querySelector(".cutin-bonus-step strong"), step.value);
   }
 }
@@ -336,8 +348,8 @@ function getEquationText(entry) {
   if (entry.equation) {
     return `${entry.equation.left} ${entry.equation.operator} ${entry.equation.right} = ${entry.equation.result}`;
   }
-  if (entry.matchType === "rank") return `${entry.card.rank} = ${entry.card.rank}`;
-  if (entry.matchType === "suit") return `${entry.card.suitSymbol} = ${entry.card.suitSymbol}`;
+  if (entry.matchType === "rank") return createRepeatedMatchEquation(entry, "rank");
+  if (entry.matchType === "suit") return createRepeatedMatchEquation(entry, "suitSymbol");
   return entry.label;
 }
 
@@ -356,6 +368,13 @@ function getMatchCountName(count) {
   if (count === 4) return "QUAD";
   if (count === 5) return "FIVE-WAY";
   return `${count}X`;
+}
+
+function createRepeatedMatchEquation(entry, key) {
+  return [...(entry.matchedCards ?? []), entry.card]
+    .map((card) => card?.[key])
+    .filter(Boolean)
+    .join(" = ");
 }
 
 function flyGhostToScore(sourceEl, scoreRect) {

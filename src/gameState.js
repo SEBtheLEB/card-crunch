@@ -1,8 +1,8 @@
-import { drawCards, shuffle, createDeck } from "./deck.js";
-import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js";
-import { getTargetForLevel } from "./progression.js";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js";
-import { ensurePlayableHand } from "./handSafety.js";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=35";
+import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=35";
+import { createDefaultPots, getTargetForLevel } from "./progression.js?v=35";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=35";
+import { ensurePlayableHand } from "./handSafety.js?v=35";
 import {
   animateBust,
   animateSelectionResolve,
@@ -26,6 +26,9 @@ export function createGame(ui) {
     maxMisses: 3,
     level: 1,
     target: getTargetForLevel(1),
+    pots: loadPots(),
+    activePot: null,
+    sessionCrunches: 0,
     fever: false,
     turnSeconds: 10,
     timeLeft: 10,
@@ -35,7 +38,23 @@ export function createGame(ui) {
     status: "start"
   };
 
-  function start() {
+  function showMap() {
+    stopTimer();
+    state.locked = true;
+    state.status = "map";
+    ui.renderMap(state.pots, handlers);
+    ui.showStart(false);
+    ui.showGameOver(false);
+    ui.showMap(true);
+  }
+
+  function enterLevel(levelId) {
+    const pot = state.pots.find((item) => item.id === levelId);
+    if (!pot || pot.complete) return;
+    start(pot);
+  }
+
+  function start(pot = state.pots.find((item) => !item.complete) ?? state.pots[0]) {
     stopTimer();
     state.deck = shuffle(createDeck());
     state.discard = [];
@@ -46,13 +65,16 @@ export function createGame(ui) {
     state.score = 0;
     state.streak = 0;
     state.misses = 0;
-    state.level = 1;
-    state.target = getTargetForLevel(state.level);
+    state.level = pot.id;
+    state.activePot = pot;
+    state.sessionCrunches = 0;
+    state.target = pot.target;
     state.fever = false;
     state.timeLeft = state.turnSeconds;
     state.locked = false;
     state.status = "playing";
     ui.showStart(false);
+    ui.showMap(false);
     ui.showGameOver(false);
     ui.clearMessage();
     ui.render(state, handlers);
@@ -137,6 +159,7 @@ export function createGame(ui) {
     }
 
     state.score += crunch.total;
+    addPotProgress(crunch.total);
     state.bestScore = Math.max(state.bestScore, state.score);
     localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
     state.streak = crunch.streakAfterCrunch;
@@ -147,7 +170,7 @@ export function createGame(ui) {
     refillHand();
     ui.render(state, handlers);
 
-    if (state.score >= state.target) {
+    if (state.activePot?.complete) {
       await clearTarget();
       return;
     }
@@ -167,6 +190,7 @@ export function createGame(ui) {
     if (state.fever) playSfx("fever_end");
     playSfx("bust");
     state.misses += 1;
+    applyBustPenalty();
     state.streak = 0;
     state.fever = false;
     ui.setMessage(message, "bad");
@@ -191,13 +215,22 @@ export function createGame(ui) {
     state.locked = true;
     state.status = "levelClear";
     ui.render(state, handlers);
-    ui.setMessage("Target Cleared!", "good");
+    ui.setMessage("Pot Filled!", "good");
     playSfx("level_clear");
     await animateTargetClear(ui.elements.shell);
-    state.level += 1;
-    state.target = getTargetForLevel(state.level);
-    state.misses = 0;
-    startNewRound();
+    returnToMap();
+  }
+
+  function returnToMap() {
+    stopTimer();
+    state.selectedHandIndexes = [];
+    state.activePot = null;
+    state.sessionCrunches = 0;
+    state.locked = true;
+    state.status = "map";
+    ui.render(state, handlers);
+    ui.renderMap(state.pots, handlers);
+    ui.showMap(true);
   }
 
   function startNewRound() {
@@ -269,8 +302,26 @@ export function createGame(ui) {
     ui.showGameOver(true, state.score);
   }
 
-  const handlers = { onCardSelect, onCrunch };
-  return { state, start, onCardSelect, onCrunch };
+  function addPotProgress(amount) {
+    if (!state.activePot) return;
+    state.sessionCrunches += amount;
+    state.activePot.progress = Math.min(state.activePot.target, state.activePot.progress + amount);
+    state.activePot.complete = state.activePot.progress >= state.activePot.target;
+    savePots(state.pots);
+  }
+
+  function applyBustPenalty() {
+    if (!state.activePot || state.sessionCrunches <= 0) return;
+    const penalty = Math.min(state.sessionCrunches, Math.max(10000, Math.round(state.sessionCrunches * .4)));
+    state.sessionCrunches = Math.max(0, state.sessionCrunches - penalty);
+    state.activePot.progress = Math.max(0, state.activePot.progress - penalty);
+    state.score = Math.max(0, state.score - penalty);
+    savePots(state.pots);
+    ui.setMessage(`Lost ${penalty.toLocaleString()} crunches!`, "bad");
+  }
+
+  const handlers = { onCardSelect, onCrunch, onLevelSelect: enterLevel, onExitLevel: returnToMap };
+  return { state, start, showMap, enterLevel, returnToMap, onCardSelect, onCrunch };
 }
 
 export function getCrunchPreview(state) {
@@ -280,6 +331,25 @@ export function getCrunchPreview(state) {
     selectedCount,
     selectionMultiplier: getSelectionMultiplier(selectedCount)
   };
+}
+
+function loadPots() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("cardCrunchLevelPots") ?? "null");
+    const defaults = createDefaultPots();
+    if (!Array.isArray(saved)) return defaults;
+    return defaults.map((pot) => {
+      const savedPot = saved.find((item) => item.id === pot.id);
+      const progress = Math.min(pot.target, Math.max(0, Number(savedPot?.progress ?? 0)));
+      return { ...pot, progress, complete: progress >= pot.target };
+    });
+  } catch {
+    return createDefaultPots();
+  }
+}
+
+function savePots(pots) {
+  localStorage.setItem("cardCrunchLevelPots", JSON.stringify(pots.map(({ id, progress }) => ({ id, progress }))));
 }
 
 function createCutsceneEntry(entry) {

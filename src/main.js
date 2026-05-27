@@ -1,12 +1,17 @@
-import { createGame } from "./gameState.js";
-import { createUI } from "./ui.js";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js";
+import { createGame } from "./gameState.js?v=35";
+import { createUI } from "./ui.js?v=35";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=35";
 
 const ui = createUI();
 const game = createGame(ui);
 
-ui.elements.startButton.addEventListener("click", game.start);
-ui.elements.restartButton.addEventListener("click", game.start);
+ui.elements.startButton.addEventListener("click", game.showMap);
+ui.elements.backToMenuButton.addEventListener("click", () => {
+  ui.showMap(false);
+  ui.showStart(true);
+});
+ui.elements.exitLevelButton.addEventListener("click", game.returnToMap);
+ui.elements.restartButton.addEventListener("click", () => game.start());
 
 document.addEventListener(
   "touchmove",

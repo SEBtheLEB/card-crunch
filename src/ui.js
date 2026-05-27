@@ -1,5 +1,5 @@
-import { getCrunchPreview } from "./gameState.js";
-import { getLevelProgress } from "./progression.js";
+import { getCrunchPreview } from "./gameState.js?v=35";
+import { getLevelProgress } from "./progression.js?v=35";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "" };
@@ -22,6 +22,10 @@ export function createUI() {
     deckValue: document.querySelector("#deckValue"),
     comboLabel: document.querySelector("#comboLabel"),
     startScreen: document.querySelector("#startScreen"),
+    mapScreen: document.querySelector("#mapScreen"),
+    levelMap: document.querySelector("#levelMap"),
+    backToMenuButton: document.querySelector("#backToMenuButton"),
+    exitLevelButton: document.querySelector("#exitLevelButton"),
     gameOverScreen: document.querySelector("#gameOverScreen"),
     finalScore: document.querySelector("#finalScore"),
     startButton: document.querySelector("#startButton"),
@@ -59,6 +63,26 @@ export function createUI() {
       elements.startScreen.classList.toggle("is-visible", show);
       elements.startScreen.setAttribute("aria-hidden", String(!show));
     },
+    showMap(show) {
+      elements.mapScreen.classList.toggle("is-visible", show);
+      elements.mapScreen.setAttribute("aria-hidden", String(!show));
+    },
+    renderMap(pots, handlers) {
+      elements.levelMap.innerHTML = "";
+      pots.forEach((pot) => {
+        const button = document.createElement("button");
+        const progress = pot.target > 0 ? Math.min(1, pot.progress / pot.target) : 0;
+        button.className = `map-pot ${pot.complete ? "is-complete" : ""}`;
+        button.type = "button";
+        button.innerHTML = `
+          <span>Pot ${pot.id}</span>
+          <strong>${pot.complete ? "Full" : `${Math.max(0, pot.target - pot.progress).toLocaleString()} left`}</strong>
+          <i><b style="width: ${progress * 100}%"></b></i>
+        `;
+        button.addEventListener("click", () => handlers.onLevelSelect(pot.id));
+        elements.levelMap.appendChild(button);
+      });
+    },
     showGameOver(show, score = 0) {
       elements.finalScore.textContent = score.toLocaleString();
       elements.gameOverScreen.classList.toggle("is-visible", show);
@@ -74,14 +98,20 @@ export function createUI() {
 }
 
 function renderHud(elements, state) {
-  const levelProgress = getLevelProgress(state.score, state.level ?? 1);
+  const levelProgress = state.activePot
+    ? {
+        target: state.activePot.target,
+        progress: Math.min(1, state.activePot.progress / state.activePot.target),
+        remaining: Math.max(0, state.activePot.target - state.activePot.progress)
+      }
+    : getLevelProgress(state.score, state.level ?? 1);
   elements.scoreValue.textContent = state.score.toLocaleString();
   elements.streakValue.textContent = String(state.streak ?? 0);
   elements.timerValue.textContent = `${Math.ceil(state.timeLeft)}s`;
   elements.missValue.textContent = `${state.misses}/${state.maxMisses}`;
   elements.deckValue.textContent = String(state.deck.length);
   elements.levelValue.textContent = String(state.level ?? 1);
-  elements.targetValue.textContent = levelProgress.target.toLocaleString();
+  elements.targetValue.textContent = levelProgress.remaining.toLocaleString();
   elements.targetFill.style.setProperty("--target-progress", `${levelProgress.progress}`);
   elements.timerRing.style.setProperty("--timer-progress", `${state.timeLeft / state.turnSeconds}`);
   elements.timerShell.classList.toggle("timer-danger", state.timeLeft <= 3 && state.status === "playing");
