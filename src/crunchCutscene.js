@@ -7,7 +7,7 @@ const CUTSCENE_CONFIG = {
   minFinalFlyDelay: 520,
   minFinalCloseDelay: 620,
   minBustAdvanceDelay: 620,
-  autoBonusStepDuration: 520,
+  autoBonusStepDuration: 620,
   fadeOutDuration: 160
 };
 
@@ -242,19 +242,21 @@ async function playCrunchBonusSteps(overlay, breakdown, total, tier, advance, ba
   const steps = breakdown.filter((step) => step.kind !== "base" && step.kind !== "total");
   if (!steps.length) return;
 
-  const startValue = bank.value;
-  for (let i = 0; i < steps.length; i += 1) {
-    const step = steps[i];
-    overlay.innerHTML = `
-      <div class="cutin-bonus-step cutin-bonus-${step.tone ?? "total"} ${tier === "full" ? "cutin-full" : ""}">
-        <span>${step.label}</span>
-        <strong>${step.value}</strong>
+  overlay.innerHTML = `
+    <div class="cutin-bonus-page ${tier === "full" ? "cutin-full" : ""}">
+      <span>Bonus Crunch</span>
+      <div class="cutin-bonus-row">
+        ${steps.map((step) => `
+          <div class="cutin-bonus-chip cutin-bonus-${step.tone ?? "total"}">
+            <em>${step.label}</em>
+            <strong>${step.value}</strong>
+          </div>
+        `).join("")}
       </div>
-    `;
-    await sleep(CUTSCENE_CONFIG.autoBonusStepDuration);
-    const nextValue = Math.round(startValue + ((total - startValue) * (i + 1)) / steps.length);
-    await bank.setValue(nextValue, overlay.querySelector(".cutin-bonus-step strong"), step.value);
-  }
+    </div>
+  `;
+  await sleep(CUTSCENE_CONFIG.autoBonusStepDuration);
+  await bank.rampTo(total);
 }
 
 function createOverlay(tier) {
@@ -269,6 +271,7 @@ function createAdvanceController(overlay) {
   const waiters = new Set();
   const onAdvance = (event) => {
     event.preventDefault();
+    playTapBounce(overlay);
     const [next] = waiters;
     if (next) next();
   };
@@ -318,6 +321,15 @@ function createAdvanceController(overlay) {
       overlay.removeEventListener("pointerup", onAdvance);
     }
   };
+}
+
+function playTapBounce(overlay) {
+  const target = overlay.querySelector(".cutin-stage, .cutin-final, .cutin-mini, .cutin-bonus-page, .cutin-bonus-step");
+  if (!target) return;
+  target.classList.remove("cutin-tap-bounce");
+  void target.offsetWidth;
+  target.classList.add("cutin-tap-bounce");
+  window.setTimeout(() => target.classList.remove("cutin-tap-bounce"), 220);
 }
 
 function createCutinCardMarkup(card, extraClass = "") {
