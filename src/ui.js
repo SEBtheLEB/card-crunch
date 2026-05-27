@@ -1,5 +1,5 @@
-import { getCrunchPreview } from "./gameState.js?v=39";
-import { getLevelProgress } from "./progression.js?v=39";
+import { getCrunchPreview } from "./gameState.js?v=41";
+import { getLevelProgress } from "./progression.js?v=41";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "" };
@@ -117,6 +117,9 @@ function renderHud(elements, state) {
   elements.timerRing.style.setProperty("--timer-progress", `${state.timeLeft / state.turnSeconds}`);
   elements.timerShell.classList.toggle("timer-danger", state.timeLeft <= 3 && state.status === "playing");
   elements.shell.classList.toggle("fever-mode", Boolean(state.fever));
+  elements.shell.classList.toggle("streak-warm", state.streak >= 3);
+  elements.shell.classList.toggle("streak-hot", state.streak >= 6);
+  elements.shell.classList.toggle("streak-blaze", state.streak >= 10);
 }
 
 function renderStack(elements, state) {
