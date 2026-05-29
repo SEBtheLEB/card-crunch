@@ -2776,3 +2776,183 @@ button,
     transform: translate(calc(-50% + var(--spark-x)), calc(-50% + var(--spark-y))) scale(.1);
   }
 }
+
+/* Mobile menu fit pass: keep the casino table inside narrow phone viewports. */
+.main-menu-screen {
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+}
+
+.cookie-app-shell {
+  width: 100%;
+  max-width: 520px;
+  overflow-x: hidden;
+}
+
+.cookie-page-stack,
+.cookie-page,
+.home-tiles,
+.cookie-top-hud,
+.cookie-bottom-nav {
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .cookie-app-shell {
+    padding: calc(6px + var(--safe-top)) max(8px, var(--safe-right)) calc(8px + var(--safe-bottom)) max(8px, var(--safe-left));
+  }
+
+  .cookie-top-hud {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 34px;
+    grid-template-areas:
+      "lives coins menu"
+      "streak streak menu";
+    gap: 6px;
+    padding: 6px;
+    border-width: 2px;
+    border-radius: 15px;
+  }
+
+  .cookie-top-hud .cookie-stat:nth-child(1) {
+    grid-area: lives;
+  }
+
+  .cookie-top-hud .cookie-stat:nth-child(2) {
+    grid-area: coins;
+  }
+
+  .streak-cookie-stat {
+    grid-area: streak;
+  }
+
+  .cookie-menu-button {
+    grid-area: menu;
+    align-self: stretch;
+    height: auto;
+    min-width: 34px;
+  }
+
+  .cookie-stat {
+    grid-template-columns: 24px minmax(0, 1fr) 24px;
+    gap: 4px;
+    padding: 1px 0;
+  }
+
+  .streak-cookie-stat {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .cookie-stat-icon {
+    width: 24px;
+    height: 24px;
+    font-size: .82rem;
+  }
+
+  .mini-plus-button {
+    min-width: 24px;
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    font-size: .86rem;
+  }
+
+  .cookie-stat strong {
+    font-size: clamp(.78rem, 3.4vw, .98rem);
+  }
+
+  .cookie-stat span:last-child {
+    font-size: clamp(.48rem, 2.2vw, .62rem);
+  }
+
+  .cookie-logo-wrap {
+    padding-top: clamp(10px, 2dvh, 16px);
+  }
+
+  .main-menu-card h1 {
+    font-size: clamp(2.55rem, 13.5vw, 4.6rem);
+    -webkit-text-stroke-width: 1px;
+    text-shadow: 0 4px 0 var(--chocolate), 0 0 14px rgba(255, 241, 201, .24);
+  }
+
+  .logo-card-fan i {
+    width: 32px;
+    height: 42px;
+  }
+
+  .home-tiles {
+    gap: 8px;
+  }
+
+  .cookie-tile {
+    min-height: clamp(96px, 14dvh, 126px);
+    padding: 10px 7px;
+    border-radius: 16px;
+  }
+
+  .cookie-tile-wide {
+    min-height: clamp(86px, 12dvh, 112px);
+  }
+
+  .tile-icon {
+    font-size: clamp(1.65rem, 8vw, 2.6rem);
+  }
+
+  .cookie-tile strong {
+    font-size: clamp(.82rem, 3.8vw, 1.12rem);
+  }
+
+  .cookie-tile small {
+    font-size: clamp(.54rem, 2.4vw, .72rem);
+  }
+
+  .cookie-bottom-nav {
+    gap: 5px;
+    padding: 6px;
+    border-width: 2px;
+    border-radius: 16px;
+  }
+
+  .cookie-bottom-nav button {
+    min-height: 48px;
+    border-radius: 12px;
+    font-size: clamp(.52rem, 2.35vw, .7rem);
+  }
+}
+
+@media (max-width: 360px) {
+  .cookie-app-shell {
+    padding-left: max(6px, var(--safe-left));
+    padding-right: max(6px, var(--safe-right));
+  }
+
+  .cookie-top-hud {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 30px;
+    gap: 5px;
+  }
+
+  .cookie-stat {
+    grid-template-columns: 21px minmax(0, 1fr) 21px;
+  }
+
+  .streak-cookie-stat {
+    grid-template-columns: 21px minmax(0, 1fr);
+  }
+
+  .cookie-stat-icon,
+  .mini-plus-button {
+    width: 21px;
+    height: 21px;
+    min-width: 21px;
+  }
+
+  .cookie-menu-button {
+    min-width: 30px;
+  }
+
+  .main-menu-card h1 {
+    font-size: clamp(2.25rem, 12.5vw, 3.6rem);
+  }
+
+  .cookie-tile {
+    min-height: 88px;
+  }
+}
