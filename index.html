@@ -82,144 +82,105 @@
       </footer>
     </main>
 
-    <section class="modal-screen main-menu-screen is-visible" id="startScreen" aria-labelledby="startTitle">
-      <div class="cookie-app-shell">
-        <header class="cookie-top-hud" aria-label="Player stats">
-          <section class="cookie-stat">
-            <span class="cookie-stat-icon heart-cookie" aria-hidden="true">♥</span>
-            <div>
-              <strong id="menuLivesValue">Full</strong>
-              <span>Lives</span>
-            </div>
-            <button class="mini-plus-button" type="button" aria-label="Add lives">+</button>
+    <section class="modal-screen main-menu-screen casino-menu-screen is-visible" id="startScreen" aria-labelledby="startTitle">
+      <div class="casino-home-shell">
+        <header class="casino-top-row" aria-label="Player stats">
+          <section class="casino-pill">
+            <span class="pill-icon" aria-hidden="true">&#9679;</span>
+            <strong id="menuCoinsValue">0</strong>
           </section>
-          <section class="cookie-stat">
-            <span class="cookie-stat-icon coin-cookie" aria-hidden="true">●</span>
-            <div>
-              <strong id="menuCoinsValue">0</strong>
-              <span>Coins</span>
-            </div>
-            <button class="mini-plus-button" type="button" aria-label="Add coins">+</button>
+          <section class="casino-pill energy-pill">
+            <span class="pill-icon" aria-hidden="true">&#9889;</span>
+            <strong id="menuEnergyValue">8s</strong>
+            <i><b></b></i>
           </section>
-          <section class="cookie-stat streak-cookie-stat">
-            <span class="cookie-stat-icon flame-cookie" aria-hidden="true">♨</span>
-            <div>
-              <strong id="menuStreakValue">0</strong>
-              <span>Streak</span>
-            </div>
-          </section>
-          <button class="cookie-menu-button" id="hamburgerButton" type="button" aria-label="Open settings">☰</button>
+          <button class="casino-settings-button" id="hamburgerButton" type="button" aria-label="Open settings">&#9881;</button>
         </header>
 
-        <div class="cookie-page-stack">
-          <section class="cookie-page home-page is-active" data-page="home" aria-labelledby="startTitle">
-            <div class="cookie-logo-wrap">
-              <div class="logo-card-fan" aria-hidden="true">
-                <i>♥</i><i>♣</i><i>♦</i>
-              </div>
-              <p class="eyebrow">Cookie Casino</p>
+        <div class="casino-page-stack">
+          <section class="casino-page home-page is-active" data-page="home" aria-labelledby="startTitle">
+            <div class="casino-logo-wrap">
+              <div class="casino-logo-cards" aria-hidden="true"><i>&hearts;</i><i>&spades;</i></div>
               <h1 id="startTitle">Card Crunch</h1>
+              <p>Pick &bull; Match &bull; Score</p>
             </div>
 
-            <section class="home-tiles" aria-label="Main modes">
-              <button class="cookie-tile cookie-tile-primary" id="startButton" type="button">
-                <span class="tile-icon">∞</span>
-                <strong>Endless Crunch</strong>
-                <small>Play until you bust</small>
-              </button>
-              <button class="cookie-tile" data-menu-page="daily" type="button">
-                <span class="tile-icon">★</span>
-                <strong>Daily Challenge</strong>
-                <small>Reward preview</small>
-              </button>
-              <button class="cookie-tile cookie-tile-wide" data-menu-page="pots" type="button">
-                <span class="tile-icon">◉</span>
-                <strong>Cookie Pots</strong>
-                <small>Fill jackpot jars</small>
-              </button>
-              <button class="cookie-tile" data-menu-page="decks" type="button">
-                <span class="tile-icon">♠</span>
-                <strong>Card Decks</strong>
-                <small>Biscuit skins</small>
-              </button>
-              <button class="cookie-tile" data-menu-page="events" type="button">
-                <span class="tile-icon">🏆</span>
-                <strong>Events</strong>
-                <small>Coming soon</small>
-              </button>
+            <section class="casino-stat-panels" aria-label="Best stats">
+              <article>
+                <span>&#9733; Best Score</span>
+                <strong id="profileBestScore">0</strong>
+              </article>
+              <article>
+                <span>&#9830; Best Streak</span>
+                <strong id="profileStreak">0</strong>
+              </article>
+            </section>
+
+            <button class="casino-play-button" id="startButton" type="button">PLAY</button>
+            <p class="play-subcopy">Fast rounds. Big scores.</p>
+
+            <section class="casino-secondary-grid" aria-label="More modes">
+              <button data-menu-page="daily" type="button"><span>&#9733;</span><strong>Daily Challenge</strong><small>New reward run</small></button>
+              <button data-menu-page="leaderboard" type="button"><span>&#9819;</span><strong>Leaderboard</strong><small>Top scores soon</small></button>
+              <button data-menu-page="shop" type="button"><span>&#9670;</span><strong>Store</strong><small>Coins and boosts</small></button>
+              <button data-menu-page="achievements" type="button"><span>&#10003;</span><strong>Achievements</strong><small>Track milestones</small></button>
+              <button data-menu-page="themes" type="button"><span>&spades;</span><strong>Themes</strong><small>Deck styles</small></button>
             </section>
           </section>
 
-          <section class="cookie-page" data-page="daily" aria-labelledby="dailyTitle">
-            <button class="page-back-button" data-menu-page="home" type="button">‹ Home</button>
+          <section class="casino-page" data-page="daily" aria-labelledby="dailyTitle">
+            <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
             <h2 id="dailyTitle">Daily Challenge</h2>
-            <!-- TODO: Connect this page to real daily challenge generation and reward claiming. -->
-            <div class="feature-cookie-card">
-              <span class="feature-icon">★</span>
-              <strong>Star Stamp Sprint</strong>
-              <p>Crunch 10 valid hands before the timer runs out.</p>
-              <em>Reward: 500 cookie coins</em>
+            <div class="casino-feature-card">
+              <span>&#9733;</span><strong>Lucky Draw</strong>
+              <p>Crunch 5 hands with no busts. Reward preview: 500 coins.</p>
               <button class="primary-button" type="button">Play Challenge</button>
             </div>
           </section>
 
-          <section class="cookie-page" data-page="pots" aria-labelledby="potsTitle">
-            <button class="page-back-button" data-menu-page="home" type="button">‹ Home</button>
-            <h2 id="potsTitle">Cookie Pots</h2>
-            <div class="cookie-pots-list" id="levelMap"></div>
-          </section>
-
-          <section class="cookie-page" data-page="decks" aria-labelledby="decksTitle">
-            <button class="page-back-button" data-menu-page="home" type="button">‹ Home</button>
-            <h2 id="decksTitle">Card Decks</h2>
-            <div class="deck-preview-grid">
-              <article class="deck-card-preview selected">
-                <span>♥ ♦ ♣ ♠</span>
-                <strong>Biscuit Deck</strong>
-                <small>Selected</small>
-              </article>
-              <article class="deck-card-preview locked"><span>?</span><strong>Chocolate Deck</strong><small>Locked</small></article>
-              <article class="deck-card-preview locked"><span>?</span><strong>Icing Deck</strong><small>Locked</small></article>
+          <section class="casino-page" data-page="leaderboard" aria-labelledby="leaderboardTitle">
+            <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
+            <h2 id="leaderboardTitle">Leaderboard</h2>
+            <div class="casino-list-card">
+              <article><strong>You</strong><span id="profileCrunches">0 crunches</span></article>
+              <article><strong>Best Score</strong><span id="leaderboardBestScore">0</span></article>
+              <article><strong>Global Scores</strong><span>Coming Soon</span></article>
             </div>
           </section>
 
-          <section class="cookie-page" data-page="events" aria-labelledby="eventsTitle">
-            <button class="page-back-button" data-menu-page="home" type="button">‹ Home</button>
-            <h2 id="eventsTitle">Events</h2>
-            <!-- TODO: Replace placeholder event cards with live limited-time event data. -->
-            <div class="event-card-grid">
-              <article class="event-cookie-card"><strong>Weekend Crunch</strong><span>Coming Soon</span></article>
-              <article class="event-cookie-card"><strong>Jackpot Rush</strong><span>Coming Soon</span></article>
-              <article class="event-cookie-card"><strong>Streak Fever</strong><span>Coming Soon</span></article>
+          <section class="casino-page" data-page="shop" aria-labelledby="shopTitle">
+            <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
+            <h2 id="shopTitle">Store</h2>
+            <div class="casino-card-grid">
+              <article><strong>Extra Lives</strong><span>Coming Soon</span></article>
+              <article><strong>Coin Pack</strong><span>Coming Soon</span></article>
+              <article><strong>Card Skin</strong><span>Coming Soon</span></article>
+              <article><strong>Streak Saver</strong><span>Coming Soon</span></article>
             </div>
           </section>
 
-          <section class="cookie-page" data-page="shop" aria-labelledby="shopTitle">
-            <button class="page-back-button" data-menu-page="home" type="button">‹ Home</button>
-            <h2 id="shopTitle">Shop</h2>
-            <!-- TODO: Wire visual shop items to real purchase/store logic when that system exists. -->
-            <div class="shop-grid">
-              <article class="shop-cookie-item"><strong>Extra Lives</strong><span>Coming Soon</span></article>
-              <article class="shop-cookie-item"><strong>Coin Pack</strong><span>Coming Soon</span></article>
-              <article class="shop-cookie-item"><strong>Card Skin</strong><span>Coming Soon</span></article>
-              <article class="shop-cookie-item"><strong>Streak Saver</strong><span>Coming Soon</span></article>
+          <section class="casino-page" data-page="achievements" aria-labelledby="achievementsTitle">
+            <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
+            <h2 id="achievementsTitle">Achievements</h2>
+            <div class="casino-card-grid">
+              <article><strong>First Crunch</strong><span>Unlocked soon</span></article>
+              <article><strong>Hot Streak</strong><span>Reach x5</span></article>
+              <article><strong>Big Score</strong><span>Hit 100K</span></article>
             </div>
           </section>
 
-          <section class="cookie-page" data-page="profile" aria-labelledby="profileTitle">
-            <button class="page-back-button" data-menu-page="home" type="button">‹ Home</button>
-            <h2 id="profileTitle">Profile</h2>
-            <div class="profile-stat-grid">
-              <article><span>Best Score</span><strong id="profileBestScore">0</strong></article>
-              <article><span>Current Streak</span><strong id="profileStreak">0</strong></article>
-              <article><span>Total Crunches</span><strong id="profileCrunches">0</strong></article>
-              <article><span>Pots Cleared</span><strong id="profilePotsCleared">0</strong></article>
-              <article><span>Coins</span><strong id="profileCoins">0</strong></article>
+          <section class="casino-page" data-page="themes" aria-labelledby="themesTitle">
+            <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
+            <h2 id="themesTitle">Themes</h2>
+            <div class="casino-card-grid">
+              <article class="selected"><strong>Classic Casino</strong><span>Selected</span></article>
+              <article><strong>Gold Table</strong><span>Locked</span></article>
+              <article><strong>Night Deck</strong><span>Locked</span></article>
             </div>
           </section>
 
-          <section class="cookie-page" data-page="settings" aria-labelledby="settingsTitle">
-            <button class="page-back-button" data-menu-page="home" type="button">‹ Home</button>
+          <section class="casino-page" data-page="settings" aria-labelledby="settingsTitle">
+            <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
             <h2 id="settingsTitle">Settings</h2>
             <div class="settings-list">
               <label><span>Sound</span><input id="soundToggle" type="checkbox" checked></label>
@@ -228,17 +189,15 @@
               <button class="danger-cookie-button" id="resetSaveButton" type="button">Reset Save Data</button>
             </div>
           </section>
-        </div>
 
-        <nav class="cookie-bottom-nav" aria-label="Main navigation">
-          <button class="is-active" data-menu-page="home" type="button"><span>⌂</span>Home</button>
-          <button data-menu-page="shop" type="button"><span>◈</span>Shop</button>
-          <button data-menu-page="profile" type="button"><span>●</span>Profile</button>
-          <button data-menu-page="settings" type="button"><span>☰</span>Settings</button>
-        </nav>
+          <section class="casino-page" data-page="pots" aria-hidden="true">
+            <div id="levelMap" hidden></div>
+            <strong id="profilePotsCleared" hidden>0</strong>
+            <strong id="profileCoins" hidden>0</strong>
+          </section>
+        </div>
       </div>
     </section>
-
     <section class="modal-screen" id="mapScreen" aria-labelledby="mapTitle" aria-hidden="true">
       <div class="modal-card map-card">
         <p class="eyebrow">Level Map</p>
@@ -257,6 +216,7 @@
       </div>
     </section>
 
-    <script type="module" src="src/main.js?v=47"></script>
+    <script type="module" src="src/main.js?v=49"></script>
   </body>
 </html>
+

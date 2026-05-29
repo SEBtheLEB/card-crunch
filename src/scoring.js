@@ -6,6 +6,8 @@ export const MATCH_TYPES = {
   MISS: "miss"
 };
 
+import { formatCompactNumber } from "./format.js";
+
 export const SCORE_CONFIG = {
   suit: 100,
   rank: 300,
@@ -310,12 +312,12 @@ function getStackPairs(cards) {
 }
 
 function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, total }) {
-  const steps = [{ label: "STORED", value: `+${storedBase.toLocaleString()}`, tone: "total", kind: "base" }];
+  const steps = [{ label: "STORED", value: `+${formatCompactNumber(storedBase)}`, tone: "total", kind: "base" }];
   if (handMultiplier > 1) steps.push({ label: "HAND", value: `x${handMultiplier}`, tone: "double", kind: "multiplier" });
   if (speedBonus.multiplier > 1) steps.push({ label: speedBonus.label, value: `x${formatMultiplier(speedBonus.multiplier)}`, tone: "speed", kind: "multiplier" });
   if (streakMultiplier > 1) steps.push({ label: "STREAK", value: `x${streakMultiplier}`, tone: streakMultiplier >= 10 ? "fever" : "streak", kind: "multiplier" });
   stackTypes.forEach((bonus) => steps.push({ label: bonus.label, value: bonus.value, tone: bonus.tone, kind: bonus.multiplier ? "multiplier" : "bonus" }));
-  steps.push({ label: "TOTAL", value: `+${total.toLocaleString()}`, tone: "total", kind: "total" });
+  steps.push({ label: "TOTAL", value: `+${formatCompactNumber(total)}`, tone: "total", kind: "total" });
   return steps;
 }
 

@@ -1,3 +1,5 @@
+import { formatCompactNumber } from "./format.js?v=49";
+
 const CUTSCENE_CONFIG = {
   showEveryResolvedCard: true,
   maxFullCutinsPerCrunch: 2,
@@ -185,7 +187,7 @@ function createMathCutinMarkup({ entry, matched, operator, equation, tier }) {
       </div>
       <div class="cutin-equation">${equation}</div>
       <div class="cutin-label">${entry.label}</div>
-      <div class="cutin-points">+${entry.points.toLocaleString()}</div>
+      <div class="cutin-points">+${formatCompactNumber(entry.points)}</div>
     </div>
   `;
 }
@@ -200,7 +202,7 @@ function createMatchCutinMarkup({ entry, matched, operator, equation, tier }) {
       <div class="cutin-operator">${operator}</div>
       <div class="cutin-equation">${equation}</div>
       <div class="cutin-label">${entry.label}</div>
-      <div class="cutin-points">+${entry.points.toLocaleString()}</div>
+      <div class="cutin-points">+${formatCompactNumber(entry.points)}</div>
     </div>
   `;
 }
@@ -211,7 +213,7 @@ async function playMiniEntry(overlay, entry, advance) {
       ${createCutinCardMarkup(entry.card, "answer mini-card")}
       <div>
         <strong>${entry.label}</strong>
-        <span>+${entry.points.toLocaleString()}</span>
+        <span>+${formatCompactNumber(entry.points)}</span>
       </div>
     </div>
   `;
@@ -222,7 +224,7 @@ async function playFinalTotal(overlay, total, scoreEl, tier, advance, bank = nul
   overlay.innerHTML = `
     <div class="cutin-final ${tier === "full" ? "cutin-final-full" : ""}">
       <span>${tier === "full" ? "FULL CRUNCH!" : "CRUNCH!"}</span>
-      <strong>+${total.toLocaleString()}</strong>
+      <strong>+${formatCompactNumber(total)}</strong>
       ${tier === "full" ? "<em>ALL 4 CARDS USED</em>" : ""}
     </div>
   `;
@@ -409,7 +411,7 @@ async function flyValueToBank(sourceEl, bankEl, value) {
   const bankRect = bankEl.getBoundingClientRect();
   const ghost = document.createElement("div");
   ghost.className = "cutin-bank-fly";
-  ghost.textContent = typeof value === "number" ? `+${value.toLocaleString()}` : String(value);
+  ghost.textContent = typeof value === "number" ? `+${formatCompactNumber(value)}` : String(value);
   ghost.style.left = `${sourceRect.left + sourceRect.width / 2}px`;
   ghost.style.top = `${sourceRect.top + sourceRect.height / 2}px`;
   ghost.style.setProperty("--fly-x", `${bankRect.left + bankRect.width / 2 - (sourceRect.left + sourceRect.width / 2)}px`);
@@ -428,11 +430,11 @@ async function countBankTo(valueEl, from, to) {
       const progress = Math.min(1, (now - startedAt) / duration);
       const eased = 1 - Math.pow(1 - progress, 3);
       const value = Math.round(from + (to - from) * eased);
-      valueEl.textContent = value.toLocaleString();
+      valueEl.textContent = formatCompactNumber(value);
       if (progress < 1) {
         requestAnimationFrame(tick);
       } else {
-        valueEl.textContent = to.toLocaleString();
+        valueEl.textContent = formatCompactNumber(to);
         resolve();
       }
     };

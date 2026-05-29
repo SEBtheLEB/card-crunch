@@ -1,5 +1,6 @@
-import { getCrunchPreview } from "./gameState.js?v=47";
-import { getLevelProgress } from "./progression.js?v=47";
+import { getCrunchPreview } from "./gameState.js?v=49";
+import { getLevelProgress } from "./progression.js?v=49";
+import { formatCompactNumber } from "./format.js?v=49";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -32,9 +33,11 @@ export function createUI() {
     restartButton: document.querySelector("#restartButton"),
     hamburgerButton: document.querySelector("#hamburgerButton"),
     menuLivesValue: document.querySelector("#menuLivesValue"),
+    menuEnergyValue: document.querySelector("#menuEnergyValue"),
     menuCoinsValue: document.querySelector("#menuCoinsValue"),
     menuStreakValue: document.querySelector("#menuStreakValue"),
     profileBestScore: document.querySelector("#profileBestScore"),
+    leaderboardBestScore: document.querySelector("#leaderboardBestScore"),
     profileStreak: document.querySelector("#profileStreak"),
     profileCrunches: document.querySelector("#profileCrunches"),
     profilePotsCleared: document.querySelector("#profilePotsCleared"),
@@ -96,7 +99,7 @@ export function createUI() {
         button.type = "button";
         button.innerHTML = `
           <span>${hasSavedRun ? "Continue Pot" : "Pot"} ${pot.id}</span>
-          <strong>${hasSavedRun ? "Saved Run" : pot.complete ? "Full" : `${Math.max(0, pot.target - pot.progress).toLocaleString()} left`}</strong>
+          <strong>${hasSavedRun ? "Saved Run" : pot.complete ? "Full" : `${formatCompactNumber(Math.max(0, pot.target - pot.progress))} left`}</strong>
           <i><b style="width: ${progress * 100}%"></b></i>
         `;
         button.addEventListener("click", () => handlers.onLevelSelect(pot.id));
@@ -104,7 +107,7 @@ export function createUI() {
       });
     },
     showGameOver(show, score = 0) {
-      elements.finalScore.textContent = score.toLocaleString();
+      elements.finalScore.textContent = formatCompactNumber(score);
       elements.gameOverScreen.classList.toggle("is-visible", show);
       elements.gameOverScreen.setAttribute("aria-hidden", String(!show));
     },
@@ -129,13 +132,13 @@ function renderHud(elements, state) {
         remaining: Math.max(0, state.activePot.target - state.activePot.progress)
       }
     : getLevelProgress(state.score, state.level ?? 1);
-  elements.scoreValue.textContent = state.score.toLocaleString();
+  elements.scoreValue.textContent = formatCompactNumber(state.score);
   elements.streakValue.textContent = String(state.streak ?? 0);
   elements.timerValue.textContent = `${Math.ceil(state.timeLeft)}s`;
   elements.missValue.textContent = `${state.misses}/${state.maxMisses}`;
   elements.deckValue.textContent = String(state.deck.length);
   elements.levelValue.textContent = isEndless ? "∞" : String(state.level ?? 1);
-  elements.targetValue.textContent = typeof levelProgress.remaining === "number" ? levelProgress.remaining.toLocaleString() : levelProgress.remaining;
+  elements.targetValue.textContent = typeof levelProgress.remaining === "number" ? formatCompactNumber(levelProgress.remaining) : levelProgress.remaining;
   elements.targetFill.style.setProperty("--target-progress", `${levelProgress.progress}`);
   elements.timerRing.style.setProperty("--timer-progress", `${state.timeLeft / state.turnSeconds}`);
   elements.timerShell.classList.toggle("timer-danger", state.timeLeft <= 3 && state.status === "playing");
@@ -172,17 +175,20 @@ function showMenuPage(elements, pageName = "home") {
 function renderMenuStats(elements, state) {
   const coins = Number(localStorage.getItem("cardCrunchCoins") ?? 0);
   const totalCrunches = Number(localStorage.getItem("cardCrunchTotalCrunches") ?? 0);
+  const bestStreak = Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak ?? 0);
   const potsCleared = state.pots?.filter((pot) => pot.complete).length ?? 0;
   const livesLeft = Math.max(0, (state.maxMisses ?? 3) - (state.status === "playing" ? state.misses : 0));
 
-  elements.menuLivesValue.textContent = livesLeft >= (state.maxMisses ?? 3) ? "Full" : String(livesLeft);
-  elements.menuCoinsValue.textContent = coins.toLocaleString();
-  elements.menuStreakValue.textContent = String(state.streak ?? 0);
-  elements.profileBestScore.textContent = (state.bestScore ?? 0).toLocaleString();
-  elements.profileStreak.textContent = String(state.streak ?? 0);
-  elements.profileCrunches.textContent = totalCrunches.toLocaleString();
-  elements.profilePotsCleared.textContent = String(potsCleared);
-  elements.profileCoins.textContent = coins.toLocaleString();
+  if (elements.menuLivesValue) elements.menuLivesValue.textContent = livesLeft >= (state.maxMisses ?? 3) ? "Full" : String(livesLeft);
+  if (elements.menuEnergyValue) elements.menuEnergyValue.textContent = `${state.turnSeconds - 2}s`;
+  if (elements.menuCoinsValue) elements.menuCoinsValue.textContent = formatCompactNumber(state.bestScore ?? coins);
+  if (elements.menuStreakValue) elements.menuStreakValue.textContent = String(state.streak ?? 0);
+  if (elements.profileBestScore) elements.profileBestScore.textContent = formatCompactNumber(state.bestScore ?? 0);
+  if (elements.leaderboardBestScore) elements.leaderboardBestScore.textContent = formatCompactNumber(state.bestScore ?? 0);
+  if (elements.profileStreak) elements.profileStreak.textContent = String(bestStreak);
+  if (elements.profileCrunches) elements.profileCrunches.textContent = `${formatCompactNumber(totalCrunches)} crunches`;
+  if (elements.profilePotsCleared) elements.profilePotsCleared.textContent = String(potsCleared);
+  if (elements.profileCoins) elements.profileCoins.textContent = formatCompactNumber(coins);
 }
 
 function popCounter(element, tone = "gold") {

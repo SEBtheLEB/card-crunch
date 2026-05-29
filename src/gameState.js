@@ -1,9 +1,10 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=47";
-import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=47";
-import { createDefaultPots, getTargetForLevel } from "./progression.js?v=47";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=47";
-import { ensurePlayableHand } from "./handSafety.js?v=47";
-import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=47";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=49";
+import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=49";
+import { createDefaultPots, getTargetForLevel } from "./progression.js?v=49";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=49";
+import { ensurePlayableHand } from "./handSafety.js?v=49";
+import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=49";
+import { formatCompactNumber } from "./format.js?v=49";
 import {
   animateBust,
   animateSelectionResolve,
@@ -179,8 +180,9 @@ export function createGame(ui) {
     state.bestScore = Math.max(state.bestScore, state.score);
     localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
     state.streak = crunch.streakAfterCrunch;
+    localStorage.setItem("cardCrunchBestStreak", String(Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak)));
     state.fever = state.streak >= 15;
-    ui.elements.scoreValue.textContent = state.score.toLocaleString();
+    ui.elements.scoreValue.textContent = formatCompactNumber(state.score);
     ui.elements.streakValue.textContent = String(state.streak);
     discardSelectedCards();
     refillHand();
@@ -342,7 +344,7 @@ export function createGame(ui) {
     state.activePot.progress = Math.max(0, state.activePot.progress - penalty);
     state.score = Math.max(0, state.score - penalty);
     savePots(state.pots);
-    ui.setMessage(`Lost ${penalty.toLocaleString()} crunches!`, "bad");
+    ui.setMessage(`Lost ${formatCompactNumber(penalty)} crunches!`, "bad");
   }
 
   function restoreRun(save, pot) {
