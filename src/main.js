@@ -1,17 +1,17 @@
-import { createGame } from "./gameState.js?v=49";
-import { createUI } from "./ui.js?v=49";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=49";
+import { createGame } from "./gameState.js?v=50";
+import { createUI } from "./ui.js?v=50";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=50";
 
 const ui = createUI();
 const game = createGame(ui);
 
-ui.elements.startButton.addEventListener("click", game.startEndless);
+ui.elements.startButton.addEventListener("click", () => ui.showMenuPage("pots"));
 ui.elements.backToMenuButton?.addEventListener("click", () => {
   ui.showMap(false);
   ui.showStart(true);
 });
 ui.elements.exitLevelButton.addEventListener("click", game.returnToMap);
-ui.elements.restartButton.addEventListener("click", game.startEndless);
+ui.elements.restartButton.addEventListener("click", game.showMap);
 game.showMap();
 bindMenuNavigation();
 loadSettings();

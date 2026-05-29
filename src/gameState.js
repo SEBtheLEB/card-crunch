@@ -1,10 +1,10 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=49";
-import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=49";
-import { createDefaultPots, getTargetForLevel } from "./progression.js?v=49";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=49";
-import { ensurePlayableHand } from "./handSafety.js?v=49";
-import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=49";
-import { formatCompactNumber } from "./format.js?v=49";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=50";
+import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=50";
+import { createDefaultPots, getTargetForLevel } from "./progression.js?v=50";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=50";
+import { ensurePlayableHand } from "./handSafety.js?v=50";
+import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=50";
+import { formatCompactNumber } from "./format.js?v=50";
 import {
   animateBust,
   animateSelectionResolve,
@@ -75,6 +75,7 @@ export function createGame(ui) {
     state.misses = 0;
     state.level = pot?.id ?? 0;
     state.activePot = pot ?? null;
+    state.maxMisses = pot ? 1 : 3;
     state.sessionCrunches = 0;
     state.target = pot?.target ?? getTargetForLevel(1);
     state.fever = false;
@@ -350,6 +351,7 @@ export function createGame(ui) {
   function restoreRun(save, pot) {
     if (!save.hand.length || save.hand.length > 4 || save.stack.length < state.baseStackCount) return false;
     stopTimer();
+    state.maxMisses = 1;
     state.deck = save.deck;
     state.discard = save.discard;
     state.stack = save.stack;
