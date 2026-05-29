@@ -1,9 +1,9 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=46";
-import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=46";
-import { createDefaultPots, getTargetForLevel } from "./progression.js?v=46";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=46";
-import { ensurePlayableHand } from "./handSafety.js?v=46";
-import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=46";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=47";
+import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=47";
+import { createDefaultPots, getTargetForLevel } from "./progression.js?v=47";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=47";
+import { ensurePlayableHand } from "./handSafety.js?v=47";
+import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=47";
 import {
   animateBust,
   animateSelectionResolve,
@@ -46,6 +46,7 @@ export function createGame(ui) {
     state.locked = true;
     state.status = "menu";
     ui.renderMap(state.pots, handlers, pendingRunSave?.activePotId);
+    ui.renderMenuStats(state);
     ui.showStart(true);
     ui.showGameOver(false);
     ui.showMap(false);
@@ -173,6 +174,7 @@ export function createGame(ui) {
     }
 
     state.score += crunch.total;
+    localStorage.setItem("cardCrunchTotalCrunches", String(Number(localStorage.getItem("cardCrunchTotalCrunches") ?? 0) + selectedCards.length));
     addPotProgress(crunch.total);
     state.bestScore = Math.max(state.bestScore, state.score);
     localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
@@ -246,6 +248,7 @@ export function createGame(ui) {
     state.status = "menu";
     ui.render(state, handlers);
     ui.renderMap(state.pots, handlers);
+    ui.renderMenuStats(state);
     ui.showStart(true);
     ui.showMap(false);
   }

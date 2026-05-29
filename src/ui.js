@@ -1,5 +1,5 @@
-import { getCrunchPreview } from "./gameState.js?v=46";
-import { getLevelProgress } from "./progression.js?v=46";
+import { getCrunchPreview } from "./gameState.js?v=47";
+import { getLevelProgress } from "./progression.js?v=47";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -29,7 +29,20 @@ export function createUI() {
     gameOverScreen: document.querySelector("#gameOverScreen"),
     finalScore: document.querySelector("#finalScore"),
     startButton: document.querySelector("#startButton"),
-    restartButton: document.querySelector("#restartButton")
+    restartButton: document.querySelector("#restartButton"),
+    hamburgerButton: document.querySelector("#hamburgerButton"),
+    menuLivesValue: document.querySelector("#menuLivesValue"),
+    menuCoinsValue: document.querySelector("#menuCoinsValue"),
+    menuStreakValue: document.querySelector("#menuStreakValue"),
+    profileBestScore: document.querySelector("#profileBestScore"),
+    profileStreak: document.querySelector("#profileStreak"),
+    profileCrunches: document.querySelector("#profileCrunches"),
+    profilePotsCleared: document.querySelector("#profilePotsCleared"),
+    profileCoins: document.querySelector("#profileCoins"),
+    soundToggle: document.querySelector("#soundToggle"),
+    musicToggle: document.querySelector("#musicToggle"),
+    motionToggle: document.querySelector("#motionToggle"),
+    resetSaveButton: document.querySelector("#resetSaveButton")
   };
 
   return {
@@ -62,6 +75,12 @@ export function createUI() {
     showStart(show) {
       elements.startScreen.classList.toggle("is-visible", show);
       elements.startScreen.setAttribute("aria-hidden", String(!show));
+    },
+    showMenuPage(pageName) {
+      showMenuPage(elements, pageName);
+    },
+    renderMenuStats(state) {
+      renderMenuStats(elements, state);
     },
     showMap(show) {
       elements.mapScreen.classList.toggle("is-visible", show);
@@ -138,6 +157,32 @@ function renderHud(elements, state) {
     misses: state.misses,
     deck: state.deck.length
   };
+  renderMenuStats(elements, state);
+}
+
+function showMenuPage(elements, pageName = "home") {
+  elements.startScreen.querySelectorAll("[data-page]").forEach((page) => {
+    page.classList.toggle("is-active", page.dataset.page === pageName);
+  });
+  elements.startScreen.querySelectorAll("[data-menu-page]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.menuPage === pageName);
+  });
+}
+
+function renderMenuStats(elements, state) {
+  const coins = Number(localStorage.getItem("cardCrunchCoins") ?? 0);
+  const totalCrunches = Number(localStorage.getItem("cardCrunchTotalCrunches") ?? 0);
+  const potsCleared = state.pots?.filter((pot) => pot.complete).length ?? 0;
+  const livesLeft = Math.max(0, (state.maxMisses ?? 3) - (state.status === "playing" ? state.misses : 0));
+
+  elements.menuLivesValue.textContent = livesLeft >= (state.maxMisses ?? 3) ? "Full" : String(livesLeft);
+  elements.menuCoinsValue.textContent = coins.toLocaleString();
+  elements.menuStreakValue.textContent = String(state.streak ?? 0);
+  elements.profileBestScore.textContent = (state.bestScore ?? 0).toLocaleString();
+  elements.profileStreak.textContent = String(state.streak ?? 0);
+  elements.profileCrunches.textContent = totalCrunches.toLocaleString();
+  elements.profilePotsCleared.textContent = String(potsCleared);
+  elements.profileCoins.textContent = coins.toLocaleString();
 }
 
 function popCounter(element, tone = "gold") {

@@ -1,6 +1,6 @@
-import { createGame } from "./gameState.js?v=46";
-import { createUI } from "./ui.js?v=46";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=46";
+import { createGame } from "./gameState.js?v=47";
+import { createUI } from "./ui.js?v=47";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=47";
 
 const ui = createUI();
 const game = createGame(ui);
@@ -13,6 +13,8 @@ ui.elements.backToMenuButton?.addEventListener("click", () => {
 ui.elements.exitLevelButton.addEventListener("click", game.returnToMap);
 ui.elements.restartButton.addEventListener("click", game.startEndless);
 game.showMap();
+bindMenuNavigation();
+loadSettings();
 
 document.addEventListener(
   "touchmove",
@@ -73,6 +75,48 @@ function installReactivePressFeedback() {
       event.target.classList.remove("tap-pop");
     }
   });
+}
+
+function bindMenuNavigation() {
+  document.querySelectorAll("[data-menu-page]").forEach((button) => {
+    button.addEventListener("click", () => ui.showMenuPage(button.dataset.menuPage));
+  });
+
+  ui.elements.hamburgerButton?.addEventListener("click", () => ui.showMenuPage("settings"));
+  ui.elements.resetSaveButton?.addEventListener("click", () => {
+    const confirmed = window.confirm("Reset Card Crunch save data? This clears pots, best score, coins, and saved runs.");
+    if (!confirmed) return;
+    [
+      "cardCrunchBestScore",
+      "cardCrunchLevelPots",
+      "cardCrunchRunSave",
+      "cardCrunchCoins",
+      "cardCrunchTotalCrunches"
+    ].forEach((key) => localStorage.removeItem(key));
+    window.location.reload();
+  });
+}
+
+function loadSettings() {
+  const settings = JSON.parse(localStorage.getItem("cardCrunchSettings") ?? "{}");
+  ui.elements.soundToggle.checked = settings.sound !== false;
+  ui.elements.musicToggle.checked = settings.music !== false;
+  ui.elements.motionToggle.checked = Boolean(settings.reduceMotion);
+  document.documentElement.classList.toggle("reduce-motion", Boolean(settings.reduceMotion));
+
+  [ui.elements.soundToggle, ui.elements.musicToggle, ui.elements.motionToggle].forEach((input) => {
+    input?.addEventListener("change", saveSettings);
+  });
+}
+
+function saveSettings() {
+  const settings = {
+    sound: ui.elements.soundToggle.checked,
+    music: ui.elements.musicToggle.checked,
+    reduceMotion: ui.elements.motionToggle.checked
+  };
+  localStorage.setItem("cardCrunchSettings", JSON.stringify(settings));
+  document.documentElement.classList.toggle("reduce-motion", settings.reduceMotion);
 }
 
 function getTapTone(target) {
