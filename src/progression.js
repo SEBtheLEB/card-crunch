@@ -23,3 +23,21 @@ export function createDefaultPots() {
     complete: false
   }));
 }
+
+export function isPotUnlocked(pots, potId) {
+  if (potId <= 1) return true;
+  const previousPot = pots.find((pot) => pot.id === potId - 1);
+  return Boolean(previousPot?.complete);
+}
+
+export function getPotCheckpoint(pot) {
+  if (!pot?.target) return 0;
+  const interval = pot.target / 5;
+  return Math.min(pot.target, Math.floor((pot.progress ?? 0) / interval) * interval);
+}
+
+export function getNextPotCheckpoint(pot) {
+  if (!pot?.target) return 0;
+  const interval = pot.target / 5;
+  return Math.min(pot.target, (Math.floor((pot.progress ?? 0) / interval) + 1) * interval);
+}

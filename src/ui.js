@@ -1,6 +1,6 @@
-import { getCrunchPreview } from "./gameState.js?v=52";
-import { getLevelProgress } from "./progression.js?v=52";
-import { formatCompactNumber } from "./format.js?v=52";
+import { getCrunchPreview } from "./gameState.js?v=53";
+import { getLevelProgress, getNextPotCheckpoint, isPotUnlocked } from "./progression.js?v=53";
+import { formatCompactNumber } from "./format.js?v=53";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -95,12 +95,16 @@ export function createUI() {
         const button = document.createElement("button");
         const progress = pot.target > 0 ? Math.min(1, pot.progress / pot.target) : 0;
         const hasSavedRun = savedLevelId === pot.id && !pot.complete;
-        button.className = `map-pot ${pot.complete ? "is-complete" : ""} ${hasSavedRun ? "has-save" : ""}`;
+        const locked = !isPotUnlocked(pots, pot.id);
+        const nextCheckpoint = getNextPotCheckpoint(pot);
+        button.className = `map-pot ${pot.complete ? "is-complete" : ""} ${hasSavedRun ? "has-save" : ""} ${locked ? "is-locked" : ""}`;
         button.type = "button";
+        button.disabled = locked || pot.complete;
+        button.setAttribute("aria-disabled", String(button.disabled));
         button.innerHTML = `
-          <span>${hasSavedRun ? "Continue" : "Pot"} ${pot.id}</span>
-          <strong>${hasSavedRun ? "Saved" : pot.complete ? "Full" : formatCompactNumber(Math.max(0, pot.target - pot.progress))}</strong>
-          <small>${pot.complete ? "Cleared" : "Needed"}</small>
+          <span>${locked ? "Locked" : hasSavedRun ? "Continue" : "Pot"} ${pot.id}</span>
+          <strong>${locked ? "LOCK" : hasSavedRun ? "Saved" : pot.complete ? "Full" : formatCompactNumber(Math.max(0, pot.target - pot.progress))}</strong>
+          <small>${locked ? "Clear prior pot" : pot.complete ? "Cleared" : `Next CP ${formatCompactNumber(nextCheckpoint)}`}</small>
           <i><b style="width: ${progress * 100}%"></b></i>
         `;
         button.addEventListener("click", () => handlers.onLevelSelect(pot.id));

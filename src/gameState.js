@@ -1,10 +1,10 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=52";
-import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=52";
-import { createDefaultPots, getTargetForLevel } from "./progression.js?v=52";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=52";
-import { ensurePlayableHand } from "./handSafety.js?v=52";
-import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=52";
-import { formatCompactNumber } from "./format.js?v=52";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=53";
+import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=53";
+import { createDefaultPots, getPotCheckpoint, getTargetForLevel, isPotUnlocked } from "./progression.js?v=53";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=53";
+import { ensurePlayableHand } from "./handSafety.js?v=53";
+import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=53";
+import { formatCompactNumber } from "./format.js?v=53";
 import {
   animateBust,
   animateSelectionResolve,
@@ -55,7 +55,7 @@ export function createGame(ui) {
 
   function enterLevel(levelId) {
     const pot = state.pots.find((item) => item.id === levelId);
-    if (!pot || pot.complete) return;
+    if (!pot || pot.complete || !isPotUnlocked(state.pots, levelId)) return;
     if (pendingRunSave?.activePotId === levelId && restoreRun(pendingRunSave, pot)) return;
     pendingRunSave = null;
     clearRunSave();
@@ -340,12 +340,13 @@ export function createGame(ui) {
 
   function applyBustPenalty() {
     if (!state.activePot || state.sessionCrunches <= 0) return;
-    const penalty = Math.min(state.sessionCrunches, Math.max(10000, Math.round(state.sessionCrunches * .4)));
+    const checkpoint = getPotCheckpoint(state.activePot);
+    const penalty = Math.max(0, state.activePot.progress - checkpoint);
     state.sessionCrunches = Math.max(0, state.sessionCrunches - penalty);
-    state.activePot.progress = Math.max(0, state.activePot.progress - penalty);
+    state.activePot.progress = checkpoint;
     state.score = Math.max(0, state.score - penalty);
     savePots(state.pots);
-    ui.setMessage(`Lost ${formatCompactNumber(penalty)} crunches!`, "bad");
+    ui.setMessage(`Back to ${formatCompactNumber(checkpoint)} checkpoint!`, "bad");
   }
 
   function restoreRun(save, pot) {

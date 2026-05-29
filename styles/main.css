@@ -3156,6 +3156,19 @@ button,
   box-shadow: 0 0 26px rgba(255, 191, 63, .24), inset 0 0 18px rgba(255, 191, 63, .1);
 }
 
+.casino-level-map .map-pot.is-locked {
+  opacity: .52;
+  filter: grayscale(.35) saturate(.7);
+}
+
+.casino-level-map .map-pot.is-locked strong {
+  color: rgba(246, 230, 189, .58);
+}
+
+.casino-level-map .map-pot:disabled {
+  cursor: default;
+}
+
 .casino-menu-screen .settings-list {
   display: grid;
   gap: 10px;
