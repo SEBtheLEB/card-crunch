@@ -1,6 +1,6 @@
-import { getCrunchPreview } from "./gameState.js?v=50";
-import { getLevelProgress } from "./progression.js?v=50";
-import { formatCompactNumber } from "./format.js?v=50";
+import { getCrunchPreview } from "./gameState.js?v=51";
+import { getLevelProgress } from "./progression.js?v=51";
+import { formatCompactNumber } from "./format.js?v=51";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };

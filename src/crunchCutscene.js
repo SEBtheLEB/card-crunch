@@ -1,4 +1,4 @@
-import { formatCompactNumber } from "./format.js?v=50";
+import { formatCompactNumber } from "./format.js?v=51";
 
 const CUTSCENE_CONFIG = {
   showEveryResolvedCard: true,
@@ -30,36 +30,36 @@ export function createCrunchBankCounter() {
     get value() {
       return value;
     },
-    async add(amount, sourceEl) {
-      await flyValueToBank(sourceEl, element, amount);
+    async add(amount, sourceEl, advance = null) {
+      await flyValueToBank(sourceEl, element, amount, advance);
       value += amount;
-      await countBankTo(valueEl, value - amount, value);
+      await countBankTo(valueEl, value - amount, value, advance);
       element.classList.add("bank-bump");
-      await sleep(180);
+      await waitMaybe(advance, 180);
       element.classList.remove("bank-bump");
     },
-    async setValue(nextValue, sourceEl, flyLabel = nextValue) {
-      await flyValueToBank(sourceEl, element, flyLabel);
+    async setValue(nextValue, sourceEl, flyLabel = nextValue, advance = null) {
+      await flyValueToBank(sourceEl, element, flyLabel, advance);
       const previous = value;
       value = nextValue;
-      await countBankTo(valueEl, previous, value);
+      await countBankTo(valueEl, previous, value, advance);
       element.classList.add("bank-bump");
-      await sleep(180);
+      await waitMaybe(advance, 180);
       element.classList.remove("bank-bump");
     },
-    async rampTo(nextValue) {
+    async rampTo(nextValue, advance = null) {
       const previous = value;
       value = nextValue;
-      await countBankTo(valueEl, previous, value);
+      await countBankTo(valueEl, previous, value, advance);
       element.classList.add("bank-bump");
-      await sleep(180);
+      await waitMaybe(advance, 180);
       element.classList.remove("bank-bump");
     },
-    async finishToScore(scoreEl) {
+    async finishToScore(scoreEl, advance = null) {
       element.classList.add("bank-final-flash");
-      await sleep(260);
+      await waitMaybe(advance, 260);
       flyGhostToScore(valueEl, scoreEl.getBoundingClientRect());
-      await sleep(620);
+      await waitMaybe(advance, 620);
       element.remove();
     },
     remove() {
@@ -103,7 +103,7 @@ export async function playCrunchEntryExplanation({ entry, tier = "normal", bank 
 
   try {
     await playEntryCutin(overlay, entry, tier, advance);
-    if (bank) await bank.add(entry.points, overlay.querySelector(".cutin-points"));
+    if (bank) await bank.add(entry.points, overlay.querySelector(".cutin-points"), advance);
     overlay.classList.add("is-leaving");
     await sleep(CUTSCENE_CONFIG.fadeOutDuration);
   } finally {
@@ -120,8 +120,8 @@ export async function playCrunchTotalExplanation({ total, scoreEl, tier = "norma
   try {
     if (bank) {
       await playCrunchBonusSteps(overlay, breakdown, total, tier, advance, bank);
-      if (bank.value !== total) await bank.rampTo(total);
-      await bank.finishToScore(scoreEl);
+      if (bank.value !== total) await bank.rampTo(total, advance);
+      await bank.finishToScore(scoreEl, advance);
     } else {
       await playFinalTotal(overlay, total, scoreEl, tier, advance);
     }
@@ -232,8 +232,8 @@ async function playFinalTotal(overlay, total, scoreEl, tier, advance, bank = nul
   const totalEl = overlay.querySelector(".cutin-final strong");
   await advance.waitForTap(CUTSCENE_CONFIG.minFinalFlyDelay);
   if (bank) {
-    await bank.setValue(total, totalEl);
-    await bank.finishToScore(scoreEl);
+    await bank.setValue(total, totalEl, total, advance);
+    await bank.finishToScore(scoreEl, advance);
   } else {
     flyGhostToScore(totalEl, scoreEl.getBoundingClientRect());
     await advance.waitForTap(CUTSCENE_CONFIG.minFinalCloseDelay);
@@ -257,8 +257,8 @@ async function playCrunchBonusSteps(overlay, breakdown, total, tier, advance, ba
       </div>
     </div>
   `;
-  await sleep(CUTSCENE_CONFIG.autoBonusStepDuration);
-  await bank.rampTo(total);
+  await waitMaybe(advance, CUTSCENE_CONFIG.autoBonusStepDuration);
+  await bank.rampTo(total, advance);
 }
 
 function createOverlay(tier) {
@@ -405,7 +405,7 @@ function flyGhostToScore(sourceEl, scoreRect) {
   window.setTimeout(() => ghost.remove(), 620);
 }
 
-async function flyValueToBank(sourceEl, bankEl, value) {
+async function flyValueToBank(sourceEl, bankEl, value, advance = null) {
   if (!sourceEl || !bankEl) return;
   const sourceRect = sourceEl.getBoundingClientRect();
   const bankRect = bankEl.getBoundingClientRect();
@@ -417,16 +417,25 @@ async function flyValueToBank(sourceEl, bankEl, value) {
   ghost.style.setProperty("--fly-x", `${bankRect.left + bankRect.width / 2 - (sourceRect.left + sourceRect.width / 2)}px`);
   ghost.style.setProperty("--fly-y", `${bankRect.top + bankRect.height / 2 - (sourceRect.top + sourceRect.height / 2)}px`);
   document.body.appendChild(ghost);
-  await sleep(520);
+  await waitMaybe(advance, 520);
   ghost.remove();
 }
 
-async function countBankTo(valueEl, from, to) {
+async function countBankTo(valueEl, from, to, advance = null) {
   const duration = 520;
   const startedAt = performance.now();
 
   return new Promise((resolve) => {
+    let finished = false;
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      valueEl.textContent = formatCompactNumber(to);
+      resolve();
+    };
+    if (advance) advance.wait(duration).then(done);
     const tick = (now) => {
+      if (finished) return;
       const progress = Math.min(1, (now - startedAt) / duration);
       const eased = 1 - Math.pow(1 - progress, 3);
       const value = Math.round(from + (to - from) * eased);
@@ -434,12 +443,15 @@ async function countBankTo(valueEl, from, to) {
       if (progress < 1) {
         requestAnimationFrame(tick);
       } else {
-        valueEl.textContent = formatCompactNumber(to);
-        resolve();
+        done();
       }
     };
     requestAnimationFrame(tick);
   });
+}
+
+function waitMaybe(advance, ms) {
+  return advance ? advance.wait(ms) : sleep(ms);
 }
 
 function sleep(ms) {

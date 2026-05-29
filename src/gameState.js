@@ -1,10 +1,10 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=50";
-import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=50";
-import { createDefaultPots, getTargetForLevel } from "./progression.js?v=50";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=50";
-import { ensurePlayableHand } from "./handSafety.js?v=50";
-import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=50";
-import { formatCompactNumber } from "./format.js?v=50";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=51";
+import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=51";
+import { createDefaultPots, getTargetForLevel } from "./progression.js?v=51";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=51";
+import { ensurePlayableHand } from "./handSafety.js?v=51";
+import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=51";
+import { formatCompactNumber } from "./format.js?v=51";
 import {
   animateBust,
   animateSelectionResolve,
