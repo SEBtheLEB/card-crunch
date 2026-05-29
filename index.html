@@ -89,12 +89,16 @@
             <span class="pill-icon" aria-hidden="true">&#9679;</span>
             <strong id="menuCoinsValue">0</strong>
           </section>
+          <button class="casino-theme-button" data-menu-page="themes" type="button" aria-label="Themes">&spades;</button>
           <section class="casino-pill energy-pill">
             <span class="pill-icon" aria-hidden="true">&#9889;</span>
             <strong id="menuEnergyValue">8s</strong>
             <i><b></b></i>
           </section>
-          <button class="casino-settings-button" id="hamburgerButton" type="button" aria-label="Open settings">&#9881;</button>
+          <div class="casino-top-actions">
+            <button class="casino-leader-button" data-menu-page="leaderboard" type="button" aria-label="Leaderboard">&#9819;</button>
+            <button class="casino-settings-button" id="hamburgerButton" type="button" aria-label="Open settings">&#9881;</button>
+          </div>
         </header>
 
         <div class="casino-page-stack">
@@ -120,22 +124,9 @@
             <p class="play-subcopy">Fast rounds. Big scores.</p>
 
             <section class="casino-secondary-grid" aria-label="More modes">
-              <button data-menu-page="daily" type="button"><span>&#9733;</span><strong>Daily Challenge</strong><small>New reward run</small></button>
-              <button data-menu-page="leaderboard" type="button"><span>&#9819;</span><strong>Leaderboard</strong><small>Top scores soon</small></button>
               <button data-menu-page="shop" type="button"><span>&#9670;</span><strong>Store</strong><small>Coins and boosts</small></button>
-              <button data-menu-page="achievements" type="button"><span>&#10003;</span><strong>Achievements</strong><small>Track milestones</small></button>
               <button data-menu-page="themes" type="button"><span>&spades;</span><strong>Themes</strong><small>Deck styles</small></button>
             </section>
-          </section>
-
-          <section class="casino-page" data-page="daily" aria-labelledby="dailyTitle">
-            <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
-            <h2 id="dailyTitle">Daily Challenge</h2>
-            <div class="casino-feature-card">
-              <span>&#9733;</span><strong>Lucky Draw</strong>
-              <p>Crunch 5 hands with no busts. Reward preview: 500 coins.</p>
-              <button class="primary-button" type="button">Play Challenge</button>
-            </div>
           </section>
 
           <section class="casino-page" data-page="leaderboard" aria-labelledby="leaderboardTitle">
@@ -156,16 +147,6 @@
               <article><strong>Coin Pack</strong><span>Coming Soon</span></article>
               <article><strong>Card Skin</strong><span>Coming Soon</span></article>
               <article><strong>Streak Saver</strong><span>Coming Soon</span></article>
-            </div>
-          </section>
-
-          <section class="casino-page" data-page="achievements" aria-labelledby="achievementsTitle">
-            <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
-            <h2 id="achievementsTitle">Achievements</h2>
-            <div class="casino-card-grid">
-              <article><strong>First Crunch</strong><span>Unlocked soon</span></article>
-              <article><strong>Hot Streak</strong><span>Reach x5</span></article>
-              <article><strong>Big Score</strong><span>Hit 100K</span></article>
             </div>
           </section>
 
@@ -219,7 +200,7 @@
       </div>
     </section>
 
-    <script type="module" src="src/main.js?v=51"></script>
+    <script type="module" src="src/main.js?v=52"></script>
   </body>
 </html>
 

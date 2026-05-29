@@ -3215,6 +3215,186 @@ button,
   }
 }
 
+/* Cleaner casino home spacing and circular pot map. */
+.casino-menu-screen {
+  padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right)) calc(18px + var(--safe-bottom)) calc(16px + var(--safe-left));
+}
+
+.casino-home-shell {
+  width: min(100%, 420px);
+  gap: clamp(10px, 1.7dvh, 15px);
+}
+
+.casino-top-row {
+  grid-template-columns: minmax(0, 1fr) 46px minmax(104px, .9fr) 86px;
+  gap: 7px;
+}
+
+.casino-theme-button,
+.casino-leader-button,
+.casino-settings-button {
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(255, 232, 148, .35);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .1), transparent 45%),
+    linear-gradient(180deg, rgba(13, 35, 61, .98), rgba(3, 10, 20, .98));
+  color: #ffe894;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .24), inset 0 0 16px rgba(255, 232, 148, .08);
+}
+
+.casino-theme-button {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  font-size: 1.35rem;
+}
+
+.casino-top-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  min-width: 0;
+}
+
+.casino-leader-button,
+.casino-settings-button {
+  min-width: 0;
+  width: 100%;
+  min-height: 46px;
+  border-radius: 14px;
+  font-size: 1.15rem;
+}
+
+.casino-pill {
+  min-height: 46px;
+  padding: 6px 9px;
+}
+
+.casino-logo-wrap {
+  min-height: clamp(116px, 21dvh, 162px);
+  padding-top: 10px;
+}
+
+.casino-logo-cards i {
+  width: clamp(54px, 15vw, 74px);
+  height: clamp(74px, 21vw, 102px);
+}
+
+.casino-logo-wrap h1 {
+  font-size: clamp(2.45rem, 11.5vw, 4.8rem);
+}
+
+.casino-stat-panels article {
+  min-height: 74px;
+  padding: 10px;
+}
+
+.casino-play-button {
+  min-height: clamp(66px, 10dvh, 88px);
+  font-size: clamp(1.95rem, 9.5vw, 3.4rem);
+}
+
+.casino-secondary-grid button {
+  min-height: 68px;
+}
+
+.game-shell {
+  max-width: 680px;
+  padding: calc(14px + var(--safe-top)) calc(18px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(18px + var(--safe-left));
+}
+
+.table-card-slot {
+  max-height: min(31dvh, 270px);
+}
+
+.hand-zone .card {
+  max-width: 126px;
+}
+
+.casino-level-map {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-items: center;
+  gap: clamp(14px, 4vw, 22px);
+}
+
+.casino-level-map .map-pot {
+  display: grid;
+  width: min(40vw, 154px);
+  min-width: 122px;
+  max-width: 154px;
+  aspect-ratio: 1;
+  min-height: 0;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  padding: 13px;
+  border-width: 3px;
+  border-radius: 50%;
+  text-align: center;
+  background:
+    radial-gradient(circle at 34% 22%, rgba(255, 255, 255, .16), transparent 24%),
+    radial-gradient(circle at 50% 62%, rgba(255, 191, 63, .16), transparent 44%),
+    linear-gradient(180deg, rgba(20, 49, 82, .98), rgba(4, 12, 24, .98));
+}
+
+.casino-level-map .map-pot span {
+  font-size: clamp(.78rem, 3.2vw, .96rem);
+}
+
+.casino-level-map .map-pot strong {
+  color: #ffe894;
+  font-size: clamp(1.05rem, 5.1vw, 1.72rem);
+  line-height: 1;
+}
+
+.casino-level-map .map-pot small {
+  color: rgba(246, 230, 189, .66);
+  font-size: clamp(.58rem, 2.5vw, .72rem);
+  text-transform: uppercase;
+}
+
+.casino-level-map .map-pot i {
+  width: 72%;
+  height: 7px;
+}
+
+@media (max-width: 390px) {
+  .casino-menu-screen {
+    padding-inline: calc(12px + var(--safe-left)) calc(12px + var(--safe-right));
+  }
+
+  .casino-top-row {
+    grid-template-columns: minmax(0, 1fr) 40px minmax(92px, .82fr) 74px;
+    gap: 5px;
+  }
+
+  .casino-theme-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .casino-pill,
+  .casino-leader-button,
+  .casino-settings-button {
+    min-height: 40px;
+  }
+
+  .pill-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .casino-level-map .map-pot {
+    min-width: 112px;
+    width: min(39vw, 142px);
+  }
+
+  .game-shell {
+    padding-inline: calc(14px + var(--safe-left)) calc(14px + var(--safe-right));
+  }
+}
+
 /* Mobile menu fit pass: keep the casino table inside narrow phone viewports. */
 .main-menu-screen {
   padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);

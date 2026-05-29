@@ -1,6 +1,6 @@
-import { getCrunchPreview } from "./gameState.js?v=51";
-import { getLevelProgress } from "./progression.js?v=51";
-import { formatCompactNumber } from "./format.js?v=51";
+import { getCrunchPreview } from "./gameState.js?v=52";
+import { getLevelProgress } from "./progression.js?v=52";
+import { formatCompactNumber } from "./format.js?v=52";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -98,8 +98,9 @@ export function createUI() {
         button.className = `map-pot ${pot.complete ? "is-complete" : ""} ${hasSavedRun ? "has-save" : ""}`;
         button.type = "button";
         button.innerHTML = `
-          <span>${hasSavedRun ? "Continue Pot" : "Pot"} ${pot.id}</span>
-          <strong>${hasSavedRun ? "Saved Run" : pot.complete ? "Full" : `${formatCompactNumber(Math.max(0, pot.target - pot.progress))} left`}</strong>
+          <span>${hasSavedRun ? "Continue" : "Pot"} ${pot.id}</span>
+          <strong>${hasSavedRun ? "Saved" : pot.complete ? "Full" : formatCompactNumber(Math.max(0, pot.target - pot.progress))}</strong>
+          <small>${pot.complete ? "Cleared" : "Needed"}</small>
           <i><b style="width: ${progress * 100}%"></b></i>
         `;
         button.addEventListener("click", () => handlers.onLevelSelect(pot.id));
