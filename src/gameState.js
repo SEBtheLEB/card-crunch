@@ -1,10 +1,10 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=53";
-import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=53";
-import { createDefaultPots, getPotCheckpoint, getTargetForLevel, isPotUnlocked } from "./progression.js?v=53";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=53";
-import { ensurePlayableHand } from "./handSafety.js?v=53";
-import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=53";
-import { formatCompactNumber } from "./format.js?v=53";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=54";
+import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=54";
+import { createDefaultPots, getPotCheckpoint, getTargetForLevel, isPotUnlocked } from "./progression.js?v=54";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=54";
+import { ensurePlayableHand } from "./handSafety.js?v=54";
+import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=54";
+import { formatCompactNumber } from "./format.js?v=54";
 import {
   animateBust,
   animateSelectionResolve,
@@ -186,10 +186,9 @@ export function createGame(ui) {
     ui.elements.scoreValue.textContent = formatCompactNumber(state.score);
     ui.elements.streakValue.textContent = String(state.streak);
     discardSelectedCards();
-    refillHand();
-    ui.render(state, handlers);
 
     if (state.activePot?.complete) {
+      refillHand();
       await clearTarget();
       return;
     }
@@ -221,8 +220,8 @@ export function createGame(ui) {
       protectedBust: false
     });
     discardSelectedCards();
-    refillHand();
     if (state.misses >= state.maxMisses) {
+      refillHand();
       gameOver();
       return;
     }
@@ -257,9 +256,10 @@ export function createGame(ui) {
   }
 
   function startNewRound() {
+    const hasReplacementSlots = state.hand.some((card) => !card);
     state.stack.forEach((card) => state.discard.push(card));
     state.stack = drawCards(state, state.baseStackCount);
-    ensurePlayableHand(state);
+    refillHand({ allowOccupiedSafety: !hasReplacementSlots });
     state.selectedHandIndexes = [];
     state.timeLeft = state.turnSeconds;
     state.status = "playing";
@@ -302,21 +302,33 @@ export function createGame(ui) {
 
   function discardSelectedCards() {
     const selected = new Set(state.selectedHandIndexes);
-    state.hand = state.hand.filter((card, index) => {
+    state.hand = state.hand.map((card, index) => {
       if (selected.has(index)) {
-        state.discard.push(card);
-        return false;
+        if (card) state.discard.push(card);
+        return null;
       }
-      return true;
+      return card;
     });
     state.selectedHandIndexes = [];
   }
 
-  function refillHand() {
-    while (state.hand.length < 4) {
-      state.hand.push(drawCards(state, 1)[0]);
+  function refillHand({ allowOccupiedSafety = false } = {}) {
+    const replacementIndexes = [];
+
+    while (state.hand.length < 4) state.hand.push(null);
+    if (state.hand.length > 4) state.hand = state.hand.slice(0, 4);
+
+    for (let index = 0; index < 4; index += 1) {
+      if (!state.hand[index]) {
+        state.hand[index] = drawCards(state, 1)[0];
+        replacementIndexes.push(index);
+      }
     }
-    ensurePlayableHand(state);
+
+    ensurePlayableHand(state, {
+      allowedIndexes: replacementIndexes,
+      replaceOccupied: allowOccupiedSafety
+    });
   }
 
   function gameOver() {
