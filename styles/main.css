@@ -2106,6 +2106,17 @@ h2 {
   }
 }
 
+@keyframes hudBankBump {
+  0%, 100% {
+    transform: translateX(-50%) scale(1);
+  }
+  45% {
+    transform: translateX(-50%) scale(1.12);
+    color: #fff6c9;
+    filter: drop-shadow(0 0 18px var(--gold-glow));
+  }
+}
+
 @keyframes cutinOperatorSlam {
   from { opacity: 0; transform: scale(.5) rotate(-5deg); }
   70% { transform: scale(1.18) rotate(2deg); }
@@ -3664,11 +3675,13 @@ button,
 
 .score-panel.is-hud-bank-floating {
   position: fixed;
-  left: var(--bank-left);
+  left: 50%;
   top: var(--bank-top);
-  width: var(--bank-width);
+  width: min(var(--bank-width), calc(100vw - 24px - var(--safe-left) - var(--safe-right)));
   height: var(--bank-height);
   z-index: 74;
+  transform: translateX(-50%);
+  transform-origin: center center;
 }
 
 .score-panel.is-crunch-bank .hud-label {
@@ -3691,6 +3704,32 @@ button,
 
 .score-panel.bank-final-flash {
   animation: bankFinalFlash .42s ease both;
+}
+
+.score-panel.is-hud-bank-floating.bank-bump,
+.score-panel.is-hud-bank-floating.score-bump {
+  animation: hudBankBump .28s cubic-bezier(.18, 1.45, .35, 1) both;
+}
+
+.score-panel.is-hud-bank-floating.bank-final-flash {
+  animation: bankFinalFlash .42s ease both;
+}
+
+body.is-crunch-focus-active .game-shell > :not(.hud) {
+  opacity: .32;
+  filter: blur(3px) saturate(.72) brightness(.7);
+  transition: opacity .14s ease, filter .14s ease;
+}
+
+body.is-crunch-focus-active .hud .streak-panel {
+  opacity: .2;
+  filter: blur(2px) saturate(.65);
+  transition: opacity .14s ease, filter .14s ease;
+}
+
+body.is-crunch-focus-active .score-panel.is-hud-bank-floating {
+  opacity: 1;
+  filter: none;
 }
 
 @media (max-width: 390px) {
