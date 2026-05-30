@@ -1,10 +1,10 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=54";
-import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=54";
-import { createDefaultPots, getPotCheckpoint, getTargetForLevel, isPotUnlocked } from "./progression.js?v=54";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=54";
-import { ensurePlayableHand } from "./handSafety.js?v=54";
-import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=54";
-import { formatCompactNumber } from "./format.js?v=54";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=55";
+import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=55";
+import { createDefaultPots, getPotCheckpoint, getTargetForLevel, isPotUnlocked } from "./progression.js?v=55";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=55";
+import { ensurePlayableHand } from "./handSafety.js?v=55";
+import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=55";
+import { formatCompactNumber } from "./format.js?v=55";
 import {
   animateBust,
   animateSelectionResolve,
@@ -133,6 +133,7 @@ export function createGame(ui) {
         resolution: crunch.resolution,
         fail: true,
         onEntryResolved: async (entry) => {
+          ui.setMessage(entry.cutinLabel ?? entry.label, "good");
           await playCrunchEntryExplanation({
             entry: createCutsceneEntry(entry),
             tier: "normal"
@@ -147,7 +148,12 @@ export function createGame(ui) {
       return;
     }
 
-    const crunchBank = createCrunchBankCounter();
+    const crunchBank = createCrunchBankCounter({
+      panelEl: ui.elements.scorePanel,
+      labelEl: ui.elements.scoreLabel,
+      valueEl: ui.elements.scoreValue,
+      startingValue: state.score
+    });
     try {
       await animateSelectionResolve({
         selectedHandCards: state.selectedHandIndexes.map((index) => ui.getHandCardElement(index)),
@@ -155,6 +161,7 @@ export function createGame(ui) {
         resolution: crunch.resolution,
         fail: false,
         onEntryResolved: async (entry, index) => {
+          ui.setMessage(crunch.cutscene.entries[index]?.label ?? entry.cutinLabel ?? entry.label, "good");
           await playCrunchEntryExplanation({
             entry: crunch.cutscene.entries[index] ?? createCutsceneEntry(entry),
             tier: crunch.cutscene.tier,
@@ -170,6 +177,7 @@ export function createGame(ui) {
         breakdown: crunch.breakdown,
         bank: crunchBank
       });
+      ui.setMessage(`+${formatCompactNumber(crunch.total)} Crunch`, "good");
     } catch (error) {
       crunchBank.remove();
       throw error;

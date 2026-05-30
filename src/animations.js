@@ -1,5 +1,42 @@
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function createSequenceAdvanceController() {
+  const waiters = new Set();
+  const onAdvance = (event) => {
+    if (document.querySelector(".crunch-cutscene-overlay")) return;
+    event.preventDefault();
+    const [next] = waiters;
+    if (next) next();
+  };
+
+  document.addEventListener("pointerup", onAdvance, { capture: true });
+
+  return {
+    wait(ms) {
+      return new Promise((resolve) => {
+        let finished = false;
+        const finish = () => {
+          if (finished) return;
+          finished = true;
+          window.clearTimeout(timeoutId);
+          waiters.delete(finish);
+          resolve();
+        };
+        const timeoutId = window.setTimeout(finish, ms);
+        waiters.add(finish);
+      });
+    },
+    destroy() {
+      waiters.clear();
+      document.removeEventListener("pointerup", onAdvance, { capture: true });
+    }
+  };
+}
+
+function waitForAnimation(advance, ms) {
+  return advance ? advance.wait(ms) : sleep(ms);
+}
+
 export const soundHooks = {
   card_select: null,
   card_deselect: null,
@@ -105,33 +142,38 @@ export async function animateStackAdd({ handCard, matchedCards, matchedSlots, ma
 export async function animateSelectionResolve({ selectedHandCards, baseStackCards, resolution, fail, onEntryResolved }) {
   const activeVisualCards = [...baseStackCards];
   const limit = fail ? resolution.failedIndex : selectedHandCards.length;
+  const advance = createSequenceAdvanceController();
 
-  for (let i = 0; i < limit; i += 1) {
-    const handCard = selectedHandCards[i];
-    const entry = resolution.history[i];
-    const matchedCards = entry.matchedIndexes.map((index) => activeVisualCards[index]).filter(Boolean);
-    playSfx("card_resolve");
-    const particleType = entry.matchType === "suit" ? "suit" : entry.matchType === "rank" ? "rank" : "math";
-    handCard?.classList.add("card-selected", "resolve-selected-card", "is-vibrating");
-    matchedCards.forEach((card) => card.classList.add("card-match-glow", "resolve-reference-card", "is-vibrating"));
-    burstAround(handCard, 14, particleType);
-    matchedCards.forEach((card) => burstAround(card, 14, particleType));
-    if (entry.matchType === "add" || entry.matchType === "subtract") drawComboStreak(handCard, matchedCards);
-    await sleep(560);
-    await popStoredLabel(handCard, `+${entry.basePoints} ${getShortMatchLabel(entry)}`, particleType);
-    await onEntryResolved?.(entry, i);
-    matchedCards.forEach((card) => card.classList.remove("card-match-glow", "resolve-reference-card", "is-vibrating"));
-    handCard?.classList.remove("card-selected", "resolve-selected-card", "is-vibrating");
-    if (handCard) activeVisualCards.push(handCard);
-    await sleep(120);
-  }
+  try {
+    for (let i = 0; i < limit; i += 1) {
+      const handCard = selectedHandCards[i];
+      const entry = resolution.history[i];
+      const matchedCards = entry.matchedIndexes.map((index) => activeVisualCards[index]).filter(Boolean);
+      playSfx("card_resolve");
+      const particleType = entry.matchType === "suit" ? "suit" : entry.matchType === "rank" ? "rank" : "math";
+      handCard?.classList.add("card-selected", "resolve-selected-card", "is-vibrating");
+      matchedCards.forEach((card) => card.classList.add("card-match-glow", "resolve-reference-card", "is-vibrating"));
+      burstAround(handCard, 14, particleType);
+      matchedCards.forEach((card) => burstAround(card, 14, particleType));
+      if (entry.matchType === "add" || entry.matchType === "subtract") drawComboStreak(handCard, matchedCards);
+      await advance.wait(560);
+      await popStoredLabel(handCard, `+${entry.basePoints} ${getShortMatchLabel(entry)}`, particleType, advance);
+      await onEntryResolved?.(entry, i);
+      matchedCards.forEach((card) => card.classList.remove("card-match-glow", "resolve-reference-card", "is-vibrating"));
+      handCard?.classList.remove("card-selected", "resolve-selected-card", "is-vibrating");
+      if (handCard) activeVisualCards.push(handCard);
+      await advance.wait(120);
+    }
 
-  if (fail) {
-    const failedCard = selectedHandCards[resolution.failedIndex];
-    failedCard?.classList.add("is-invalid");
-    burstAround(failedCard, 20, "red");
-    await sleep(520);
-    failedCard?.classList.remove("is-invalid");
+    if (fail) {
+      const failedCard = selectedHandCards[resolution.failedIndex];
+      failedCard?.classList.add("is-invalid");
+      burstAround(failedCard, 20, "red");
+      await advance.wait(520);
+      failedCard?.classList.remove("is-invalid");
+    }
+  } finally {
+    advance.destroy();
   }
 }
 
@@ -192,7 +234,7 @@ export async function animateTimeout({ boardEl }) {
   boardEl?.classList.remove("board-shake");
 }
 
-async function popStoredLabel(sourceEl, label, type = "gold") {
+async function popStoredLabel(sourceEl, label, type = "gold", advance = null) {
   if (!sourceEl) return;
   const rect = sourceEl.getBoundingClientRect();
   const el = document.createElement("div");
@@ -202,7 +244,7 @@ async function popStoredLabel(sourceEl, label, type = "gold") {
   el.style.top = `${rect.top + rect.height * .15}px`;
   document.body.appendChild(el);
   spawnSparkBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, 8, type);
-  await sleep(520);
+  await waitForAnimation(advance, 520);
   el.remove();
 }
 

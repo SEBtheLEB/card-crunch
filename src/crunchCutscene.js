@@ -1,4 +1,4 @@
-import { formatCompactNumber } from "./format.js?v=54";
+import { formatCompactNumber } from "./format.js?v=55";
 
 const CUTSCENE_CONFIG = {
   showEveryResolvedCard: true,
@@ -13,17 +13,34 @@ const CUTSCENE_CONFIG = {
   fadeOutDuration: 160
 };
 
-export function createCrunchBankCounter() {
-  const element = document.createElement("div");
-  element.className = "cutin-bank-counter";
-  element.innerHTML = `
-    <span>Crunch Bank</span>
-    <strong>0</strong>
-  `;
-  document.body.appendChild(element);
+export function createCrunchBankCounter({ panelEl = null, labelEl = null, valueEl = null, startingValue = 0 } = {}) {
+  const useHudPanel = Boolean(panelEl && valueEl);
+  const element = useHudPanel ? panelEl : document.createElement("div");
+  const originalLabel = labelEl?.innerHTML ?? "";
+  const originalValue = valueEl?.textContent ?? "0";
+  let finished = false;
+
+  if (useHudPanel) {
+    const rect = element.getBoundingClientRect();
+    element.style.setProperty("--bank-left", `${rect.left}px`);
+    element.style.setProperty("--bank-top", `${rect.top}px`);
+    element.style.setProperty("--bank-width", `${rect.width}px`);
+    element.style.setProperty("--bank-height", `${rect.height}px`);
+    element.classList.add("is-crunch-bank", "is-hud-bank-floating");
+    element.setAttribute("aria-label", "Crunch Bank");
+    if (labelEl) labelEl.textContent = "Crunch Bank";
+    valueEl.textContent = "0";
+  } else {
+    element.className = "cutin-bank-counter";
+    element.innerHTML = `
+      <span>Crunch Bank</span>
+      <strong>0</strong>
+    `;
+    document.body.appendChild(element);
+    valueEl = element.querySelector("strong");
+  }
 
   let value = 0;
-  const valueEl = element.querySelector("strong");
 
   return {
     element,
@@ -56,16 +73,42 @@ export function createCrunchBankCounter() {
       element.classList.remove("bank-bump");
     },
     async finishToScore(scoreEl, advance = null) {
+      finished = true;
       element.classList.add("bank-final-flash");
       await waitMaybe(advance, 260);
-      flyGhostToScore(valueEl, scoreEl.getBoundingClientRect());
-      await waitMaybe(advance, 620);
-      element.remove();
+      if (useHudPanel) {
+        if (labelEl) labelEl.innerHTML = originalLabel;
+        element.setAttribute("aria-label", "Score");
+        await countBankTo(valueEl, value, startingValue + value, advance);
+        element.classList.add("score-bump");
+        await waitMaybe(advance, 320);
+        restoreHudBank(element);
+      } else {
+        flyGhostToScore(valueEl, scoreEl.getBoundingClientRect());
+        await waitMaybe(advance, 620);
+        element.remove();
+      }
     },
     remove() {
-      element.remove();
+      if (useHudPanel) {
+        restoreHudBank(element);
+        if (!finished) {
+          if (labelEl) labelEl.innerHTML = originalLabel;
+          valueEl.textContent = originalValue;
+        }
+      } else {
+        element.remove();
+      }
     }
   };
+}
+
+function restoreHudBank(element) {
+  element.classList.remove("is-crunch-bank", "is-hud-bank-floating", "bank-final-flash", "bank-bump", "score-bump");
+  element.style.removeProperty("--bank-left");
+  element.style.removeProperty("--bank-top");
+  element.style.removeProperty("--bank-width");
+  element.style.removeProperty("--bank-height");
 }
 
 export async function playCrunchExplanation({ cutscene, scoreEl }) {

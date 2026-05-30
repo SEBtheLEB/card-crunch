@@ -1,6 +1,6 @@
-import { getCrunchPreview } from "./gameState.js?v=54";
-import { getLevelProgress, getNextPotCheckpoint, isPotUnlocked } from "./progression.js?v=54";
-import { formatCompactNumber } from "./format.js?v=54";
+import { getCrunchPreview } from "./gameState.js?v=55";
+import { getLevelProgress, getNextPotCheckpoint, isPotUnlocked } from "./progression.js?v=55";
+import { formatCompactNumber } from "./format.js?v=55";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -8,6 +8,8 @@ export function createUI() {
     shell: document.querySelector("#gameShell"),
     tableZone: document.querySelector("#tableZone"),
     handZone: document.querySelector("#handZone"),
+    scorePanel: document.querySelector(".score-panel"),
+    scoreLabel: document.querySelector(".score-panel .hud-label"),
     scoreValue: document.querySelector("#scoreValue"),
     streakValue: document.querySelector("#streakValue"),
     timerValue: document.querySelector("#timerValue"),
@@ -20,7 +22,7 @@ export function createUI() {
     stackMultiplierValue: document.querySelector("#stackMultiplierValue"),
     crunchButton: document.querySelector("#crunchButton"),
     missValue: document.querySelector("#missValue"),
-    deckValue: document.querySelector("#deckValue"),
+    comboStreamValue: document.querySelector("#comboStreamValue"),
     comboLabel: document.querySelector("#comboLabel"),
     startScreen: document.querySelector("#startScreen"),
     mapScreen: document.querySelector("#mapScreen"),
@@ -68,12 +70,14 @@ export function createUI() {
     setMessage(message, tone = "neutral") {
       elements.comboLabel.textContent = message;
       elements.comboLabel.dataset.tone = tone;
+      updateComboStream(elements, message || "Ready", tone);
       elements.comboLabel.classList.remove("pop-message");
       requestAnimationFrame(() => elements.comboLabel.classList.add("pop-message"));
     },
     clearMessage() {
       elements.comboLabel.textContent = "";
       elements.comboLabel.dataset.tone = "neutral";
+      updateComboStream(elements, "Ready", "neutral");
     },
     showStart(show) {
       elements.startScreen.classList.toggle("is-visible", show);
@@ -141,7 +145,6 @@ function renderHud(elements, state) {
   elements.streakValue.textContent = String(state.streak ?? 0);
   elements.timerValue.textContent = `${Math.ceil(state.timeLeft)}s`;
   elements.missValue.textContent = `${state.misses}/${state.maxMisses}`;
-  elements.deckValue.textContent = String(state.deck.length);
   elements.levelValue.textContent = isEndless ? "∞" : String(state.level ?? 1);
   elements.targetValue.textContent = typeof levelProgress.remaining === "number" ? formatCompactNumber(levelProgress.remaining) : levelProgress.remaining;
   elements.targetFill.style.setProperty("--target-progress", `${levelProgress.progress}`);
@@ -156,16 +159,22 @@ function renderHud(elements, state) {
     if (state.score > previousCounters.score) popCounter(elements.scoreValue, "gold");
     if (state.streak > previousCounters.streak) popCounter(elements.streakValue, state.streak >= 10 ? "fever" : "gold");
     if (state.misses > previousCounters.misses) popCounter(elements.missValue, "red");
-    if (state.deck.length > previousCounters.deck) popCounter(elements.deckValue, "blue");
   }
 
   elements._counterCache = {
     score: state.score,
     streak: state.streak,
     misses: state.misses,
-    deck: state.deck.length
+    combo: elements.comboStreamValue?.textContent ?? ""
   };
   renderMenuStats(elements, state);
+}
+
+function updateComboStream(elements, text, tone = "neutral") {
+  if (!elements.comboStreamValue) return;
+  elements.comboStreamValue.textContent = text;
+  elements.comboStreamValue.dataset.tone = tone;
+  popCounter(elements.comboStreamValue, tone === "bad" ? "red" : tone === "good" ? "gold" : "blue");
 }
 
 function showMenuPage(elements, pageName = "home") {
