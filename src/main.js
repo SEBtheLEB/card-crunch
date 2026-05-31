@@ -1,6 +1,6 @@
-import { createGame } from "./gameState.js?v=56";
-import { createUI } from "./ui.js?v=56";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=56";
+import { createGame } from "./gameState.js?v=57";
+import { createUI } from "./ui.js?v=57";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=57";
 
 const ui = createUI();
 const game = createGame(ui);

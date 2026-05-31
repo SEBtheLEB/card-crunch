@@ -166,11 +166,15 @@ button {
   text-shadow: var(--text-shadow);
 }
 
-.streak-panel strong {
+.combo-panel strong {
   gap: 5px;
-  color: #ff7439;
-  font-size: clamp(1.7rem, 8vw, 3.6rem);
-  text-shadow: 0 3px 0 #05070a, 0 0 16px rgba(255, 90, 38, .7);
+  color: var(--gold-hot);
+  font-size: clamp(.86rem, 3.55vw, 1.36rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 0 14px rgba(255, 191, 63, .56), 0 2px 0 #05070a;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .flame-icon {
@@ -3599,7 +3603,7 @@ button,
   }
 }
 
-/* Crunch HUD refinement: score becomes the central bank, combo stream replaces deck count. */
+/* Crunch HUD refinement: score becomes the central bank, combo lives in the top chip. */
 .hud {
   position: relative;
   grid-template-columns: minmax(0, 1fr);
@@ -3617,7 +3621,7 @@ button,
   font-size: clamp(2rem, 9.5vw, 4.45rem);
 }
 
-.streak-panel {
+.combo-panel {
   position: absolute;
   top: 50%;
   right: 0;
@@ -3628,21 +3632,21 @@ button,
   z-index: 2;
 }
 
-.streak-panel .hud-label {
+.combo-panel .hud-label {
   font-size: clamp(.55rem, 2.25vw, .78rem);
 }
 
-.streak-panel strong {
+.combo-panel strong {
   min-height: 26px;
   margin-top: 2px;
-  font-size: clamp(1rem, 5vw, 1.75rem);
+  font-size: clamp(.78rem, 3.3vw, 1.08rem);
 }
 
 .bottom-status {
   grid-template-columns: minmax(70px, .72fr) auto minmax(112px, 1.18fr);
 }
 
-.combo-stream-panel strong {
+.combo-panel strong {
   width: 100%;
   max-width: 100%;
   padding-inline: 4px;
@@ -3655,12 +3659,17 @@ button,
   white-space: nowrap;
 }
 
-.combo-stream-panel strong[data-tone="bad"] {
+.combo-panel strong[data-tone="bad"] {
   color: #ff746f;
 }
 
-.combo-stream-panel strong[data-tone="good"] {
+.combo-panel strong[data-tone="good"] {
   color: var(--gold-hot);
+}
+
+.streak-status-panel strong {
+  color: #ff7439;
+  text-shadow: 0 0 14px rgba(255, 100, 38, .48), 0 2px 0 #05070a;
 }
 
 .score-panel.is-crunch-bank {
@@ -3721,7 +3730,7 @@ body.is-crunch-focus-active .game-shell > :not(.hud) {
   transition: opacity .14s ease, filter .14s ease;
 }
 
-body.is-crunch-focus-active .hud .streak-panel {
+body.is-crunch-focus-active .hud .combo-panel {
   opacity: .2;
   filter: blur(2px) saturate(.65);
   transition: opacity .14s ease, filter .14s ease;
@@ -3746,7 +3755,7 @@ body.is-crunch-focus-active .score-panel.is-hud-bank-floating {
     font-size: clamp(1.65rem, 8.2vw, 3.2rem);
   }
 
-  .streak-panel {
+  .combo-panel {
     width: clamp(68px, 21vw, 88px);
   }
 

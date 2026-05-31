@@ -1,4 +1,4 @@
-import { formatCompactNumber } from "./format.js?v=56";
+import { formatCompactNumber } from "./format.js?v=57";
 
 const CUTSCENE_CONFIG = {
   showEveryResolvedCard: true,
@@ -25,7 +25,6 @@ export function createCrunchBankCounter({ panelEl = null, labelEl = null, valueE
     element.style.setProperty("--bank-top", `${Math.max(rect.top, 10)}px`);
     element.style.setProperty("--bank-width", `${rect.width}px`);
     element.style.setProperty("--bank-height", `${rect.height}px`);
-    document.body.classList.add("is-crunch-focus-active");
     element.classList.add("is-crunch-bank", "is-hud-bank-floating");
     element.setAttribute("aria-label", "Crunch Bank");
     if (labelEl) labelEl.textContent = "Crunch Bank";
@@ -105,7 +104,6 @@ export function createCrunchBankCounter({ panelEl = null, labelEl = null, valueE
 
 function restoreHudBank(element) {
   element.classList.remove("is-crunch-bank", "is-hud-bank-floating", "bank-final-flash", "bank-bump", "score-bump");
-  document.body.classList.remove("is-crunch-focus-active");
   element.style.removeProperty("--bank-top");
   element.style.removeProperty("--bank-width");
   element.style.removeProperty("--bank-height");
@@ -309,6 +307,7 @@ function createOverlay(tier) {
   overlay.className = `crunch-cutscene-overlay cutscene-${tier}`;
   overlay.setAttribute("aria-live", "assertive");
   overlay.setAttribute("aria-label", "Crunch explanation. Tap to advance.");
+  document.body.classList.add("is-crunch-focus-active");
   return overlay;
 }
 
@@ -364,6 +363,7 @@ function createAdvanceController(overlay) {
     },
     destroy() {
       waiters.clear();
+      document.body.classList.remove("is-crunch-focus-active");
       overlay.removeEventListener("pointerup", onAdvance);
     }
   };

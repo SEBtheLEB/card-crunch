@@ -1,6 +1,6 @@
-import { getCrunchPreview } from "./gameState.js?v=56";
-import { getLevelProgress, getNextPotCheckpoint, isPotUnlocked } from "./progression.js?v=56";
-import { formatCompactNumber } from "./format.js?v=56";
+import { getCrunchPreview } from "./gameState.js?v=57";
+import { getLevelProgress, getNextPotCheckpoint, isPotUnlocked } from "./progression.js?v=57";
+import { formatCompactNumber } from "./format.js?v=57";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
