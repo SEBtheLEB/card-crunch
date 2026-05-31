@@ -166,17 +166,6 @@ button {
   text-shadow: var(--text-shadow);
 }
 
-.combo-panel strong {
-  gap: 5px;
-  color: var(--gold-hot);
-  font-size: clamp(.86rem, 3.55vw, 1.36rem);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 0 14px rgba(255, 191, 63, .56), 0 2px 0 #05070a;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
 .flame-icon {
   display: inline-grid;
   place-items: center;
@@ -3614,57 +3603,15 @@ button,
 .score-panel {
   width: min(100%, 560px);
   justify-self: center;
-  padding-inline: clamp(76px, 22vw, 142px);
+  padding-inline: clamp(10px, 4vw, 24px);
 }
 
 .score-panel strong {
   font-size: clamp(2rem, 9.5vw, 4.45rem);
 }
 
-.combo-panel {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  width: clamp(76px, 22vw, 130px);
-  min-height: clamp(44px, 6.8dvh, 62px);
-  padding: 6px 7px;
-  transform: translateY(-50%);
-  z-index: 2;
-}
-
-.combo-panel .hud-label {
-  font-size: clamp(.55rem, 2.25vw, .78rem);
-}
-
-.combo-panel strong {
-  min-height: 26px;
-  margin-top: 2px;
-  font-size: clamp(.78rem, 3.3vw, 1.08rem);
-}
-
 .bottom-status {
   grid-template-columns: minmax(70px, .72fr) auto minmax(112px, 1.18fr);
-}
-
-.combo-panel strong {
-  width: 100%;
-  max-width: 100%;
-  padding-inline: 4px;
-  color: var(--gold-hot);
-  font-size: clamp(.78rem, 3.35vw, 1.16rem);
-  line-height: .95;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.combo-panel strong[data-tone="bad"] {
-  color: #ff746f;
-}
-
-.combo-panel strong[data-tone="good"] {
-  color: var(--gold-hot);
 }
 
 .streak-status-panel strong {
@@ -3688,9 +3635,15 @@ button,
   top: var(--bank-top);
   width: min(var(--bank-width), calc(100vw - 24px - var(--safe-left) - var(--safe-right)));
   height: var(--bank-height);
-  z-index: 74;
+  z-index: 90;
   transform: translateX(-50%);
   transform-origin: center center;
+  pointer-events: none;
+}
+
+.score-bank-placeholder {
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .score-panel.is-crunch-bank .hud-label {
@@ -3730,12 +3683,6 @@ body.is-crunch-focus-active .game-shell > :not(.hud) {
   transition: opacity .14s ease, filter .14s ease;
 }
 
-body.is-crunch-focus-active .hud .combo-panel {
-  opacity: .2;
-  filter: blur(2px) saturate(.65);
-  transition: opacity .14s ease, filter .14s ease;
-}
-
 body.is-crunch-focus-active .score-panel.is-hud-bank-floating {
   opacity: 1;
   filter: none;
@@ -3746,17 +3693,8 @@ body.is-crunch-focus-active .score-panel.is-hud-bank-floating {
     min-height: clamp(68px, 10.5dvh, 88px);
   }
 
-  .score-panel {
-    padding-left: clamp(10px, 3vw, 16px);
-    padding-right: clamp(72px, 23vw, 94px);
-  }
-
   .score-panel strong {
     font-size: clamp(1.65rem, 8.2vw, 3.2rem);
-  }
-
-  .combo-panel {
-    width: clamp(68px, 21vw, 88px);
   }
 
   .bottom-status {

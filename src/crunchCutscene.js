@@ -1,4 +1,4 @@
-import { formatCompactNumber } from "./format.js?v=57";
+import { formatCompactNumber } from "./format.js?v=59";
 
 const CUTSCENE_CONFIG = {
   showEveryResolvedCard: true,
@@ -18,13 +18,28 @@ export function createCrunchBankCounter({ panelEl = null, labelEl = null, valueE
   const element = useHudPanel ? panelEl : document.createElement("div");
   const originalLabel = labelEl?.innerHTML ?? "";
   const originalValue = valueEl?.textContent ?? "0";
+  const placement = {
+    parent: null,
+    nextSibling: null,
+    placeholder: null
+  };
   let finished = false;
 
   if (useHudPanel) {
     const rect = element.getBoundingClientRect();
+    placement.parent = element.parentNode;
+    placement.nextSibling = element.nextSibling;
+    placement.placeholder = document.createElement("div");
+    placement.placeholder.className = "score-bank-placeholder";
+    placement.placeholder.setAttribute("aria-hidden", "true");
+    placement.placeholder.style.width = `${rect.width}px`;
+    placement.placeholder.style.height = `${rect.height}px`;
+    placement.parent?.insertBefore(placement.placeholder, element);
+
     element.style.setProperty("--bank-top", `${Math.max(rect.top, 10)}px`);
     element.style.setProperty("--bank-width", `${rect.width}px`);
     element.style.setProperty("--bank-height", `${rect.height}px`);
+    document.body.appendChild(element);
     element.classList.add("is-crunch-bank", "is-hud-bank-floating");
     element.setAttribute("aria-label", "Crunch Bank");
     if (labelEl) labelEl.textContent = "Crunch Bank";
@@ -81,7 +96,7 @@ export function createCrunchBankCounter({ panelEl = null, labelEl = null, valueE
         await countBankTo(valueEl, value, startingValue + value, advance);
         element.classList.add("score-bump");
         await waitMaybe(advance, 320);
-        restoreHudBank(element);
+        restoreHudBank(element, placement);
       } else {
         flyGhostToScore(valueEl, scoreEl.getBoundingClientRect());
         await waitMaybe(advance, 620);
@@ -90,7 +105,7 @@ export function createCrunchBankCounter({ panelEl = null, labelEl = null, valueE
     },
     remove() {
       if (useHudPanel) {
-        restoreHudBank(element);
+        restoreHudBank(element, placement);
         if (!finished) {
           if (labelEl) labelEl.innerHTML = originalLabel;
           valueEl.textContent = originalValue;
@@ -102,7 +117,14 @@ export function createCrunchBankCounter({ panelEl = null, labelEl = null, valueE
   };
 }
 
-function restoreHudBank(element) {
+function restoreHudBank(element, placement = {}) {
+  if (placement.placeholder?.parentNode) {
+    placement.placeholder.parentNode.insertBefore(element, placement.placeholder);
+    placement.placeholder.remove();
+  } else if (placement.parent && element.parentNode !== placement.parent) {
+    placement.parent.insertBefore(element, placement.nextSibling);
+  }
+
   element.classList.remove("is-crunch-bank", "is-hud-bank-floating", "bank-final-flash", "bank-bump", "score-bump");
   element.style.removeProperty("--bank-top");
   element.style.removeProperty("--bank-width");

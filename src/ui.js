@@ -1,6 +1,6 @@
-import { getCrunchPreview } from "./gameState.js?v=57";
-import { getLevelProgress, getNextPotCheckpoint, isPotUnlocked } from "./progression.js?v=57";
-import { formatCompactNumber } from "./format.js?v=57";
+import { getCrunchPreview } from "./gameState.js?v=59";
+import { getLevelProgress, getNextPotCheckpoint, isPotUnlocked } from "./progression.js?v=59";
+import { formatCompactNumber } from "./format.js?v=59";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -22,7 +22,6 @@ export function createUI() {
     stackMultiplierValue: document.querySelector("#stackMultiplierValue"),
     crunchButton: document.querySelector("#crunchButton"),
     missValue: document.querySelector("#missValue"),
-    comboStreamValue: document.querySelector("#comboStreamValue"),
     comboLabel: document.querySelector("#comboLabel"),
     startScreen: document.querySelector("#startScreen"),
     mapScreen: document.querySelector("#mapScreen"),
@@ -70,14 +69,12 @@ export function createUI() {
     setMessage(message, tone = "neutral") {
       elements.comboLabel.textContent = message;
       elements.comboLabel.dataset.tone = tone;
-      updateComboStream(elements, message || "Ready", tone);
       elements.comboLabel.classList.remove("pop-message");
       requestAnimationFrame(() => elements.comboLabel.classList.add("pop-message"));
     },
     clearMessage() {
       elements.comboLabel.textContent = "";
       elements.comboLabel.dataset.tone = "neutral";
-      updateComboStream(elements, "Ready", "neutral");
     },
     showStart(show) {
       elements.startScreen.classList.toggle("is-visible", show);
@@ -164,17 +161,9 @@ function renderHud(elements, state) {
   elements._counterCache = {
     score: state.score,
     streak: state.streak,
-    misses: state.misses,
-    combo: elements.comboStreamValue?.textContent ?? ""
+    misses: state.misses
   };
   renderMenuStats(elements, state);
-}
-
-function updateComboStream(elements, text, tone = "neutral") {
-  if (!elements.comboStreamValue) return;
-  elements.comboStreamValue.textContent = text;
-  elements.comboStreamValue.dataset.tone = tone;
-  popCounter(elements.comboStreamValue, tone === "bad" ? "red" : tone === "good" ? "gold" : "blue");
 }
 
 function showMenuPage(elements, pageName = "home") {
