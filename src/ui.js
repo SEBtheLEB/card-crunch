@@ -140,7 +140,7 @@ function renderHud(elements, state) {
     : getLevelProgress(state.score, state.level ?? 1);
   elements.scoreValue.textContent = formatCompactNumber(state.score);
   elements.streakValue.textContent = String(state.streak ?? 0);
-  elements.timerValue.textContent = `${Math.ceil(state.timeLeft)}s`;
+  elements.timerValue.textContent = String(Math.ceil(state.timeLeft));
   elements.missValue.textContent = `${state.misses}/${state.maxMisses}`;
   elements.levelValue.textContent = isEndless ? "∞" : String(state.level ?? 1);
   elements.targetValue.textContent = typeof levelProgress.remaining === "number" ? formatCompactNumber(levelProgress.remaining) : levelProgress.remaining;
@@ -183,7 +183,7 @@ function renderMenuStats(elements, state) {
   const livesLeft = Math.max(0, (state.maxMisses ?? 3) - (state.status === "playing" ? state.misses : 0));
 
   if (elements.menuLivesValue) elements.menuLivesValue.textContent = livesLeft >= (state.maxMisses ?? 3) ? "Full" : String(livesLeft);
-  if (elements.menuEnergyValue) elements.menuEnergyValue.textContent = `${state.turnSeconds - 2}s`;
+  if (elements.menuEnergyValue) elements.menuEnergyValue.textContent = String(state.turnSeconds - 2);
   if (elements.menuCoinsValue) elements.menuCoinsValue.textContent = formatCompactNumber(state.bestScore ?? coins);
   if (elements.menuStreakValue) elements.menuStreakValue.textContent = String(state.streak ?? 0);
   if (elements.profileBestScore) elements.profileBestScore.textContent = formatCompactNumber(state.bestScore ?? 0);
