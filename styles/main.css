@@ -938,6 +938,60 @@ button:disabled {
     0 0 54px rgba(255, 159, 28, .6);
 }
 
+.game-shell.resolve-spotlight::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 215, 95, .14), transparent 36%),
+    rgba(2, 7, 18, .78);
+  backdrop-filter: blur(2px) saturate(.72);
+  -webkit-backdrop-filter: blur(2px) saturate(.72);
+  animation: resolveSpotlightIn .16s ease both;
+}
+
+.game-shell.resolve-spotlight .table-zone,
+.game-shell.resolve-spotlight .hand-zone {
+  position: relative;
+  z-index: 5;
+}
+
+.game-shell.resolve-spotlight .table-zone .card,
+.game-shell.resolve-spotlight .hand-zone .card {
+  opacity: .18;
+  filter: brightness(.25) saturate(.52) blur(.6px);
+  transition: opacity .18s ease, filter .18s ease, transform .18s ease;
+}
+
+.game-shell.resolve-spotlight .table-card-slot {
+  opacity: .3;
+  filter: brightness(.45) saturate(.64);
+  transition: opacity .18s ease, filter .18s ease;
+}
+
+.game-shell.resolve-spotlight .table-card-slot.resolve-reference-slot {
+  position: relative;
+  z-index: 28;
+  opacity: 1;
+  filter: none;
+}
+
+.game-shell.resolve-spotlight .table-zone .resolve-reference-card,
+.game-shell.resolve-spotlight .hand-zone .resolve-selected-card,
+.game-shell.resolve-spotlight .table-card-slot.resolve-reference-slot .card {
+  position: relative;
+  z-index: 30;
+  opacity: 1;
+  filter: drop-shadow(0 0 26px var(--gold-glow)) drop-shadow(0 0 52px rgba(255, 197, 61, .85)) brightness(1.16);
+}
+
+.game-shell.resolve-spotlight .hand-zone .resolve-selected-card {
+  z-index: 32;
+}
+
 .is-vibrating {
   animation: shinePulse .62s ease-in-out infinite alternate;
 }
@@ -2731,6 +2785,11 @@ h2 {
   to {
     filter: drop-shadow(0 0 24px var(--gold-glow)) drop-shadow(0 0 42px rgba(255, 197, 61, .8));
   }
+}
+
+@keyframes resolveSpotlightIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes invalidShake {

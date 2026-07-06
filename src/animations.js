@@ -145,6 +145,7 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
   const activeVisualCards = [...baseStackCards];
   const limit = fail ? resolution.failedIndex : selectedHandCards.length;
   const advance = createSequenceAdvanceController();
+  let clearSpotlight = () => {};
 
   try {
     for (let i = 0; i < limit; i += 1) {
@@ -155,6 +156,7 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
       const particleType = entry.matchType === "suit" ? "suit" : entry.matchType === "rank" ? "rank" : "math";
       handCard?.classList.add("card-selected", "resolve-selected-card", "is-vibrating");
       matchedCards.forEach((card) => card.classList.add("card-match-glow", "resolve-reference-card", "is-vibrating"));
+      clearSpotlight = applyResolveSpotlight([handCard, ...matchedCards]);
       burstAround(handCard, 14, particleType);
       matchedCards.forEach((card) => burstAround(card, 14, particleType));
       if (entry.matchType === "add" || entry.matchType === "subtract") drawComboStreak(handCard, matchedCards);
@@ -163,20 +165,40 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
       await onEntryResolved?.(entry, i);
       matchedCards.forEach((card) => card.classList.remove("card-match-glow", "resolve-reference-card", "is-vibrating"));
       handCard?.classList.remove("card-selected", "resolve-selected-card", "is-vibrating");
+      clearSpotlight();
+      clearSpotlight = () => {};
       if (handCard) activeVisualCards.push(handCard);
       await advance.wait(120);
     }
 
     if (fail) {
       const failedCard = selectedHandCards[resolution.failedIndex];
-      failedCard?.classList.add("is-invalid");
+      failedCard?.classList.add("resolve-selected-card", "is-invalid");
+      clearSpotlight = applyResolveSpotlight([failedCard]);
       burstAround(failedCard, 20, "red");
       await advance.wait(520);
-      failedCard?.classList.remove("is-invalid");
+      failedCard?.classList.remove("resolve-selected-card", "is-invalid");
+      clearSpotlight();
+      clearSpotlight = () => {};
     }
   } finally {
+    clearSpotlight();
     advance.destroy();
   }
+}
+
+function applyResolveSpotlight(cards) {
+  const activeCards = cards.filter(Boolean);
+  const shell = activeCards.find((card) => card.closest(".game-shell"))?.closest(".game-shell") ?? document.querySelector("#gameShell");
+  const slots = activeCards.map((card) => card.closest(".table-card-slot")).filter(Boolean);
+
+  shell?.classList.add("resolve-spotlight");
+  slots.forEach((slot) => slot.classList.add("resolve-reference-slot"));
+
+  return () => {
+    shell?.classList.remove("resolve-spotlight");
+    slots.forEach((slot) => slot.classList.remove("resolve-reference-slot"));
+  };
 }
 
 export async function animateCrunch({ stackCards, crunchButton, scoreEl, breakdown, points, fever }) {

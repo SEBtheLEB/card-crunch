@@ -1,7 +1,7 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=66";
-import { isPotUnlocked } from "./progression.js?v=66";
-import { formatCompactNumber } from "./format.js?v=66";
-import { hasShieldToken } from "./save.js?v=66";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=68";
+import { isPotUnlocked } from "./progression.js?v=68";
+import { formatCompactNumber } from "./format.js?v=68";
+import { hasShieldToken } from "./save.js?v=68";
 
 const POINTER_CLICK_SUPPRESS_MS = 900;
 let lastPointerActionAt = -Infinity;
