@@ -1,18 +1,32 @@
+import {
+  CRUNCH_SKIP_EVENT,
+  hideCrunchSkipText,
+  isCrunchSkipRequested,
+  showCrunchSkipText
+} from "./crunchCutscene.js?v=73";
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function createSequenceAdvanceController() {
   const waiters = new Set();
+  const finishAllWaiters = () => {
+    [...waiters].forEach((finish) => finish());
+  };
   const onAdvance = (event) => {
+    if (event.target?.closest?.(".crunch-skip-text")) return;
     if (document.querySelector(".crunch-cutscene-overlay")) return;
     event.preventDefault();
     const [next] = waiters;
     if (next) next();
   };
+  const onSkipAll = () => finishAllWaiters();
 
   document.addEventListener("pointerup", onAdvance, { capture: true });
+  window.addEventListener(CRUNCH_SKIP_EVENT, onSkipAll);
 
   return {
     wait(ms) {
+      if (isCrunchSkipRequested()) return Promise.resolve();
       return new Promise((resolve) => {
         let finished = false;
         const finish = () => {
@@ -29,6 +43,7 @@ function createSequenceAdvanceController() {
     destroy() {
       waiters.clear();
       document.removeEventListener("pointerup", onAdvance, { capture: true });
+      window.removeEventListener(CRUNCH_SKIP_EVENT, onSkipAll);
     }
   };
 }
@@ -146,6 +161,7 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
   const limit = fail ? resolution.failedIndex : selectedHandCards.length;
   const advance = createSequenceAdvanceController();
   let clearSpotlight = () => {};
+  showCrunchSkipText();
 
   try {
     for (let i = 0; i < limit; i += 1) {
@@ -184,6 +200,7 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
   } finally {
     clearSpotlight();
     advance.destroy();
+    hideCrunchSkipText();
   }
 }
 
@@ -329,6 +346,7 @@ async function showScoreBreakdown({ fromElements, steps }) {
 }
 
 export function spawnSparkBurst(x, y, amount = 12, colorMode = "gold") {
+  const sparkCount = Math.min(amount, getSparkBudget());
   const palette = {
     gold: ["#fff2a8", "#ffd166", "#ff9f1c"],
     suit: ["#9bd6ff", "#42a1ff", "#ffd166"],
@@ -340,7 +358,7 @@ export function spawnSparkBurst(x, y, amount = 12, colorMode = "gold") {
     red: ["#ff8a7a", "#ff4f6d", "#ffb199"]
   }[colorMode] ?? ["#ffd166"];
 
-  for (let i = 0; i < amount; i += 1) {
+  for (let i = 0; i < sparkCount; i += 1) {
     const particle = document.createElement("i");
     particle.className = `spark-particle spark-${colorMode}`;
     const angle = Math.random() * Math.PI * 2;
@@ -360,12 +378,19 @@ export function spawnSparkBurst(x, y, amount = 12, colorMode = "gold") {
 }
 
 function spawnPointTrail(startX, startY, endX, endY, type = "gold") {
-  for (let i = 0; i < 12; i += 1) {
-    const t = i / 12;
+  const trailCount = typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)").matches ? 7 : 9;
+  for (let i = 0; i < trailCount; i += 1) {
+    const t = i / trailCount;
     const x = startX + (endX - startX) * t + (Math.random() - .5) * 28;
     const y = startY + (endY - startY) * t + (Math.random() - .5) * 28;
     window.setTimeout(() => spawnSparkBurst(x, y, 2, type), i * 38);
   }
+}
+
+function getSparkBudget() {
+  if (typeof document !== "undefined" && document.documentElement.classList.contains("reduce-motion")) return 4;
+  if (typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)").matches) return 10;
+  return 16;
 }
 
 function burstAround(element, amount, type) {

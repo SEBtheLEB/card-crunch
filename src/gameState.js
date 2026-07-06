@@ -1,18 +1,18 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=68";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=68";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=68";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=68";
-import { ensurePlayableHand } from "./handSafety.js?v=68";
-import { clearRunSave, consumeShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=68";
-import { formatCompactNumber } from "./format.js?v=68";
-import { adManager } from "./ads.js?v=68";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=73";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=73";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=73";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=73";
+import { ensurePlayableHand } from "./handSafety.js?v=73";
+import { clearRunSave, consumeShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=73";
+import { formatCompactNumber } from "./format.js?v=73";
+import { adManager } from "./ads.js?v=73";
 import {
   animateBust,
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=68";
+} from "./animations.js?v=73";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -157,6 +157,7 @@ export function createGame(ui) {
     state.status = "crunching";
     stopTimer();
     ui.hideBonusBankOffer();
+    resetCrunchSkipRequest();
     ui.render(state, handlers);
 
     const selectedCards = state.selectedHandIndexes.map((index) => state.hand[index]);

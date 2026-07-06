@@ -1,10 +1,7 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=68";
-import { isPotUnlocked } from "./progression.js?v=68";
-import { formatCompactNumber } from "./format.js?v=68";
-import { hasShieldToken } from "./save.js?v=68";
-
-const POINTER_CLICK_SUPPRESS_MS = 900;
-let lastPointerActionAt = -Infinity;
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=73";
+import { isPotUnlocked } from "./progression.js?v=73";
+import { formatCompactNumber } from "./format.js?v=73";
+import { hasShieldToken } from "./save.js?v=73";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -417,16 +414,24 @@ function setInstantAction(element, action) {
   element.onpointerup = null;
   element.onclick = null;
   if (typeof action !== "function") return;
+  let pointerHandled = false;
+  let pointerResetId = 0;
   element.onpointerup = (event) => {
     if (element.disabled) return;
-    lastPointerActionAt = performance.now();
+    pointerHandled = true;
+    window.clearTimeout(pointerResetId);
+    pointerResetId = window.setTimeout(() => {
+      pointerHandled = false;
+    }, 700);
     event.preventDefault();
     event.stopPropagation();
     action(event);
   };
   element.onclick = (event) => {
     if (element.disabled) return;
-    if (performance.now() - lastPointerActionAt < POINTER_CLICK_SUPPRESS_MS) {
+    if (pointerHandled) {
+      pointerHandled = false;
+      window.clearTimeout(pointerResetId);
       event.preventDefault();
       event.stopPropagation();
       return;
@@ -437,16 +442,24 @@ function setInstantAction(element, action) {
 
 function bindInstantAction(element, action) {
   if (!element || typeof action !== "function") return;
+  let pointerHandled = false;
+  let pointerResetId = 0;
   element.addEventListener("pointerup", (event) => {
     if (element.disabled) return;
-    lastPointerActionAt = performance.now();
+    pointerHandled = true;
+    window.clearTimeout(pointerResetId);
+    pointerResetId = window.setTimeout(() => {
+      pointerHandled = false;
+    }, 700);
     event.preventDefault();
     event.stopPropagation();
     action(event);
   });
   element.addEventListener("click", (event) => {
     if (element.disabled) return;
-    if (performance.now() - lastPointerActionAt < POINTER_CLICK_SUPPRESS_MS) {
+    if (pointerHandled) {
+      pointerHandled = false;
+      window.clearTimeout(pointerResetId);
       event.preventDefault();
       event.stopPropagation();
       return;

@@ -1,14 +1,11 @@
-import { createGame } from "./gameState.js?v=68";
-import { createUI } from "./ui.js?v=68";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=68";
-import { adManager } from "./ads.js?v=68";
-import { grantShieldToken, hasShieldToken } from "./save.js?v=68";
+import { createGame } from "./gameState.js?v=73";
+import { createUI } from "./ui.js?v=73";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=73";
+import { adManager } from "./ads.js?v=73";
+import { grantShieldToken, hasShieldToken } from "./save.js?v=73";
 
 const ui = createUI();
 const game = createGame(ui);
-const POINTER_CLICK_SUPPRESS_MS = 900;
-let lastPointerActionAt = -Infinity;
-
 bindInstantButton(ui.elements.startButton, () => ui.showMenuPage("pots"));
 bindInstantButton(ui.elements.backToMenuButton, () => {
   ui.showMap(false);
@@ -71,13 +68,11 @@ function installReactivePressFeedback() {
     "pointerdown",
     (event) => {
       const target = event.target.closest(selector);
-      if (!target) return;
+      if (!target || target.classList.contains("crunch-skip-text")) return;
 
       const rect = target.getBoundingClientRect();
       target.style.setProperty("--tap-x", `${event.clientX - rect.left}px`);
       target.style.setProperty("--tap-y", `${event.clientY - rect.top}px`);
-      target.classList.remove("tap-pop");
-      void target.offsetWidth;
       target.classList.add("tap-pop");
       sprayTapParticles(event.clientX, event.clientY, getTapTone(target));
 
@@ -99,16 +94,24 @@ function installReactivePressFeedback() {
 
 function bindInstantButton(button, action) {
   if (!button || typeof action !== "function") return;
+  let pointerHandled = false;
+  let pointerResetId = 0;
   button.addEventListener("pointerup", (event) => {
     if (button.disabled) return;
-    lastPointerActionAt = performance.now();
+    pointerHandled = true;
+    window.clearTimeout(pointerResetId);
+    pointerResetId = window.setTimeout(() => {
+      pointerHandled = false;
+    }, 700);
     event.preventDefault();
     event.stopPropagation();
     action(event);
   });
   button.addEventListener("click", (event) => {
     if (button.disabled) return;
-    if (performance.now() - lastPointerActionAt < POINTER_CLICK_SUPPRESS_MS) {
+    if (pointerHandled) {
+      pointerHandled = false;
+      window.clearTimeout(pointerResetId);
       event.preventDefault();
       event.stopPropagation();
       return;
@@ -177,7 +180,8 @@ function sprayTapParticles(x, y, tone = "gold") {
     green: ["#7ff0a2", "#19a65a", "#d7ffe2"]
   };
   const colors = colorsByTone[tone] ?? colorsByTone.gold;
-  const amount = tone === "gold" ? 18 : 13;
+  const isSmallScreen = window.matchMedia?.("(max-width: 640px)").matches;
+  const amount = isSmallScreen ? (tone === "gold" ? 8 : 6) : (tone === "gold" ? 12 : 9);
 
   for (let i = 0; i < amount; i += 1) {
     const particle = document.createElement("i");
