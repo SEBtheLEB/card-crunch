@@ -1,7 +1,10 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=65";
-import { isPotUnlocked } from "./progression.js?v=65";
-import { formatCompactNumber } from "./format.js?v=65";
-import { hasShieldToken } from "./save.js?v=65";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=66";
+import { isPotUnlocked } from "./progression.js?v=66";
+import { formatCompactNumber } from "./format.js?v=66";
+import { hasShieldToken } from "./save.js?v=66";
+
+const POINTER_CLICK_SUPPRESS_MS = 900;
+let lastPointerActionAt = -Infinity;
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -416,14 +419,16 @@ function setInstantAction(element, action) {
   if (typeof action !== "function") return;
   element.onpointerup = (event) => {
     if (element.disabled) return;
-    element._lastInstantPointerAt = performance.now();
+    lastPointerActionAt = performance.now();
     event.preventDefault();
+    event.stopPropagation();
     action(event);
   };
   element.onclick = (event) => {
     if (element.disabled) return;
-    if (performance.now() - (element._lastInstantPointerAt ?? 0) < 450) {
+    if (performance.now() - lastPointerActionAt < POINTER_CLICK_SUPPRESS_MS) {
       event.preventDefault();
+      event.stopPropagation();
       return;
     }
     action(event);
@@ -434,14 +439,16 @@ function bindInstantAction(element, action) {
   if (!element || typeof action !== "function") return;
   element.addEventListener("pointerup", (event) => {
     if (element.disabled) return;
-    element._lastInstantPointerAt = performance.now();
+    lastPointerActionAt = performance.now();
     event.preventDefault();
+    event.stopPropagation();
     action(event);
   });
   element.addEventListener("click", (event) => {
     if (element.disabled) return;
-    if (performance.now() - (element._lastInstantPointerAt ?? 0) < 450) {
+    if (performance.now() - lastPointerActionAt < POINTER_CLICK_SUPPRESS_MS) {
       event.preventDefault();
+      event.stopPropagation();
       return;
     }
     action(event);

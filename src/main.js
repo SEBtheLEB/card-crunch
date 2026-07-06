@@ -1,11 +1,13 @@
-import { createGame } from "./gameState.js?v=65";
-import { createUI } from "./ui.js?v=65";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=65";
-import { adManager } from "./ads.js?v=65";
-import { grantShieldToken, hasShieldToken } from "./save.js?v=65";
+import { createGame } from "./gameState.js?v=66";
+import { createUI } from "./ui.js?v=66";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=66";
+import { adManager } from "./ads.js?v=66";
+import { grantShieldToken, hasShieldToken } from "./save.js?v=66";
 
 const ui = createUI();
 const game = createGame(ui);
+const POINTER_CLICK_SUPPRESS_MS = 900;
+let lastPointerActionAt = -Infinity;
 
 bindInstantButton(ui.elements.startButton, () => ui.showMenuPage("pots"));
 bindInstantButton(ui.elements.backToMenuButton, () => {
@@ -99,14 +101,16 @@ function bindInstantButton(button, action) {
   if (!button || typeof action !== "function") return;
   button.addEventListener("pointerup", (event) => {
     if (button.disabled) return;
-    button._lastInstantPointerAt = performance.now();
+    lastPointerActionAt = performance.now();
     event.preventDefault();
+    event.stopPropagation();
     action(event);
   });
   button.addEventListener("click", (event) => {
     if (button.disabled) return;
-    if (performance.now() - (button._lastInstantPointerAt ?? 0) < 450) {
+    if (performance.now() - lastPointerActionAt < POINTER_CLICK_SUPPRESS_MS) {
       event.preventDefault();
+      event.stopPropagation();
       return;
     }
     action(event);

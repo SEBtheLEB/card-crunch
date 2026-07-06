@@ -15,6 +15,8 @@
  */
 
 const AD_STATS_KEY = "cardCrunchAdStats";
+const POINTER_CLICK_SUPPRESS_MS = 900;
+let lastPointerActionAt = -Infinity;
 
 const INTERSTITIAL_RULES = {
   minRunsBetween: 4,
@@ -178,14 +180,16 @@ function bindInstantAdButton(button, action) {
   if (!button || typeof action !== "function") return;
   button.addEventListener("pointerup", (event) => {
     if (button.disabled) return;
-    button._lastInstantPointerAt = performance.now();
+    lastPointerActionAt = performance.now();
     event.preventDefault();
+    event.stopPropagation();
     action(event);
   });
   button.addEventListener("click", (event) => {
     if (button.disabled) return;
-    if (performance.now() - (button._lastInstantPointerAt ?? 0) < 450) {
+    if (performance.now() - lastPointerActionAt < POINTER_CLICK_SUPPRESS_MS) {
       event.preventDefault();
+      event.stopPropagation();
       return;
     }
     action(event);
