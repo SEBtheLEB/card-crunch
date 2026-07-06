@@ -1,17 +1,35 @@
-import { createGame } from "./gameState.js?v=59";
-import { createUI } from "./ui.js?v=59";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=59";
+import { createGame } from "./gameState.js?v=65";
+import { createUI } from "./ui.js?v=65";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=65";
+import { adManager } from "./ads.js?v=65";
+import { grantShieldToken, hasShieldToken } from "./save.js?v=65";
 
 const ui = createUI();
 const game = createGame(ui);
 
-ui.elements.startButton.addEventListener("click", () => ui.showMenuPage("pots"));
-ui.elements.backToMenuButton?.addEventListener("click", () => {
+bindInstantButton(ui.elements.startButton, () => ui.showMenuPage("pots"));
+bindInstantButton(ui.elements.backToMenuButton, () => {
   ui.showMap(false);
   ui.showStart(true);
 });
-ui.elements.exitLevelButton.addEventListener("click", game.returnToMap);
-ui.elements.restartButton.addEventListener("click", game.showMap);
+bindInstantButton(ui.elements.exitLevelButton, game.exitAndSave);
+bindInstantButton(ui.elements.restartButton, game.playAgain);
+bindInstantButton(ui.elements.returnToPotsButton, game.returnToMap);
+bindInstantButton(ui.elements.reviveAdButton, game.onReviveAd);
+bindInstantButton(ui.elements.recoverAdButton, game.onRecoverAd);
+bindInstantButton(ui.elements.hintAdButton, game.onHintAd);
+let shieldRewardPending = false;
+bindInstantButton(ui.elements.shieldAdButton, async () => {
+  if (shieldRewardPending) return;
+  if (hasShieldToken()) return;
+  shieldRewardPending = true;
+  const earned = await adManager.showRewardedAd("shield");
+  shieldRewardPending = false;
+  if (earned) {
+    grantShieldToken();
+    ui.renderMenuStats(game.state);
+  }
+});
 game.showMap();
 bindMenuNavigation();
 loadSettings();
@@ -77,13 +95,31 @@ function installReactivePressFeedback() {
   });
 }
 
+function bindInstantButton(button, action) {
+  if (!button || typeof action !== "function") return;
+  button.addEventListener("pointerup", (event) => {
+    if (button.disabled) return;
+    button._lastInstantPointerAt = performance.now();
+    event.preventDefault();
+    action(event);
+  });
+  button.addEventListener("click", (event) => {
+    if (button.disabled) return;
+    if (performance.now() - (button._lastInstantPointerAt ?? 0) < 450) {
+      event.preventDefault();
+      return;
+    }
+    action(event);
+  });
+}
+
 function bindMenuNavigation() {
   document.querySelectorAll("[data-menu-page]").forEach((button) => {
-    button.addEventListener("click", () => ui.showMenuPage(button.dataset.menuPage));
+    bindInstantButton(button, () => ui.showMenuPage(button.dataset.menuPage));
   });
 
-  ui.elements.hamburgerButton?.addEventListener("click", () => ui.showMenuPage("settings"));
-  ui.elements.resetSaveButton?.addEventListener("click", () => {
+  bindInstantButton(ui.elements.hamburgerButton, () => ui.showMenuPage("settings"));
+  bindInstantButton(ui.elements.resetSaveButton, () => {
     const confirmed = window.confirm("Reset Card Crunch save data? This clears pots, best score, coins, and saved runs.");
     if (!confirmed) return;
     [
@@ -121,6 +157,7 @@ function saveSettings() {
 
 function getTapTone(target) {
   if (target.classList.contains("crunch-button") || target.classList.contains("primary-button")) return "gold";
+  if (target.classList.contains("bank-button")) return "green";
   if (target.classList.contains("map-pot")) return "blue";
   if (target.classList.contains("exit-level-button")) return "red";
   if (target.classList.contains("card-red")) return "red";

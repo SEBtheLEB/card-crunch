@@ -1,10 +1,11 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=59";
-import { calculateCrunchScore, getSelectionMultiplier } from "./scoring.js?v=59";
-import { createDefaultPots, getPotCheckpoint, getTargetForLevel, isPotUnlocked } from "./progression.js?v=59";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=59";
-import { ensurePlayableHand } from "./handSafety.js?v=59";
-import { clearRunSave, loadRunSave, saveRunState } from "./save.js?v=59";
-import { formatCompactNumber } from "./format.js?v=59";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=65";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=65";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=65";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation } from "./crunchCutscene.js?v=65";
+import { ensurePlayableHand } from "./handSafety.js?v=65";
+import { clearRunSave, consumeShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=65";
+import { formatCompactNumber } from "./format.js?v=65";
+import { adManager } from "./ads.js?v=65";
 import {
   animateBust,
   animateSelectionResolve,
@@ -12,6 +13,13 @@ import {
   playSfx,
   spawnSparkBurst
 } from "./animations.js";
+
+const RUN_MULTIPLIER_MAX = 10;
+const RUN_MULTIPLIER_BASE_STEP = 0.2;
+const RUN_MULTIPLIER_COMBO_STEP = 0.1;
+const SHIELD_SAVE_RATE = 0.25;
+const RECOVERY_RATE = 0.5;
+const BONUS_BANK_RATE = 0.25;
 
 export function createGame(ui) {
   let pendingRunSave = loadRunSave();
@@ -22,7 +30,7 @@ export function createGame(ui) {
     baseStackCount: 2,
     hand: [],
     selectedHandIndexes: [],
-    score: 0,
+    score: 0, // Run Money: temporary, unbanked, at risk
     bestScore: Number(localStorage.getItem("cardCrunchBestScore") ?? 0),
     streak: 0,
     misses: 0,
@@ -31,7 +39,6 @@ export function createGame(ui) {
     target: getTargetForLevel(1),
     pots: loadPots(),
     activePot: null,
-    sessionCrunches: 0,
     fever: false,
     turnSeconds: 10,
     timerGraceSeconds: 1,
@@ -39,11 +46,29 @@ export function createGame(ui) {
     timerId: null,
     timerToken: 0,
     locked: true,
-    status: "start"
+    status: "start",
+    // Push-your-luck banking
+    bankMultiplier: 1,
+    bestRunMultiplier: 1,
+    bestRunStreak: 0,
+    bankedThisRun: 0,
+    lastBankDeposit: 0,
+    lostUnbankedMoney: 0,
+    shieldSaved: 0,
+    recoveredAmount: 0,
+    safeBankShieldActive: false,
+    // Rewarded ad locks (one use per run / per deposit)
+    reviveAdUsedThisRun: false,
+    recoveryAdUsedThisRun: false,
+    bonusBankAdUsedForLastDeposit: true,
+    hintAdUsedThisRun: false,
+    rewardAdInProgress: false,
+    runStartedAt: 0
   };
 
   function showMap() {
     stopTimer();
+    ui.hideBonusBankOffer();
     state.locked = true;
     state.status = "menu";
     ui.renderMap(state.pots, handlers, pendingRunSave?.activePotId);
@@ -64,6 +89,7 @@ export function createGame(ui) {
 
   function start(pot = state.pots.find((item) => !item.complete) ?? state.pots[0]) {
     stopTimer();
+    ui.hideBonusBankOffer();
     state.deck = shuffle(createDeck());
     state.discard = [];
     state.stack = drawCards(state, state.baseStackCount);
@@ -73,12 +99,26 @@ export function createGame(ui) {
     state.score = 0;
     state.streak = 0;
     state.misses = 0;
+    state.maxMisses = 3;
     state.level = pot?.id ?? 0;
     state.activePot = pot ?? null;
-    state.maxMisses = pot ? 1 : 3;
-    state.sessionCrunches = 0;
     state.target = pot?.target ?? getTargetForLevel(1);
     state.fever = false;
+    state.bankMultiplier = 1;
+    state.bestRunMultiplier = 1;
+    state.bestRunStreak = 0;
+    state.bankedThisRun = 0;
+    state.lastBankDeposit = 0;
+    state.lostUnbankedMoney = 0;
+    state.shieldSaved = 0;
+    state.recoveredAmount = 0;
+    state.reviveAdUsedThisRun = false;
+    state.recoveryAdUsedThisRun = false;
+    state.bonusBankAdUsedForLastDeposit = true;
+    state.hintAdUsedThisRun = false;
+    state.rewardAdInProgress = false;
+    state.safeBankShieldActive = Boolean(pot) && hasShieldToken();
+    state.runStartedAt = Date.now();
     state.timeLeft = state.turnSeconds;
     state.locked = false;
     state.status = "playing";
@@ -86,6 +126,7 @@ export function createGame(ui) {
     ui.showMap(false);
     ui.showGameOver(false);
     ui.clearMessage();
+    if (state.safeBankShieldActive) ui.setMessage("Shield armed: busting out auto-banks 25%", "good");
     ui.render(state, handlers);
     persistRun();
     startTimer();
@@ -99,6 +140,7 @@ export function createGame(ui) {
 
   function onCardSelect(handIndex) {
     if (state.locked || state.status !== "playing") return;
+    ui.hideBonusBankOffer();
     playSfx(state.selectedHandIndexes.includes(handIndex) ? "card_deselect" : "card_select");
     if (state.selectedHandIndexes.includes(handIndex)) {
       state.selectedHandIndexes = state.selectedHandIndexes.filter((index) => index !== handIndex);
@@ -114,6 +156,7 @@ export function createGame(ui) {
     state.locked = true;
     state.status = "crunching";
     stopTimer();
+    ui.hideBonusBankOffer();
     ui.render(state, handlers);
 
     const selectedCards = state.selectedHandIndexes.map((index) => state.hand[index]);
@@ -121,7 +164,8 @@ export function createGame(ui) {
       baseStack: state.stack,
       selectedCards,
       timeLeft: state.timeLeft,
-      streak: state.streak
+      streak: state.streak,
+      runMultiplier: state.bankMultiplier
     });
 
     playSfx("crunch_start");
@@ -183,25 +227,123 @@ export function createGame(ui) {
       throw error;
     }
 
+    // Money stays as unbanked Run Money — the pot only fills when banking.
     state.score += crunch.total;
     localStorage.setItem("cardCrunchTotalCrunches", String(Number(localStorage.getItem("cardCrunchTotalCrunches") ?? 0) + selectedCards.length));
-    addPotProgress(crunch.total);
     state.bestScore = Math.max(state.bestScore, state.score);
     localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
     state.streak = crunch.streakAfterCrunch;
     localStorage.setItem("cardCrunchBestStreak", String(Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak)));
+    state.bestRunStreak = Math.max(state.bestRunStreak, state.streak);
     state.fever = state.streak >= 15;
+    raiseBankMultiplier(selectedCards.length);
     ui.elements.scoreValue.textContent = formatCompactNumber(state.score);
     ui.elements.streakValue.textContent = String(state.streak);
     discardSelectedCards();
+    startNewRound();
+  }
 
-    if (state.activePot?.complete) {
-      refillHand();
+  function raiseBankMultiplier(selectedCount) {
+    const step = RUN_MULTIPLIER_BASE_STEP + RUN_MULTIPLIER_COMBO_STEP * Math.max(0, selectedCount - 1);
+    state.bankMultiplier = Math.min(RUN_MULTIPLIER_MAX, Math.round((state.bankMultiplier + step) * 10) / 10);
+    state.bestRunMultiplier = Math.max(state.bestRunMultiplier, state.bankMultiplier);
+  }
+
+  async function bankRun() {
+    if (state.locked || state.status !== "playing" || !state.activePot || state.score <= 0) return;
+    state.locked = true;
+    stopTimer();
+    ui.hideBonusBankOffer();
+
+    const amount = state.score;
+    depositToPot(amount);
+    state.bankedThisRun += amount;
+    state.lastBankDeposit = amount;
+    state.bonusBankAdUsedForLastDeposit = false;
+    state.score = 0;
+    state.bankMultiplier = 1;
+
+    playSfx("bank");
+    ui.setMessage(`BANKED $${formatCompactNumber(amount)}! Multi reset to x1`, "good");
+    ui.playBankJuice(amount);
+    ui.render(state, handlers);
+    persistRun();
+    await sleep(620);
+
+    if (state.activePot.complete) {
       await clearTarget();
       return;
     }
 
-    startNewRound();
+    state.locked = false;
+    state.status = "playing";
+    ui.render(state, handlers);
+    persistRun();
+    startTimer();
+    offerBonusBankAd(amount);
+  }
+
+  function offerBonusBankAd(depositAmount) {
+    if (state.bonusBankAdUsedForLastDeposit) return;
+    if (!adManager.canShowRewardedAd()) return;
+    const bonus = Math.round(depositAmount * BONUS_BANK_RATE);
+    if (bonus <= 0) return;
+
+    ui.showBonusBankOffer(bonus, async () => {
+      // Guard against stale offers: only the most recent deposit qualifies.
+      if (state.rewardAdInProgress || state.bonusBankAdUsedForLastDeposit || state.status !== "playing" || state.locked) return;
+      if (Math.round(state.lastBankDeposit * BONUS_BANK_RATE) !== bonus) return;
+      state.rewardAdInProgress = true;
+      state.bonusBankAdUsedForLastDeposit = true;
+      state.locked = true;
+      stopTimer();
+      ui.render(state, handlers);
+
+      const earned = await adManager.showRewardedAd("bonusBank");
+      state.rewardAdInProgress = false;
+      if (earned) {
+        depositToPot(bonus);
+        state.bankedThisRun += bonus;
+        playSfx("bank");
+        ui.setMessage(`+$${formatCompactNumber(bonus)} bank bonus!`, "good");
+        ui.playBankJuice(bonus);
+        persistRun();
+        if (state.activePot?.complete) {
+          await clearTarget();
+          return;
+        }
+      }
+      state.locked = false;
+      state.status = "playing";
+      ui.render(state, handlers);
+      startTimer();
+    });
+  }
+
+  async function onHintAd() {
+    if (state.locked || state.status !== "playing" || state.hintAdUsedThisRun || state.rewardAdInProgress) return;
+    if (!adManager.canShowRewardedAd()) return;
+    state.rewardAdInProgress = true;
+    state.hintAdUsedThisRun = true;
+    state.locked = true;
+    stopTimer();
+    ui.render(state, handlers);
+
+    const earned = await adManager.showRewardedAd("hint");
+    state.rewardAdInProgress = false;
+    if (earned) {
+      const hintIndex = state.hand.findIndex((card) => card && evaluateStackAdd(state.stack, card).valid);
+      if (hintIndex >= 0) {
+        ui.setMessage("This card crunches!", "good");
+        ui.flashHint(hintIndex);
+      } else {
+        ui.setMessage("No single-card crunch right now", "bad");
+      }
+    }
+    state.locked = false;
+    state.status = "playing";
+    ui.render(state, handlers);
+    startTimer();
   }
 
   async function handleTimeout() {
@@ -213,10 +355,10 @@ export function createGame(ui) {
     state.locked = true;
     state.status = "busted";
     stopTimer();
+    ui.hideBonusBankOffer();
     if (state.fever) playSfx("fever_end");
     playSfx("bust");
     state.misses += 1;
-    applyBustPenalty();
     state.streak = 0;
     state.fever = false;
     ui.setMessage(message, "bad");
@@ -230,7 +372,7 @@ export function createGame(ui) {
     discardSelectedCards();
     if (state.misses >= state.maxMisses) {
       refillHand();
-      gameOver();
+      endRun();
       return;
     }
     startNewRound();
@@ -238,6 +380,7 @@ export function createGame(ui) {
 
   async function clearTarget() {
     stopTimer();
+    ui.hideBonusBankOffer();
     state.locked = true;
     state.status = "levelClear";
     ui.render(state, handlers);
@@ -247,11 +390,129 @@ export function createGame(ui) {
     returnToMap();
   }
 
-  function returnToMap() {
+  /* Out of lives: unbanked Run Money is now at risk. The shield (if armed)
+     fires immediately; the rest waits on the summary screen where the
+     player may revive or recover via rewarded ads. */
+  function endRun() {
     stopTimer();
+    ui.hideBonusBankOffer();
+    state.locked = true;
+    state.status = "runEnded";
+    pendingRunSave = null;
+    clearRunSave();
+    playSfx("game_over");
+
+    if (state.safeBankShieldActive && state.activePot && state.score > 0) {
+      const saved = Math.round(state.score * SHIELD_SAVE_RATE);
+      if (saved > 0) {
+        depositToPot(saved);
+        state.shieldSaved += saved;
+        state.bankedThisRun += saved;
+        state.score -= saved;
+      }
+      state.safeBankShieldActive = false;
+      consumeShieldToken();
+    }
+
+    state.lostUnbankedMoney = state.score;
+    ui.render(state, handlers);
+    showRunSummary();
+  }
+
+  function showRunSummary() {
+    ui.showRunSummary({
+      banked: state.bankedThisRun,
+      lost: state.lostUnbankedMoney,
+      shieldSaved: state.shieldSaved,
+      recovered: state.recoveredAmount,
+      bestMultiplier: state.bestRunMultiplier,
+      bestStreak: state.bestRunStreak,
+      pot: state.activePot,
+      canRevive:
+        !state.reviveAdUsedThisRun &&
+        !state.activePot?.complete &&
+        !state.rewardAdInProgress &&
+        adManager.canShowRewardedAd(),
+      canRecover:
+        state.lostUnbankedMoney > 0 &&
+        !state.recoveryAdUsedThisRun &&
+        Boolean(state.activePot) &&
+        !state.activePot?.complete &&
+        !state.rewardAdInProgress &&
+        adManager.canShowRewardedAd()
+    });
+  }
+
+  async function onReviveAd() {
+    if (state.status !== "runEnded" || state.reviveAdUsedThisRun || state.rewardAdInProgress || state.activePot?.complete) return;
+    state.rewardAdInProgress = true;
+    state.reviveAdUsedThisRun = true;
+    showRunSummary();
+    const earned = await adManager.showRewardedAd("revive");
+    state.rewardAdInProgress = false;
+    if (!earned) {
+      showRunSummary();
+      return;
+    }
+    // Resume the same run: 1 life, Run Money and multiplier intact.
+    state.misses = state.maxMisses - 1;
+    state.lostUnbankedMoney = 0;
+    ui.showGameOver(false);
+    ui.setMessage("REVIVED! 1 life left — bank it or risk it", "good");
+    ui.playReviveJuice();
+    startNewRound();
+  }
+
+  async function onRecoverAd() {
+    if (state.status !== "runEnded" || state.recoveryAdUsedThisRun || state.rewardAdInProgress || state.lostUnbankedMoney <= 0 || !state.activePot || state.activePot.complete) return;
+    state.rewardAdInProgress = true;
+    state.recoveryAdUsedThisRun = true;
+    showRunSummary();
+    const earned = await adManager.showRewardedAd("recoverLost");
+    state.rewardAdInProgress = false;
+    if (!earned) {
+      showRunSummary();
+      return;
+    }
+    const recovered = Math.round(state.lostUnbankedMoney * RECOVERY_RATE);
+    depositToPot(recovered);
+    state.recoveredAmount += recovered;
+    state.lostUnbankedMoney = Math.max(0, state.lostUnbankedMoney - recovered);
+    state.score = 0;
+    playSfx("bank");
+    savePots(state.pots);
+    showRunSummary();
+  }
+
+  /* The loss becomes final when the player leaves the summary screen. */
+  function finalizeRunLoss() {
+    if (state.status !== "runEnded") return;
+    const runDurationMs = state.runStartedAt ? Date.now() - state.runStartedAt : 0;
+    const justUnlockedPot = Boolean(state.activePot?.complete);
+    state.score = 0;
+    state.lostUnbankedMoney = 0;
+    state.bankMultiplier = 1;
+    adManager.registerCompletedRun({ durationMs: runDurationMs });
+    adManager.maybeShowInterstitial({ runDurationMs, justUnlockedPot });
+  }
+
+  function playAgain() {
+    if (state.status !== "runEnded" && state.status !== "menu") return;
+    finalizeRunLoss();
+    const pot = state.activePot && !state.activePot.complete ? state.activePot : state.pots.find((item) => !item.complete);
+    if (!pot || !isPotUnlocked(state.pots, pot.id)) {
+      returnToMap();
+      return;
+    }
+    start(pot);
+  }
+
+  function returnToMap() {
+    finalizeRunLoss();
+    stopTimer();
+    ui.hideBonusBankOffer();
     state.selectedHandIndexes = [];
     state.activePot = null;
-    state.sessionCrunches = 0;
     pendingRunSave = null;
     clearRunSave();
     state.locked = true;
@@ -259,7 +520,24 @@ export function createGame(ui) {
     ui.render(state, handlers);
     ui.renderMap(state.pots, handlers);
     ui.renderMenuStats(state);
+    ui.showGameOver(false);
     ui.showStart(true);
+    ui.showMap(false);
+  }
+
+  /* Exit Pot mid-run: keep the run resumable instead of forfeiting cash. */
+  function exitAndSave() {
+    if (state.status !== "playing") return;
+    stopTimer();
+    ui.hideBonusBankOffer();
+    persistRun();
+    pendingRunSave = loadRunSave();
+    state.locked = true;
+    state.status = "menu";
+    ui.renderMap(state.pots, handlers, pendingRunSave?.activePotId);
+    ui.renderMenuStats(state);
+    ui.showStart(true);
+    ui.showMenuPage("pots");
     ui.showMap(false);
   }
 
@@ -339,40 +617,21 @@ export function createGame(ui) {
     });
   }
 
-  function gameOver() {
-    stopTimer();
-    state.locked = true;
-    state.status = "gameOver";
-    pendingRunSave = null;
-    clearRunSave();
-    playSfx("game_over");
-    ui.render(state, handlers);
-    ui.showGameOver(true, state.score);
-  }
-
-  function addPotProgress(amount) {
-    if (!state.activePot) return;
-    state.sessionCrunches += amount;
+  /* Pot Money: permanent, saved immediately. Only banking, the shield,
+     recovery ads, and bank bonuses reach this. */
+  function depositToPot(amount) {
+    if (!state.activePot || amount <= 0) return 0;
+    const before = state.activePot.progress;
     state.activePot.progress = Math.min(state.activePot.target, state.activePot.progress + amount);
     state.activePot.complete = state.activePot.progress >= state.activePot.target;
     savePots(state.pots);
-  }
-
-  function applyBustPenalty() {
-    if (!state.activePot || state.sessionCrunches <= 0) return;
-    const checkpoint = getPotCheckpoint(state.activePot);
-    const penalty = Math.max(0, state.activePot.progress - checkpoint);
-    state.sessionCrunches = Math.max(0, state.sessionCrunches - penalty);
-    state.activePot.progress = checkpoint;
-    state.score = Math.max(0, state.score - penalty);
-    savePots(state.pots);
-    ui.setMessage(`Back to ${formatCompactNumber(checkpoint)} checkpoint!`, "bad");
+    return state.activePot.progress - before;
   }
 
   function restoreRun(save, pot) {
     if (!save.hand.length || save.hand.length > 4 || save.stack.length < state.baseStackCount) return false;
     stopTimer();
-    state.maxMisses = 1;
+    state.maxMisses = 3;
     state.deck = save.deck;
     state.discard = save.discard;
     state.stack = save.stack;
@@ -384,10 +643,24 @@ export function createGame(ui) {
     state.misses = Math.min(state.maxMisses - 1, Math.max(0, Number(save.misses) || 0));
     state.level = pot.id;
     state.activePot = pot;
-    state.sessionCrunches = Math.max(0, Number(save.sessionCrunches) || 0);
     state.target = pot.target;
     state.fever = Boolean(save.fever) || state.streak >= 15;
     state.timeLeft = Math.min(state.turnSeconds, Math.max(1, Number(save.timeLeft) || state.turnSeconds));
+    state.bankMultiplier = Math.min(RUN_MULTIPLIER_MAX, Math.max(1, Number(save.bankMultiplier) || 1));
+    state.bestRunMultiplier = Math.max(state.bankMultiplier, Number(save.bestRunMultiplier) || 1);
+    state.bestRunStreak = Math.max(state.streak, Number(save.bestRunStreak) || 0);
+    state.bankedThisRun = Math.max(0, Number(save.bankedThisRun) || 0);
+    state.lastBankDeposit = Math.max(0, Number(save.lastBankDeposit) || 0);
+    state.bonusBankAdUsedForLastDeposit = save.bonusBankAdUsedForLastDeposit !== false;
+    state.reviveAdUsedThisRun = Boolean(save.reviveAdUsedThisRun);
+    state.recoveryAdUsedThisRun = false;
+    state.hintAdUsedThisRun = Boolean(save.hintAdUsedThisRun);
+    state.rewardAdInProgress = false;
+    state.safeBankShieldActive = Boolean(save.safeBankShieldActive) && hasShieldToken();
+    state.lostUnbankedMoney = 0;
+    state.shieldSaved = 0;
+    state.recoveredAmount = 0;
+    state.runStartedAt = Date.now();
     state.locked = false;
     state.status = "playing";
     pendingRunSave = null;
@@ -406,12 +679,33 @@ export function createGame(ui) {
     saveRunState(state);
   }
 
-  const handlers = { onCardSelect, onCrunch, onLevelSelect: enterLevel, onExitLevel: returnToMap };
+  const handlers = {
+    onCardSelect,
+    onCrunch,
+    onBank: bankRun,
+    onLevelSelect: enterLevel,
+    onExitLevel: exitAndSave
+  };
   window.addEventListener("beforeunload", persistRun);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") persistRun();
   });
-  return { state, start, startEndless, showMap, enterLevel, returnToMap, onCardSelect, onCrunch };
+  return {
+    state,
+    start,
+    startEndless,
+    showMap,
+    enterLevel,
+    returnToMap,
+    playAgain,
+    exitAndSave,
+    onCardSelect,
+    onCrunch,
+    bankRun,
+    onReviveAd,
+    onRecoverAd,
+    onHintAd
+  };
 }
 
 export function getCrunchPreview(state) {
@@ -421,6 +715,11 @@ export function getCrunchPreview(state) {
     selectedCount,
     selectionMultiplier: getSelectionMultiplier(selectedCount)
   };
+}
+
+export function formatRunMultiplier(value) {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 }
 
 function loadPots() {
@@ -440,6 +739,10 @@ function loadPots() {
 
 function savePots(pots) {
   localStorage.setItem("cardCrunchLevelPots", JSON.stringify(pots.map(({ id, progress }) => ({ id, progress }))));
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function createCutsceneEntry(entry) {

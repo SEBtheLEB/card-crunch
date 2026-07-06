@@ -1,4 +1,4 @@
-import { formatCompactNumber } from "./format.js?v=59";
+import { formatCompactNumber } from "./format.js?v=65";
 
 const CUTSCENE_CONFIG = {
   showEveryResolvedCard: true,

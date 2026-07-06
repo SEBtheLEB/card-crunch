@@ -51,6 +51,8 @@ export const soundHooks = {
   score_step: null,
   score_total: null,
   score_arrive: null,
+  bank: null,
+  revive: null,
   no_match: null,
   timer_warning: null,
   target_clear: null,

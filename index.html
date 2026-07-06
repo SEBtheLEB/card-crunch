@@ -16,13 +16,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/main.css?v=60">
+    <link rel="stylesheet" href="styles/main.css?v=65">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
       <header class="hud" aria-label="Game status">
-        <section class="hud-panel score-panel" aria-label="Score">
-          <span class="hud-label">Score</span>
+        <section class="hud-panel score-panel" aria-label="Run cash, not yet banked">
+          <span class="hud-label">Run Cash &middot; Unbanked</span>
           <strong id="scoreValue">0</strong>
         </section>
       </header>
@@ -54,15 +54,16 @@
         <div class="combo-label" id="comboLabel"></div>
       </section>
 
-      <section class="crunch-panel" aria-label="Stack and Crunch">
-        <div class="stored-panel">
-          <span>Stored</span>
-          <strong id="storedValue">0</strong>
-        </div>
+      <section class="crunch-panel" aria-label="Bank and Crunch">
+        <button class="bank-button" id="bankButton" type="button" disabled aria-label="Bank run cash into the pot. Resets multiplier.">
+          <span>Bank</span>
+          <strong id="bankAmountValue">$0</strong>
+          <small>Resets x</small>
+        </button>
         <button class="crunch-button" id="crunchButton" type="button" disabled>SELECT CARDS</button>
-        <div class="stored-panel">
-          <span>Stack</span>
-          <strong id="stackMultiplierValue">x1</strong>
+        <div class="stored-panel multi-panel" id="multiPanel" aria-label="Run multiplier">
+          <span>Multi</span>
+          <strong id="multiValue">x1</strong>
         </div>
       </section>
 
@@ -70,9 +71,10 @@
 
       <footer class="bottom-status" aria-label="Run status">
         <section>
-          <span>Misses</span>
-          <strong id="missValue">0/3</strong>
+          <span>Lives</span>
+          <strong id="missValue">&hearts;&hearts;&hearts;</strong>
         </section>
+        <button class="hint-ad-button" id="hintAdButton" type="button" aria-label="Watch ad to reveal a valid crunch"><i aria-hidden="true">&#9654;</i>Hint</button>
         <button class="exit-level-button" id="exitLevelButton" type="button">Exit Pot</button>
         <section class="streak-status-panel">
           <span>Streak</span>
@@ -184,8 +186,13 @@
           <section class="menu-page" data-page="pots" aria-hidden="true">
             <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
             <h2>Pick a Pot</h2>
-            <p class="menu-page-copy">Choose a level, crunch cards, and fill the pot. One bust restarts the attempt.</p>
+            <p class="menu-page-copy">Crunch cards for run cash, then bank it before you bust. Only banked cash fills the pot.</p>
             <div class="menu-level-map" id="levelMap"></div>
+            <button class="ad-button shield-ad-button" id="shieldAdButton" type="button">
+              <i aria-hidden="true">&#9654;</i>
+              <span>Safe Bank Shield</span>
+              <small>Watch ad &bull; auto-bank 25% if you bust out</small>
+            </button>
             <strong id="profilePotsCleared" hidden>0</strong>
             <strong id="profileCoins" hidden>0</strong>
           </section>
@@ -203,14 +210,38 @@
     </section>
 
     <section class="modal-screen" id="gameOverScreen" aria-labelledby="gameOverTitle" aria-hidden="true">
-      <div class="modal-card game-over-card">
-        <p class="eyebrow">Game Over</p>
-        <h2 id="gameOverTitle">Final Score</h2>
-        <strong class="final-score" id="finalScore">0</strong>
-        <button class="primary-button" id="restartButton" type="button">Restart</button>
+      <div class="modal-card run-summary-card">
+        <p class="eyebrow" id="runEndEyebrow">Out of Lives</p>
+        <h2 id="gameOverTitle">Run Over</h2>
+        <div class="run-summary-rows">
+          <article><span>Banked this run</span><strong class="sum-good" id="summaryBanked">$0</strong></article>
+          <article id="summaryShieldRow" hidden><span>Shield auto-banked</span><strong class="sum-good" id="summaryShield">$0</strong></article>
+          <article id="summaryRecoveredRow" hidden><span>Recovered to pot</span><strong class="sum-good" id="summaryRecovered">$0</strong></article>
+          <article id="summaryLostRow"><span>Unbanked lost</span><strong class="sum-bad" id="summaryLost">$0</strong></article>
+          <article><span>Best multiplier</span><strong id="summaryMultiplier">x1</strong></article>
+          <article><span>Best streak</span><strong id="summaryStreak">0</strong></article>
+        </div>
+        <div class="summary-pot">
+          <div class="summary-pot-labels"><span id="summaryPotName">Pot 1</span><span id="summaryPotPercent">0%</span></div>
+          <div class="summary-pot-track"><div class="summary-pot-fill" id="summaryPotFill"></div></div>
+        </div>
+        <div class="summary-ad-buttons">
+          <button class="ad-button" id="reviveAdButton" type="button" hidden>
+            <i aria-hidden="true">&#9654;</i>
+            <span>Revive with 1 life</span>
+            <small>Watch ad &bull; keep run cash &amp; multi</small>
+          </button>
+          <button class="ad-button" id="recoverAdButton" type="button" hidden>
+            <i aria-hidden="true">&#9654;</i>
+            <span>Recover 50% lost cash</span>
+            <small>Watch ad &bull; deposits into the pot</small>
+          </button>
+        </div>
+        <button class="primary-button" id="restartButton" type="button">Play Again</button>
+        <button class="secondary-button" id="returnToPotsButton" type="button">Return to Pots</button>
       </div>
     </section>
 
-    <script type="module" src="src/main.js?v=59"></script>
+    <script type="module" src="src/main.js?v=65"></script>
   </body>
 </html>

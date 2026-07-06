@@ -172,7 +172,7 @@ export function createStackEntry(card, match) {
   };
 }
 
-export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, streak }) {
+export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, streak, runMultiplier = 1 }) {
   const resolution = resolveSelectedCrunch(baseStack, selectedCards);
   if (!resolution.success) return { success: false, resolution };
 
@@ -184,7 +184,7 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
   const stackTypes = detectStackTypes(resolution.activeStack, resolution.history, selectedCards.length);
   const stackTypeMultiplier = stackTypes.reduce((product, bonus) => product * (bonus.multiplier ?? 1), 1);
   const stackTypeFlat = stackTypes.reduce((sum, bonus) => sum + (bonus.flatBonus ?? 0), 0);
-  const total = Math.round(storedBase * handMultiplier * speedBonus.multiplier * streakMultiplier * stackTypeMultiplier + stackTypeFlat);
+  const total = Math.round((storedBase * handMultiplier * speedBonus.multiplier * streakMultiplier * stackTypeMultiplier + stackTypeFlat) * runMultiplier);
 
   return {
     success: true,
@@ -217,6 +217,7 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
       speedBonus,
       streakMultiplier,
       stackTypes,
+      runMultiplier,
       total
     })
   };
@@ -311,12 +312,13 @@ function getStackPairs(cards) {
   return pairs;
 }
 
-function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, total }) {
+function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, runMultiplier = 1, total }) {
   const steps = [{ label: "STORED", value: `+${formatCompactNumber(storedBase)}`, tone: "total", kind: "base" }];
   if (handMultiplier > 1) steps.push({ label: "HAND", value: `x${handMultiplier}`, tone: "double", kind: "multiplier" });
   if (speedBonus.multiplier > 1) steps.push({ label: speedBonus.label, value: `x${formatMultiplier(speedBonus.multiplier)}`, tone: "speed", kind: "multiplier" });
   if (streakMultiplier > 1) steps.push({ label: "STREAK", value: `x${streakMultiplier}`, tone: streakMultiplier >= 10 ? "fever" : "streak", kind: "multiplier" });
   stackTypes.forEach((bonus) => steps.push({ label: bonus.label, value: bonus.value, tone: bonus.tone, kind: bonus.multiplier ? "multiplier" : "bonus" }));
+  if (runMultiplier > 1) steps.push({ label: "RUN MULTI", value: `x${formatMultiplier(runMultiplier)}`, tone: "fever", kind: "multiplier" });
   steps.push({ label: "TOTAL", value: `+${formatCompactNumber(total)}`, tone: "total", kind: "total" });
   return steps;
 }

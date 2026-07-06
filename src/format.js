@@ -12,5 +12,6 @@ export function formatCompactNumber(value) {
 
 function trimCompact(value) {
   const decimals = value >= 100 ? 0 : value >= 10 ? 1 : 2;
-  return value.toFixed(decimals).replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
+  const displayValue = decimals === 0 ? Math.floor(value) : value;
+  return displayValue.toFixed(decimals).replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
 }

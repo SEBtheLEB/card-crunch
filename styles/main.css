@@ -126,6 +126,7 @@ button {
   border: 0;
   background: none;
   padding: 0;
+  touch-action: manipulation;
 }
 
 button:disabled {
@@ -831,7 +832,7 @@ button:disabled {
 
 .bottom-status {
   display: grid;
-  grid-template-columns: minmax(70px, .72fr) auto minmax(112px, 1.18fr);
+  grid-template-columns: minmax(64px, .8fr) auto auto minmax(84px, 1fr);
   min-height: clamp(42px, 6dvh, 56px);
   overflow: hidden;
 }
@@ -2993,6 +2994,506 @@ h2 {
 }
 
 /* ==========================================================================
+   Banking + rewarded ads
+   ========================================================================== */
+
+/* Bank button — emerald candy, deliberately distinct from the gold Crunch */
+.bank-button {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 3px;
+  min-height: clamp(56px, 7.6dvh, 76px);
+  border: 2px solid rgba(46, 204, 128, .28);
+  border-radius: 18px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, .07), transparent 40%),
+    linear-gradient(180deg, #22303f, #17202f);
+  box-shadow: 0 6px 0 rgba(4, 6, 16, .95), 0 12px 20px rgba(0, 0, 0, .3);
+  color: #7e93a8;
+  transition: transform .09s cubic-bezier(.2, 1.35, .28, 1), filter .09s ease, box-shadow .09s ease, color .15s ease;
+  transform-origin: center;
+  will-change: transform, filter;
+}
+
+.bank-button span {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(.72rem, 3.2vw, 1.05rem);
+  line-height: 1;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.bank-button strong {
+  font-size: clamp(.66rem, 2.8vw, .92rem);
+  line-height: 1;
+}
+
+.bank-button small {
+  color: currentColor;
+  font-size: clamp(.48rem, 2vw, .62rem);
+  line-height: 1;
+  letter-spacing: .08em;
+  opacity: .7;
+  text-transform: uppercase;
+}
+
+.bank-button.bank-ready {
+  border-color: #063d22;
+  color: #04250f;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .42), transparent 42%),
+    linear-gradient(180deg, #8dffbe, #2ecc80 62%, #0d8a4c);
+  box-shadow:
+    0 6px 0 #063d22,
+    0 12px 22px rgba(0, 0, 0, .35),
+    0 0 24px rgba(46, 204, 128, .45);
+}
+
+.bank-button.bank-ready span {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .45);
+}
+
+.bank-button.bank-ready strong {
+  color: #04331a;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .4);
+}
+
+.bank-button.bank-ready::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 32%, rgba(255, 255, 255, .5) 46%, transparent 58%);
+  transform: translateX(-120%);
+  animation: buttonShine 3.2s ease-in-out .8s infinite;
+  pointer-events: none;
+}
+
+.bank-button:not(:disabled):active {
+  transform: scale(.94) translateY(3px);
+  filter: brightness(1.12) saturate(1.15);
+  box-shadow: 0 1px 0 #063d22, 0 0 30px rgba(141, 255, 190, .6);
+}
+
+.bank-deposit-fly {
+  color: #a5ffcb;
+  text-shadow: 0 0 16px rgba(46, 204, 128, .9), 0 4px 0 rgba(4, 5, 13, .9);
+}
+
+/* Run multiplier panel: the thing you sacrifice when you bank */
+.multi-panel strong {
+  color: #d9a9ff;
+  text-shadow: 0 0 12px rgba(176, 108, 255, .5), 0 2px 0 rgba(4, 5, 13, .9);
+}
+
+.multi-panel.multi-warm strong {
+  color: #ffb347;
+  text-shadow: 0 0 14px rgba(255, 159, 28, .6), 0 2px 0 rgba(4, 5, 13, .9);
+}
+
+.multi-panel.multi-hot {
+  border-color: rgba(255, 122, 40, .5);
+  animation: multiHotPulse .8s ease-in-out infinite alternate;
+}
+
+.multi-panel.multi-hot strong {
+  color: #ff8446;
+  text-shadow: 0 0 18px rgba(255, 100, 38, .75), 0 2px 0 rgba(4, 5, 13, .9);
+}
+
+@keyframes multiHotPulse {
+  from { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 0 8px rgba(255, 122, 40, .2); }
+  to { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 0 24px rgba(255, 122, 40, .55); }
+}
+
+/* Rewarded-ad buttons: cyan "video" identity so they're never confused
+   with normal actions */
+.ad-button {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "icon label" "icon sub";
+  column-gap: 12px;
+  row-gap: 3px;
+  align-items: center;
+  min-height: 56px;
+  padding: 10px 16px;
+  border: 1px solid rgba(69, 215, 255, .4);
+  border-radius: 16px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, .06), transparent 40%),
+    linear-gradient(180deg, rgba(10, 42, 64, .92), rgba(4, 16, 30, .95));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 8px 18px rgba(0, 0, 0, .3), 0 0 16px rgba(69, 215, 255, .12);
+  color: #d9f5ff;
+  text-align: left;
+  transition: transform .1s ease, filter .1s ease;
+}
+
+.ad-button:not(:disabled):active {
+  transform: scale(.97);
+  filter: brightness(1.25);
+}
+
+.ad-button i {
+  grid-area: icon;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #9ee7ff, var(--cyan));
+  color: #063a52;
+  font-style: normal;
+  font-size: .82rem;
+  box-shadow: 0 0 14px rgba(69, 215, 255, .45), inset 0 -3px 0 rgba(8, 74, 104, .4);
+}
+
+.ad-button span {
+  grid-area: label;
+  font-size: clamp(.82rem, 3.4vw, .98rem);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.ad-button small {
+  grid-area: sub;
+  color: rgba(217, 245, 255, .62);
+  font-size: clamp(.6rem, 2.6vw, .74rem);
+}
+
+.shield-ad-button {
+  margin-top: 4px;
+}
+
+.shield-ad-button.is-armed {
+  border-color: rgba(46, 204, 128, .55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 0 22px rgba(46, 204, 128, .28);
+  color: #c9ffe1;
+  opacity: 1;
+}
+
+.shield-ad-button.is-armed i {
+  background: linear-gradient(180deg, #8dffbe, #2ecc80);
+  color: #063d22;
+  box-shadow: 0 0 14px rgba(46, 204, 128, .5), inset 0 -3px 0 rgba(6, 61, 34, .4);
+}
+
+/* Hint pill in the bottom bar */
+.hint-ad-button {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-inline: 1px solid rgba(255, 226, 158, .1);
+  background: rgba(6, 26, 40, .5);
+  color: #9adfff;
+  font-size: clamp(.62rem, 2.6vw, .84rem);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.hint-ad-button i {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #9ee7ff, var(--cyan));
+  color: #063a52;
+  font-style: normal;
+  font-size: .55rem;
+}
+
+.hint-ad-button:disabled {
+  opacity: .4;
+}
+
+.bottom-status {
+  grid-template-columns: minmax(64px, .8fr) auto auto minmax(84px, 1fr);
+}
+
+/* Hint reveal on a hand card */
+.hint-glow {
+  z-index: 7;
+  outline: 3px solid rgba(154, 223, 255, .95);
+  outline-offset: 3px;
+  animation: hintGlowPulse .7s ease-in-out infinite alternate;
+}
+
+@keyframes hintGlowPulse {
+  from { filter: drop-shadow(0 0 10px rgba(69, 215, 255, .55)); }
+  to { filter: drop-shadow(0 0 26px rgba(69, 215, 255, .95)); }
+}
+
+/* Post-bank bonus offer toast */
+.bonus-bank-offer {
+  position: fixed;
+  z-index: 55;
+  left: 50%;
+  bottom: calc(150px + var(--safe-bottom));
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "icon label" "icon sub";
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 9px 16px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(69, 215, 255, .5);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(10, 42, 64, .96), rgba(4, 16, 30, .97));
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .45), 0 0 22px rgba(69, 215, 255, .25);
+  color: #d9f5ff;
+  text-align: left;
+  animation: bonusOfferIn .32s cubic-bezier(.18, 1.4, .3, 1) both;
+}
+
+.bonus-bank-offer i {
+  grid-area: icon;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #9ee7ff, var(--cyan));
+  color: #063a52;
+  font-style: normal;
+  font-size: .7rem;
+}
+
+.bonus-bank-offer span {
+  grid-area: label;
+  font-size: clamp(.76rem, 3.2vw, .92rem);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.bonus-bank-offer small {
+  grid-area: sub;
+  color: rgba(217, 245, 255, .62);
+  font-size: clamp(.56rem, 2.4vw, .68rem);
+  text-transform: uppercase;
+}
+
+@keyframes bonusOfferIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(14px) scale(.9); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+/* Run summary screen */
+.run-summary-card {
+  display: grid;
+  gap: 12px;
+  text-align: center;
+}
+
+.run-summary-rows {
+  display: grid;
+  gap: 0;
+  margin-top: 4px;
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  background: rgba(4, 6, 16, .4);
+  padding: 4px 14px;
+}
+
+.run-summary-rows article {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 2px;
+  border-bottom: 1px solid rgba(255, 226, 158, .08);
+}
+
+.run-summary-rows article:last-child {
+  border-bottom: 0;
+}
+
+.run-summary-rows span {
+  color: var(--text-dim);
+  font-size: clamp(.68rem, 2.9vw, .84rem);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.run-summary-rows strong {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(.95rem, 4.2vw, 1.3rem);
+  color: var(--cream);
+  text-shadow: 0 2px 0 rgba(4, 5, 13, .8);
+}
+
+.run-summary-rows .sum-good {
+  color: #8dffbe;
+  text-shadow: 0 0 12px rgba(46, 204, 128, .45), 0 2px 0 rgba(4, 5, 13, .8);
+}
+
+.run-summary-rows .sum-bad {
+  color: #ff8d9a;
+  text-shadow: 0 0 12px rgba(255, 65, 87, .45), 0 2px 0 rgba(4, 5, 13, .8);
+}
+
+.summary-pot {
+  display: grid;
+  gap: 6px;
+}
+
+.summary-pot-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-dim);
+  font-size: clamp(.66rem, 2.8vw, .82rem);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.summary-pot-labels span:last-child {
+  color: var(--gold-hot);
+}
+
+.summary-pot-track {
+  position: relative;
+  height: 13px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(3, 5, 14, .78);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, .75), inset 0 0 0 1px rgba(255, 255, 255, .05);
+}
+
+.summary-pot-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--cyan), var(--gold-hot) 55%, var(--gold));
+  box-shadow: 0 0 14px rgba(255, 197, 61, .6), inset 0 1px 0 rgba(255, 255, 255, .5);
+  transition: width .5s cubic-bezier(.22, 1, .36, 1);
+}
+
+.summary-ad-buttons {
+  display: grid;
+  gap: 8px;
+}
+
+.run-summary-card .primary-button {
+  width: 100%;
+}
+
+.run-summary-card .secondary-button {
+  margin-top: 0;
+}
+
+/* Placeholder rewarded-ad overlay (until a real SDK is connected) */
+.ad-placeholder-overlay {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(2, 3, 9, .92);
+  animation: cutsceneFadeIn .15s ease both;
+}
+
+.ad-placeholder-card {
+  position: relative;
+  display: grid;
+  width: min(100%, 340px);
+  justify-items: center;
+  gap: 14px;
+  padding: 26px 22px 22px;
+  border: 1px solid rgba(69, 215, 255, .4);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(10, 42, 64, .96), rgba(4, 16, 30, .98));
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .6), 0 0 30px rgba(69, 215, 255, .18);
+  text-align: center;
+}
+
+.ad-placeholder-tag {
+  color: var(--cyan);
+  font-size: .72rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+
+.ad-placeholder-count {
+  display: grid;
+  width: 74px;
+  height: 74px;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid rgba(69, 215, 255, .5);
+  background: rgba(3, 5, 14, .7);
+  color: #d9f5ff;
+  font-family: var(--font-display);
+  font-size: 2rem;
+}
+
+.ad-placeholder-card p {
+  margin: 0;
+  color: rgba(217, 245, 255, .6);
+  font-size: .74rem;
+  line-height: 1.45;
+}
+
+.ad-placeholder-claim {
+  min-height: 50px;
+  width: 100%;
+  border: 2px solid #063a52;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #9ee7ff, var(--cyan) 62%, #0d7aa8);
+  box-shadow: 0 6px 0 #063a52;
+  color: #04283c;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  text-transform: uppercase;
+  transition: transform .1s ease, filter .1s ease;
+}
+
+.ad-placeholder-claim:disabled {
+  filter: grayscale(.7) brightness(.6);
+}
+
+.ad-placeholder-claim:not(:disabled):active {
+  transform: scale(.95) translateY(3px);
+  box-shadow: 0 1px 0 #063a52;
+}
+
+.ad-placeholder-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  color: rgba(217, 245, 255, .55);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+@media (max-width: 430px) {
+  .bank-button {
+    min-height: 52px;
+    border-radius: 14px;
+  }
+
+  .bottom-status {
+    grid-template-columns: minmax(58px, .8fr) auto auto minmax(72px, 1fr);
+  }
+
+  .hint-ad-button {
+    padding: 0 9px;
+  }
+
+  .bonus-bank-offer {
+    bottom: calc(136px + var(--safe-bottom));
+  }
+}
+
+/* ==========================================================================
    Reduced motion
    ========================================================================== */
 
@@ -3184,10 +3685,6 @@ h2 {
 
   .score-panel strong {
     font-size: clamp(1.55rem, 7.8vw, 2.9rem);
-  }
-
-  .bottom-status {
-    grid-template-columns: minmax(62px, .62fr) auto minmax(94px, 1.1fr);
   }
 }
 

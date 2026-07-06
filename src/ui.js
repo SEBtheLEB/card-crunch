@@ -1,9 +1,12 @@
-import { getCrunchPreview } from "./gameState.js?v=59";
-import { getLevelProgress, getNextPotCheckpoint, isPotUnlocked } from "./progression.js?v=59";
-import { formatCompactNumber } from "./format.js?v=59";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=65";
+import { isPotUnlocked } from "./progression.js?v=65";
+import { formatCompactNumber } from "./format.js?v=65";
+import { hasShieldToken } from "./save.js?v=65";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
+  let bonusOfferEl = null;
+  let bonusOfferTimer = null;
   const elements = {
     shell: document.querySelector("#gameShell"),
     tableZone: document.querySelector("#tableZone"),
@@ -18,9 +21,12 @@ export function createUI() {
     levelValue: document.querySelector("#levelValue"),
     targetValue: document.querySelector("#targetValue"),
     targetFill: document.querySelector("#targetFill"),
-    storedValue: document.querySelector("#storedValue"),
-    stackMultiplierValue: document.querySelector("#stackMultiplierValue"),
+    targetStrip: document.querySelector(".target-strip"),
     crunchButton: document.querySelector("#crunchButton"),
+    bankButton: document.querySelector("#bankButton"),
+    bankAmountValue: document.querySelector("#bankAmountValue"),
+    multiPanel: document.querySelector("#multiPanel"),
+    multiValue: document.querySelector("#multiValue"),
     missValue: document.querySelector("#missValue"),
     comboLabel: document.querySelector("#comboLabel"),
     startScreen: document.querySelector("#startScreen"),
@@ -28,15 +34,31 @@ export function createUI() {
     levelMap: document.querySelector("#levelMap"),
     backToMenuButton: document.querySelector("#backToMenuButton"),
     exitLevelButton: document.querySelector("#exitLevelButton"),
+    hintAdButton: document.querySelector("#hintAdButton"),
     gameOverScreen: document.querySelector("#gameOverScreen"),
-    finalScore: document.querySelector("#finalScore"),
-    startButton: document.querySelector("#startButton"),
+    runEndEyebrow: document.querySelector("#runEndEyebrow"),
+    gameOverTitle: document.querySelector("#gameOverTitle"),
+    summaryBanked: document.querySelector("#summaryBanked"),
+    summaryLost: document.querySelector("#summaryLost"),
+    summaryLostRow: document.querySelector("#summaryLostRow"),
+    summaryShield: document.querySelector("#summaryShield"),
+    summaryShieldRow: document.querySelector("#summaryShieldRow"),
+    summaryRecovered: document.querySelector("#summaryRecovered"),
+    summaryRecoveredRow: document.querySelector("#summaryRecoveredRow"),
+    summaryMultiplier: document.querySelector("#summaryMultiplier"),
+    summaryStreak: document.querySelector("#summaryStreak"),
+    summaryPotName: document.querySelector("#summaryPotName"),
+    summaryPotPercent: document.querySelector("#summaryPotPercent"),
+    summaryPotFill: document.querySelector("#summaryPotFill"),
+    reviveAdButton: document.querySelector("#reviveAdButton"),
+    recoverAdButton: document.querySelector("#recoverAdButton"),
     restartButton: document.querySelector("#restartButton"),
+    returnToPotsButton: document.querySelector("#returnToPotsButton"),
+    startButton: document.querySelector("#startButton"),
     hamburgerButton: document.querySelector("#hamburgerButton"),
-    menuLivesValue: document.querySelector("#menuLivesValue"),
+    shieldAdButton: document.querySelector("#shieldAdButton"),
     menuEnergyValue: document.querySelector("#menuEnergyValue"),
     menuCoinsValue: document.querySelector("#menuCoinsValue"),
-    menuStreakValue: document.querySelector("#menuStreakValue"),
     profileBestScore: document.querySelector("#profileBestScore"),
     leaderboardBestScore: document.querySelector("#leaderboardBestScore"),
     profileStreak: document.querySelector("#profileStreak"),
@@ -49,7 +71,7 @@ export function createUI() {
     resetSaveButton: document.querySelector("#resetSaveButton")
   };
 
-  return {
+  const ui = {
     elements,
     render(state, handlers) {
       renderHud(elements, state);
@@ -97,7 +119,6 @@ export function createUI() {
         const progress = pot.target > 0 ? Math.min(1, pot.progress / pot.target) : 0;
         const hasSavedRun = savedLevelId === pot.id && !pot.complete;
         const locked = !isPotUnlocked(pots, pot.id);
-        const nextCheckpoint = getNextPotCheckpoint(pot);
         button.className = `map-pot ${pot.complete ? "is-complete" : ""} ${hasSavedRun ? "has-save" : ""} ${locked ? "is-locked" : ""}`;
         button.type = "button";
         button.disabled = locked || pot.complete;
@@ -105,17 +126,110 @@ export function createUI() {
         button.innerHTML = `
           <span>${locked ? "Locked" : hasSavedRun ? "Continue" : "Pot"} ${pot.id}</span>
           <strong>${locked ? "LOCK" : hasSavedRun ? "Saved" : pot.complete ? "Full" : formatCompactNumber(Math.max(0, pot.target - pot.progress))}</strong>
-          <small>${locked ? "Clear prior pot" : pot.complete ? "Cleared" : `Next CP ${formatCompactNumber(nextCheckpoint)}`}</small>
+          <small>${locked ? "Clear prior pot" : pot.complete ? "Cleared" : `${Math.round(progress * 100)}% full`}</small>
           <i><b style="width: ${progress * 100}%"></b></i>
         `;
-        button.addEventListener("click", () => handlers.onLevelSelect(pot.id));
+        bindInstantAction(button, () => handlers.onLevelSelect(pot.id));
         elements.levelMap.appendChild(button);
       });
     },
-    showGameOver(show, score = 0) {
-      elements.finalScore.textContent = formatCompactNumber(score);
+    showGameOver(show) {
       elements.gameOverScreen.classList.toggle("is-visible", show);
       elements.gameOverScreen.setAttribute("aria-hidden", String(!show));
+    },
+    /* End-of-run summary: pot progress, banked/lost cash, ad options. */
+    showRunSummary(summary) {
+      const potComplete = Boolean(summary.pot?.complete);
+      elements.runEndEyebrow.textContent = potComplete ? "Run Complete" : "Out of Lives";
+      elements.gameOverTitle.textContent = potComplete ? "Pot Filled!" : "Run Over";
+
+      elements.summaryBanked.textContent = `$${formatCompactNumber(summary.banked)}`;
+      elements.summaryLost.textContent = `-$${formatCompactNumber(summary.lost)}`;
+      elements.summaryLostRow.hidden = summary.lost <= 0;
+      elements.summaryShield.textContent = `+$${formatCompactNumber(summary.shieldSaved)}`;
+      elements.summaryShieldRow.hidden = summary.shieldSaved <= 0;
+      elements.summaryRecovered.textContent = `+$${formatCompactNumber(summary.recovered)}`;
+      elements.summaryRecoveredRow.hidden = summary.recovered <= 0;
+      elements.summaryMultiplier.textContent = `x${formatRunMultiplier(summary.bestMultiplier)}`;
+      elements.summaryStreak.textContent = String(summary.bestStreak);
+
+      if (summary.pot) {
+        const percent = summary.pot.target > 0 ? Math.min(1, summary.pot.progress / summary.pot.target) : 0;
+        elements.summaryPotName.textContent = `Pot ${summary.pot.id}`;
+        elements.summaryPotPercent.textContent = potComplete ? "FULL!" : `${Math.round(percent * 100)}%`;
+        elements.summaryPotFill.style.width = `${percent * 100}%`;
+        elements.summaryPotFill.parentElement.parentElement.hidden = false;
+      } else {
+        elements.summaryPotFill.parentElement.parentElement.hidden = true;
+      }
+
+      elements.reviveAdButton.hidden = !summary.canRevive;
+      elements.recoverAdButton.hidden = !summary.canRecover;
+      elements.restartButton.hidden = potComplete;
+
+      this.showGameOver(true);
+    },
+    /* Rewarded offer chip shown after a bank deposit; expires quietly. */
+    showBonusBankOffer(bonusAmount, onWatch) {
+      this.hideBonusBankOffer();
+      const offer = document.createElement("button");
+      offer.type = "button";
+      offer.className = "bonus-bank-offer";
+      offer.innerHTML = `
+        <i aria-hidden="true">&#9654;</i>
+        <span>+$${formatCompactNumber(bonusAmount)} bank bonus</span>
+        <small>Watch ad</small>
+      `;
+      bindInstantAction(offer, () => {
+        this.hideBonusBankOffer();
+        onWatch();
+      });
+      document.body.appendChild(offer);
+      bonusOfferEl = offer;
+      bonusOfferTimer = window.setTimeout(() => this.hideBonusBankOffer(), 12000);
+    },
+    hideBonusBankOffer() {
+      if (bonusOfferTimer) {
+        window.clearTimeout(bonusOfferTimer);
+        bonusOfferTimer = null;
+      }
+      if (bonusOfferEl) {
+        bonusOfferEl.remove();
+        bonusOfferEl = null;
+      }
+    },
+    playBankJuice(amount) {
+      const bankRect = elements.bankButton.getBoundingClientRect();
+      const potRect = elements.targetStrip.getBoundingClientRect();
+      const fly = document.createElement("div");
+      fly.className = "cutin-bank-fly bank-deposit-fly";
+      fly.textContent = `+$${formatCompactNumber(amount)}`;
+      fly.style.left = `${bankRect.left + bankRect.width / 2}px`;
+      fly.style.top = `${bankRect.top + bankRect.height / 2}px`;
+      fly.style.setProperty("--fly-x", `${potRect.left + potRect.width / 2 - (bankRect.left + bankRect.width / 2)}px`);
+      fly.style.setProperty("--fly-y", `${potRect.top + potRect.height / 2 - (bankRect.top + bankRect.height / 2)}px`);
+      document.body.appendChild(fly);
+      window.setTimeout(() => fly.remove(), 620);
+      sprayFromElement(elements.bankButton, "green");
+      elements.targetStrip.classList.remove("target-clear-bump");
+      window.setTimeout(() => {
+        sprayFromElement(elements.targetStrip, "gold");
+        elements.targetStrip.classList.add("target-clear-bump");
+        window.setTimeout(() => elements.targetStrip.classList.remove("target-clear-bump"), 760);
+      }, 480);
+      navigator.vibrate?.(20);
+    },
+    playReviveJuice() {
+      sprayFromElement(elements.missValue, "red");
+      popCounter(elements.missValue, "red");
+      navigator.vibrate?.(16);
+    },
+    flashHint(handIndex) {
+      const card = this.getHandCardElement(handIndex);
+      if (!card) return;
+      card.classList.add("hint-glow");
+      sprayFromElement(card, "blue");
+      window.setTimeout(() => card.classList.remove("hint-glow"), 3200);
     },
     getHandCardElement(index) {
       return elements.handZone.querySelector(`[data-hand-index="${index}"]`);
@@ -124,27 +238,27 @@ export function createUI() {
       return [...elements.tableZone.querySelectorAll("[data-stack-card]")];
     }
   };
+
+  return ui;
 }
 
 function renderHud(elements, state) {
   const previousCounters = elements._counterCache ?? null;
   const isEndless = !state.activePot && state.level === 0;
-  const levelProgress = isEndless
-    ? { target: 0, progress: 0, remaining: "Endless" }
-    : state.activePot
+  const potProgress = state.activePot
     ? {
-        target: state.activePot.target,
         progress: Math.min(1, state.activePot.progress / state.activePot.target),
         remaining: Math.max(0, state.activePot.target - state.activePot.progress)
       }
-    : getLevelProgress(state.score, state.level ?? 1);
+    : { progress: 0, remaining: isEndless ? "Endless" : 0 };
   elements.scoreValue.textContent = formatCompactNumber(state.score);
   elements.streakValue.textContent = String(state.streak ?? 0);
   elements.timerValue.textContent = String(Math.ceil(state.timeLeft));
-  elements.missValue.textContent = `${state.misses}/${state.maxMisses}`;
+  const livesLeft = Math.max(0, (state.maxMisses ?? 3) - (state.misses ?? 0));
+  elements.missValue.textContent = "♥".repeat(livesLeft) + "♡".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft));
   elements.levelValue.textContent = isEndless ? "∞" : String(state.level ?? 1);
-  elements.targetValue.textContent = typeof levelProgress.remaining === "number" ? formatCompactNumber(levelProgress.remaining) : levelProgress.remaining;
-  elements.targetFill.style.setProperty("--target-progress", `${levelProgress.progress}`);
+  elements.targetValue.textContent = typeof potProgress.remaining === "number" ? formatCompactNumber(potProgress.remaining) : potProgress.remaining;
+  elements.targetFill.style.setProperty("--target-progress", `${potProgress.progress}`);
   elements.timerRing.style.setProperty("--timer-progress", `${state.timeLeft / state.turnSeconds}`);
   elements.timerShell.classList.toggle("timer-danger", state.timeLeft <= 3 && state.status === "playing");
   elements.shell.classList.toggle("fever-mode", Boolean(state.fever));
@@ -180,18 +294,27 @@ function renderMenuStats(elements, state) {
   const totalCrunches = Number(localStorage.getItem("cardCrunchTotalCrunches") ?? 0);
   const bestStreak = Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak ?? 0);
   const potsCleared = state.pots?.filter((pot) => pot.complete).length ?? 0;
-  const livesLeft = Math.max(0, (state.maxMisses ?? 3) - (state.status === "playing" ? state.misses : 0));
 
-  if (elements.menuLivesValue) elements.menuLivesValue.textContent = livesLeft >= (state.maxMisses ?? 3) ? "Full" : String(livesLeft);
   if (elements.menuEnergyValue) elements.menuEnergyValue.textContent = String(state.turnSeconds - 2);
   if (elements.menuCoinsValue) elements.menuCoinsValue.textContent = formatCompactNumber(state.bestScore ?? coins);
-  if (elements.menuStreakValue) elements.menuStreakValue.textContent = String(state.streak ?? 0);
   if (elements.profileBestScore) elements.profileBestScore.textContent = formatCompactNumber(state.bestScore ?? 0);
   if (elements.leaderboardBestScore) elements.leaderboardBestScore.textContent = formatCompactNumber(state.bestScore ?? 0);
   if (elements.profileStreak) elements.profileStreak.textContent = String(bestStreak);
   if (elements.profileCrunches) elements.profileCrunches.textContent = `${formatCompactNumber(totalCrunches)} crunches`;
   if (elements.profilePotsCleared) elements.profilePotsCleared.textContent = String(potsCleared);
   if (elements.profileCoins) elements.profileCoins.textContent = formatCompactNumber(coins);
+  refreshShieldOffer(elements);
+}
+
+function refreshShieldOffer(elements) {
+  if (!elements.shieldAdButton) return;
+  const armed = hasShieldToken();
+  elements.shieldAdButton.disabled = armed;
+  elements.shieldAdButton.classList.toggle("is-armed", armed);
+  const label = elements.shieldAdButton.querySelector("span");
+  const sub = elements.shieldAdButton.querySelector("small");
+  if (label) label.textContent = armed ? "Shield armed for next run" : "Safe Bank Shield";
+  if (sub) sub.textContent = armed ? "Bust out and 25% of run cash auto-banks" : "Watch ad • auto-bank 25% if you bust out";
 }
 
 function popCounter(element, tone = "gold") {
@@ -210,6 +333,7 @@ function sprayFromElement(element, tone = "gold") {
     gold: ["#ffe894", "#ffbf3f", "#fff8d0"],
     red: ["#ff746f", "#ff443d", "#ffd2d0"],
     blue: ["#76c6ff", "#42a1ff", "#e0f3ff"],
+    green: ["#7ff0a2", "#2ecc80", "#d7ffe2"],
     fever: ["#ffe894", "#ff7439", "#fff8d0"]
   }[tone] ?? ["#ffe894", "#ffbf3f"];
 
@@ -245,14 +369,29 @@ function renderStack(elements, state) {
 
 function renderCrunch(elements, state, handlers) {
   const preview = getCrunchPreview(state);
-  elements.storedValue.textContent = "???";
-  elements.stackMultiplierValue.textContent = `x${preview.selectionMultiplier}`;
+  const playing = !state.locked && state.status === "playing";
+
+  elements.multiValue.textContent = `x${formatRunMultiplier(state.bankMultiplier ?? 1)}`;
+  elements.multiPanel.classList.toggle("multi-warm", (state.bankMultiplier ?? 1) >= 2);
+  elements.multiPanel.classList.toggle("multi-hot", (state.bankMultiplier ?? 1) >= 4);
+
+  const canBank = playing && Boolean(state.activePot) && state.score > 0;
+  elements.bankButton.disabled = !canBank;
+  elements.bankButton.classList.toggle("bank-ready", canBank);
+  elements.bankAmountValue.textContent = `$${formatCompactNumber(state.score ?? 0)}`;
+  setInstantAction(elements.bankButton, handlers.onBank);
+
+  if (elements.hintAdButton) {
+    elements.hintAdButton.hidden = state.hintAdUsedThisRun || state.status === "menu";
+    elements.hintAdButton.disabled = !playing || state.hintAdUsedThisRun;
+  }
+
   elements.crunchButton.disabled = state.locked || state.status !== "playing" || !preview.canCrunch;
   elements.crunchButton.textContent = preview.canCrunch ? `CRUNCH ${preview.selectedCount}` : "SELECT CARDS";
   elements.crunchButton.classList.toggle("crunch-ready", preview.canCrunch);
   elements.crunchButton.classList.toggle("crunch-greedy", preview.selectedCount >= 3);
   elements.crunchButton.classList.toggle("crunch-danger", preview.canCrunch && state.timeLeft <= 3);
-  elements.crunchButton.onclick = handlers.onCrunch;
+  setInstantAction(elements.crunchButton, handlers.onCrunch);
 }
 
 function renderHand(elements, state, handlers) {
@@ -265,11 +404,47 @@ function renderHand(elements, state, handlers) {
       button.dataset.order = String(order + 1);
     }
     button.disabled = state.locked || state.status !== "playing";
-    button.addEventListener("pointerup", (event) => {
-      event.preventDefault();
-      handlers.onCardSelect(index);
-    });
+    bindInstantAction(button, () => handlers.onCardSelect(index));
     elements.handZone.appendChild(button);
+  });
+}
+
+function setInstantAction(element, action) {
+  if (!element) return;
+  element.onpointerup = null;
+  element.onclick = null;
+  if (typeof action !== "function") return;
+  element.onpointerup = (event) => {
+    if (element.disabled) return;
+    element._lastInstantPointerAt = performance.now();
+    event.preventDefault();
+    action(event);
+  };
+  element.onclick = (event) => {
+    if (element.disabled) return;
+    if (performance.now() - (element._lastInstantPointerAt ?? 0) < 450) {
+      event.preventDefault();
+      return;
+    }
+    action(event);
+  };
+}
+
+function bindInstantAction(element, action) {
+  if (!element || typeof action !== "function") return;
+  element.addEventListener("pointerup", (event) => {
+    if (element.disabled) return;
+    element._lastInstantPointerAt = performance.now();
+    event.preventDefault();
+    action(event);
+  });
+  element.addEventListener("click", (event) => {
+    if (element.disabled) return;
+    if (performance.now() - (element._lastInstantPointerAt ?? 0) < 450) {
+      event.preventDefault();
+      return;
+    }
+    action(event);
   });
 }
 
