@@ -36,6 +36,8 @@ loadSettings();
 document.addEventListener(
   "touchmove",
   (event) => {
+    // Menus and modals scroll; only the game board locks panning.
+    if (event.target.closest?.(".main-menu-screen, .modal-screen, .ad-placeholder-overlay")) return;
     event.preventDefault();
   },
   { passive: false }
@@ -92,30 +94,13 @@ function installReactivePressFeedback() {
   });
 }
 
+/* Single click listener: with touch-action: manipulation there is no
+   mobile click delay, and no pointerup/click double-fire to dedupe. */
 function bindInstantButton(button, action) {
   if (!button || typeof action !== "function") return;
-  let pointerHandled = false;
-  let pointerResetId = 0;
-  button.addEventListener("pointerup", (event) => {
-    if (button.disabled) return;
-    pointerHandled = true;
-    window.clearTimeout(pointerResetId);
-    pointerResetId = window.setTimeout(() => {
-      pointerHandled = false;
-    }, 700);
-    event.preventDefault();
-    event.stopPropagation();
-    action(event);
-  });
   button.addEventListener("click", (event) => {
     if (button.disabled) return;
-    if (pointerHandled) {
-      pointerHandled = false;
-      window.clearTimeout(pointerResetId);
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
+    event.preventDefault();
     action(event);
   });
 }

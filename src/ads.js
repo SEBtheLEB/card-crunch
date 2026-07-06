@@ -174,30 +174,14 @@ function showPlaceholderRewarded(rewardType) {
   });
 }
 
+/* Single click listener: no mobile delay (touch-action: manipulation) and
+   no pointerup/click double-fire. */
 function bindInstantAdButton(button, action) {
   if (!button || typeof action !== "function") return;
-  let pointerHandled = false;
-  let pointerResetId = 0;
-  button.addEventListener("pointerup", (event) => {
-    if (button.disabled) return;
-    pointerHandled = true;
-    window.clearTimeout(pointerResetId);
-    pointerResetId = window.setTimeout(() => {
-      pointerHandled = false;
-    }, 700);
-    event.preventDefault();
-    event.stopPropagation();
-    action(event);
-  });
   button.addEventListener("click", (event) => {
     if (button.disabled) return;
-    if (pointerHandled) {
-      pointerHandled = false;
-      window.clearTimeout(pointerResetId);
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
+    event.preventDefault();
+    event.stopPropagation();
     action(event);
   });
 }

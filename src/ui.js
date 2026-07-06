@@ -242,7 +242,10 @@ export function createUI() {
   return ui;
 }
 
+/* Runs every 100ms while the timer ticks: every write is value-guarded so
+   unchanged frames touch zero DOM and cause zero style invalidation. */
 function renderHud(elements, state) {
+  const cache = elements._hudCache ?? (elements._hudCache = {});
   const previousCounters = elements._counterCache ?? null;
   const isEndless = !state.activePot && state.level === 0;
   const potProgress = state.activePot
@@ -251,15 +254,31 @@ function renderHud(elements, state) {
         remaining: Math.max(0, state.activePot.target - state.activePot.progress)
       }
     : { progress: 0, remaining: isEndless ? "Endless" : 0 };
-  elements.scoreValue.textContent = formatCompactNumber(state.score);
-  elements.streakValue.textContent = String(state.streak ?? 0);
-  elements.timerValue.textContent = String(Math.ceil(state.timeLeft));
+
+  setText(elements.scoreValue, formatCompactNumber(state.score), cache, "score");
+  setText(elements.streakValue, String(state.streak ?? 0), cache, "streak");
+  setText(elements.timerValue, String(Math.ceil(state.timeLeft)), cache, "timer");
   const livesLeft = Math.max(0, (state.maxMisses ?? 3) - (state.misses ?? 0));
-  elements.missValue.textContent = "♥".repeat(livesLeft) + "♡".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft));
-  elements.levelValue.textContent = isEndless ? "∞" : String(state.level ?? 1);
-  elements.targetValue.textContent = typeof potProgress.remaining === "number" ? formatCompactNumber(potProgress.remaining) : potProgress.remaining;
-  elements.targetFill.style.setProperty("--target-progress", `${potProgress.progress}`);
-  elements.timerRing.style.setProperty("--timer-progress", `${state.timeLeft / state.turnSeconds}`);
+  setText(elements.missValue, "♥".repeat(livesLeft) + "♡".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft)), cache, "lives");
+  setText(elements.levelValue, isEndless ? "∞" : String(state.level ?? 1), cache, "level");
+  setText(
+    elements.targetValue,
+    typeof potProgress.remaining === "number" ? formatCompactNumber(potProgress.remaining) : potProgress.remaining,
+    cache,
+    "target"
+  );
+
+  const targetValue = potProgress.progress.toFixed(4);
+  if (cache.targetProgress !== targetValue) {
+    cache.targetProgress = targetValue;
+    elements.targetFill.style.setProperty("--target-progress", targetValue);
+  }
+  const timerValue = (state.timeLeft / state.turnSeconds).toFixed(3);
+  if (cache.timerProgress !== timerValue) {
+    cache.timerProgress = timerValue;
+    elements.timerRing.style.setProperty("--timer-progress", timerValue);
+  }
+
   elements.timerShell.classList.toggle("timer-danger", state.timeLeft <= 3 && state.status === "playing");
   elements.shell.classList.toggle("fever-mode", Boolean(state.fever));
   elements.shell.classList.toggle("streak-warm", state.streak >= 3);
@@ -277,7 +296,12 @@ function renderHud(elements, state) {
     streak: state.streak,
     misses: state.misses
   };
-  renderMenuStats(elements, state);
+}
+
+function setText(element, value, cache, key) {
+  if (!element || cache[key] === value) return;
+  cache[key] = value;
+  element.textContent = value;
 }
 
 function showMenuPage(elements, pageName = "home") {
@@ -362,108 +386,124 @@ function renderStack(elements, state) {
     slot.className = "table-card-slot stack-slot base-stack-card";
     slot.dataset.stackSlot = String(index);
     slot.style.setProperty("--stack-rotate", `${index === 0 ? -4 : 4}deg`);
-    slot.appendChild(createCard(card, { stackIndex: index }));
+    const cardEl = createCard(card, { stackIndex: index });
+    dealIn(cardEl, index * 70);
+    slot.appendChild(cardEl);
     elements.tableZone.appendChild(slot);
   });
 }
 
 function renderCrunch(elements, state, handlers) {
+  const cache = elements._crunchCache ?? (elements._crunchCache = {});
   const preview = getCrunchPreview(state);
   const playing = !state.locked && state.status === "playing";
 
-  elements.multiValue.textContent = `x${formatRunMultiplier(state.bankMultiplier ?? 1)}`;
+  // The handlers object is created once per game, so bind exactly once
+  // instead of re-assigning listeners on every 100ms render tick.
+  if (cache.handlers !== handlers) {
+    cache.handlers = handlers;
+    bindInstantAction(elements.bankButton, () => cache.handlers.onBank?.());
+    bindInstantAction(elements.crunchButton, () => cache.handlers.onCrunch?.());
+  }
+
+  setText(elements.multiValue, `x${formatRunMultiplier(state.bankMultiplier ?? 1)}`, cache, "multi");
   elements.multiPanel.classList.toggle("multi-warm", (state.bankMultiplier ?? 1) >= 2);
   elements.multiPanel.classList.toggle("multi-hot", (state.bankMultiplier ?? 1) >= 4);
 
   const canBank = playing && Boolean(state.activePot) && state.score > 0;
-  elements.bankButton.disabled = !canBank;
-  elements.bankButton.classList.toggle("bank-ready", canBank);
-  elements.bankAmountValue.textContent = `$${formatCompactNumber(state.score ?? 0)}`;
-  setInstantAction(elements.bankButton, handlers.onBank);
+  if (cache.canBank !== canBank) {
+    cache.canBank = canBank;
+    elements.bankButton.disabled = !canBank;
+    elements.bankButton.classList.toggle("bank-ready", canBank);
+  }
+  setText(elements.bankAmountValue, `$${formatCompactNumber(state.score ?? 0)}`, cache, "bankAmount");
 
   if (elements.hintAdButton) {
-    elements.hintAdButton.hidden = state.hintAdUsedThisRun || state.status === "menu";
-    elements.hintAdButton.disabled = !playing || state.hintAdUsedThisRun;
+    const hintHidden = state.hintAdUsedThisRun || state.status === "menu";
+    const hintDisabled = !playing || state.hintAdUsedThisRun;
+    if (cache.hintHidden !== hintHidden) {
+      cache.hintHidden = hintHidden;
+      elements.hintAdButton.hidden = hintHidden;
+    }
+    if (cache.hintDisabled !== hintDisabled) {
+      cache.hintDisabled = hintDisabled;
+      elements.hintAdButton.disabled = hintDisabled;
+    }
   }
 
-  elements.crunchButton.disabled = state.locked || state.status !== "playing" || !preview.canCrunch;
-  elements.crunchButton.textContent = preview.canCrunch ? `CRUNCH ${preview.selectedCount}` : "SELECT CARDS";
+  const crunchDisabled = state.locked || state.status !== "playing" || !preview.canCrunch;
+  if (cache.crunchDisabled !== crunchDisabled) {
+    cache.crunchDisabled = crunchDisabled;
+    elements.crunchButton.disabled = crunchDisabled;
+  }
+  setText(elements.crunchButton, preview.canCrunch ? `CRUNCH ${preview.selectedCount}` : "SELECT CARDS", cache, "crunchLabel");
   elements.crunchButton.classList.toggle("crunch-ready", preview.canCrunch);
   elements.crunchButton.classList.toggle("crunch-greedy", preview.selectedCount >= 3);
   elements.crunchButton.classList.toggle("crunch-danger", preview.canCrunch && state.timeLeft <= 3);
-  setInstantAction(elements.crunchButton, handlers.onCrunch);
 }
 
+/* Patch the hand in place. Rebuilding a card element on every selection
+   was the source of ghost double-taps (the browser's compatibility click
+   landed on the freshly-created element and toggled the selection right
+   back off) and of transitions snapping instead of animating. A slot's
+   element is only replaced when a genuinely new card is dealt into it. */
 function renderHand(elements, state, handlers) {
-  elements.handZone.innerHTML = "";
-  state.hand.forEach((card, index) => {
-    const button = createCard(card, { handIndex: index, isButton: true });
+  const zone = elements.handZone;
+  const disabled = state.locked || state.status !== "playing";
+
+  for (let index = 0; index < 4; index += 1) {
+    const card = state.hand[index] ?? null;
+    let button = zone.querySelector(`[data-hand-index="${index}"]`);
+
+    if (!card) {
+      button?.remove();
+      continue;
+    }
+
+    if (!button || button.dataset.cardId !== card.id) {
+      const fresh = createCard(card, { handIndex: index, isButton: true });
+      fresh.dataset.cardId = card.id;
+      dealIn(fresh, index * 45);
+      bindInstantAction(fresh, () => handlers.onCardSelect(index));
+      if (button) {
+        zone.replaceChild(fresh, button);
+      } else {
+        const nextSibling = [...zone.children].find((el) => Number(el.dataset.handIndex) > index) ?? null;
+        zone.insertBefore(fresh, nextSibling);
+      }
+      button = fresh;
+    }
+
     const order = state.selectedHandIndexes.indexOf(index);
+    button.classList.toggle("is-hand-selected", order >= 0);
     if (order >= 0) {
-      button.classList.add("is-hand-selected");
       button.dataset.order = String(order + 1);
+    } else {
+      delete button.dataset.order;
     }
-    button.disabled = state.locked || state.status !== "playing";
-    bindInstantAction(button, () => handlers.onCardSelect(index));
-    elements.handZone.appendChild(button);
-  });
+    if (button.disabled !== disabled) button.disabled = disabled;
+  }
 }
 
-function setInstantAction(element, action) {
-  if (!element) return;
-  element.onpointerup = null;
-  element.onclick = null;
-  if (typeof action !== "function") return;
-  let pointerHandled = false;
-  let pointerResetId = 0;
-  element.onpointerup = (event) => {
-    if (element.disabled) return;
-    pointerHandled = true;
-    window.clearTimeout(pointerResetId);
-    pointerResetId = window.setTimeout(() => {
-      pointerHandled = false;
-    }, 700);
-    event.preventDefault();
-    event.stopPropagation();
-    action(event);
-  };
-  element.onclick = (event) => {
-    if (element.disabled) return;
-    if (pointerHandled) {
-      pointerHandled = false;
-      window.clearTimeout(pointerResetId);
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-    action(event);
-  };
+/* Staggered deal-in pop for newly drawn cards. The delay is cleared on a
+   timer so it never postpones later animations (tap pops, shakes). */
+function dealIn(element, delayMs) {
+  element.classList.add("card-enter");
+  if (delayMs > 0) element.style.animationDelay = `${delayMs}ms`;
+  window.setTimeout(() => {
+    element.classList.remove("card-enter");
+    element.style.animationDelay = "";
+  }, 420 + delayMs);
 }
 
+/* touch-action: manipulation is set globally, so `click` already fires
+   without the legacy 300ms mobile delay. A single click listener is both
+   instant and immune to pointerup/click double-firing. */
 function bindInstantAction(element, action) {
   if (!element || typeof action !== "function") return;
-  let pointerHandled = false;
-  let pointerResetId = 0;
-  element.addEventListener("pointerup", (event) => {
-    if (element.disabled) return;
-    pointerHandled = true;
-    window.clearTimeout(pointerResetId);
-    pointerResetId = window.setTimeout(() => {
-      pointerHandled = false;
-    }, 700);
-    event.preventDefault();
-    event.stopPropagation();
-    action(event);
-  });
   element.addEventListener("click", (event) => {
     if (element.disabled) return;
-    if (pointerHandled) {
-      pointerHandled = false;
-      window.clearTimeout(pointerResetId);
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
+    event.preventDefault();
     action(event);
   });
 }
