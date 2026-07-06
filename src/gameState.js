@@ -331,6 +331,12 @@ export function createGame(ui) {
 
     const earned = await adManager.showRewardedAd("hint");
     state.rewardAdInProgress = false;
+    state.locked = false;
+    state.status = "playing";
+    // Render (and rebuild the hand) BEFORE flashing the hint, otherwise the
+    // unlock re-render replaces the card element and wipes the glow.
+    ui.render(state, handlers);
+    startTimer();
     if (earned) {
       const hintIndex = state.hand.findIndex((card) => card && evaluateStackAdd(state.stack, card).valid);
       if (hintIndex >= 0) {
@@ -340,10 +346,6 @@ export function createGame(ui) {
         ui.setMessage("No single-card crunch right now", "bad");
       }
     }
-    state.locked = false;
-    state.status = "playing";
-    ui.render(state, handlers);
-    startTimer();
   }
 
   async function handleTimeout() {
