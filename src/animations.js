@@ -3,7 +3,7 @@ import {
   hideCrunchSkipText,
   isCrunchSkipRequested,
   showCrunchSkipText
-} from "./crunchCutscene.js?v=73";
+} from "./crunchCutscene.js?v=74";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

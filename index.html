@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/main.css?v=73">
+    <link rel="stylesheet" href="styles/main.css?v=74">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -213,8 +213,16 @@
 
     <section class="modal-screen" id="gameOverScreen" aria-labelledby="gameOverTitle" aria-hidden="true">
       <div class="modal-card run-summary-card">
-        <p class="eyebrow" id="runEndEyebrow">Out of Lives</p>
-        <h2 id="gameOverTitle">Run Over</h2>
+        <div class="run-summary-hero">
+          <div class="summary-token-stack" aria-hidden="true">
+            <i>&spades;</i>
+            <i>&hearts;</i>
+            <i>&diams;</i>
+          </div>
+          <p class="eyebrow" id="runEndEyebrow">Out of Lives</p>
+          <h2 id="gameOverTitle">Run Over</h2>
+          <p class="summary-copy" id="runEndCopy">Watch an ad to revive, or recover part of your lost cash into the pot.</p>
+        </div>
         <div class="run-summary-rows">
           <article><span>Banked this run</span><strong class="sum-good" id="summaryBanked">$0</strong></article>
           <article id="summaryShieldRow" hidden><span>Shield auto-banked</span><strong class="sum-good" id="summaryShield">$0</strong></article>
@@ -230,13 +238,15 @@
         <div class="summary-ad-buttons">
           <button class="ad-button" id="reviveAdButton" type="button" hidden>
             <i aria-hidden="true">&#9654;</i>
-            <span>Revive with 1 life</span>
-            <small>Watch ad &bull; keep run cash &amp; multi</small>
+            <span>Watch Ad: Revive</span>
+            <small>Get 1 life. Keep run cash and multiplier.</small>
+            <b aria-hidden="true">AD</b>
           </button>
           <button class="ad-button" id="recoverAdButton" type="button" hidden>
             <i aria-hidden="true">&#9654;</i>
-            <span>Recover 50% lost cash</span>
-            <small>Watch ad &bull; deposits into the pot</small>
+            <span>Watch Ad: Recover Cash</span>
+            <small>Save 50% of lost cash directly into this pot.</small>
+            <b aria-hidden="true">AD</b>
           </button>
         </div>
         <button class="primary-button" id="restartButton" type="button">Play Again</button>
@@ -244,6 +254,6 @@
       </div>
     </section>
 
-    <script type="module" src="src/main.js?v=73"></script>
+    <script type="module" src="src/main.js?v=74"></script>
   </body>
 </html>

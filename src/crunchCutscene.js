@@ -1,4 +1,4 @@
-import { formatCompactNumber } from "./format.js?v=73";
+import { formatCompactNumber } from "./format.js?v=74";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 

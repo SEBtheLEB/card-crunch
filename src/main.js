@@ -1,8 +1,8 @@
-import { createGame } from "./gameState.js?v=73";
-import { createUI } from "./ui.js?v=73";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=73";
-import { adManager } from "./ads.js?v=73";
-import { grantShieldToken, hasShieldToken } from "./save.js?v=73";
+import { createGame } from "./gameState.js?v=74";
+import { createUI } from "./ui.js?v=74";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=74";
+import { adManager } from "./ads.js?v=74";
+import { grantShieldToken, hasShieldToken } from "./save.js?v=74";
 
 const ui = createUI();
 const game = createGame(ui);

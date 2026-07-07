@@ -1,18 +1,18 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=73";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=73";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=73";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=73";
-import { ensurePlayableHand } from "./handSafety.js?v=73";
-import { clearRunSave, consumeShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=73";
-import { formatCompactNumber } from "./format.js?v=73";
-import { adManager } from "./ads.js?v=73";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=74";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=74";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=74";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=74";
+import { ensurePlayableHand } from "./handSafety.js?v=74";
+import { clearRunSave, consumeShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=74";
+import { formatCompactNumber } from "./format.js?v=74";
+import { adManager } from "./ads.js?v=74";
 import {
   animateBust,
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=73";
+} from "./animations.js?v=74";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -228,7 +228,7 @@ export function createGame(ui) {
       throw error;
     }
 
-    // Money stays as unbanked Run Money — the pot only fills when banking.
+    // Money stays as unbanked Run Money - the pot only fills when banking.
     state.score += crunch.total;
     localStorage.setItem("cardCrunchTotalCrunches", String(Number(localStorage.getItem("cardCrunchTotalCrunches") ?? 0) + selectedCards.length));
     state.bestScore = Math.max(state.bestScore, state.score);
@@ -461,7 +461,7 @@ export function createGame(ui) {
     state.misses = state.maxMisses - 1;
     state.lostUnbankedMoney = 0;
     ui.showGameOver(false);
-    ui.setMessage("REVIVED! 1 life left — bank it or risk it", "good");
+    ui.setMessage("REVIVED! 1 life left - bank it or risk it", "good");
     ui.playReviveJuice();
     startNewRound();
   }

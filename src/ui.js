@@ -1,7 +1,7 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=73";
-import { isPotUnlocked } from "./progression.js?v=73";
-import { formatCompactNumber } from "./format.js?v=73";
-import { hasShieldToken } from "./save.js?v=73";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=74";
+import { isPotUnlocked } from "./progression.js?v=74";
+import { formatCompactNumber } from "./format.js?v=74";
+import { hasShieldToken } from "./save.js?v=74";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -38,6 +38,7 @@ export function createUI() {
     gameOverScreen: document.querySelector("#gameOverScreen"),
     runEndEyebrow: document.querySelector("#runEndEyebrow"),
     gameOverTitle: document.querySelector("#gameOverTitle"),
+    runEndCopy: document.querySelector("#runEndCopy"),
     summaryBanked: document.querySelector("#summaryBanked"),
     summaryLost: document.querySelector("#summaryLost"),
     summaryLostRow: document.querySelector("#summaryLostRow"),
@@ -142,6 +143,7 @@ export function createUI() {
       const potComplete = Boolean(summary.pot?.complete);
       elements.runEndEyebrow.textContent = potComplete ? "Run Complete" : "Out of Lives";
       elements.gameOverTitle.textContent = potComplete ? "Pot Filled!" : "Run Over";
+      elements.runEndCopy.textContent = getRunEndCopy(summary, potComplete);
 
       elements.summaryBanked.textContent = `$${formatCompactNumber(summary.banked)}`;
       elements.summaryLost.textContent = `-$${formatCompactNumber(summary.lost)}`;
@@ -259,8 +261,8 @@ function renderHud(elements, state) {
   setText(elements.streakValue, String(state.streak ?? 0), cache, "streak");
   setText(elements.timerValue, String(Math.ceil(state.timeLeft)), cache, "timer");
   const livesLeft = Math.max(0, (state.maxMisses ?? 3) - (state.misses ?? 0));
-  setText(elements.missValue, "♥".repeat(livesLeft) + "♡".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft)), cache, "lives");
-  setText(elements.levelValue, isEndless ? "∞" : String(state.level ?? 1), cache, "level");
+  setText(elements.missValue, "\u2665".repeat(livesLeft) + "\u2661".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft)), cache, "lives");
+  setText(elements.levelValue, isEndless ? "\u221e" : String(state.level ?? 1), cache, "level");
   setText(
     elements.targetValue,
     typeof potProgress.remaining === "number" ? formatCompactNumber(potProgress.remaining) : potProgress.remaining,
@@ -338,7 +340,7 @@ function refreshShieldOffer(elements) {
   const label = elements.shieldAdButton.querySelector("span");
   const sub = elements.shieldAdButton.querySelector("small");
   if (label) label.textContent = armed ? "Shield armed for next run" : "Safe Bank Shield";
-  if (sub) sub.textContent = armed ? "Bust out and 25% of run cash auto-banks" : "Watch ad • auto-bank 25% if you bust out";
+  if (sub) sub.textContent = armed ? "Bust out and 25% of run cash auto-banks" : "Watch ad \u2022 auto-bank 25% if you bust out";
 }
 
 function popCounter(element, tone = "gold") {
@@ -494,6 +496,14 @@ function dealIn(element, delayMs) {
     element.classList.remove("card-enter");
     element.style.animationDelay = "";
   }, 420 + delayMs);
+}
+
+function getRunEndCopy(summary, potComplete) {
+  if (potComplete) return "That pot is full. Your banked cash is safe, and the next pot is ready.";
+  if (summary.canRevive) return "Watch an ad to revive with 1 life and keep this risky run alive.";
+  if (summary.canRecover) return "Watch an ad to recover half of your lost cash into this pot.";
+  if (summary.lost > 0) return "Unbanked cash was lost. Bank earlier next run, or try again for a bigger pot.";
+  return "No unbanked cash was lost. Shuffle up and start another run.";
 }
 
 /* touch-action: manipulation is set globally, so `click` already fires
