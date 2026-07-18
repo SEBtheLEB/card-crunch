@@ -370,6 +370,7 @@ async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null
   if (!stage || !cards.length || isCrunchSkipRequested()) return;
 
   const shardGrid = getShardGrid(cards.length);
+  cards.forEach((card) => createCardFractureMap(card, shardGrid));
   const prepared = bankEl ? prepareCutinCardShards(cards, bankEl, shardGrid) : null;
 
   for (let hit = 1; hit <= CUTSCENE_CONFIG.interactiveCrunchHits; hit += 1) {
@@ -561,6 +562,32 @@ function drawPixelCrumb(context, particle, opacity) {
 function getShardGrid(cardCount) {
   if (cardCount <= 2) return { columns: 4, rows: 4 };
   return { columns: 3, rows: 3 };
+}
+
+function createCardFractureMap(card, grid = CARD_SHARD_CONFIG) {
+  if (!card || card.querySelector(".cutin-fracture-map")) return;
+  const namespace = "http://www.w3.org/2000/svg";
+  const layer = document.createElement("span");
+  const svg = document.createElementNS(namespace, "svg");
+  layer.className = "cutin-fracture-map";
+  layer.setAttribute("aria-hidden", "true");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+
+  for (let row = 0; row < grid.rows; row += 1) {
+    for (let column = 0; column < grid.columns; column += 1) {
+      const variant = row * grid.columns + column;
+      const polygon = document.createElementNS(namespace, "polygon");
+      polygon.classList.add("cutin-fracture-piece");
+      polygon.setAttribute("points", getPixelShardPolygon(column, row, variant, grid.columns, grid.rows)
+        .map(([x, y]) => `${x},${y}`)
+        .join(" "));
+      svg.appendChild(polygon);
+    }
+  }
+
+  layer.appendChild(svg);
+  card.appendChild(layer);
 }
 
 function createMathCutinMarkup({ entry, matched, operator, equation, tier }) {
@@ -971,6 +998,7 @@ function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
     }
 
     const shardTemplate = card.cloneNode(true);
+    shardTemplate.querySelectorAll(".cutin-fracture-map").forEach((node) => node.remove());
     shardTemplate.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
     shardTemplate.classList.remove(
       "is-shattering",
@@ -992,8 +1020,6 @@ function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
         const pieceY = rect.top + (row + .5) * (rect.height / grid.rows);
         const centerColumn = (grid.columns - 1) / 2;
         const centerRow = (grid.rows - 1) / 2;
-        const pitX = (column - centerColumn) * 1.15 + ((shardIndex + cardIndex) % 3 - 1) * .35;
-        const pitY = (row - centerRow) * 1.05 + ((shardIndex * 2 + cardIndex) % 3 - 1) * .3;
         const spreadX = (column - centerColumn) * 19 + ((shardIndex + cardIndex) % 3 - 1) * 5;
         const spreadY = (row - centerRow) * 13 - 8 - (shardIndex % 2) * 4;
         const burstX = spreadX * 1.38 + Math.sign(spreadX || column - centerColumn || 1) * (5 + shardIndex % 4);
@@ -1028,8 +1054,6 @@ function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
         shard.style.height = `${rect.height}px`;
         shard.style.clipPath = createPixelShardClip(column, row, shardIndex, grid.columns, grid.rows);
         shard.style.transformOrigin = `${(column + .5) * cellWidth}% ${(row + .5) * cellHeight}%`;
-        shard.style.setProperty("--shard-pit-x", `${pitX}px`);
-        shard.style.setProperty("--shard-pit-y", `${pitY}px`);
         shard.style.setProperty("--shard-burst-x", `${burstX}px`);
         shard.style.setProperty("--shard-burst-y", `${burstY}px`);
         shard.style.setProperty("--shard-slide-x", `${slideX}px`);
@@ -1100,56 +1124,31 @@ function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
 }
 
 function createPrecutSeamOverlay(card, rect, grid) {
-  const seam = document.createElement("span");
+  const fractureMap = card.querySelector(".cutin-fracture-map");
+  if (!fractureMap) return null;
+
+  const seam = fractureMap.cloneNode(true);
   seam.className = "precut-seam-overlay";
   seam.setAttribute("aria-hidden", "true");
   seam.style.left = `${rect.left}px`;
   seam.style.top = `${rect.top}px`;
   seam.style.width = `${rect.width}px`;
   seam.style.height = `${rect.height}px`;
-  let randomState = hashCutinSeed(card.getAttribute("aria-label") || card.textContent || "card");
-  const nextRandom = () => {
-    randomState = (Math.imul(randomState, 1664525) + 1013904223) >>> 0;
-    return randomState / 4294967296;
-  };
-  const junctionCount = Math.max(0, (grid.rows - 1) * (grid.columns - 1));
-  const nodeCount = Math.max(8, junctionCount + 3);
+  seam.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
 
-  for (let nodeIndex = 0; nodeIndex < nodeCount; nodeIndex += 1) {
-    let x;
-    let y;
-    if (nodeIndex < junctionCount) {
-      const column = nodeIndex % (grid.columns - 1) + 1;
-      const row = Math.floor(nodeIndex / (grid.columns - 1)) + 1;
-      x = column / grid.columns * 100 + (nextRandom() - .5) * 5.5;
-      y = row / grid.rows * 100 + (nextRandom() - .5) * 5.5;
-    } else {
-      x = 18 + nextRandom() * 64;
-      y = 16 + nextRandom() * 68;
+  let nodeIndex = 0;
+  for (let row = 1; row < grid.rows; row += 1) {
+    for (let column = 1; column < grid.columns; column += 1) {
+      const node = document.createElement("i");
+      node.className = "precut-fracture-node";
+      node.style.left = `${column / grid.columns * 100}%`;
+      node.style.top = `${row / grid.rows * 100}%`;
+      node.style.setProperty("--node-delay", `${nodeIndex * 14}ms`);
+      seam.appendChild(node);
+      nodeIndex += 1;
     }
-
-    const node = document.createElement("i");
-    const nodeGrow = 1.55 + nextRandom() * .65;
-    node.className = "precut-fracture-node";
-    node.style.left = `${x}%`;
-    node.style.top = `${y}%`;
-    node.style.setProperty("--node-size", `${5 + Math.floor(nextRandom() * 4)}px`);
-    node.style.setProperty("--node-grow", `${nodeGrow}`);
-    node.style.setProperty("--node-grow-overshoot", `${nodeGrow * 1.08}`);
-    node.style.setProperty("--node-rotate", `${Math.round((nextRandom() - .5) * 34)}deg`);
-    node.style.setProperty("--node-delay", `${nodeIndex * 6}ms`);
-    seam.appendChild(node);
   }
   return seam;
-}
-
-function hashCutinSeed(value) {
-  let hash = 2166136261;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
 }
 
 function showPreparedCardAssembly(prepared, hit) {
@@ -1162,7 +1161,6 @@ function showPreparedCardAssembly(prepared, hit) {
     shard.dataset.crunchDamage = String(hit);
   });
   prepared.seams.forEach((seam) => {
-    seam.classList.toggle("is-pitted", hit >= 1);
     seam.classList.toggle("is-growing", hit >= 2);
     seam.classList.toggle("is-break-ready", hit >= 3);
   });

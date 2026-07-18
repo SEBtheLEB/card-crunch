@@ -104,11 +104,8 @@ if (!cutsceneSource.includes("is-consumed-after-shatter") || !css.includes(".cut
 if (!cutsceneSource.includes("showPreparedCardAssembly") || !cutsceneSource.includes("is-precut-piece") || !css.includes("precutCardHitThree")) {
   throw new Error("Preassembled shard damage states are missing");
 }
-if (!cutsceneSource.includes("createPrecutSeamOverlay") || !cutsceneSource.includes("hashCutinSeed") || !css.includes("precutFractureNodeExpand")) {
-  throw new Error("Randomized transparent Crunch pits are missing");
-}
-if (cutsceneSource.includes("createCardFractureMap") || css.includes("precutCrackConnect")) {
-  throw new Error("The removed second-hit fracture-line renderer returned");
+if (!cutsceneSource.includes("createPrecutSeamOverlay") || !cutsceneSource.includes("createCardFractureMap") || !css.includes("precutFractureNodeGrow") || !css.includes("precutCrackConnect")) {
+  throw new Error("Classic connected Crunch fractures are missing");
 }
 if (!cutsceneSource.includes("ensureCrunchDebrisEmitter") || !cutsceneSource.includes("drawPixelCrumb") || !css.includes("cutin-crunch-debris-canvas")) {
   throw new Error("Canvas-rendered Crunch crumbs are missing");
@@ -136,7 +133,7 @@ if (!selectionResolveSource.includes("RESOLVE_HANDOFF_DELAY") || selectionResolv
 if (!cutsceneSource.includes("is-shared-handoff") || !css.includes("cutsceneBackdropIn")) {
   throw new Error("Blink-free shared-card cut-in backdrop is missing");
 }
-if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("--shard-burst-x") || !css.includes("--shard-rest-x") || !css.includes("cutin-card-shard.is-vacuuming")) {
+if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("--shard-burst-x") || !css.includes("cutin-fracture-map") || !css.includes("--shard-rest-x") || !css.includes("cutin-card-shard.is-vacuuming")) {
   throw new Error("Three-hit interactive Crunch damage sequence is missing");
 }
 if (!audioSource.includes("playCrunchShardImpact") || !audioSource.includes("SHARD_IMPACT_MIN_INTERVAL") || !audioSource.includes("crunch_vacuum") || !audioSource.includes("crunch_hit_3")) {
