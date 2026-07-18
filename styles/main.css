@@ -3766,6 +3766,164 @@ h2 {
   to { opacity: 1; filter: brightness(1); }
 }
 
+/* Three-hit Crunch interaction ------------------------------------------ */
+.cutin-crunch-prompt {
+  position: fixed;
+  z-index: 9;
+  left: calc(18px + var(--safe-left));
+  bottom: calc(18px + var(--safe-bottom));
+  max-width: 52vw;
+  color: #fff3a4;
+  font: 900 clamp(.62rem, 2.8vw, .9rem) / 1.25 var(--font-pixel);
+  text-shadow: 2px 2px 0 #432700, 0 0 13px rgba(255, 205, 71, .72);
+  pointer-events: none;
+  animation: cutinCrunchPromptPulse .72s steps(2, end) infinite alternate;
+}
+
+.cutin-crunch-prompt.is-final-hit {
+  color: #fff9d0;
+  font-size: clamp(.78rem, 3.8vw, 1.2rem);
+  text-shadow: 3px 3px 0 #5a2e00, 0 0 22px rgba(255, 222, 91, .95);
+  animation: cutinCrunchPromptSlam 180ms cubic-bezier(.18, 1.5, .25, 1) both;
+}
+
+.cutin-crack-layer {
+  position: absolute;
+  z-index: 8;
+  inset: -3px;
+  opacity: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+.cutin-card[data-crunch-damage="1"] .cutin-crack-layer {
+  opacity: .68;
+  background:
+    linear-gradient(128deg, transparent 47%, #24150e 48% 50%, transparent 51%) 48% 8% / 46% 55% no-repeat,
+    linear-gradient(42deg, transparent 47%, #24150e 48% 50%, transparent 51%) 59% 39% / 35% 42% no-repeat,
+    linear-gradient(92deg, transparent 47%, #5f3c24 48% 50%, transparent 51%) 38% 45% / 26% 36% no-repeat;
+}
+
+.cutin-card[data-crunch-damage="2"] .cutin-crack-layer {
+  opacity: .84;
+  background:
+    linear-gradient(128deg, transparent 47%, #1b100b 48% 51%, transparent 52%) 48% 4% / 48% 62% no-repeat,
+    linear-gradient(42deg, transparent 47%, #1b100b 48% 51%, transparent 52%) 62% 34% / 43% 48% no-repeat,
+    linear-gradient(92deg, transparent 47%, #5a321b 48% 51%, transparent 52%) 35% 45% / 35% 42% no-repeat,
+    linear-gradient(154deg, transparent 47%, #2b1710 48% 51%, transparent 52%) 35% 70% / 48% 38% no-repeat,
+    linear-gradient(24deg, transparent 47%, #2b1710 48% 51%, transparent 52%) 69% 72% / 38% 34% no-repeat;
+}
+
+.cutin-card[data-crunch-damage="3"] .cutin-crack-layer {
+  opacity: 1;
+  background:
+    linear-gradient(128deg, transparent 46%, #130b08 47% 51%, transparent 52%) 48% 1% / 55% 70% no-repeat,
+    linear-gradient(42deg, transparent 46%, #130b08 47% 51%, transparent 52%) 63% 30% / 52% 55% no-repeat,
+    linear-gradient(92deg, transparent 46%, #4e2b19 47% 51%, transparent 52%) 32% 42% / 42% 54% no-repeat,
+    linear-gradient(154deg, transparent 46%, #1c0e0a 47% 51%, transparent 52%) 32% 70% / 54% 46% no-repeat,
+    linear-gradient(24deg, transparent 46%, #1c0e0a 47% 51%, transparent 52%) 70% 69% / 49% 44% no-repeat,
+    linear-gradient(78deg, transparent 46%, #4e2b19 47% 51%, transparent 52%) 51% 85% / 43% 37% no-repeat;
+}
+
+.cutin-stage[data-crunch-hit="1"] .cutin-card:not(.dim) {
+  animation: cutinCrunchHitOne 180ms cubic-bezier(.2, 1.55, .28, 1) both !important;
+}
+
+.cutin-stage[data-crunch-hit="2"] .cutin-card:not(.dim) {
+  animation: cutinCrunchHitTwo 210ms cubic-bezier(.2, 1.55, .28, 1) both !important;
+}
+
+.cutin-stage[data-crunch-hit="3"] .cutin-card:not(.dim) {
+  animation: cutinCrunchHitThree 250ms cubic-bezier(.16, 1.5, .24, 1) both !important;
+}
+
+.cutin-crunch-chip,
+.cutin-crunch-crumb {
+  position: fixed;
+  z-index: 10;
+  display: block;
+  pointer-events: none;
+}
+
+.cutin-crunch-chip {
+  width: var(--chip-size);
+  height: auto;
+  aspect-ratio: 1.4;
+  margin: -3px 0 0 -4px;
+  border: 1px solid #24130b;
+  background: #fff1c9;
+  box-shadow: 0 0 5px rgba(255, 215, 101, .65);
+  animation: cutinCrunchChipFly 470ms cubic-bezier(.14, .76, .24, 1) var(--chip-delay) both;
+}
+
+.cutin-crunch-chip.is-red-chip { border-color: #7e1722; background: #ffd6cb; }
+.cutin-crunch-chip.is-dark-chip { border-color: #111827; background: #d7d4bd; }
+
+.cutin-crunch-crumb {
+  width: 5px;
+  height: 5px;
+  margin: -2px 0 0 -2px;
+  background: #f7e2ad;
+  box-shadow: 0 0 4px rgba(255, 218, 105, .48);
+  animation: cutinCrunchCrumbFall var(--crumb-duration) cubic-bezier(.18, .58, .4, 1) var(--crumb-delay) both;
+}
+
+.cutin-crunch-crumb.is-gold-crumb {
+  background: #ffc53c;
+  box-shadow: 0 0 7px rgba(255, 196, 44, .82);
+}
+
+@keyframes cutinCrunchPromptPulse {
+  from { opacity: .72; transform: scale(.98); }
+  to { opacity: 1; transform: scale(1.025); }
+}
+
+@keyframes cutinCrunchPromptSlam {
+  from { opacity: .35; transform: scale(.72); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes cutinCrunchHitOne {
+  0%, 100% { transform: translateY(0) scale(1); }
+  38% { transform: translateY(7px) scale(1.055, .91); filter: brightness(1.28); }
+  68% { transform: translateY(-4px) scale(.98, 1.035); }
+}
+
+@keyframes cutinCrunchHitTwo {
+  0%, 100% { transform: translateY(0) scale(1); }
+  32% { transform: translateY(10px) rotate(-1deg) scale(1.075, .86); filter: brightness(1.36); }
+  58% { transform: translateY(-6px) rotate(1deg) scale(.965, 1.055); }
+}
+
+@keyframes cutinCrunchHitThree {
+  0%, 100% { transform: translateY(0) scale(1); }
+  25% { transform: translateY(14px) rotate(1deg) scale(1.1, .78); filter: brightness(1.48); }
+  48% { transform: translateY(-8px) rotate(-1.5deg) scale(.94, 1.08); }
+  72% { transform: translateY(3px) rotate(.6deg) scale(1.025, .94); }
+}
+
+@keyframes cutinCrunchChipFly {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(0) scale(.55); }
+  14% { opacity: 1; }
+  72% { opacity: 1; transform: translate3d(var(--chip-x), var(--chip-y), 0) rotate(var(--chip-rotation)) scale(1); }
+  100% { opacity: 0; transform: translate3d(var(--chip-x-far), var(--chip-y-far), 0) rotate(var(--chip-rotation)) scale(.35); }
+}
+
+@keyframes cutinCrunchCrumbFall {
+  0% { opacity: 0; transform: translate3d(0, -5px, 0) rotate(0) scale(.45); }
+  12% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(var(--crumb-x), var(--crumb-y), 0) rotate(190deg) scale(.75); }
+}
+
+.reduce-motion .cutin-stage[data-crunch-hit] .cutin-card:not(.dim),
+.reduce-motion .cutin-crunch-prompt,
+.reduce-motion .cutin-crunch-chip,
+.reduce-motion .cutin-crunch-crumb {
+  animation-duration: 80ms !important;
+}
+
 .bonus-bank-offer.is-claiming {
   pointer-events: none;
   animation: bonusOfferClaim .14s ease-out both;

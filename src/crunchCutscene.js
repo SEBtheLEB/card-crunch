@@ -15,6 +15,8 @@ const CUTSCENE_CONFIG = {
   autoBonusStepDuration: 620,
   sharedCardDuration: 520,
   sharedCardStagger: 46,
+  interactiveCrunchHits: 3,
+  finalCrackHold: 190,
   fadeOutDuration: 160
 };
 const CARD_SHARD_CONFIG = {
@@ -328,10 +330,104 @@ async function playEntryCutin(overlay, entry, tier, advance, sourceCards = []) {
   overlay.innerHTML = isMathEntry(entry)
     ? createMathCutinMarkup({ entry, matched, operator, equation, tier })
     : createMatchCutinMarkup({ entry, matched, operator, equation, tier });
+  const crunchPrompt = createInteractiveCrunchPrompt(overlay);
   const restoreSharedCards = await transitionSourceCardsIntoCutin(overlay, sourceCards, advance);
   playGameSfx(getEntrySound(entry));
-  await advance.waitForTap(tier === "full" ? CUTSCENE_CONFIG.minFullCutinAdvanceDelay : CUTSCENE_CONFIG.minCutinAdvanceDelay);
+  await playInteractiveCardCrunch(overlay, advance, crunchPrompt);
   return restoreSharedCards;
+}
+
+function createInteractiveCrunchPrompt(overlay) {
+  const prompt = document.createElement("div");
+  prompt.className = "cutin-crunch-prompt";
+  prompt.setAttribute("aria-live", "polite");
+  prompt.textContent = `TAP TO CRUNCH  0/${CUTSCENE_CONFIG.interactiveCrunchHits}`;
+  overlay.appendChild(prompt);
+  return prompt;
+}
+
+async function playInteractiveCardCrunch(overlay, advance, prompt) {
+  const stage = overlay.querySelector(".cutin-stage");
+  const cards = [...overlay.querySelectorAll(".cutin-card:not(.dim)")];
+  if (!stage || !cards.length || isCrunchSkipRequested()) return;
+
+  cards.forEach((card) => {
+    const cracks = document.createElement("span");
+    cracks.className = "cutin-crack-layer";
+    cracks.setAttribute("aria-hidden", "true");
+    card.appendChild(cracks);
+  });
+
+  for (let hit = 1; hit <= CUTSCENE_CONFIG.interactiveCrunchHits; hit += 1) {
+    await advance.waitForTap(0);
+    if (isCrunchSkipRequested()) return;
+
+    stage.dataset.crunchHit = String(hit);
+    cards.forEach((card) => {
+      card.dataset.crunchDamage = String(hit);
+    });
+    playGameSfx(`crunch_hit_${hit}`);
+    spawnCrunchDamageBurst(overlay, cards, hit);
+    prompt.textContent = hit < CUTSCENE_CONFIG.interactiveCrunchHits
+      ? `CRUNCH AGAIN  ${hit}/${CUTSCENE_CONFIG.interactiveCrunchHits}`
+      : "BREAK!";
+    prompt.classList.toggle("is-final-hit", hit === CUTSCENE_CONFIG.interactiveCrunchHits);
+  }
+
+  await sleep(CUTSCENE_CONFIG.finalCrackHold);
+  prompt.remove();
+}
+
+function spawnCrunchDamageBurst(overlay, cards, hit) {
+  const fragment = document.createDocumentFragment();
+  const debris = [];
+
+  cards.forEach((card, cardIndex) => {
+    const rect = card.getBoundingClientRect();
+    const chipCount = 4 + hit * 3;
+    for (let index = 0; index < chipCount; index += 1) {
+      const chip = document.createElement("i");
+      const seed = index + cardIndex * 11 + hit * 17;
+      const originX = rect.left + rect.width * (.24 + ((seed * 29) % 53) / 100);
+      const originY = rect.top + rect.height * (.18 + ((seed * 19) % 59) / 100);
+      const direction = index % 2 === 0 ? -1 : 1;
+      const travelX = direction * (20 + (seed % 6) * 9 + hit * 7);
+      const travelY = -18 - (seed % 5) * 8 + hit * 13;
+      chip.className = `cutin-crunch-chip ${card.classList.contains("card-red") ? "is-red-chip" : "is-dark-chip"}`;
+      chip.setAttribute("aria-hidden", "true");
+      chip.style.left = `${originX}px`;
+      chip.style.top = `${originY}px`;
+      chip.style.setProperty("--chip-x", `${travelX}px`);
+      chip.style.setProperty("--chip-y", `${travelY}px`);
+      chip.style.setProperty("--chip-x-far", `${travelX * 1.18}px`);
+      chip.style.setProperty("--chip-y-far", `${travelY + 32}px`);
+      chip.style.setProperty("--chip-rotation", `${direction * (70 + seed % 110)}deg`);
+      chip.style.setProperty("--chip-delay", `${(index % 4) * 13}ms`);
+      chip.style.setProperty("--chip-size", `${5 + seed % 5}px`);
+      debris.push(chip);
+      fragment.appendChild(chip);
+    }
+
+    if (hit === CUTSCENE_CONFIG.interactiveCrunchHits) {
+      for (let index = 0; index < 16; index += 1) {
+        const crumb = document.createElement("i");
+        const seed = index + cardIndex * 23;
+        crumb.className = `cutin-crunch-crumb ${index % 4 === 0 ? "is-gold-crumb" : ""}`;
+        crumb.setAttribute("aria-hidden", "true");
+        crumb.style.left = `${rect.left + rect.width * (.18 + ((seed * 31) % 65) / 100)}px`;
+        crumb.style.top = `${rect.top + rect.height * (.34 + ((seed * 17) % 42) / 100)}px`;
+        crumb.style.setProperty("--crumb-x", `${((seed % 9) - 4) * 12}px`);
+        crumb.style.setProperty("--crumb-y", `${72 + (seed % 6) * 18}px`);
+        crumb.style.setProperty("--crumb-delay", `${(index % 8) * 17}ms`);
+        crumb.style.setProperty("--crumb-duration", `${430 + (seed % 5) * 55}ms`);
+        debris.push(crumb);
+        fragment.appendChild(crumb);
+      }
+    }
+  });
+
+  overlay.appendChild(fragment);
+  window.setTimeout(() => debris.forEach((node) => node.remove()), hit === CUTSCENE_CONFIG.interactiveCrunchHits ? 820 : 520);
 }
 
 function createMathCutinMarkup({ entry, matched, operator, equation, tier }) {

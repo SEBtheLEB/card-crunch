@@ -183,6 +183,19 @@ const EFFECTS = {
     tone({ frequency: 82, endFrequency: 176, duration: 0.42, gain: 0.045, type: "sawtooth" });
     noise({ duration: 0.46, gain: 0.026, highpass: 420 });
   },
+  crunch_hit_1: () => {
+    tone({ frequency: 178, endFrequency: 82, duration: 0.075, gain: 0.075, type: "square" });
+    noise({ duration: 0.065, gain: 0.04, highpass: 920 });
+  },
+  crunch_hit_2: () => {
+    tone({ frequency: 146, endFrequency: 58, duration: 0.095, gain: 0.095, type: "square" });
+    noise({ duration: 0.085, gain: 0.055, highpass: 680 });
+  },
+  crunch_hit_3: () => {
+    tone({ frequency: 112, endFrequency: 36, duration: 0.16, gain: 0.13, type: "sawtooth" });
+    noise({ duration: 0.14, gain: 0.085, highpass: 430 });
+    tone({ frequency: 72, endFrequency: 42, duration: 0.12, delay: 0.025, gain: 0.07, type: "square" });
+  },
   card_resolve: () => {
     tone({ frequency: 370, endFrequency: 610, duration: 0.1, gain: 0.08, type: "triangle" });
     noise({ duration: 0.055, gain: 0.05, highpass: 1800 });
@@ -222,6 +235,9 @@ const HAPTIC_BY_SOUND = {
   card_select: "select",
   card_deselect: "deselect",
   crunch_start: "crunch",
+  crunch_hit_1: "select",
+  crunch_hit_2: "match",
+  crunch_hit_3: "crunch",
   card_resolve: "match",
   double_match: "match",
   math_combo: "match",
