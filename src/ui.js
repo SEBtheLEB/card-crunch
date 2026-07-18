@@ -394,6 +394,9 @@ function showMenuPage(elements, pageName = "home") {
   elements.startScreen.querySelectorAll("[data-menu-page]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.menuPage === pageName);
   });
+  window.dispatchEvent(new CustomEvent("card-crunch-menu-page-change", {
+    detail: { pageName }
+  }));
 }
 
 function renderMenuStats(elements, state) {

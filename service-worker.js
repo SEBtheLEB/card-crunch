@@ -1,10 +1,11 @@
-const CACHE_NAME = "card-crunch-v90";
+const CACHE_NAME = "card-crunch-v91";
 const ASSETS = [
   "./",
   "./index.html",
   "./privacy-policy.html",
   "./styles/main.css",
   "./src/main.js",
+  "./src/tutorial.js",
   "./src/audio.js",
   "./src/haptics.js",
   "./src/input.js",

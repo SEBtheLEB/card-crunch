@@ -10,11 +10,13 @@ import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=90";
 import { installFullscreenControls } from "./fullscreen.js?v=90";
 import { bindThemePicker, initializeTheme } from "./themes.js?v=90";
 import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=90";
+import { initializeTutorial } from "./tutorial.js?v=91";
 
 initializeTheme();
 initializeCardSkin();
 const ui = createUI();
 const game = createGame(ui);
+initializeTutorial();
 installAudioUnlock();
 initializePlayGames();
 installFullscreenControls(bindInstantAction);

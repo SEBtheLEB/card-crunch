@@ -13,6 +13,7 @@ const required = [
   "src/fullscreen.js",
   "src/themes.js",
   "src/cardSkins.js",
+  "src/tutorial.js",
   "src/economy.js",
   "src/purchases.js",
   "styles/main.css",
@@ -56,6 +57,9 @@ if ((html.match(/data-card-skin-id=/g) ?? []).length !== 5 || !html.includes("sk
 if (!html.includes("run-scoreboard") || !html.includes("summaryRecoveryTicker")) {
   throw new Error("Arcade run summary structure is missing");
 }
+if (!html.includes('data-menu-page="tutorial"') || !html.includes("tutorialPractice") || !html.includes("tutorialBankButton")) {
+  throw new Error("Fixed tutorial page hooks are missing");
+}
 
 const economyModule = await import(`../src/economy.js?verify=${Date.now()}`);
 const lowReward = economyModule.calculateRunCoinReward({ grossCash: 100_000, bestStreak: 2 });
@@ -82,6 +86,7 @@ const [cutsceneSource, themeSource, cardSkinSource, cardGestureSource, gameState
   readFile(resolve(root, "styles/main.css"), "utf8")
 ]);
 const mainSource = await readFile(resolve(root, "src/main.js"), "utf8");
+const tutorialSource = await readFile(resolve(root, "src/tutorial.js"), "utf8");
 if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createPixelShardClip") || !css.includes("cutin-card-shard")) {
   throw new Error("Crunch Bank card-shard animation hooks are missing");
 }
@@ -107,6 +112,9 @@ if (!cutsceneSource.includes("is-bonus-screen") || !cutsceneSource.includes("fas
 }
 if (!mainSource.includes("activePressTargets") || mainSource.includes('classList.add("tap-pop")')) {
   throw new Error("Stable press feedback regression guards are missing");
+}
+if (!tutorialSource.includes("Full-Hand Crunch") || !tutorialSource.includes("Bank Your Cash") || !tutorialSource.includes("MINUS CRUNCH")) {
+  throw new Error("Tutorial lessons do not cover full-hand, banking, and arithmetic Crunches");
 }
 if (!cardGestureSource.includes("flightAnimations") || !uiSource.includes("card-layout-moving")) {
   throw new Error("Card transfer stability guards are missing");
