@@ -1,4 +1,4 @@
-const CACHE_NAME = "card-crunch-v77";
+const CACHE_NAME = "card-crunch-v76";
 const ASSETS = [
   "./",
   "./index.html",
@@ -23,8 +23,7 @@ const ASSETS = [
   "./manifest.json",
   "./assets/icons/icon-192.svg",
   "./assets/icons/icon-512.svg",
-  "./assets/fonts/press-start-2p.ttf",
-  "./assets/backgrounds/navy-arcade-table.jpg"
+  "./assets/fonts/press-start-2p.ttf"
 ];
 
 self.addEventListener("install", (event) => {

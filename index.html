@@ -16,20 +16,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/main.css?v=77">
+    <link rel="stylesheet" href="styles/main.css?v=76">
   </head>
-  <body class="illustrated-skin">
+  <body>
     <main class="game-shell" id="gameShell">
       <header class="hud" aria-label="Game status">
         <section class="hud-panel score-panel" aria-label="Run cash, not yet banked">
-          <span class="hud-label">Run Cash</span>
+          <span class="hud-label">Run Cash &middot; Unbanked</span>
           <strong id="scoreValue">0</strong>
-          <small>Unbanked</small>
-        </section>
-        <section class="hud-panel streak-panel" aria-label="Current streak">
-          <span class="hud-label">Streak</span>
-          <strong><i class="streak-flame" aria-hidden="true">&#128293;</i>x<span id="streakValue">0</span></strong>
-          <small>Keep it alive</small>
         </section>
       </header>
 
@@ -60,17 +54,6 @@
         <div class="combo-label" id="comboLabel"></div>
       </section>
 
-      <section class="hand-zone" id="handZone" aria-label="Your hand"></section>
-
-      <footer class="bottom-status" aria-label="Run status">
-        <section>
-          <span>Lives</span>
-          <strong id="missValue">&hearts;&hearts;&hearts;</strong>
-        </section>
-        <button class="hint-ad-button" id="hintAdButton" type="button" aria-label="Watch ad to reveal a valid crunch"><i aria-hidden="true">&#9654;</i>Hint</button>
-        <button class="exit-level-button" id="exitLevelButton" type="button">Exit Pot</button>
-      </footer>
-
       <section class="crunch-panel" aria-label="Bank and Crunch">
         <button class="bank-button" id="bankButton" type="button" disabled aria-label="Bank run cash into the pot. Resets multiplier.">
           <span>Bank</span>
@@ -83,6 +66,21 @@
           <strong id="multiValue">x1</strong>
         </div>
       </section>
+
+      <section class="hand-zone" id="handZone" aria-label="Your hand"></section>
+
+      <footer class="bottom-status" aria-label="Run status">
+        <section>
+          <span>Lives</span>
+          <strong id="missValue">&hearts;&hearts;&hearts;</strong>
+        </section>
+        <button class="hint-ad-button" id="hintAdButton" type="button" aria-label="Watch ad to reveal a valid crunch"><i aria-hidden="true">&#9654;</i>Hint</button>
+        <button class="exit-level-button" id="exitLevelButton" type="button">Exit Pot</button>
+        <section class="streak-status-panel">
+          <span>Streak</span>
+          <strong>x<span id="streakValue">0</span></strong>
+        </section>
+      </footer>
     </main>
 
     <section class="modal-screen main-menu-screen is-visible" id="startScreen" aria-labelledby="startTitle">
@@ -262,6 +260,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-    <script type="module" src="src/main.js?v=77"></script>
+    <script type="module" src="src/main.js?v=76"></script>
   </body>
 </html>

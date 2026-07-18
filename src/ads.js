@@ -1,4 +1,4 @@
-import { bindInstantAction } from "./input.js?v=77";
+import { bindInstantAction } from "./input.js?v=76";
 
 /*
  * Ad manager abstraction for Card Crunch.
