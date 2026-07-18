@@ -1,17 +1,19 @@
-import { createGame } from "./gameState.js?v=78";
-import { createUI } from "./ui.js?v=78";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=78";
-import { adManager } from "./ads.js?v=78";
-import { grantShieldToken, hasShieldToken } from "./save.js?v=78";
-import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=78";
-import { haptic } from "./haptics.js?v=78";
-import { bindInstantAction } from "./input.js?v=78";
-import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=78";
+import { createGame } from "./gameState.js?v=79";
+import { createUI } from "./ui.js?v=79";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=79";
+import { adManager } from "./ads.js?v=79";
+import { grantShieldToken, hasShieldToken } from "./save.js?v=79";
+import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=79";
+import { haptic } from "./haptics.js?v=79";
+import { bindInstantAction } from "./input.js?v=79";
+import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=79";
+import { installFullscreenControls } from "./fullscreen.js?v=79";
 
 const ui = createUI();
 const game = createGame(ui);
 installAudioUnlock();
 initializePlayGames();
+installFullscreenControls(bindInstantAction);
 bindInstantAction(ui.elements.startButton, () => ui.showMenuPage("pots"));
 bindInstantAction(ui.elements.backToMenuButton, () => {
   ui.showMap(false);

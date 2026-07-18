@@ -9,6 +9,7 @@ const required = [
   "src/haptics.js",
   "src/input.js",
   "src/playGames.js",
+  "src/fullscreen.js",
   "styles/main.css",
   "capacitor.config.json"
 ];
@@ -35,6 +36,9 @@ const html = await readFile(resolve(root, "index.html"), "utf8");
 if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButton")) {
   throw new Error("Release UI hooks are missing");
 }
+if ((html.match(/data-fullscreen-toggle/g) ?? []).length !== 2) {
+  throw new Error("Menu and gameplay fullscreen controls are missing");
+}
 
 const [cutsceneSource, css] = await Promise.all([
   readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
@@ -44,4 +48,9 @@ if (!cutsceneSource.includes("feedCutinCardsToBank") || !css.includes("cutin-car
   throw new Error("Crunch Bank card-shard animation hooks are missing");
 }
 
-console.log(`Verified ${results.length} scoring cases, compact values, release UI hooks, and card-shard VFX.`);
+const fullscreenSource = await readFile(resolve(root, "src/fullscreen.js"), "utf8");
+if (!fullscreenSource.includes("requestFullscreen") || !fullscreenSource.includes("exitFullscreen")) {
+  throw new Error("Fullscreen API hooks are missing");
+}
+
+console.log(`Verified ${results.length} scoring cases, compact values, fullscreen controls, release UI hooks, and card-shard VFX.`);

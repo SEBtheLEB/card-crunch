@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/main.css?v=78">
+    <link rel="stylesheet" href="styles/main.css?v=79">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -25,6 +25,9 @@
           <span class="hud-label">Run Cash &middot; Unbanked</span>
           <strong id="scoreValue">0</strong>
         </section>
+        <button class="fullscreen-toggle-button game-fullscreen-button" data-fullscreen-toggle type="button" aria-label="Enter full screen" aria-pressed="false">
+          <span class="fullscreen-icon" aria-hidden="true">&#x26F6;</span>
+        </button>
       </header>
 
       <section class="target-strip" aria-label="Level target">
@@ -102,6 +105,7 @@
           </section>
           <div class="menu-topbar-actions">
             <button class="menu-icon-button" data-menu-page="leaderboard" type="button" aria-label="Leaderboard">&#9819;</button>
+            <button class="menu-icon-button fullscreen-toggle-button" data-fullscreen-toggle type="button" aria-label="Enter full screen" aria-pressed="false"><span class="fullscreen-icon" aria-hidden="true">&#x26F6;</span></button>
             <button class="menu-icon-button" id="hamburgerButton" type="button" aria-label="Open settings">&#9881;</button>
           </div>
         </header>
@@ -259,6 +263,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-    <script type="module" src="src/main.js?v=78"></script>
+    <script type="module" src="src/main.js?v=79"></script>
   </body>
 </html>
