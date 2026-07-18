@@ -3,6 +3,7 @@ import { haptic } from "./haptics.js?v=90";
 const AudioContextClass = globalThis.AudioContext ?? globalThis.webkitAudioContext;
 const SETTINGS_KEY = "cardCrunchSettings";
 const MAX_ACTIVE_VOICES = 28;
+const SHARD_IMPACT_MIN_INTERVAL = 24;
 
 let context = null;
 let master = null;
@@ -11,6 +12,10 @@ let noiseBuffer = null;
 let musicTimer = null;
 let musicStep = 0;
 let activeVoices = 0;
+let lastShardImpactAt = -Infinity;
+let pendingShardImpacts = 0;
+let shardImpactStep = 0;
+let shardImpactResetTimer = null;
 let settings = readSettings();
 
 export function installAudioUnlock() {
@@ -46,6 +51,47 @@ export function playGameSfx(name) {
   const effect = EFFECTS[name] ?? EFFECTS.tap;
   effect?.();
 
+}
+
+/* Shards can reach the bank only a few milliseconds apart. Every contact is
+   registered, but nearby contacts are mixed into one short, quiet crunch so
+   a full-hand Crunch never clips or becomes painfully loud. */
+export function playCrunchShardImpact({ progress = 0.5, strength = 1 } = {}) {
+  if (!settings.sound) return;
+  const audio = ensureAudio();
+  if (!audio) return;
+  if (audio.state === "suspended") audio.resume?.().catch(() => {});
+
+  pendingShardImpacts = Math.min(6, pendingShardImpacts + Math.max(0.5, strength));
+  window.clearTimeout(shardImpactResetTimer);
+  shardImpactResetTimer = window.setTimeout(() => {
+    pendingShardImpacts = 0;
+    shardImpactResetTimer = null;
+  }, 90);
+  const now = globalThis.performance?.now?.() ?? Date.now();
+  if (now - lastShardImpactAt < SHARD_IMPACT_MIN_INTERVAL) return;
+
+  const mixedStrength = pendingShardImpacts;
+  pendingShardImpacts = 0;
+  lastShardImpactAt = now;
+  shardImpactStep += 1;
+
+  const jitter = ((shardImpactStep * 17) % 9) - 4;
+  const arrival = Math.max(0, Math.min(1, progress));
+  const gain = Math.min(0.038, 0.012 + mixedStrength * 0.0042);
+  const frequency = 185 + arrival * 82 + jitter * 5;
+  tone({
+    frequency,
+    endFrequency: Math.max(58, frequency * 0.42),
+    duration: 0.042,
+    gain,
+    type: "square"
+  });
+  noise({
+    duration: 0.032,
+    gain: Math.min(0.026, 0.007 + mixedStrength * 0.0032),
+    highpass: 720 + arrival * 540
+  });
 }
 
 function ensureAudio() {
@@ -132,6 +178,10 @@ const EFFECTS = {
   crunch_start: () => {
     tone({ frequency: 110, endFrequency: 46, duration: 0.21, gain: 0.18, type: "square" });
     noise({ duration: 0.09, gain: 0.09, highpass: 1200 });
+  },
+  crunch_vacuum: () => {
+    tone({ frequency: 82, endFrequency: 176, duration: 0.42, gain: 0.045, type: "sawtooth" });
+    noise({ duration: 0.46, gain: 0.026, highpass: 420 });
   },
   card_resolve: () => {
     tone({ frequency: 370, endFrequency: 610, duration: 0.1, gain: 0.08, type: "triangle" });

@@ -90,8 +90,15 @@ const [cutsceneSource, themeSource, cardSkinSource, cardGestureSource, gameState
 ]);
 const mainSource = await readFile(resolve(root, "src/main.js"), "utf8");
 const tutorialSource = await readFile(resolve(root, "src/tutorial.js"), "utf8");
+const audioSource = await readFile(resolve(root, "src/audio.js"), "utf8");
 if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createPixelShardClip") || !css.includes("cutin-card-shard")) {
   throw new Error("Crunch Bank card-shard animation hooks are missing");
+}
+if (!cutsceneSource.includes("registerShardBankContact") || !cutsceneSource.includes("rowReleaseDelays") || !css.includes("cutinCardShardVacuum")) {
+  throw new Error("Crunch Bank vacuum sequencing or shard contact hooks are missing");
+}
+if (!audioSource.includes("playCrunchShardImpact") || !audioSource.includes("SHARD_IMPACT_MIN_INTERVAL") || !audioSource.includes("crunch_vacuum")) {
+  throw new Error("Crunch Bank impact mixing or vacuum audio is missing");
 }
 
 if (!css.includes("--pixel-card-silhouette") || !css.includes("visibility: hidden")) {

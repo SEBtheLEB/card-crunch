@@ -1,5 +1,5 @@
 import { formatCompactNumber } from "./format.js?v=90";
-import { playGameSfx } from "./audio.js?v=90";
+import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=90";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -18,7 +18,11 @@ const CUTSCENE_CONFIG = {
 const CARD_SHARD_CONFIG = {
   columns: 4,
   rows: 4,
-  duration: 760,
+  duration: 740,
+  rowDurationStep: 38,
+  rowReleaseDelays: [0, 100, 168, 218],
+  columnDelayStep: 12,
+  cardDelayStep: 18,
   intakeSparks: 10
 };
 const tapBounceTimers = new WeakMap();
@@ -608,6 +612,8 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
 
   const nodes = [];
   const fragment = document.createDocumentFragment();
+  const totalShardCount = measurements.length * CARD_SHARD_CONFIG.rows * CARD_SHARD_CONFIG.columns;
+  let latestArrival = 0;
 
   measurements.forEach(({ card, rect }, cardIndex) => {
     card.classList.add("is-shattering");
@@ -625,6 +631,19 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
         const spreadY = (row - centerRow) * 13 - 8 - (shardIndex % 2) * 4;
         const flyX = targetX - pieceX + ((shardIndex % 3) - 1) * 3;
         const flyY = targetY - pieceY;
+        const archDirection = pieceX < targetX ? -1 : 1;
+        const archWidth = Math.min(58, 24 + Math.abs(flyX) * .075);
+        const curveX = spreadX + flyX * .2 + archDirection * archWidth;
+        const curveY = spreadY + flyY * .19 - 12;
+        const funnelX = flyX * .7 + archDirection * 9;
+        const funnelY = flyY * .69;
+        const intakeX = flyX * .93 + archDirection * 2;
+        const intakeY = flyY * .92;
+        const rowDelay = CARD_SHARD_CONFIG.rowReleaseDelays[row] ?? row * 55;
+        const launchDelay = rowDelay + column * CARD_SHARD_CONFIG.columnDelayStep + cardIndex * CARD_SHARD_CONFIG.cardDelayStep;
+        const travelDuration = CARD_SHARD_CONFIG.duration - row * CARD_SHARD_CONFIG.rowDurationStep + ((column + cardIndex) % 3) * 5;
+        const arrivalAt = launchDelay + travelDuration;
+        latestArrival = Math.max(latestArrival, arrivalAt);
 
         shard.classList.add("cutin-card-shard");
         shard.classList.remove("is-shattering");
@@ -639,14 +658,24 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
         shard.style.transformOrigin = `${(column + .5) * cellWidth}% ${(row + .5) * cellHeight}%`;
         shard.style.setProperty("--shard-break-x", `${spreadX}px`);
         shard.style.setProperty("--shard-break-y", `${spreadY}px`);
-        shard.style.setProperty("--shard-mid-x", `${spreadX + flyX * .38}px`);
-        shard.style.setProperty("--shard-mid-y", `${spreadY + flyY * .38}px`);
+        shard.style.setProperty("--shard-curve-x", `${curveX}px`);
+        shard.style.setProperty("--shard-curve-y", `${curveY}px`);
+        shard.style.setProperty("--shard-funnel-x", `${funnelX}px`);
+        shard.style.setProperty("--shard-funnel-y", `${funnelY}px`);
+        shard.style.setProperty("--shard-intake-x", `${intakeX}px`);
+        shard.style.setProperty("--shard-intake-y", `${intakeY}px`);
         shard.style.setProperty("--shard-fly-x", `${flyX}px`);
         shard.style.setProperty("--shard-fly-y", `${flyY}px`);
+        shard.style.setProperty("--shard-delay", `${launchDelay}ms`);
+        shard.style.setProperty("--shard-duration", `${travelDuration}ms`);
         const rotation = (column - row) * 26 + (shardIndex % 2 ? 18 : -18);
         shard.style.setProperty("--shard-rotation-small", `${rotation * .3}deg`);
         shard.style.setProperty("--shard-rotation-mid", `${rotation * .72}deg`);
         shard.style.setProperty("--shard-rotation", `${rotation}deg`);
+        registerShardBankContact(shard, bankEl, {
+          progress: (cardIndex * CARD_SHARD_CONFIG.rows * CARD_SHARD_CONFIG.columns + shardIndex + 1) / totalShardCount,
+          strength: row === 0 ? .85 : 1
+        });
         nodes.push(shard);
         fragment.appendChild(shard);
       }
@@ -672,10 +701,25 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
 
   document.body.appendChild(fragment);
   bankEl.classList.add("bank-feeding");
-  const totalDuration = getCardFeedDuration(measurements.length);
+  playGameSfx("crunch_vacuum");
+  const totalDuration = Math.max(getCardFeedDuration(measurements.length), latestArrival + 90);
   await waitMaybe(advance, totalDuration);
   nodes.forEach((node) => node.remove());
   bankEl.classList.remove("bank-feeding");
+}
+
+function registerShardBankContact(shard, bankEl, impact) {
+  shard.addEventListener("animationend", (event) => {
+    if (event.animationName !== "cutinCardShardVacuum" || !shard.isConnected || !bankEl?.isConnected) return;
+    const shardRect = shard.getBoundingClientRect();
+    const bankRect = bankEl.getBoundingClientRect();
+    const contactPadding = 16;
+    const touchesBank = shardRect.right >= bankRect.left - contactPadding
+      && shardRect.left <= bankRect.right + contactPadding
+      && shardRect.bottom >= bankRect.top - contactPadding
+      && shardRect.top <= bankRect.bottom + contactPadding;
+    if (touchesBank) playCrunchShardImpact(impact);
+  }, { once: true });
 }
 
 function createPixelShardClip(column, row, variant) {
@@ -708,9 +752,15 @@ function createPixelShardClip(column, row, variant) {
 }
 
 function getCardFeedDuration(cardCount) {
-  return CARD_SHARD_CONFIG.duration
-    + Math.max(0, cardCount - 1) * 22
-    + 70;
+  const lastRow = CARD_SHARD_CONFIG.rows - 1;
+  const lastColumn = CARD_SHARD_CONFIG.columns - 1;
+  const finalRowDelay = CARD_SHARD_CONFIG.rowReleaseDelays[lastRow] ?? lastRow * 55;
+  const finalTravelDuration = CARD_SHARD_CONFIG.duration - lastRow * CARD_SHARD_CONFIG.rowDurationStep + 10;
+  return finalRowDelay
+    + lastColumn * CARD_SHARD_CONFIG.columnDelayStep
+    + Math.max(0, cardCount - 1) * CARD_SHARD_CONFIG.cardDelayStep
+    + finalTravelDuration
+    + 90;
 }
 
 async function flyValueToBank(sourceEl, bankEl, value, advance = null) {
