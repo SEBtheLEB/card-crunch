@@ -123,6 +123,19 @@ if (shardContactSource.includes("getBoundingClientRect")) {
 if (shardContactSource.includes("animationend")) {
   throw new Error("Shard bank audio must not depend on unreliable animationend events");
 }
+const shardFeedSource = cutsceneSource.slice(
+  cutsceneSource.indexOf("async function feedCutinCardsToBank"),
+  cutsceneSource.indexOf("function discardPreparedCardShards")
+);
+if (!shardFeedSource.includes("await sleep(prepared.totalDuration)") || shardFeedSource.includes("waitMaybe(advance")) {
+  throw new Error("Card shard vacuum timing must stay independent from tap-to-advance speedups");
+}
+if (!cutsceneSource.includes("pendingBankEffects") || !cutsceneSource.includes("settleBankEffects") || !cutsceneSource.includes("countBankBy")) {
+  throw new Error("Detached Crunch Bank effects must be tracked through the final score merge");
+}
+if (!cutsceneSource.includes("activeBankFeeds") || !cutsceneSource.includes("beginBankFeed") || !cutsceneSource.includes("endBankFeed")) {
+  throw new Error("Overlapping card vacuums must keep the Crunch Bank feed state active");
+}
 if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSource.includes("data-cutin-card-id") || !css.includes("cutin-shared-card-flight")) {
   throw new Error("Shared card-to-cutin transitions are missing");
 }

@@ -40,6 +40,7 @@ const CRUNCH_DEBRIS_CONFIG = {
 const tapBounceTimers = new WeakMap();
 const preparedShardSets = new WeakMap();
 const crunchDebrisEmitters = new WeakMap();
+const activeBankFeeds = new WeakMap();
 let skipAllRequested = false;
 let skipTextElement = null;
 let skipTextLocks = 0;
@@ -109,6 +110,22 @@ export function createCrunchBankCounter({ panelEl = null, labelEl = null, valueE
   };
   let finished = false;
   let counterValueEl = valueEl;
+  const counterState = { value: 0 };
+  const pendingBankEffects = new Set();
+
+  const trackBankEffect = (effect) => {
+    pendingBankEffects.add(effect);
+    effect.then(
+      () => pendingBankEffects.delete(effect),
+      () => pendingBankEffects.delete(effect)
+    );
+    return effect;
+  };
+
+  const settleBankEffects = async () => {
+    if (!pendingBankEffects.size) return;
+    await Promise.allSettled([...pendingBankEffects]);
+  };
 
   if (useHudPanel) {
     const rect = panelEl.getBoundingClientRect();
@@ -149,36 +166,53 @@ export function createCrunchBankCounter({ panelEl = null, labelEl = null, valueE
       if (cardElements.length) {
         playGameSfx("score_step");
         const feedDuration = getCardFeedDuration(cardElements.length, getShardGrid(cardElements.length));
-        await Promise.all([
-          feedCutinCardsToBank(cardElements, element, advance),
-          countBankTo(counterValueEl, previous, value, advance, feedDuration)
-        ]);
+        const bankEffect = trackBankEffect(Promise.all([
+          feedCutinCardsToBank(cardElements, element),
+          countBankBy(counterValueEl, counterState, amount, feedDuration)
+        ]).then(async () => {
+          element.classList.add("bank-bump");
+          await sleep(180);
+          element.classList.remove("bank-bump");
+        }));
+
+        // A tap may advance the explanation, but the detached shard feed keeps
+        // its original timing, sounds, and counter roll until every piece lands.
+        if (advance) await advance.wait(feedDuration);
+        else await bankEffect;
+        return;
       } else {
+        await settleBankEffects();
         await flyValueToBank(sourceEl, element, amount, advance);
         await countBankTo(counterValueEl, previous, value, advance);
+        counterState.value = value;
       }
       element.classList.add("bank-bump");
       await waitMaybe(advance, 180);
       element.classList.remove("bank-bump");
     },
     async setValue(nextValue, sourceEl, flyLabel = nextValue, advance = null) {
+      await settleBankEffects();
       await flyValueToBank(sourceEl, element, flyLabel, advance);
       const previous = value;
       value = nextValue;
       await countBankTo(counterValueEl, previous, value, advance);
+      counterState.value = value;
       element.classList.add("bank-bump");
       await waitMaybe(advance, 180);
       element.classList.remove("bank-bump");
     },
     async rampTo(nextValue, advance = null) {
+      await settleBankEffects();
       const previous = value;
       value = nextValue;
       await countBankTo(counterValueEl, previous, value, advance);
+      counterState.value = value;
       element.classList.add("bank-bump");
       await waitMaybe(advance, 180);
       element.classList.remove("bank-bump");
     },
     async finishToScore(scoreEl, advance = null) {
+      await settleBankEffects();
       finished = true;
       element.classList.add("bank-final-flash");
       await waitMaybe(advance, 260);
@@ -187,6 +221,7 @@ export function createCrunchBankCounter({ panelEl = null, labelEl = null, valueE
         if (cloneLabelEl) cloneLabelEl.innerHTML = originalLabel;
         element.setAttribute("aria-label", "Score");
         await countBankTo(counterValueEl, value, startingValue + value, advance);
+        counterState.value = startingValue + value;
         element.classList.add("score-bump");
         await waitMaybe(advance, 320);
         if (sourceLabelEl) sourceLabelEl.innerHTML = originalLabel;
@@ -1173,7 +1208,7 @@ function showPreparedCardAssembly(prepared, hit) {
 
 /* Reveals the pre-cut pieces in the same frame the intact cards disappear,
    then feeds them through a staggered top-to-bottom vacuum curve. */
-async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
+async function feedCutinCardsToBank(cardElements, bankEl) {
   const cards = cardElements.filter((card) => card?.isConnected);
   if (!cards.length || !bankEl?.isConnected) return;
 
@@ -1188,19 +1223,22 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
   });
   prepared.seams.forEach((seam) => seam.remove());
   prepared.sparks.forEach((spark) => spark.classList.add("is-active"));
-  bankEl.classList.add("bank-feeding");
+  beginBankFeed(prepared);
   playGameSfx("crunch_vacuum");
   schedulePreparedShardImpacts(prepared);
-  await waitMaybe(advance, prepared.totalDuration);
+  await sleep(prepared.totalDuration);
   discardPreparedShardSet(prepared);
 }
 
 function discardPreparedCardShards(card) {
   const prepared = preparedShardSets.get(card);
+  if (prepared?.active) return;
   if (prepared) discardPreparedShardSet(prepared);
 }
 
 function discardPreparedShardSet(prepared) {
+  if (prepared.disposed) return;
+  prepared.disposed = true;
   prepared.impactTimers?.forEach((timerId) => window.clearTimeout(timerId));
   prepared.impactTimers = [];
   prepared.nodes.forEach((node) => node.remove());
@@ -1209,7 +1247,27 @@ function discardPreparedShardSet(prepared) {
     card.classList.remove("is-shattering", "is-precut-source");
     if (!prepared.active) card.classList.remove("is-consumed-after-shatter");
   });
-  prepared.bankEl?.classList.remove("bank-feeding");
+  endBankFeed(prepared);
+}
+
+function beginBankFeed(prepared) {
+  const bankEl = prepared?.bankEl;
+  if (!bankEl || prepared.bankFeedActive) return;
+  prepared.bankFeedActive = true;
+  activeBankFeeds.set(bankEl, (activeBankFeeds.get(bankEl) ?? 0) + 1);
+  bankEl.classList.add("bank-feeding");
+}
+
+function endBankFeed(prepared) {
+  const bankEl = prepared?.bankEl;
+  if (!bankEl || !prepared.bankFeedActive) return;
+  prepared.bankFeedActive = false;
+  const remaining = Math.max(0, (activeBankFeeds.get(bankEl) ?? 1) - 1);
+  if (remaining > 0) activeBankFeeds.set(bankEl, remaining);
+  else {
+    activeBankFeeds.delete(bankEl);
+    bankEl.classList.remove("bank-feeding");
+  }
 }
 
 function createShardImpactSchedule(impacts) {
@@ -1334,6 +1392,26 @@ async function countBankTo(valueEl, from, to, advance = null, duration = 520) {
       } else {
         done();
       }
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+function countBankBy(valueEl, counterState, amount, duration) {
+  if (!valueEl || !counterState || !amount) return Promise.resolve();
+  const startedAt = performance.now();
+
+  return new Promise((resolve) => {
+    let renderedAmount = 0;
+    const tick = (now) => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const nextAmount = Math.round(amount * eased);
+      counterState.value += nextAmount - renderedAmount;
+      renderedAmount = nextAmount;
+      valueEl.textContent = formatCompactNumber(counterState.value);
+      if (progress < 1) requestAnimationFrame(tick);
+      else resolve();
     };
     requestAnimationFrame(tick);
   });
