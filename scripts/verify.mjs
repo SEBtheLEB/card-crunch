@@ -36,4 +36,12 @@ if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButt
   throw new Error("Release UI hooks are missing");
 }
 
-console.log(`Verified ${results.length} scoring cases, compact values, and release UI hooks.`);
+const [cutsceneSource, css] = await Promise.all([
+  readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
+  readFile(resolve(root, "styles/main.css"), "utf8")
+]);
+if (!cutsceneSource.includes("feedCutinCardsToBank") || !css.includes("cutin-card-shard")) {
+  throw new Error("Crunch Bank card-shard animation hooks are missing");
+}
+
+console.log(`Verified ${results.length} scoring cases, compact values, release UI hooks, and card-shard VFX.`);

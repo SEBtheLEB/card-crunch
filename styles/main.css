@@ -5090,3 +5090,127 @@ h2 {
     font-size: .46rem;
   }
 }
+
+/* Pixel-card intake: each tapped explanation is diced and vacuumed into the
+   Crunch Bank while the displayed value rolls upward. */
+.cutin-card.is-shattering {
+  opacity: 0;
+  transition: opacity 55ms steps(2, end);
+}
+
+.cutin-card.cutin-card-shard {
+  position: fixed;
+  z-index: 96;
+  margin: 0;
+  max-width: none;
+  min-width: 0;
+  aspect-ratio: auto;
+  rotate: none !important;
+  pointer-events: none;
+  contain: layout paint style;
+  will-change: transform, opacity, filter;
+  animation: cutinCardShardFly 720ms cubic-bezier(.32, .02, .2, 1) var(--shard-delay) both !important;
+}
+
+.cutin-card.cutin-card-shard::before {
+  border-radius: 5px;
+}
+
+.score-panel.bank-feeding,
+.cutin-bank-counter.bank-feeding {
+  animation: bankFeedingGlow 140ms steps(2, end) infinite alternate;
+}
+
+.score-panel.bank-feeding::before,
+.cutin-bank-counter.bank-feeding::before {
+  content: "";
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 3px;
+  width: 34%;
+  height: 5px;
+  transform: translateX(-50%);
+  background: repeating-linear-gradient(90deg, #fff2a0 0 6px, #f2a91d 6px 11px, #643701 11px 14px);
+  box-shadow: 0 0 11px rgba(255, 195, 47, .9);
+}
+
+.score-panel.bank-feeding strong,
+.cutin-bank-counter.bank-feeding strong {
+  animation: bankDigitsRolling 90ms steps(2, end) infinite alternate;
+}
+
+.bank-intake-spark {
+  position: fixed;
+  z-index: 98;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border: 0;
+  border-radius: 0;
+  background: #fff3a6;
+  box-shadow: 0 0 0 2px #a75f07, 0 0 10px rgba(255, 201, 55, .92);
+  pointer-events: none;
+  opacity: 0;
+  animation: bankIntakeSpark 330ms steps(5, end) var(--intake-delay) both;
+}
+
+@keyframes cutinCardShardFly {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0) scale(1);
+    filter: brightness(1);
+  }
+  20% {
+    opacity: 1;
+    transform: translate3d(var(--shard-break-x), var(--shard-break-y), 0) rotate(var(--shard-rotation-small)) scale(.98);
+    filter: brightness(1.22);
+  }
+  58% {
+    opacity: 1;
+    transform: translate3d(var(--shard-mid-x), var(--shard-mid-y), 0) rotate(var(--shard-rotation-mid)) scale(.62);
+    filter: brightness(1.4) saturate(1.18);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--shard-fly-x), var(--shard-fly-y), 0) rotate(var(--shard-rotation)) scale(.08);
+    filter: brightness(1.8) saturate(1.3);
+  }
+}
+
+@keyframes bankFeedingGlow {
+  from {
+    filter: brightness(1.02);
+    box-shadow: 0 0 18px rgba(255, 197, 61, .38), inset 0 0 12px rgba(255, 197, 61, .14);
+  }
+  to {
+    filter: brightness(1.2);
+    box-shadow: 0 0 31px rgba(255, 214, 85, .72), inset 0 0 24px rgba(255, 197, 61, .25);
+  }
+}
+
+@keyframes bankDigitsRolling {
+  from { color: #fff2a0; text-shadow: 3px 3px 0 #4f3100, 0 0 11px rgba(255, 197, 61, .65); }
+  to { color: #fffbe0; text-shadow: 3px 3px 0 #754600, 0 0 20px rgba(255, 226, 105, .95); }
+}
+
+@keyframes bankIntakeSpark {
+  0% { opacity: 0; transform: translate(0, 5px) scale(.4); }
+  20% { opacity: 1; }
+  70% { opacity: 1; transform: translate(var(--intake-x), var(--intake-y)) scale(1); }
+  100% { opacity: 0; transform: translate(var(--intake-x-far), var(--intake-y-far)) scale(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cutin-card.cutin-card-shard {
+    animation-duration: 120ms !important;
+    animation-delay: 0ms !important;
+  }
+
+  .score-panel.bank-feeding,
+  .cutin-bank-counter.bank-feeding,
+  .score-panel.bank-feeding strong,
+  .cutin-bank-counter.bank-feeding strong {
+    animation: none;
+  }
+}

@@ -1,12 +1,12 @@
-import { createGame } from "./gameState.js?v=77";
-import { createUI } from "./ui.js?v=77";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=77";
-import { adManager } from "./ads.js?v=77";
-import { grantShieldToken, hasShieldToken } from "./save.js?v=77";
-import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=77";
-import { haptic } from "./haptics.js?v=77";
-import { bindInstantAction } from "./input.js?v=77";
-import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=77";
+import { createGame } from "./gameState.js?v=78";
+import { createUI } from "./ui.js?v=78";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=78";
+import { adManager } from "./ads.js?v=78";
+import { grantShieldToken, hasShieldToken } from "./save.js?v=78";
+import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=78";
+import { haptic } from "./haptics.js?v=78";
+import { bindInstantAction } from "./input.js?v=78";
+import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=78";
 
 const ui = createUI();
 const game = createGame(ui);

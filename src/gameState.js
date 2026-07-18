@@ -1,19 +1,19 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=77";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=77";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=77";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=77";
-import { ensurePlayableHand } from "./handSafety.js?v=77";
-import { clearRunSave, consumeShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=77";
-import { formatCompactNumber } from "./format.js?v=77";
-import { adManager } from "./ads.js?v=77";
-import { submitBestScore } from "./playGames.js?v=77";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=78";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=78";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=78";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=78";
+import { ensurePlayableHand } from "./handSafety.js?v=78";
+import { clearRunSave, consumeShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=78";
+import { formatCompactNumber } from "./format.js?v=78";
+import { adManager } from "./ads.js?v=78";
+import { submitBestScore } from "./playGames.js?v=78";
 import {
   animateBust,
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=77";
+} from "./animations.js?v=78";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;

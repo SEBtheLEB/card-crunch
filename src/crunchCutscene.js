@@ -1,5 +1,5 @@
-import { formatCompactNumber } from "./format.js?v=77";
-import { playGameSfx } from "./audio.js?v=77";
+import { formatCompactNumber } from "./format.js?v=78";
+import { playGameSfx } from "./audio.js?v=78";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -14,6 +14,14 @@ const CUTSCENE_CONFIG = {
   minBustAdvanceDelay: 620,
   autoBonusStepDuration: 620,
   fadeOutDuration: 160
+};
+const CARD_SHARD_CONFIG = {
+  columns: 3,
+  rows: 3,
+  duration: 720,
+  stagger: 17,
+  cardStagger: 42,
+  intakeSparks: 8
 };
 const tapBounceTimers = new WeakMap();
 let skipAllRequested = false;
@@ -119,10 +127,20 @@ export function createCrunchBankCounter({ panelEl = null, labelEl = null, valueE
     get value() {
       return value;
     },
-    async add(amount, sourceEl, advance = null) {
-      await flyValueToBank(sourceEl, element, amount, advance);
+    async add(amount, sourceEl, advance = null, cardElements = []) {
+      const previous = value;
       value += amount;
-      await countBankTo(counterValueEl, value - amount, value, advance);
+      if (cardElements.length) {
+        playGameSfx("score_step");
+        const feedDuration = getCardFeedDuration(cardElements.length);
+        await Promise.all([
+          feedCutinCardsToBank(cardElements, element, advance),
+          countBankTo(counterValueEl, previous, value, advance, feedDuration)
+        ]);
+      } else {
+        await flyValueToBank(sourceEl, element, amount, advance);
+        await countBankTo(counterValueEl, previous, value, advance);
+      }
       element.classList.add("bank-bump");
       await waitMaybe(advance, 180);
       element.classList.remove("bank-bump");
@@ -233,7 +251,10 @@ export async function playCrunchEntryExplanation({ entry, tier = "normal", bank 
 
   try {
     await playEntryCutin(overlay, entry, tier, advance);
-    if (bank) await bank.add(entry.points, overlay.querySelector(".cutin-points"), advance);
+    if (bank) {
+      const cards = [...overlay.querySelectorAll(".cutin-card:not(.dim)")];
+      await bank.add(entry.points, overlay.querySelector(".cutin-points"), advance, cards);
+    }
     overlay.classList.add("is-leaving");
     await waitMaybe(advance, CUTSCENE_CONFIG.fadeOutDuration);
   } finally {
@@ -562,6 +583,107 @@ function flyGhostToScore(sourceEl, scoreRect) {
   window.setTimeout(() => ghost.remove(), 620);
 }
 
+/* Turns the explanation cards into clipped pixel shards and feeds them into
+   the floating Crunch Bank while its number rolls upward. */
+async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
+  const cards = cardElements.filter((card) => card?.isConnected);
+  if (!cards.length || !bankEl?.isConnected) return;
+
+  const bankRect = bankEl.getBoundingClientRect();
+  const targetX = bankRect.left + bankRect.width / 2;
+  const targetY = bankRect.bottom - Math.min(8, bankRect.height * .12);
+  const measurements = cards
+    .map((card) => ({ card, rect: card.getBoundingClientRect() }))
+    .filter(({ rect }) => rect.width > 0 && rect.height > 0);
+  if (!measurements.length) return;
+
+  const nodes = [];
+  const fragment = document.createDocumentFragment();
+  let longestDelay = 0;
+
+  measurements.forEach(({ card, rect }, cardIndex) => {
+    card.classList.add("is-shattering");
+    for (let row = 0; row < CARD_SHARD_CONFIG.rows; row += 1) {
+      for (let column = 0; column < CARD_SHARD_CONFIG.columns; column += 1) {
+        const shardIndex = row * CARD_SHARD_CONFIG.columns + column;
+        const shard = card.cloneNode(true);
+        const cellWidth = 100 / CARD_SHARD_CONFIG.columns;
+        const cellHeight = 100 / CARD_SHARD_CONFIG.rows;
+        const top = Math.max(0, row * cellHeight - .45);
+        const right = Math.max(0, 100 - (column + 1) * cellWidth - .45);
+        const bottom = Math.max(0, 100 - (row + 1) * cellHeight - .45);
+        const left = Math.max(0, column * cellWidth - .45);
+        const pieceX = rect.left + (column + .5) * (rect.width / CARD_SHARD_CONFIG.columns);
+        const pieceY = rect.top + (row + .5) * (rect.height / CARD_SHARD_CONFIG.rows);
+        const spreadX = (column - 1) * 18 + ((shardIndex + cardIndex) % 3 - 1) * 5;
+        const spreadY = (row - 1) * 12 - 6 - (shardIndex % 2) * 4;
+        const flyX = targetX - pieceX + ((shardIndex % 3) - 1) * 3;
+        const flyY = targetY - pieceY;
+        const delay = cardIndex * CARD_SHARD_CONFIG.cardStagger + shardIndex * CARD_SHARD_CONFIG.stagger;
+
+        shard.classList.add("cutin-card-shard");
+        shard.classList.remove("is-shattering");
+        shard.setAttribute("aria-hidden", "true");
+        shard.removeAttribute("aria-label");
+        shard.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
+        shard.style.left = `${rect.left}px`;
+        shard.style.top = `${rect.top}px`;
+        shard.style.width = `${rect.width}px`;
+        shard.style.height = `${rect.height}px`;
+        shard.style.clipPath = `inset(${top}% ${right}% ${bottom}% ${left}%)`;
+        shard.style.transformOrigin = `${(column + .5) * cellWidth}% ${(row + .5) * cellHeight}%`;
+        shard.style.setProperty("--shard-break-x", `${spreadX}px`);
+        shard.style.setProperty("--shard-break-y", `${spreadY}px`);
+        shard.style.setProperty("--shard-mid-x", `${spreadX + flyX * .38}px`);
+        shard.style.setProperty("--shard-mid-y", `${spreadY + flyY * .38}px`);
+        shard.style.setProperty("--shard-fly-x", `${flyX}px`);
+        shard.style.setProperty("--shard-fly-y", `${flyY}px`);
+        const rotation = (column - row) * 26 + (shardIndex % 2 ? 18 : -18);
+        shard.style.setProperty("--shard-rotation-small", `${rotation * .3}deg`);
+        shard.style.setProperty("--shard-rotation-mid", `${rotation * .72}deg`);
+        shard.style.setProperty("--shard-rotation", `${rotation}deg`);
+        shard.style.setProperty("--shard-delay", `${delay}ms`);
+        longestDelay = Math.max(longestDelay, delay);
+        nodes.push(shard);
+        fragment.appendChild(shard);
+      }
+    }
+  });
+
+  for (let index = 0; index < CARD_SHARD_CONFIG.intakeSparks; index += 1) {
+    const spark = document.createElement("i");
+    spark.className = "bank-intake-spark";
+    spark.setAttribute("aria-hidden", "true");
+    spark.style.left = `${targetX}px`;
+    spark.style.top = `${targetY}px`;
+    const intakeX = ((index % 5) - 2) * 8;
+    const intakeY = -8 - (index % 3) * 7;
+    spark.style.setProperty("--intake-x", `${intakeX}px`);
+    spark.style.setProperty("--intake-y", `${intakeY}px`);
+    spark.style.setProperty("--intake-x-far", `${intakeX * 1.45}px`);
+    spark.style.setProperty("--intake-y-far", `${intakeY * 1.6}px`);
+    spark.style.setProperty("--intake-delay", `${Math.max(250, CARD_SHARD_CONFIG.duration - 190) + index * 22}ms`);
+    nodes.push(spark);
+    fragment.appendChild(spark);
+  }
+
+  document.body.appendChild(fragment);
+  bankEl.classList.add("bank-feeding");
+  const totalDuration = Math.max(getCardFeedDuration(measurements.length), CARD_SHARD_CONFIG.duration + longestDelay + 70);
+  await waitMaybe(advance, totalDuration);
+  nodes.forEach((node) => node.remove());
+  measurements.forEach(({ card }) => card.classList.remove("is-shattering"));
+  bankEl.classList.remove("bank-feeding");
+}
+
+function getCardFeedDuration(cardCount) {
+  const shardCount = CARD_SHARD_CONFIG.rows * CARD_SHARD_CONFIG.columns;
+  return CARD_SHARD_CONFIG.duration
+    + Math.max(0, cardCount - 1) * CARD_SHARD_CONFIG.cardStagger
+    + Math.max(0, shardCount - 1) * CARD_SHARD_CONFIG.stagger
+    + 70;
+}
+
 async function flyValueToBank(sourceEl, bankEl, value, advance = null) {
   if (!sourceEl || !bankEl) return;
   const sourceRect = sourceEl.getBoundingClientRect();
@@ -578,9 +700,8 @@ async function flyValueToBank(sourceEl, bankEl, value, advance = null) {
   ghost.remove();
 }
 
-async function countBankTo(valueEl, from, to, advance = null) {
+async function countBankTo(valueEl, from, to, advance = null, duration = 520) {
   if (!valueEl) return;
-  const duration = 520;
   const startedAt = performance.now();
 
   return new Promise((resolve) => {
