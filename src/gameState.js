@@ -320,11 +320,12 @@ export function createGame(ui) {
         baseStackCards: ui.getAllStackCardElements(),
         resolution: crunch.resolution,
         fail: true,
-        onEntryResolved: async (entry) => {
+        onEntryResolved: async (entry, _index, transition) => {
           ui.setMessage(entry.cutinLabel ?? entry.label, "good");
           await playCrunchEntryExplanation({
             entry: createCutsceneEntry(entry),
-            tier: "normal"
+            tier: "normal",
+            sourceCards: transition?.sourceCards
           });
         }
       });
@@ -348,12 +349,13 @@ export function createGame(ui) {
         baseStackCards: ui.getAllStackCardElements(),
         resolution: crunch.resolution,
         fail: false,
-        onEntryResolved: async (entry, index) => {
+        onEntryResolved: async (entry, index, transition) => {
           ui.setMessage(crunch.cutscene.entries[index]?.label ?? entry.cutinLabel ?? entry.label, "good");
           await playCrunchEntryExplanation({
             entry: crunch.cutscene.entries[index] ?? createCutsceneEntry(entry),
             tier: crunch.cutscene.tier,
-            bank: crunchBank
+            bank: crunchBank,
+            sourceCards: transition?.sourceCards
           });
         }
       });
@@ -416,8 +418,12 @@ export function createGame(ui) {
       baseStackCards: ui.getAllStackCardElements(),
       resolution: crunch.resolution,
       fail: true,
-      onEntryResolved: async (entry) => {
-        await playCrunchEntryExplanation({ entry: createCutsceneEntry(entry), tier: "normal" });
+      onEntryResolved: async (entry, _index, transition) => {
+        await playCrunchEntryExplanation({
+          entry: createCutsceneEntry(entry),
+          tier: "normal",
+          sourceCards: transition?.sourceCards
+        });
       }
     });
     await playBustCutin({

@@ -181,7 +181,12 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
       if (entry.matchType === "add" || entry.matchType === "subtract") drawComboStreak(handCard, matchedCards);
       await advance.wait(560);
       await popStoredLabel(handCard, `+${entry.basePoints} ${getShortMatchLabel(entry)}`, particleType, advance);
-      await onEntryResolved?.(entry, i);
+      await onEntryResolved?.(entry, i, {
+        sourceCards: [
+          ...entry.matchedCards.map((card, index) => ({ card, element: matchedCards[index] })),
+          { card: entry.card, element: handCard }
+        ].filter(({ element }) => Boolean(element))
+      });
       matchedCards.forEach((card) => card.classList.remove("card-match-glow", "resolve-reference-card", "is-vibrating"));
       handCard?.classList.remove("card-selected", "resolve-selected-card", "is-vibrating");
       clearSpotlight();

@@ -13,6 +13,8 @@ const CUTSCENE_CONFIG = {
   minFinalCloseDelay: 620,
   minBustAdvanceDelay: 620,
   autoBonusStepDuration: 620,
+  sharedCardDuration: 520,
+  sharedCardStagger: 46,
   fadeOutDuration: 160
 };
 const CARD_SHARD_CONFIG = {
@@ -244,15 +246,16 @@ export async function playCrunchExplanation({ cutscene, scoreEl }) {
   }
 }
 
-export async function playCrunchEntryExplanation({ entry, tier = "normal", bank = null }) {
+export async function playCrunchEntryExplanation({ entry, tier = "normal", bank = null, sourceCards = [] }) {
   if (!entry) return;
 
   const overlay = createOverlay(tier);
   const advance = createAdvanceController(overlay);
   document.body.appendChild(overlay);
+  let restoreSharedCards = () => {};
 
   try {
-    await playEntryCutin(overlay, entry, tier, advance);
+    restoreSharedCards = await playEntryCutin(overlay, entry, tier, advance, sourceCards);
     if (bank) {
       const cards = [...overlay.querySelectorAll(".cutin-card:not(.dim)")];
       await bank.add(entry.points, overlay.querySelector(".cutin-points"), advance, cards);
@@ -260,6 +263,7 @@ export async function playCrunchEntryExplanation({ entry, tier = "normal", bank 
     overlay.classList.add("is-leaving");
     await waitMaybe(advance, CUTSCENE_CONFIG.fadeOutDuration);
   } finally {
+    restoreSharedCards();
     advance.destroy();
     overlay.remove();
   }
@@ -317,15 +321,17 @@ function chooseFullEntries(entries) {
     .slice(0, CUTSCENE_CONFIG.maxFullCutinsPerCrunch);
 }
 
-async function playEntryCutin(overlay, entry, tier, advance) {
+async function playEntryCutin(overlay, entry, tier, advance, sourceCards = []) {
   const matched = orderMatchedCardsForEquation(entry);
   const operator = getOperatorText(entry);
   const equation = getEquationText(entry);
   overlay.innerHTML = isMathEntry(entry)
     ? createMathCutinMarkup({ entry, matched, operator, equation, tier })
     : createMatchCutinMarkup({ entry, matched, operator, equation, tier });
+  const restoreSharedCards = await transitionSourceCardsIntoCutin(overlay, sourceCards, advance);
   playGameSfx(getEntrySound(entry));
   await advance.waitForTap(tier === "full" ? CUTSCENE_CONFIG.minFullCutinAdvanceDelay : CUTSCENE_CONFIG.minCutinAdvanceDelay);
+  return restoreSharedCards;
 }
 
 function createMathCutinMarkup({ entry, matched, operator, equation, tier }) {
@@ -521,12 +527,130 @@ function playTapBounce(overlay) {
 function createCutinCardMarkup(card, extraClass = "") {
   if (!card) return "";
   return `
-    <div class="cutin-card card-${card.color} card-${card.suit} ${extraClass}">
+    <div class="cutin-card card-${card.color} card-${card.suit} ${extraClass}" data-cutin-card-id="${card.id}">
       <span class="cutin-corner">${card.rank}${card.suitSymbol}</span>
       <strong>${card.rank}</strong>
       <span class="cutin-suit">${card.suitSymbol}</span>
     </div>
   `;
+}
+
+async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
+  const sources = sourceCards
+    .filter(({ card, element }) => card?.id && element?.isConnected)
+    .map(({ card, element }) => ({ card, element, rect: element.getBoundingClientRect() }))
+    .filter(({ rect }) => rect.width > 0 && rect.height > 0);
+  if (!sources.length || isCrunchSkipRequested()) return () => {};
+
+  const targets = [...overlay.querySelectorAll(".cutin-card[data-cutin-card-id]")];
+  const flights = [];
+  const hiddenSources = [];
+  const animations = [];
+
+  sources.forEach(({ card, element, rect }, index) => {
+    const target = targets.find((candidate) => candidate.dataset.cutinCardId === card.id);
+    if (!target) return;
+    target.classList.add("cutin-shared-target", "cutin-shared-target-hidden");
+    const targetRect = target.getBoundingClientRect();
+    if (targetRect.width <= 0 || targetRect.height <= 0) {
+      target.classList.remove("cutin-shared-target", "cutin-shared-target-hidden");
+      return;
+    }
+
+    const flight = element.cloneNode(true);
+    flight.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
+    flight.removeAttribute("id");
+    flight.removeAttribute("aria-label");
+    flight.setAttribute("aria-hidden", "true");
+    flight.disabled = true;
+    flight.classList.remove(
+      "card-selected",
+      "card-match-glow",
+      "resolve-reference-card",
+      "resolve-selected-card",
+      "is-vibrating",
+      "is-hand-selected",
+      "is-staged-card"
+    );
+    flight.classList.add("cutin-shared-card-flight");
+    flight.style.left = `${targetRect.left}px`;
+    flight.style.top = `${targetRect.top}px`;
+    flight.style.width = `${targetRect.width}px`;
+    flight.style.height = `${targetRect.height}px`;
+
+    const translateX = rect.left - targetRect.left;
+    const translateY = rect.top - targetRect.top;
+    const scaleX = rect.width / targetRect.width;
+    const scaleY = rect.height / targetRect.height;
+    const delay = index * CUTSCENE_CONFIG.sharedCardStagger;
+    const duration = CUTSCENE_CONFIG.sharedCardDuration;
+
+    overlay.appendChild(flight);
+    element.classList.add("cutin-shared-source-hidden");
+    hiddenSources.push(element);
+    flights.push(flight);
+
+    const animation = flight.animate([
+      {
+        transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`,
+        filter: "brightness(1.14) drop-shadow(0 0 24px rgba(255, 207, 72, .82))",
+        offset: 0
+      },
+      {
+        transform: `translate3d(${translateX * .88}px, ${translateY * .76 - 18}px, 0) scale(${scaleX * 1.04}, ${scaleY * 1.04})`,
+        filter: "brightness(1.28) drop-shadow(0 0 34px rgba(255, 215, 92, .95))",
+        offset: .24
+      },
+      {
+        transform: `translate3d(${translateX * .2}px, ${translateY * .16 - 12}px, 0) scale(${1 + (scaleX - 1) * .18}, ${1 + (scaleY - 1) * .18})`,
+        filter: "brightness(1.18) drop-shadow(0 0 22px rgba(255, 207, 72, .72))",
+        offset: .78
+      },
+      {
+        transform: "translate3d(0, 0, 0) scale(1)",
+        filter: "brightness(1.08) drop-shadow(0 0 14px rgba(255, 207, 72, .52))",
+        offset: 1
+      }
+    ], {
+      duration,
+      delay,
+      easing: "cubic-bezier(.18, .82, .2, 1)",
+      fill: "both"
+    });
+    animations.push({ animation, target, flight });
+  });
+
+  if (!animations.length) return () => {};
+  await advance.wait(CUTSCENE_CONFIG.sharedCardDuration + Math.max(0, animations.length - 1) * CUTSCENE_CONFIG.sharedCardStagger);
+  animations.forEach(({ animation, target, flight }) => {
+    try {
+      animation.finish();
+    } catch {}
+    target.classList.remove("cutin-shared-target-hidden");
+    target.classList.add("cutin-shared-target-arriving");
+    flight.animate([
+      { opacity: 1 },
+      { opacity: 0 }
+    ], {
+      duration: 90,
+      easing: "ease-out",
+      fill: "forwards"
+    });
+  });
+  await advance.wait(90);
+  animations.forEach(({ target, flight }) => {
+    target.classList.remove("cutin-shared-target-arriving");
+    flight.remove();
+  });
+
+  return () => {
+    animations.forEach(({ animation, target, flight }) => {
+      animation.cancel();
+      target.classList.remove("cutin-shared-target-hidden", "cutin-shared-target-arriving", "cutin-shared-target");
+      flight.remove();
+    });
+    hiddenSources.forEach((element) => element.classList.remove("cutin-shared-source-hidden"));
+  };
 }
 
 function orderMatchedCardsForEquation(entry) {
