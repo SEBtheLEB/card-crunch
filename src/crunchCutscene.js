@@ -13,8 +13,8 @@ const CUTSCENE_CONFIG = {
   minFinalCloseDelay: 620,
   minBustAdvanceDelay: 620,
   autoBonusStepDuration: 620,
-  sharedCardDuration: 520,
-  sharedCardStagger: 46,
+  sharedCardDuration: 680,
+  sharedCardStagger: 58,
   interactiveCrunchHits: 3,
   finalCrackHold: 190,
   fadeOutDuration: 160
@@ -30,6 +30,7 @@ const CARD_SHARD_CONFIG = {
   intakeSparks: 10
 };
 const tapBounceTimers = new WeakMap();
+const preparedShardSets = new WeakMap();
 let skipAllRequested = false;
 let skipTextElement = null;
 let skipTextLocks = 0;
@@ -257,9 +258,9 @@ export async function playCrunchEntryExplanation({ entry, tier = "normal", bank 
   let restoreSharedCards = () => {};
 
   try {
-    restoreSharedCards = await playEntryCutin(overlay, entry, tier, advance, sourceCards);
+    restoreSharedCards = await playEntryCutin(overlay, entry, tier, advance, sourceCards, bank?.element ?? null);
     if (bank) {
-      const cards = [...overlay.querySelectorAll(".cutin-card:not(.dim)")];
+      const cards = getActiveCutinCards(overlay);
       await bank.add(entry.points, overlay.querySelector(".cutin-points"), advance, cards);
     }
     overlay.classList.add("is-leaving");
@@ -323,7 +324,7 @@ function chooseFullEntries(entries) {
     .slice(0, CUTSCENE_CONFIG.maxFullCutinsPerCrunch);
 }
 
-async function playEntryCutin(overlay, entry, tier, advance, sourceCards = []) {
+async function playEntryCutin(overlay, entry, tier, advance, sourceCards = [], bankEl = null) {
   const matched = orderMatchedCardsForEquation(entry);
   const operator = getOperatorText(entry);
   const equation = getEquationText(entry);
@@ -333,8 +334,14 @@ async function playEntryCutin(overlay, entry, tier, advance, sourceCards = []) {
   const crunchPrompt = createInteractiveCrunchPrompt(overlay);
   const restoreSharedCards = await transitionSourceCardsIntoCutin(overlay, sourceCards, advance);
   playGameSfx(getEntrySound(entry));
-  await playInteractiveCardCrunch(overlay, advance, crunchPrompt);
+  await playInteractiveCardCrunch(overlay, advance, crunchPrompt, bankEl);
   return restoreSharedCards;
+}
+
+function getActiveCutinCards(overlay) {
+  const sharedCards = [...overlay.querySelectorAll(".cutin-live-card:not(.dim)")];
+  if (sharedCards.length) return sharedCards;
+  return [...overlay.querySelectorAll(".cutin-card:not(.dim):not(.cutin-layout-proxy)")];
 }
 
 function createInteractiveCrunchPrompt(overlay) {
@@ -346,23 +353,20 @@ function createInteractiveCrunchPrompt(overlay) {
   return prompt;
 }
 
-async function playInteractiveCardCrunch(overlay, advance, prompt) {
+async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null) {
   const stage = overlay.querySelector(".cutin-stage");
-  const cards = [...overlay.querySelectorAll(".cutin-card:not(.dim)")];
+  const cards = getActiveCutinCards(overlay);
   if (!stage || !cards.length || isCrunchSkipRequested()) return;
 
-  cards.forEach((card) => {
-    const cracks = document.createElement("span");
-    cracks.className = "cutin-crack-layer";
-    cracks.setAttribute("aria-hidden", "true");
-    card.appendChild(cracks);
-  });
+  cards.forEach(createCardFractureMap);
+  if (bankEl) prepareCutinCardShards(cards, bankEl);
 
   for (let hit = 1; hit <= CUTSCENE_CONFIG.interactiveCrunchHits; hit += 1) {
     await advance.waitForTap(0);
     if (isCrunchSkipRequested()) return;
 
     stage.dataset.crunchHit = String(hit);
+    overlay.dataset.crunchHit = String(hit);
     cards.forEach((card) => {
       card.dataset.crunchDamage = String(hit);
     });
@@ -428,6 +432,41 @@ function spawnCrunchDamageBurst(overlay, cards, hit) {
 
   overlay.appendChild(fragment);
   window.setTimeout(() => debris.forEach((node) => node.remove()), hit === CUTSCENE_CONFIG.interactiveCrunchHits ? 820 : 520);
+}
+
+function createCardFractureMap(card) {
+  if (!card || card.querySelector(".cutin-fracture-map")) return;
+  const namespace = "http://www.w3.org/2000/svg";
+  const layer = document.createElement("span");
+  const svg = document.createElementNS(namespace, "svg");
+  layer.className = "cutin-fracture-map";
+  layer.setAttribute("aria-hidden", "true");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+
+  for (let row = 0; row < CARD_SHARD_CONFIG.rows; row += 1) {
+    for (let column = 0; column < CARD_SHARD_CONFIG.columns; column += 1) {
+      const variant = row * CARD_SHARD_CONFIG.columns + column;
+      const polygon = document.createElementNS(namespace, "polygon");
+      polygon.classList.add("cutin-fracture-piece");
+      polygon.dataset.fractureStage = String(getFractureStage(column, row));
+      polygon.setAttribute("points", getPixelShardPolygon(column, row, variant)
+        .map(([x, y]) => `${x},${y}`)
+        .join(" "));
+      svg.appendChild(polygon);
+    }
+  }
+
+  layer.appendChild(svg);
+  card.appendChild(layer);
+}
+
+function getFractureStage(column, row) {
+  const isCenter = (column === 1 || column === 2) && (row === 1 || row === 2);
+  if (isCenter) return 1;
+  const isCorner = (column === 0 || column === CARD_SHARD_CONFIG.columns - 1)
+    && (row === 0 || row === CARD_SHARD_CONFIG.rows - 1);
+  return isCorner ? 3 : 2;
 }
 
 function createMathCutinMarkup({ entry, matched, operator, equation, tier }) {
@@ -639,17 +678,16 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
   if (!sources.length || isCrunchSkipRequested()) return () => {};
 
   const targets = [...overlay.querySelectorAll(".cutin-card[data-cutin-card-id]")];
-  const flights = [];
   const hiddenSources = [];
   const animations = [];
 
   sources.forEach(({ card, element, rect }, index) => {
     const target = targets.find((candidate) => candidate.dataset.cutinCardId === card.id);
     if (!target) return;
-    target.classList.add("cutin-shared-target", "cutin-shared-target-hidden");
+    target.classList.add("cutin-shared-target", "cutin-shared-target-hidden", "cutin-layout-proxy");
     const targetRect = target.getBoundingClientRect();
     if (targetRect.width <= 0 || targetRect.height <= 0) {
-      target.classList.remove("cutin-shared-target", "cutin-shared-target-hidden");
+      target.classList.remove("cutin-shared-target", "cutin-shared-target-hidden", "cutin-layout-proxy");
       return;
     }
 
@@ -684,8 +722,6 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
     overlay.appendChild(flight);
     element.classList.add("cutin-shared-source-hidden");
     hiddenSources.push(element);
-    flights.push(flight);
-
     const animation = flight.animate([
       {
         transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`,
@@ -693,12 +729,12 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
         offset: 0
       },
       {
-        transform: `translate3d(${translateX * .88}px, ${translateY * .76 - 18}px, 0) scale(${scaleX * 1.04}, ${scaleY * 1.04})`,
+        transform: `translate3d(${translateX * .9}px, ${translateY * .8 - 14}px, 0) scale(${scaleX * 1.025}, ${scaleY * 1.025})`,
         filter: "brightness(1.28) drop-shadow(0 0 34px rgba(255, 215, 92, .95))",
         offset: .24
       },
       {
-        transform: `translate3d(${translateX * .2}px, ${translateY * .16 - 12}px, 0) scale(${1 + (scaleX - 1) * .18}, ${1 + (scaleY - 1) * .18})`,
+        transform: `translate3d(${translateX * .24}px, ${translateY * .2 - 9}px, 0) scale(${1 + (scaleX - 1) * .2}, ${1 + (scaleY - 1) * .2})`,
         filter: "brightness(1.18) drop-shadow(0 0 22px rgba(255, 207, 72, .72))",
         offset: .78
       },
@@ -722,27 +758,18 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
     try {
       animation.finish();
     } catch {}
-    target.classList.remove("cutin-shared-target-hidden");
-    target.classList.add("cutin-shared-target-arriving");
-    flight.animate([
-      { opacity: 1 },
-      { opacity: 0 }
-    ], {
-      duration: 90,
-      easing: "ease-out",
-      fill: "forwards"
-    });
-  });
-  await advance.wait(90);
-  animations.forEach(({ target, flight }) => {
-    target.classList.remove("cutin-shared-target-arriving");
-    flight.remove();
+    flight.style.transform = "translate3d(0, 0, 0) scale(1)";
+    flight.style.filter = "brightness(1.06) drop-shadow(0 0 14px rgba(255, 207, 72, .5))";
+    animation.cancel();
+    flight.classList.add("cutin-live-card");
+    target.classList.add("cutin-layout-proxy");
   });
 
   return () => {
     animations.forEach(({ animation, target, flight }) => {
       animation.cancel();
-      target.classList.remove("cutin-shared-target-hidden", "cutin-shared-target-arriving", "cutin-shared-target");
+      discardPreparedCardShards(flight);
+      target.classList.remove("cutin-shared-target-hidden", "cutin-shared-target-arriving", "cutin-shared-target", "cutin-layout-proxy");
       flight.remove();
     });
     hiddenSources.forEach((element) => element.classList.remove("cutin-shared-source-hidden"));
@@ -816,11 +843,16 @@ function flyGhostToScore(sourceEl, scoreRect) {
   window.setTimeout(() => ghost.remove(), 620);
 }
 
-/* Turns the explanation cards into clipped pixel shards and feeds them into
-   the floating Crunch Bank while its number rolls upward. */
-async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
+/* Prebuilds the exact fracture pieces while the player is reading the cut-in.
+   The impact frame only starts transforms, avoiding a burst of cloning/layout. */
+function prepareCutinCardShards(cardElements, bankEl) {
   const cards = cardElements.filter((card) => card?.isConnected);
-  if (!cards.length || !bankEl?.isConnected) return;
+  if (!cards.length || !bankEl?.isConnected) return null;
+
+  const existing = preparedShardSets.get(cards[0]);
+  if (existing && existing.bankEl === bankEl && cards.every((card) => preparedShardSets.get(card) === existing)) {
+    return existing;
+  }
 
   const bankRect = bankEl.getBoundingClientRect();
   const targetX = bankRect.left + bankRect.width / 2;
@@ -828,15 +860,16 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
   const measurements = cards
     .map((card) => ({ card, rect: card.getBoundingClientRect() }))
     .filter(({ rect }) => rect.width > 0 && rect.height > 0);
-  if (!measurements.length) return;
+  if (!measurements.length) return null;
 
   const nodes = [];
+  const shards = [];
+  const sparks = [];
   const fragment = document.createDocumentFragment();
   const totalShardCount = measurements.length * CARD_SHARD_CONFIG.rows * CARD_SHARD_CONFIG.columns;
   let latestArrival = 0;
 
   measurements.forEach(({ card, rect }, cardIndex) => {
-    card.classList.add("is-shattering");
     for (let row = 0; row < CARD_SHARD_CONFIG.rows; row += 1) {
       for (let column = 0; column < CARD_SHARD_CONFIG.columns; column += 1) {
         const shardIndex = row * CARD_SHARD_CONFIG.columns + column;
@@ -866,15 +899,25 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
         latestArrival = Math.max(latestArrival, arrivalAt);
 
         shard.classList.add("cutin-card-shard");
-        shard.classList.remove("is-shattering");
+        shard.classList.remove(
+          "is-shattering",
+          "cutin-live-card",
+          "cutin-shared-card-flight",
+          "cutin-shared-target",
+          "cutin-layout-proxy"
+        );
+        shard.removeAttribute("data-crunch-damage");
         shard.setAttribute("aria-hidden", "true");
         shard.removeAttribute("aria-label");
+        shard.querySelectorAll(".cutin-fracture-map").forEach((node) => node.remove());
         shard.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
+        shard.style.removeProperty("filter");
+        shard.style.removeProperty("transform");
         shard.style.left = `${rect.left}px`;
         shard.style.top = `${rect.top}px`;
         shard.style.width = `${rect.width}px`;
         shard.style.height = `${rect.height}px`;
-        shard.style.clipPath = createPixelShardClip(column, row, shardIndex + cardIndex);
+        shard.style.clipPath = createPixelShardClip(column, row, shardIndex);
         shard.style.transformOrigin = `${(column + .5) * cellWidth}% ${(row + .5) * cellHeight}%`;
         shard.style.setProperty("--shard-break-x", `${spreadX}px`);
         shard.style.setProperty("--shard-break-y", `${spreadY}px`);
@@ -897,6 +940,7 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
           strength: row === 0 ? .85 : 1
         });
         nodes.push(shard);
+        shards.push(shard);
         fragment.appendChild(shard);
       }
     }
@@ -916,16 +960,55 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
     spark.style.setProperty("--intake-y-far", `${intakeY * 1.6}px`);
     spark.style.setProperty("--intake-delay", `${Math.max(250, CARD_SHARD_CONFIG.duration - 190) + index * 22}ms`);
     nodes.push(spark);
+    sparks.push(spark);
     fragment.appendChild(spark);
   }
 
   document.body.appendChild(fragment);
+  const prepared = {
+    bankEl,
+    cards: measurements.map(({ card }) => card),
+    nodes,
+    shards,
+    sparks,
+    latestArrival,
+    totalDuration: Math.max(getCardFeedDuration(measurements.length), latestArrival + 90),
+    active: false
+  };
+  prepared.cards.forEach((card) => preparedShardSets.set(card, prepared));
+  return prepared;
+}
+
+/* Reveals the pre-cut pieces in the same frame the intact cards disappear,
+   then feeds them through a staggered top-to-bottom vacuum curve. */
+async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
+  const cards = cardElements.filter((card) => card?.isConnected);
+  if (!cards.length || !bankEl?.isConnected) return;
+
+  const prepared = prepareCutinCardShards(cards, bankEl);
+  if (!prepared) return;
+  prepared.active = true;
+  prepared.cards.forEach((card) => card.classList.add("is-shattering"));
+  prepared.shards.forEach((shard) => shard.classList.add("is-vacuuming"));
+  prepared.sparks.forEach((spark) => spark.classList.add("is-active"));
   bankEl.classList.add("bank-feeding");
   playGameSfx("crunch_vacuum");
-  const totalDuration = Math.max(getCardFeedDuration(measurements.length), latestArrival + 90);
-  await waitMaybe(advance, totalDuration);
-  nodes.forEach((node) => node.remove());
-  bankEl.classList.remove("bank-feeding");
+  await waitMaybe(advance, prepared.totalDuration);
+  discardPreparedShardSet(prepared);
+}
+
+function discardPreparedCardShards(card) {
+  const prepared = preparedShardSets.get(card);
+  if (prepared) discardPreparedShardSet(prepared);
+}
+
+function discardPreparedShardSet(prepared) {
+  prepared.nodes.forEach((node) => node.remove());
+  prepared.cards.forEach((card) => {
+    preparedShardSets.delete(card);
+    card.classList.remove("is-shattering");
+  });
+  prepared.bankEl?.classList.remove("bank-feeding");
 }
 
 function registerShardBankContact(shard, bankEl, impact) {
@@ -943,6 +1026,12 @@ function registerShardBankContact(shard, bankEl, impact) {
 }
 
 function createPixelShardClip(column, row, variant) {
+  return `polygon(${getPixelShardPolygon(column, row, variant)
+    .map(([x, y]) => `${x}% ${y}%`)
+    .join(", ")})`;
+}
+
+function getPixelShardPolygon(column, row, variant) {
   const cellWidth = 100 / CARD_SHARD_CONFIG.columns;
   const cellHeight = 100 / CARD_SHARD_CONFIG.rows;
   const overlap = .35;
@@ -955,20 +1044,20 @@ function createPixelShardClip(column, row, variant) {
   const topShift = variant % 2 === 0 ? stepY : 0;
   const bottomShift = variant % 2 === 0 ? 0 : stepY;
 
-  return `polygon(
-    ${x0}% ${y0 + topShift}%,
-    ${x0 + stepX}% ${y0 + topShift}%,
-    ${x0 + stepX}% ${y0}%,
-    ${x1 - stepX}% ${y0}%,
-    ${x1 - stepX}% ${y0 + stepY}%,
-    ${x1}% ${y0 + stepY}%,
-    ${x1}% ${y1 - bottomShift}%,
-    ${x1 - stepX}% ${y1 - bottomShift}%,
-    ${x1 - stepX}% ${y1}%,
-    ${x0 + stepX}% ${y1}%,
-    ${x0 + stepX}% ${y1 - stepY}%,
-    ${x0}% ${y1 - stepY}%
-  )`;
+  return [
+    [x0, y0 + topShift],
+    [x0 + stepX, y0 + topShift],
+    [x0 + stepX, y0],
+    [x1 - stepX, y0],
+    [x1 - stepX, y0 + stepY],
+    [x1, y0 + stepY],
+    [x1, y1 - bottomShift],
+    [x1 - stepX, y1 - bottomShift],
+    [x1 - stepX, y1],
+    [x0 + stepX, y1],
+    [x0 + stepX, y1 - stepY],
+    [x0, y1 - stepY]
+  ];
 }
 
 function getCardFeedDuration(cardCount) {

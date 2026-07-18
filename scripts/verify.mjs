@@ -100,7 +100,7 @@ if (!cutsceneSource.includes("registerShardBankContact") || !cutsceneSource.incl
 if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSource.includes("data-cutin-card-id") || !css.includes("cutin-shared-card-flight")) {
   throw new Error("Shared card-to-cutin transitions are missing");
 }
-if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("spawnCrunchDamageBurst") || !css.includes("cutin-crack-layer")) {
+if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("createCardFractureMap") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("cutin-live-card") || !css.includes("cutin-fracture-map") || !css.includes("cutin-card-shard.is-vacuuming")) {
   throw new Error("Three-hit interactive Crunch damage sequence is missing");
 }
 if (!audioSource.includes("playCrunchShardImpact") || !audioSource.includes("SHARD_IMPACT_MIN_INTERVAL") || !audioSource.includes("crunch_vacuum") || !audioSource.includes("crunch_hit_3")) {

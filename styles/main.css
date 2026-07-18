@@ -3736,15 +3736,12 @@ h2 {
 
 .cutin-card.cutin-shared-target {
   animation: none !important;
+  rotate: none !important;
 }
 
 .cutin-card.cutin-shared-target-hidden {
   opacity: 0 !important;
   visibility: hidden !important;
-}
-
-.cutin-card.cutin-shared-target.cutin-shared-target-arriving {
-  animation: sharedCutinTargetReveal 90ms ease-out both !important;
 }
 
 .cutin-shared-card-flight {
@@ -3761,9 +3758,9 @@ h2 {
   will-change: transform, filter;
 }
 
-@keyframes sharedCutinTargetReveal {
-  from { opacity: 0; filter: brightness(1.3) drop-shadow(0 0 22px rgba(255, 218, 91, .9)); }
-  to { opacity: 1; filter: brightness(1); }
+.cutin-shared-card-flight.cutin-live-card {
+  transform-origin: 50% 50% !important;
+  will-change: auto;
 }
 
 /* Three-hit Crunch interaction ------------------------------------------ */
@@ -3787,54 +3784,62 @@ h2 {
   animation: cutinCrunchPromptSlam 180ms cubic-bezier(.18, 1.5, .25, 1) both;
 }
 
-.cutin-crack-layer {
+.cutin-fracture-map {
   position: absolute;
-  z-index: 8;
-  inset: -3px;
-  opacity: 0;
-  border-radius: inherit;
+  z-index: 12;
+  inset: 0;
   pointer-events: none;
-  mix-blend-mode: multiply;
+  overflow: hidden;
+  border-radius: inherit;
 }
 
-.cutin-card[data-crunch-damage="1"] .cutin-crack-layer {
-  opacity: .68;
-  background:
-    linear-gradient(128deg, transparent 47%, #24150e 48% 50%, transparent 51%) 48% 8% / 46% 55% no-repeat,
-    linear-gradient(42deg, transparent 47%, #24150e 48% 50%, transparent 51%) 59% 39% / 35% 42% no-repeat,
-    linear-gradient(92deg, transparent 47%, #5f3c24 48% 50%, transparent 51%) 38% 45% / 26% 36% no-repeat;
+.cutin-fracture-map svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.cutin-card[data-crunch-damage="2"] .cutin-crack-layer {
-  opacity: .84;
-  background:
-    linear-gradient(128deg, transparent 47%, #1b100b 48% 51%, transparent 52%) 48% 4% / 48% 62% no-repeat,
-    linear-gradient(42deg, transparent 47%, #1b100b 48% 51%, transparent 52%) 62% 34% / 43% 48% no-repeat,
-    linear-gradient(92deg, transparent 47%, #5a321b 48% 51%, transparent 52%) 35% 45% / 35% 42% no-repeat,
-    linear-gradient(154deg, transparent 47%, #2b1710 48% 51%, transparent 52%) 35% 70% / 48% 38% no-repeat,
-    linear-gradient(24deg, transparent 47%, #2b1710 48% 51%, transparent 52%) 69% 72% / 38% 34% no-repeat;
+.cutin-fracture-piece {
+  fill: transparent;
+  stroke: #2d160e;
+  stroke-width: 1.4;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  vector-effect: non-scaling-stroke;
+  opacity: 0;
+  transition: opacity 90ms steps(2, end), stroke-width 90ms steps(2, end);
+  filter: drop-shadow(0 0 1px rgba(255, 235, 177, .48));
 }
 
-.cutin-card[data-crunch-damage="3"] .cutin-crack-layer {
+[data-crunch-damage="1"] .cutin-fracture-piece[data-fracture-stage="1"],
+[data-crunch-damage="2"] .cutin-fracture-piece:not([data-fracture-stage="3"]),
+[data-crunch-damage="3"] .cutin-fracture-piece {
   opacity: 1;
-  background:
-    linear-gradient(128deg, transparent 46%, #130b08 47% 51%, transparent 52%) 48% 1% / 55% 70% no-repeat,
-    linear-gradient(42deg, transparent 46%, #130b08 47% 51%, transparent 52%) 63% 30% / 52% 55% no-repeat,
-    linear-gradient(92deg, transparent 46%, #4e2b19 47% 51%, transparent 52%) 32% 42% / 42% 54% no-repeat,
-    linear-gradient(154deg, transparent 46%, #1c0e0a 47% 51%, transparent 52%) 32% 70% / 54% 46% no-repeat,
-    linear-gradient(24deg, transparent 46%, #1c0e0a 47% 51%, transparent 52%) 70% 69% / 49% 44% no-repeat,
-    linear-gradient(78deg, transparent 46%, #4e2b19 47% 51%, transparent 52%) 51% 85% / 43% 37% no-repeat;
 }
 
-.cutin-stage[data-crunch-hit="1"] .cutin-card:not(.dim) {
+[data-crunch-damage="2"] .cutin-fracture-piece {
+  stroke-width: 1.8;
+}
+
+[data-crunch-damage="3"] .cutin-fracture-piece {
+  stroke: #1c0907;
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 2px rgba(255, 204, 93, .58));
+}
+
+.crunch-cutscene-overlay[data-crunch-hit="1"] .cutin-live-card,
+.cutin-stage[data-crunch-hit="1"] .cutin-card:not(.dim):not(.cutin-layout-proxy) {
   animation: cutinCrunchHitOne 180ms cubic-bezier(.2, 1.55, .28, 1) both !important;
 }
 
-.cutin-stage[data-crunch-hit="2"] .cutin-card:not(.dim) {
+.crunch-cutscene-overlay[data-crunch-hit="2"] .cutin-live-card,
+.cutin-stage[data-crunch-hit="2"] .cutin-card:not(.dim):not(.cutin-layout-proxy) {
   animation: cutinCrunchHitTwo 210ms cubic-bezier(.2, 1.55, .28, 1) both !important;
 }
 
-.cutin-stage[data-crunch-hit="3"] .cutin-card:not(.dim) {
+.crunch-cutscene-overlay[data-crunch-hit="3"] .cutin-live-card,
+.cutin-stage[data-crunch-hit="3"] .cutin-card:not(.dim):not(.cutin-layout-proxy) {
   animation: cutinCrunchHitThree 250ms cubic-bezier(.16, 1.5, .24, 1) both !important;
 }
 
@@ -3917,7 +3922,8 @@ h2 {
   100% { opacity: 0; transform: translate3d(var(--crumb-x), var(--crumb-y), 0) rotate(190deg) scale(.75); }
 }
 
-.reduce-motion .cutin-stage[data-crunch-hit] .cutin-card:not(.dim),
+.reduce-motion .crunch-cutscene-overlay[data-crunch-hit] .cutin-live-card,
+.reduce-motion .cutin-stage[data-crunch-hit] .cutin-card:not(.dim):not(.cutin-layout-proxy),
 .reduce-motion .cutin-crunch-prompt,
 .reduce-motion .cutin-crunch-chip,
 .reduce-motion .cutin-crunch-crumb {
@@ -5397,14 +5403,15 @@ h2 {
 
 /* Pixel-card intake: each tapped explanation is diced and vacuumed into the
    Crunch Bank while the displayed value rolls upward. */
-.cutin-card.is-shattering {
+.cutin-card.is-shattering,
+.cutin-live-card.is-shattering {
   opacity: 0 !important;
   visibility: hidden;
   animation: none !important;
   transition: none;
 }
 
-.cutin-card.cutin-card-shard {
+.cutin-card-shard {
   position: fixed;
   z-index: 96;
   margin: 0;
@@ -5414,11 +5421,18 @@ h2 {
   rotate: none !important;
   pointer-events: none;
   contain: layout paint style;
-  will-change: transform, opacity, filter;
+  visibility: hidden;
+  opacity: 0;
+  animation: none !important;
+}
+
+.cutin-card-shard.is-vacuuming {
+  visibility: visible;
+  will-change: transform, opacity;
   animation: cutinCardShardVacuum var(--shard-duration, 740ms) cubic-bezier(.28, .02, .08, 1) var(--shard-delay, 0ms) both !important;
 }
 
-.cutin-card.cutin-card-shard::before {
+.cutin-card-shard::before {
   border-radius: 0;
 }
 
@@ -5458,39 +5472,36 @@ h2 {
   box-shadow: 0 0 0 2px #a75f07, 0 0 10px rgba(255, 201, 55, .92);
   pointer-events: none;
   opacity: 0;
+}
+
+.bank-intake-spark.is-active {
   animation: bankIntakeSpark 330ms steps(5, end) var(--intake-delay) both;
 }
 
 @keyframes cutinCardShardVacuum {
   0% {
     opacity: 1;
-    transform: translate3d(0, 0, 0) rotate(0) scale(.98);
-    filter: brightness(1);
+    transform: translate3d(0, 0, 0) rotate(0) scale(1);
   }
-  12% {
+  13% {
     opacity: 1;
-    transform: translate3d(var(--shard-break-x), var(--shard-break-y), 0) rotate(var(--shard-rotation-small)) scale(.98);
-    filter: brightness(1.22);
+    transform: translate3d(var(--shard-break-x), var(--shard-break-y), 0) rotate(var(--shard-rotation-small)) scale(.99);
   }
-  40% {
+  42% {
     opacity: 1;
     transform: translate3d(var(--shard-curve-x), var(--shard-curve-y), 0) rotate(var(--shard-rotation-mid)) scale(.78);
-    filter: brightness(1.32) saturate(1.12) drop-shadow(0 0 5px rgba(255, 213, 91, .46));
   }
-  72% {
+  73% {
     opacity: 1;
     transform: translate3d(var(--shard-funnel-x), var(--shard-funnel-y), 0) rotate(var(--shard-rotation)) scale(.38);
-    filter: brightness(1.48) saturate(1.2) drop-shadow(0 0 7px rgba(255, 213, 91, .65));
   }
   92% {
     opacity: .92;
     transform: translate3d(var(--shard-intake-x), var(--shard-intake-y), 0) rotate(var(--shard-rotation)) scale(.15, .08);
-    filter: brightness(1.72) saturate(1.28) drop-shadow(0 0 8px rgba(255, 231, 132, .82));
   }
   100% {
     opacity: 0;
     transform: translate3d(var(--shard-fly-x), var(--shard-fly-y), 0) rotate(var(--shard-rotation)) scale(.025);
-    filter: brightness(1.8) saturate(1.3);
   }
 }
 
@@ -5612,7 +5623,7 @@ h2 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cutin-card.cutin-card-shard {
+  .cutin-card-shard.is-vacuuming {
     animation-duration: 120ms !important;
     animation-delay: 0ms !important;
   }
