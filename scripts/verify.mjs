@@ -21,9 +21,19 @@ if (!Array.isArray(results) || results.some((result) => result.pass === false)) 
   throw new Error("Scoring self-tests failed");
 }
 
+const { formatCompactNumber } = await import(`../src/format.js?verify=${Date.now()}`);
+const compactCases = [
+  [100_000, "100K"],
+  [100_000_000, "100M"],
+  [2_500_000_000, "2.5B"]
+];
+if (compactCases.some(([value, expected]) => formatCompactNumber(value) !== expected)) {
+  throw new Error("Compact number formatting failed");
+}
+
 const html = await readFile(resolve(root, "index.html"), "utf8");
 if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButton")) {
   throw new Error("Release UI hooks are missing");
 }
 
-console.log(`Verified ${results.length} scoring cases and release UI hooks.`);
+console.log(`Verified ${results.length} scoring cases, compact values, and release UI hooks.`);

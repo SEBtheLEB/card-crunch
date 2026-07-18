@@ -5,9 +5,9 @@ export function formatCompactNumber(value) {
 
   if (absolute < 100000) return `${sign}${Math.round(absolute).toLocaleString()}`;
   if (absolute < 1000000) return `${sign}${trimCompact(absolute / 1000)}K`;
-  if (absolute < 1000000000) return `${sign}${trimCompact(absolute / 1000000)}MILL`;
-  if (absolute < 1000000000000) return `${sign}${trimCompact(absolute / 1000000000)}BILL`;
-  return `${sign}${trimCompact(absolute / 1000000000000)}TRILL`;
+  if (absolute < 1000000000) return `${sign}${trimCompact(absolute / 1000000)}M`;
+  if (absolute < 1000000000000) return `${sign}${trimCompact(absolute / 1000000000)}B`;
+  return `${sign}${trimCompact(absolute / 1000000000000)}T`;
 }
 
 function trimCompact(value) {

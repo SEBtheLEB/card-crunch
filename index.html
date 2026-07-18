@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/main.css?v=76">
+    <link rel="stylesheet" href="styles/main.css?v=77">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -58,7 +58,6 @@
         <button class="bank-button" id="bankButton" type="button" disabled aria-label="Bank run cash into the pot. Resets multiplier.">
           <span>Bank</span>
           <strong id="bankAmountValue">$0</strong>
-          <small>Resets x</small>
         </button>
         <button class="crunch-button" id="crunchButton" type="button" disabled>SELECT CARDS</button>
         <div class="stored-panel multi-panel" id="multiPanel" aria-label="Run multiplier">
@@ -74,8 +73,8 @@
           <span>Lives</span>
           <strong id="missValue">&hearts;&hearts;&hearts;</strong>
         </section>
-        <button class="hint-ad-button" id="hintAdButton" type="button" aria-label="Watch ad to reveal a valid crunch"><i aria-hidden="true">&#9654;</i>Hint</button>
-        <button class="exit-level-button" id="exitLevelButton" type="button">Exit Pot</button>
+        <button class="hint-ad-button" id="hintAdButton" type="button" aria-label="Watch ad to reveal a valid crunch"><i aria-hidden="true">?</i>Peek</button>
+        <button class="exit-level-button" id="exitLevelButton" type="button" aria-label="Exit current pot">Exit</button>
         <section class="streak-status-panel">
           <span>Streak</span>
           <strong>x<span id="streakValue">0</span></strong>
@@ -260,6 +259,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-    <script type="module" src="src/main.js?v=76"></script>
+    <script type="module" src="src/main.js?v=77"></script>
   </body>
 </html>
