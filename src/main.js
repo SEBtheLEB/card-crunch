@@ -1,16 +1,18 @@
-import { createGame } from "./gameState.js?v=84";
-import { createUI } from "./ui.js?v=84";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=84";
-import { adManager } from "./ads.js?v=84";
-import { grantShieldToken, hasShieldToken } from "./save.js?v=84";
-import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=84";
-import { haptic } from "./haptics.js?v=84";
-import { bindInstantAction } from "./input.js?v=84";
-import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=84";
-import { installFullscreenControls } from "./fullscreen.js?v=84";
-import { bindThemePicker, initializeTheme } from "./themes.js?v=84";
+import { createGame } from "./gameState.js?v=85";
+import { createUI } from "./ui.js?v=85";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=85";
+import { adManager } from "./ads.js?v=85";
+import { grantShieldToken, hasShieldToken } from "./save.js?v=85";
+import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=85";
+import { haptic } from "./haptics.js?v=85";
+import { bindInstantAction } from "./input.js?v=85";
+import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=85";
+import { installFullscreenControls } from "./fullscreen.js?v=85";
+import { bindThemePicker, initializeTheme } from "./themes.js?v=85";
+import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=85";
 
 initializeTheme();
+initializeCardSkin();
 const ui = createUI();
 const game = createGame(ui);
 installAudioUnlock();
@@ -54,6 +56,8 @@ bindInstantAction(ui.elements.shieldAdButton, async () => {
 game.showMap();
 bindMenuNavigation();
 bindThemePicker(bindInstantAction);
+bindCardSkinPicker(bindInstantAction);
+installRainbowCardTrail();
 loadSettings();
 game.refreshEconomy();
 window.setInterval(game.refreshEconomy, 1000);
@@ -147,6 +151,7 @@ function bindMenuNavigation() {
       "cardCrunchShieldToken",
       "cardCrunchAdStats",
       "cardCrunchTheme",
+      "cardCrunchCardSkin",
       "cardCrunchTotalCrunches"
     ].forEach((key) => localStorage.removeItem(key));
     window.location.reload();

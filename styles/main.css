@@ -6111,3 +6111,447 @@ html[data-theme="knight-deck"] .cutin-title {
     padding-bottom: 18px;
   }
 }
+
+/* ==========================================================================
+   Card skin locker
+   ========================================================================== */
+
+.skin-store-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 3px solid rgba(111, 158, 188, .24);
+}
+
+.skin-store-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.skin-store-heading div {
+  display: grid;
+  gap: 4px;
+}
+
+.skin-store-heading span,
+.skin-store-heading > strong,
+.skin-store-status,
+.skin-option > span > strong,
+.skin-option > em {
+  font-family: var(--font-pixel);
+  text-transform: uppercase;
+}
+
+.skin-store-heading span {
+  color: #7fdcff;
+  font-size: clamp(.42rem, 1.7vw, .54rem);
+}
+
+.skin-store-heading h3 {
+  margin: 0;
+  color: #fff0b4;
+  font-family: var(--font-pixel);
+  font-size: clamp(.72rem, 3vw, 1rem);
+  line-height: 1.25;
+}
+
+.skin-store-heading > strong {
+  padding: 6px 7px;
+  border: 2px solid #204d37;
+  background: #123827;
+  color: #8df0ad;
+  font-size: clamp(.38rem, 1.55vw, .48rem);
+  white-space: nowrap;
+}
+
+.card-skin-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.skin-option {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 168px;
+  grid-template-rows: 86px auto auto;
+  align-content: start;
+  gap: 8px;
+  padding: 8px;
+  overflow: hidden;
+  border: 3px solid #07101e;
+  clip-path: var(--pixel-panel-silhouette);
+  background: #11233a;
+  box-shadow: inset 0 0 0 2px #35526b, 4px 4px 0 rgba(2, 5, 10, .78);
+  color: #fff4ca;
+  text-align: left;
+}
+
+.skin-option.is-skin-selected {
+  border-color: #624006;
+  background: #263951;
+  box-shadow: inset 0 0 0 2px #ffd45f, 4px 4px 0 rgba(2, 5, 10, .78), 0 0 16px rgba(255, 203, 70, .3);
+}
+
+.skin-option:active {
+  transform: scale(.965);
+  filter: brightness(1.16);
+}
+
+.skin-option > span:not(.skin-preview) {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.skin-option > span > strong {
+  font-size: clamp(.48rem, 2vw, .62rem);
+  line-height: 1.35;
+}
+
+.skin-option > span > small {
+  color: #b9ccd2;
+  font-size: clamp(.58rem, 2.25vw, .7rem);
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.skin-option > em {
+  align-self: end;
+  color: #8ee9ff;
+  font-size: clamp(.37rem, 1.55vw, .48rem);
+  font-style: normal;
+  line-height: 1.2;
+}
+
+.skin-option.is-skin-selected > em {
+  color: #ffe786;
+}
+
+.skin-option-rainbow {
+  grid-column: 1 / -1;
+  min-height: 150px;
+  grid-template-columns: minmax(124px, .9fr) minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  align-items: center;
+}
+
+.skin-option-rainbow .skin-preview {
+  grid-row: 1 / -1;
+  height: 126px;
+}
+
+.skin-preview {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 86px;
+  place-items: center;
+  overflow: hidden;
+  border: 3px solid #070b14;
+  clip-path: var(--pixel-panel-silhouette);
+  background: #0b1628;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .12);
+}
+
+.skin-preview-card {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 50px;
+  height: 68px;
+  grid-template-rows: auto 1fr;
+  place-items: center;
+  padding: 7px 5px;
+  border: 3px solid #151724;
+  clip-path: var(--pixel-card-silhouette);
+  background: #f7edcc;
+  box-shadow: 4px 5px 0 rgba(2, 3, 8, .66);
+  color: #192033;
+  font-style: normal;
+  transform: rotate(-5deg);
+}
+
+.skin-preview-card b {
+  justify-self: start;
+  font-family: var(--font-pixel);
+  font-size: .55rem;
+}
+
+.skin-preview-card em {
+  font-size: 1.45rem;
+  font-style: normal;
+}
+
+.skin-preview-classic {
+  background: radial-gradient(circle at 50% 45%, #2b7048, #0a251b 74%);
+}
+
+.skin-preview-dark {
+  background: radial-gradient(circle at 50% 45%, #293a51, #080e19 74%);
+}
+
+.skin-preview-dark .skin-preview-card {
+  border-color: #71869a;
+  background: linear-gradient(145deg, #253247, #0f1726 62%, #080d17);
+  box-shadow: 4px 5px 0 #03050a, 0 0 12px rgba(102, 205, 255, .28);
+  color: #ff6d8c;
+}
+
+.skin-preview-pink {
+  background: radial-gradient(circle at 50% 45%, #ff9dce, #6e214c 76%);
+}
+
+.skin-preview-pink .skin-preview-card {
+  border-color: #9c275f;
+  background: linear-gradient(145deg, #fff1f7, #ffc4de 64%, #f28cb8);
+  box-shadow: 4px 5px 0 #4c1232, 0 0 14px rgba(255, 118, 183, .45);
+  color: #d42068;
+}
+
+.skin-preview-gold-card {
+  background: repeating-linear-gradient(45deg, #6a4007 0 6px, #bd8521 6px 12px);
+}
+
+.skin-preview-gold-card .skin-preview-card {
+  border-color: #714205;
+  background: linear-gradient(145deg, #fff4b6, #e9b840 60%, #aa650b);
+  box-shadow: 4px 5px 0 #3b2102, 0 0 14px rgba(255, 208, 82, .54);
+  color: #17472f;
+}
+
+.skin-preview-rainbow {
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, .12), transparent 38%),
+    linear-gradient(135deg, #39154c, #122d52 44%, #17432e);
+}
+
+.skin-preview-rainbow .skin-preview-card {
+  border-color: transparent;
+  background:
+    linear-gradient(145deg, #fff8ea, #e8f4ff 66%, #f7d9ff) padding-box,
+    conic-gradient(#ff4f81, #ffbd3e, #62e88c, #57c8ff, #b47cff, #ff4f81) border-box;
+  box-shadow: 4px 5px 0 #080713, -5px 0 12px rgba(255, 75, 143, .38), 5px 0 12px rgba(74, 203, 255, .38);
+  color: #403073;
+}
+
+.skin-rainbow-echo {
+  position: absolute;
+  z-index: 1;
+  width: 49px;
+  height: 66px;
+  border: 3px solid currentColor;
+  clip-path: var(--pixel-card-silhouette);
+  opacity: .52;
+}
+
+.skin-rainbow-echo.echo-one { color: #ff5f98; transform: translate(-16px, 8px) rotate(-10deg); }
+.skin-rainbow-echo.echo-two { color: #4fcfff; transform: translate(16px, 4px) rotate(7deg); }
+
+.skin-store-status {
+  min-height: 1.3em;
+  margin: 0;
+  color: #ffe786;
+  font-size: clamp(.42rem, 1.7vw, .54rem);
+  line-height: 1.3;
+  text-align: center;
+}
+
+/* Card skins intentionally sit after table themes. The table, HUD, and buttons
+   keep their selected theme while these rules replace only deck materials. */
+html[data-card-skin]:not([data-card-skin="classic"]) .card,
+html[data-card-skin]:not([data-card-skin="classic"]) .cutin-card {
+  clip-path: var(--pixel-card-silhouette);
+}
+
+html[data-card-skin="dark"] .card,
+html[data-card-skin="dark"] .cutin-card {
+  border-color: #647b91;
+  background:
+    repeating-conic-gradient(from 45deg, rgba(151, 205, 235, .035) 0 25%, transparent 0 50%) 0 0 / 8px 8px,
+    linear-gradient(150deg, #2a384d, #151f30 58%, #090f1b);
+  box-shadow: 0 6px 0 #03060b, 4px 9px 0 rgba(0, 0, 0, .35), inset 0 0 0 2px #40566c, 0 0 13px rgba(90, 190, 235, .12);
+}
+
+html[data-card-skin="dark"] .card::before,
+html[data-card-skin="dark"] .cutin-card::before {
+  border-color: rgba(142, 187, 214, .52);
+  box-shadow: inset 0 0 0 1px rgba(9, 15, 25, .72);
+}
+
+html[data-card-skin="dark"] .card::after,
+html[data-card-skin="dark"] .cutin-card::after {
+  background: repeating-linear-gradient(0deg, transparent 0 7px, rgba(165, 215, 241, .05) 7px 8px);
+  mix-blend-mode: screen;
+}
+
+html[data-card-skin="dark"] .card-black .card-rank,
+html[data-card-skin="dark"] .card-black .card-pips,
+html[data-card-skin="dark"] .card-black .card-corner,
+html[data-card-skin="dark"] .cutin-card.card-black strong,
+html[data-card-skin="dark"] .cutin-card.card-black .cutin-suit,
+html[data-card-skin="dark"] .cutin-card.card-black .cutin-corner { color: #e4eef5; }
+
+html[data-card-skin="dark"] .card-red .card-rank,
+html[data-card-skin="dark"] .card-red .card-pips,
+html[data-card-skin="dark"] .card-red .card-corner,
+html[data-card-skin="dark"] .cutin-card.card-red strong,
+html[data-card-skin="dark"] .cutin-card.card-red .cutin-suit,
+html[data-card-skin="dark"] .cutin-card.card-red .cutin-corner { color: #ff6d88; }
+
+html[data-card-skin="dark"] .card-clubs .card-rank,
+html[data-card-skin="dark"] .card-clubs .card-pips,
+html[data-card-skin="dark"] .card-clubs .card-corner,
+html[data-card-skin="dark"] .cutin-card.card-clubs strong,
+html[data-card-skin="dark"] .cutin-card.card-clubs .cutin-suit,
+html[data-card-skin="dark"] .cutin-card.card-clubs .cutin-corner { color: #78e3ad; }
+
+html[data-card-skin="pink"] .card,
+html[data-card-skin="pink"] .cutin-card {
+  border-color: #9d2f68;
+  background:
+    radial-gradient(circle at 75% 16%, rgba(255, 255, 255, .58) 0 3px, transparent 4px),
+    repeating-conic-gradient(from 45deg, rgba(173, 34, 100, .035) 0 25%, transparent 0 50%) 0 0 / 8px 8px,
+    linear-gradient(150deg, #fff4f8, #ffd3e5 58%, #ee9fc3);
+  box-shadow: 0 6px 0 #4d1232, 4px 9px 0 rgba(0, 0, 0, .28), inset 0 0 0 3px #ffeaf2, 0 0 15px rgba(255, 101, 174, .2);
+}
+
+html[data-card-skin="pink"] .card::before,
+html[data-card-skin="pink"] .cutin-card::before {
+  border-color: rgba(194, 45, 111, .45);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .62);
+}
+
+html[data-card-skin="pink"] .card-black .card-rank,
+html[data-card-skin="pink"] .card-black .card-pips,
+html[data-card-skin="pink"] .card-black .card-corner,
+html[data-card-skin="pink"] .cutin-card.card-black strong,
+html[data-card-skin="pink"] .cutin-card.card-black .cutin-suit,
+html[data-card-skin="pink"] .cutin-card.card-black .cutin-corner { color: #5b285d; }
+
+html[data-card-skin="pink"] .card-red .card-rank,
+html[data-card-skin="pink"] .card-red .card-pips,
+html[data-card-skin="pink"] .card-red .card-corner,
+html[data-card-skin="pink"] .cutin-card.card-red strong,
+html[data-card-skin="pink"] .cutin-card.card-red .cutin-suit,
+html[data-card-skin="pink"] .cutin-card.card-red .cutin-corner { color: #d51f66; }
+
+html[data-card-skin="pink"] .card-clubs .card-rank,
+html[data-card-skin="pink"] .card-clubs .card-pips,
+html[data-card-skin="pink"] .card-clubs .card-corner,
+html[data-card-skin="pink"] .cutin-card.card-clubs strong,
+html[data-card-skin="pink"] .cutin-card.card-clubs .cutin-suit,
+html[data-card-skin="pink"] .cutin-card.card-clubs .cutin-corner { color: #8b367a; }
+
+html[data-card-skin="gold"] .card,
+html[data-card-skin="gold"] .cutin-card {
+  border-color: #704104;
+  background:
+    linear-gradient(112deg, transparent 0 38%, rgba(255, 255, 227, .62) 43%, transparent 48%),
+    repeating-conic-gradient(from 45deg, rgba(121, 72, 4, .05) 0 25%, transparent 0 50%) 0 0 / 8px 8px,
+    linear-gradient(150deg, #fff7bc, #efc95c 56%, #bd7914);
+  box-shadow: 0 6px 0 #452701, 4px 9px 0 rgba(0, 0, 0, .3), inset 0 0 0 3px #fff0a0, 0 0 17px rgba(255, 202, 62, .28);
+}
+
+html[data-card-skin="gold"] .card::before,
+html[data-card-skin="gold"] .cutin-card::before {
+  border-color: rgba(116, 63, 0, .58);
+  box-shadow: inset 0 0 0 1px rgba(255, 246, 179, .75);
+}
+
+html[data-card-skin="gold"] .card-black .card-rank,
+html[data-card-skin="gold"] .card-black .card-pips,
+html[data-card-skin="gold"] .card-black .card-corner,
+html[data-card-skin="gold"] .cutin-card.card-black strong,
+html[data-card-skin="gold"] .cutin-card.card-black .cutin-suit,
+html[data-card-skin="gold"] .cutin-card.card-black .cutin-corner { color: #37280c; }
+
+html[data-card-skin="gold"] .card-red .card-rank,
+html[data-card-skin="gold"] .card-red .card-pips,
+html[data-card-skin="gold"] .card-red .card-corner,
+html[data-card-skin="gold"] .cutin-card.card-red strong,
+html[data-card-skin="gold"] .cutin-card.card-red .cutin-suit,
+html[data-card-skin="gold"] .cutin-card.card-red .cutin-corner { color: #b31d3b; }
+
+html[data-card-skin="gold"] .card-clubs .card-rank,
+html[data-card-skin="gold"] .card-clubs .card-pips,
+html[data-card-skin="gold"] .card-clubs .card-corner,
+html[data-card-skin="gold"] .cutin-card.card-clubs strong,
+html[data-card-skin="gold"] .cutin-card.card-clubs .cutin-suit,
+html[data-card-skin="gold"] .cutin-card.card-clubs .cutin-corner { color: #145d3d; }
+
+html[data-card-skin="rainbow"] .card,
+html[data-card-skin="rainbow"] .cutin-card {
+  border: 4px solid transparent;
+  background:
+    repeating-conic-gradient(from 45deg, rgba(69, 58, 110, .035) 0 25%, transparent 0 50%) 0 0 / 8px 8px padding-box,
+    linear-gradient(150deg, #fffbea, #e9f3ff 58%, #f2dfff) padding-box,
+    conic-gradient(from .12turn, #ff4f81, #ffbd3e, #62e88c, #57c8ff, #b47cff, #ff4f81) border-box;
+  box-shadow: 0 6px 0 #171124, 4px 9px 0 rgba(0, 0, 0, .3), inset 0 0 0 2px rgba(255, 255, 255, .72), -5px 0 13px rgba(255, 79, 129, .2), 5px 0 13px rgba(87, 200, 255, .2);
+}
+
+html[data-card-skin="rainbow"] .card::before,
+html[data-card-skin="rainbow"] .cutin-card::before {
+  border-color: rgba(97, 77, 148, .35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .66);
+}
+
+html[data-card-skin="rainbow"] .card::after,
+html[data-card-skin="rainbow"] .cutin-card::after {
+  background:
+    linear-gradient(110deg, transparent 0 30%, rgba(255, 91, 147, .24) 35%, rgba(255, 222, 86, .22) 40%, rgba(88, 222, 164, .22) 45%, rgba(81, 199, 255, .22) 50%, rgba(183, 112, 255, .24) 55%, transparent 62%) -100% 0 / 230% 100%,
+    repeating-linear-gradient(0deg, transparent 0 7px, rgba(74, 50, 111, .035) 7px 8px);
+  opacity: .72;
+  mix-blend-mode: multiply;
+  animation: rainbowFoilShift 1.35s steps(10) infinite;
+}
+
+html[data-card-skin="rainbow"] .hand-zone .card.is-hand-selected,
+html[data-card-skin="rainbow"] .hand-zone .card.card-touching {
+  border-color: transparent;
+  filter: drop-shadow(-5px 0 7px rgba(255, 79, 129, .65)) drop-shadow(5px 0 7px rgba(87, 200, 255, .65)) brightness(1.08);
+}
+
+html[data-card-skin="rainbow"] .cutin-card {
+  box-shadow: 0 7px 0 #100b1b, 5px 10px 0 rgba(0, 0, 0, .28), -8px 0 20px rgba(255, 79, 129, .34), 8px 0 20px rgba(87, 200, 255, .34), 0 0 24px rgba(255, 208, 76, .25);
+}
+
+.rainbow-card-trail {
+  position: fixed;
+  z-index: 9997;
+  display: block;
+  border: 4px solid currentColor;
+  clip-path: var(--pixel-card-silhouette);
+  box-shadow: 0 0 12px currentColor, inset 0 0 10px currentColor;
+  opacity: .58;
+  pointer-events: none;
+  transform-origin: center;
+  animation: rainbowCardTrail .42s steps(6) both;
+}
+
+@keyframes rainbowFoilShift {
+  from { background-position: -100% 0, 0 0; }
+  to { background-position: 100% 0, 0 0; }
+}
+
+@keyframes rainbowCardTrail {
+  0% { opacity: .58; transform: translate3d(0, 0, 0) scale(1); }
+  55% { opacity: .3; }
+  100% { opacity: 0; transform: translate3d(var(--trail-x), calc(-28px + var(--trail-y)), 0) scale(.94); }
+}
+
+@media (max-width: 370px) {
+  .skin-option {
+    min-height: 158px;
+    grid-template-rows: 78px auto auto;
+    padding: 7px;
+  }
+
+  .skin-preview { height: 78px; }
+  .skin-option-rainbow { min-height: 142px; }
+  .skin-option-rainbow .skin-preview { height: 116px; }
+}

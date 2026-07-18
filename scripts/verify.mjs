@@ -11,6 +11,7 @@ const required = [
   "src/playGames.js",
   "src/fullscreen.js",
   "src/themes.js",
+  "src/cardSkins.js",
   "src/economy.js",
   "src/purchases.js",
   "styles/main.css",
@@ -48,6 +49,9 @@ if (!html.includes("summaryCoins") || !html.includes("energyGateScreen") || !htm
 if ((html.match(/data-theme-id=/g) ?? []).length !== 3 || !html.includes("gold-table") || !html.includes("knight-deck")) {
   throw new Error("Selectable theme controls are missing");
 }
+if ((html.match(/data-card-skin-id=/g) ?? []).length !== 5 || !html.includes("skin-preview-rainbow")) {
+  throw new Error("Selectable card skin controls are missing");
+}
 
 const economyModule = await import(`../src/economy.js?verify=${Date.now()}`);
 const lowReward = economyModule.calculateRunCoinReward({ grossCash: 100_000, bestStreak: 2 });
@@ -64,9 +68,10 @@ if (regen.energy !== 12 || economyModule.ECONOMY_CONFIG.energyPerRun !== 5 || ec
   throw new Error("Energy regeneration or run cost is incorrect");
 }
 
-const [cutsceneSource, themeSource, css] = await Promise.all([
+const [cutsceneSource, themeSource, cardSkinSource, css] = await Promise.all([
   readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
   readFile(resolve(root, "src/themes.js"), "utf8"),
+  readFile(resolve(root, "src/cardSkins.js"), "utf8"),
   readFile(resolve(root, "styles/main.css"), "utf8")
 ]);
 if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createPixelShardClip") || !css.includes("cutin-card-shard")) {
@@ -83,10 +88,16 @@ if (!themeSource.includes("cardCrunchTheme") || !themeSource.includes("card-crun
 if (!css.includes('html[data-theme="gold-table"]') || !css.includes('html[data-theme="knight-deck"]')) {
   throw new Error("Gold Table or Knight Deck styles are missing");
 }
+if (!cardSkinSource.includes("cardCrunchCardSkin") || !cardSkinSource.includes("spawnRainbowCardTrail")) {
+  throw new Error("Persistent card skin selection or rainbow trails are missing");
+}
+if (!css.includes('html[data-card-skin="dark"]') || !css.includes('html[data-card-skin="pink"]') || !css.includes('html[data-card-skin="gold"]') || !css.includes('html[data-card-skin="rainbow"]')) {
+  throw new Error("One or more card skin styles are missing");
+}
 
 const fullscreenSource = await readFile(resolve(root, "src/fullscreen.js"), "utf8");
 if (!fullscreenSource.includes("requestFullscreen") || !fullscreenSource.includes("exitFullscreen")) {
   throw new Error("Fullscreen API hooks are missing");
 }
 
-console.log(`Verified ${results.length} scoring cases, economy rewards, energy regeneration, selectable themes, fullscreen controls, release UI hooks, and card-shard VFX.`);
+console.log(`Verified ${results.length} scoring cases, economy rewards, energy regeneration, selectable themes and card skins, fullscreen controls, release UI hooks, and card-shard VFX.`);

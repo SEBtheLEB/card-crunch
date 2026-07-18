@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/main.css?v=84">
+    <link rel="stylesheet" href="styles/main.css?v=85">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -204,6 +204,43 @@
                 <small>Google Play purchase</small>
               </button>
             </div>
+            <section class="skin-store-section" aria-labelledby="skinStoreTitle">
+              <div class="skin-store-heading">
+                <div>
+                  <span>Deck Locker</span>
+                  <h3 id="skinStoreTitle">Card Skins</h3>
+                </div>
+                <strong>All unlocked</strong>
+              </div>
+              <div class="card-skin-picker" id="cardSkinPicker" role="group" aria-label="Card skins">
+                <button class="skin-option is-skin-selected" data-card-skin-id="classic" type="button" aria-pressed="true">
+                  <span class="skin-preview skin-preview-classic" aria-hidden="true"><i class="skin-preview-card"><b>A</b><em>&spades;</em></i></span>
+                  <span><strong>Classic</strong><small>Original paper deck</small></span>
+                  <em>Equipped</em>
+                </button>
+                <button class="skin-option" data-card-skin-id="dark" type="button" aria-pressed="false">
+                  <span class="skin-preview skin-preview-dark" aria-hidden="true"><i class="skin-preview-card"><b>K</b><em>&hearts;</em></i></span>
+                  <span><strong>Night Ink</strong><small>Dark-mode paper</small></span>
+                  <em>Equip</em>
+                </button>
+                <button class="skin-option" data-card-skin-id="pink" type="button" aria-pressed="false">
+                  <span class="skin-preview skin-preview-pink" aria-hidden="true"><i class="skin-preview-card"><b>Q</b><em>&diams;</em></i></span>
+                  <span><strong>Pink Pop</strong><small>Berry icing foil</small></span>
+                  <em>Equip</em>
+                </button>
+                <button class="skin-option" data-card-skin-id="gold" type="button" aria-pressed="false">
+                  <span class="skin-preview skin-preview-gold-card" aria-hidden="true"><i class="skin-preview-card"><b>10</b><em>&clubs;</em></i></span>
+                  <span><strong>Gold Royale</strong><small>Gilded casino foil</small></span>
+                  <em>Equip</em>
+                </button>
+                <button class="skin-option skin-option-rainbow" data-card-skin-id="rainbow" type="button" aria-pressed="false">
+                  <span class="skin-preview skin-preview-rainbow" aria-hidden="true"><i class="skin-rainbow-echo echo-one"></i><i class="skin-rainbow-echo echo-two"></i><i class="skin-preview-card"><b>J</b><em>&spades;</em></i></span>
+                  <span><strong>Rainbow Rush</strong><small>Animated smear trail</small></span>
+                  <em>Equip</em>
+                </button>
+              </div>
+              <p class="skin-store-status" id="skinStoreStatus" aria-live="polite">Classic deck equipped.</p>
+            </section>
           </section>
 
           <section class="menu-page" data-page="themes" aria-labelledby="themesTitle">
@@ -345,6 +382,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-    <script type="module" src="src/main.js?v=84"></script>
+    <script type="module" src="src/main.js?v=85"></script>
   </body>
 </html>
