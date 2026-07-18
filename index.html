@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/main.css?v=86">
+    <link rel="stylesheet" href="styles/main.css?v=87">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -328,14 +328,30 @@
           <h2 id="gameOverTitle">Run Over</h2>
           <p class="summary-copy" id="runEndCopy">Watch an ad to revive, or recover part of your lost cash into the pot.</p>
         </div>
-        <div class="run-summary-rows">
-          <article class="summary-coins-row"><span>Coins earned</span><strong class="sum-coins" id="summaryCoins">+0</strong></article>
-          <article><span>Banked this run</span><strong class="sum-good" id="summaryBanked">$0</strong></article>
-          <article id="summaryShieldRow" hidden><span>Shield auto-banked</span><strong class="sum-good" id="summaryShield">$0</strong></article>
-          <article id="summaryRecoveredRow" hidden><span>Recovered to pot</span><strong class="sum-good" id="summaryRecovered">$0</strong></article>
-          <article id="summaryLostRow"><span>Unbanked lost</span><strong class="sum-bad" id="summaryLost">$0</strong></article>
-          <article><span>Best multiplier</span><strong id="summaryMultiplier">x1</strong></article>
-          <article><span>Best streak</span><strong id="summaryStreak">0</strong></article>
+        <div class="run-scoreboard">
+          <div class="summary-primary-readout" id="summaryLostRow">
+            <span>Run cash lost</span>
+            <strong class="sum-bad" id="summaryLost">$0</strong>
+          </div>
+          <div class="summary-bank-rail" aria-label="Run earnings">
+            <article>
+              <span>Banked</span>
+              <strong class="sum-good" id="summaryBanked">$0</strong>
+            </article>
+            <article class="summary-coins-row">
+              <span>Coins</span>
+              <strong class="sum-coins" id="summaryCoins">+0</strong>
+            </article>
+          </div>
+          <div class="summary-recovery-ticker" id="summaryRecoveryTicker">
+            <article id="summaryShieldRow" hidden><span>Shield saved</span><strong class="sum-good" id="summaryShield">$0</strong></article>
+            <article id="summaryRecoveredRow" hidden><span>Recovered</span><strong class="sum-good" id="summaryRecovered">$0</strong></article>
+          </div>
+          <div class="summary-performance" aria-label="Run performance">
+            <article><span>Best multi</span><strong id="summaryMultiplier">x1</strong></article>
+            <i aria-hidden="true">&#9733;</i>
+            <article><span>Best streak</span><strong id="summaryStreak">0</strong></article>
+          </div>
         </div>
         <div class="summary-pot">
           <div class="summary-pot-labels"><span id="summaryPotName">Pot 1</span><span id="summaryPotPercent">0%</span></div>
@@ -382,6 +398,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-    <script type="module" src="src/main.js?v=86"></script>
+    <script type="module" src="src/main.js?v=87"></script>
   </body>
 </html>

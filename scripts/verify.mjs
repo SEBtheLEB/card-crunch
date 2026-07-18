@@ -52,6 +52,9 @@ if ((html.match(/data-theme-id=/g) ?? []).length !== 3 || !html.includes("gold-t
 if ((html.match(/data-card-skin-id=/g) ?? []).length !== 5 || !html.includes("skin-preview-rainbow")) {
   throw new Error("Selectable card skin controls are missing");
 }
+if (!html.includes("run-scoreboard") || !html.includes("summaryRecoveryTicker")) {
+  throw new Error("Arcade run summary structure is missing");
+}
 
 const economyModule = await import(`../src/economy.js?verify=${Date.now()}`);
 const lowReward = economyModule.calculateRunCoinReward({ grossCash: 100_000, bestStreak: 2 });
@@ -99,10 +102,13 @@ if (!css.includes('html[data-card-skin="dark"]') || !css.includes('html[data-car
 if (!gameStateSource.includes("function startNewRound() {\n    ui.clearMessage();") || !uiSource.includes("messageGeneration")) {
   throw new Error("Round message cleanup regression guards are missing");
 }
+if (!uiSource.includes("animateSummaryNumber") || !css.includes("Arcade run summary")) {
+  throw new Error("Arcade run summary counters or styles are missing");
+}
 
 const fullscreenSource = await readFile(resolve(root, "src/fullscreen.js"), "utf8");
 if (!fullscreenSource.includes("requestFullscreen") || !fullscreenSource.includes("exitFullscreen")) {
   throw new Error("Fullscreen API hooks are missing");
 }
 
-console.log(`Verified ${results.length} scoring cases, economy rewards, energy regeneration, round message cleanup, selectable themes and card skins, fullscreen controls, release UI hooks, and card-shard VFX.`);
+console.log(`Verified ${results.length} scoring cases, economy rewards, energy regeneration, arcade run summary, round message cleanup, selectable themes and card skins, fullscreen controls, release UI hooks, and card-shard VFX.`);

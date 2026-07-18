@@ -1,5 +1,5 @@
-import { formatCompactNumber } from "./format.js?v=86";
-import { playGameSfx } from "./audio.js?v=86";
+import { formatCompactNumber } from "./format.js?v=87";
+import { playGameSfx } from "./audio.js?v=87";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 

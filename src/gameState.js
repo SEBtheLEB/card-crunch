@@ -1,21 +1,21 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=86";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=86";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=86";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=86";
-import { ensurePlayableHand } from "./handSafety.js?v=86";
-import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=86";
-import { formatCompactNumber } from "./format.js?v=86";
-import { adManager } from "./ads.js?v=86";
-import { submitBestScore } from "./playGames.js?v=86";
-import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=86";
-import { purchaseManager } from "./purchases.js?v=86";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=87";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=87";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=87";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=87";
+import { ensurePlayableHand } from "./handSafety.js?v=87";
+import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=87";
+import { formatCompactNumber } from "./format.js?v=87";
+import { adManager } from "./ads.js?v=87";
+import { submitBestScore } from "./playGames.js?v=87";
+import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=87";
+import { purchaseManager } from "./purchases.js?v=87";
 import {
   animateBust,
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=86";
+} from "./animations.js?v=87";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;

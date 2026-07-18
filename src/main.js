@@ -1,15 +1,15 @@
-import { createGame } from "./gameState.js?v=86";
-import { createUI } from "./ui.js?v=86";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=86";
-import { adManager } from "./ads.js?v=86";
-import { grantShieldToken, hasShieldToken } from "./save.js?v=86";
-import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=86";
-import { haptic } from "./haptics.js?v=86";
-import { bindInstantAction } from "./input.js?v=86";
-import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=86";
-import { installFullscreenControls } from "./fullscreen.js?v=86";
-import { bindThemePicker, initializeTheme } from "./themes.js?v=86";
-import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=86";
+import { createGame } from "./gameState.js?v=87";
+import { createUI } from "./ui.js?v=87";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=87";
+import { adManager } from "./ads.js?v=87";
+import { grantShieldToken, hasShieldToken } from "./save.js?v=87";
+import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=87";
+import { haptic } from "./haptics.js?v=87";
+import { bindInstantAction } from "./input.js?v=87";
+import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=87";
+import { installFullscreenControls } from "./fullscreen.js?v=87";
+import { bindThemePicker, initializeTheme } from "./themes.js?v=87";
+import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=87";
 
 initializeTheme();
 initializeCardSkin();

@@ -1,9 +1,9 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=86";
-import { isPotUnlocked } from "./progression.js?v=86";
-import { formatCompactNumber } from "./format.js?v=86";
-import { hasShieldToken } from "./save.js?v=86";
-import { bindInstantAction } from "./input.js?v=86";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=86";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=87";
+import { isPotUnlocked } from "./progression.js?v=87";
+import { formatCompactNumber } from "./format.js?v=87";
+import { hasShieldToken } from "./save.js?v=87";
+import { bindInstantAction } from "./input.js?v=87";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=87";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -52,6 +52,7 @@ export function createUI() {
     summaryShieldRow: document.querySelector("#summaryShieldRow"),
     summaryRecovered: document.querySelector("#summaryRecovered"),
     summaryRecoveredRow: document.querySelector("#summaryRecoveredRow"),
+    summaryRecoveryTicker: document.querySelector("#summaryRecoveryTicker"),
     summaryMultiplier: document.querySelector("#summaryMultiplier"),
     summaryStreak: document.querySelector("#summaryStreak"),
     summaryPotName: document.querySelector("#summaryPotName"),
@@ -196,14 +197,10 @@ export function createUI() {
       elements.gameOverTitle.textContent = potComplete ? "Pot Filled!" : "Run Over";
       elements.runEndCopy.textContent = getRunEndCopy(summary, potComplete);
 
-      elements.summaryCoins.textContent = `+${formatCompactNumber(summary.coinsEarned ?? 0)}`;
-      elements.summaryBanked.textContent = `$${formatCompactNumber(summary.banked)}`;
-      elements.summaryLost.textContent = `-$${formatCompactNumber(summary.lost)}`;
       elements.summaryLostRow.hidden = summary.lost <= 0;
-      elements.summaryShield.textContent = `+$${formatCompactNumber(summary.shieldSaved)}`;
       elements.summaryShieldRow.hidden = summary.shieldSaved <= 0;
-      elements.summaryRecovered.textContent = `+$${formatCompactNumber(summary.recovered)}`;
       elements.summaryRecoveredRow.hidden = summary.recovered <= 0;
+      elements.summaryRecoveryTicker.hidden = summary.shieldSaved <= 0 && summary.recovered <= 0;
       elements.summaryMultiplier.textContent = `x${formatRunMultiplier(summary.bestMultiplier)}`;
       elements.summaryStreak.textContent = String(summary.bestStreak);
 
@@ -222,7 +219,15 @@ export function createUI() {
       elements.restartButton.hidden = potComplete;
 
       this.showGameOver(true);
-      window.setTimeout(() => popCounter(elements.summaryCoins, "gold"), 120);
+      animateSummaryNumber(elements.summaryLost, summary.lost, (value) => `-$${formatCompactNumber(value)}`, { delay: 70, tone: "red" });
+      animateSummaryNumber(elements.summaryBanked, summary.banked, (value) => `$${formatCompactNumber(value)}`, { delay: 150, tone: "green" });
+      animateSummaryNumber(elements.summaryCoins, summary.coinsEarned ?? 0, (value) => `+${formatCompactNumber(value)}`, { delay: 220, tone: "gold" });
+      animateSummaryNumber(elements.summaryShield, summary.shieldSaved, (value) => `+$${formatCompactNumber(value)}`, { delay: 290, tone: "green" });
+      animateSummaryNumber(elements.summaryRecovered, summary.recovered, (value) => `+$${formatCompactNumber(value)}`, { delay: 330, tone: "green" });
+      window.setTimeout(() => {
+        popCounter(elements.summaryMultiplier, "gold");
+        popCounter(elements.summaryStreak, "gold");
+      }, 390);
     },
     showEnergyGate(show, snapshot = economy.getSnapshot()) {
       elements.energyGateScreen.classList.toggle("is-visible", show);
@@ -463,10 +468,43 @@ function refreshShieldOffer(elements) {
 
 function popCounter(element, tone = "gold") {
   if (!element) return;
-  element.classList.remove("counter-juice", "counter-juice-gold", "counter-juice-red", "counter-juice-blue", "counter-juice-fever");
+  element.classList.remove("counter-juice", "counter-juice-gold", "counter-juice-red", "counter-juice-blue", "counter-juice-green", "counter-juice-fever");
   void element.offsetWidth;
   element.classList.add("counter-juice", `counter-juice-${tone}`);
   sprayFromElement(element, tone);
+}
+
+function animateSummaryNumber(element, target, formatter, { delay = 0, duration = 520, tone = "gold" } = {}) {
+  if (!element) return;
+  const finalValue = Math.max(0, Math.round(Number(target) || 0));
+  const token = Number(element.dataset.summaryAnimationToken ?? 0) + 1;
+  element.dataset.summaryAnimationToken = String(token);
+  element.textContent = formatter(0);
+
+  if (finalValue <= 0 || element.closest("[hidden]")) {
+    element.textContent = formatter(finalValue);
+    return;
+  }
+
+  window.setTimeout(() => {
+    if (Number(element.dataset.summaryAnimationToken) !== token) return;
+    const startedAt = performance.now();
+
+    const tick = (now) => {
+      if (Number(element.dataset.summaryAnimationToken) !== token) return;
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - (1 - progress) ** 3;
+      element.textContent = formatter(Math.round(finalValue * eased));
+      if (progress < 1) {
+        window.requestAnimationFrame(tick);
+        return;
+      }
+      element.textContent = formatter(finalValue);
+      popCounter(element, tone);
+    };
+
+    window.requestAnimationFrame(tick);
+  }, delay);
 }
 
 function sprayFromElement(element, tone = "gold") {
