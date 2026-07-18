@@ -551,25 +551,6 @@ button.is-pressing:not(:disabled),
   box-shadow: inset 0 0 13px rgba(255, 197, 61, .2), 0 0 11px rgba(255, 197, 61, .52);
 }
 
-.selected-card-tray .card .card-center::after {
-  content: attr(data-order);
-  position: absolute;
-  top: -13px;
-  right: -13px;
-  display: grid;
-  width: clamp(23px, 6.2vw, 29px);
-  aspect-ratio: 1;
-  place-items: center;
-  color: #2c1802;
-  border: 2px solid #2c1802;
-  border-radius: 50%;
-  background: linear-gradient(180deg, var(--gold-hot), var(--gold));
-  font-family: var(--font-display);
-  font-size: clamp(.7rem, 2.8vw, .92rem);
-  line-height: 1;
-  box-shadow: 0 0 12px var(--gold-glow), 0 3px 0 rgba(6, 4, 16, .6);
-}
-
 .selected-card-tray .card:not(:disabled):active {
   cursor: grabbing;
 }
@@ -776,17 +757,6 @@ button.is-pressing:not(:disabled),
   border-color: rgba(255, 208, 91, .38);
 }
 
-.hand-card-slot.is-staged::after {
-  content: attr(data-order);
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: rgba(255, 226, 151, .6);
-  font-family: var(--font-display);
-  font-size: clamp(1.1rem, 5vw, 1.8rem);
-}
-
 .hand-zone .card {
   --gesture-x: 0px;
   --gesture-y: 0px;
@@ -849,26 +819,6 @@ button.is-pressing:not(:disabled),
 .hand-zone .card.is-hand-selected::before {
   border-color: rgba(255, 197, 61, .9);
   box-shadow: inset 0 0 14px rgba(255, 197, 61, .22), 0 0 14px rgba(255, 197, 61, .55);
-}
-
-.hand-zone .card.is-hand-selected .card-center::after {
-  content: attr(data-order);
-  position: absolute;
-  top: -14px;
-  right: -14px;
-  display: grid;
-  width: 27px;
-  height: 27px;
-  place-items: center;
-  transform: rotate(6deg);
-  color: #2c1802;
-  border: 2px solid #2c1802;
-  border-radius: 50%;
-  background: linear-gradient(180deg, var(--gold-hot), var(--gold));
-  font-family: var(--font-display);
-  font-size: clamp(.76rem, 3vw, .95rem);
-  line-height: 1;
-  box-shadow: 0 0 12px var(--gold-glow), 0 3px 0 rgba(6, 4, 16, .6);
 }
 
 /* --------------------------------------------------------------------------
