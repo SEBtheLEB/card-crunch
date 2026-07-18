@@ -5946,3 +5946,12 @@ body.illustrated-skin {
   .illustrated-skin .table-zone .card-rank { font-size: clamp(2.1rem, 11vw, 4rem); }
   .illustrated-skin .table-zone .card-center .card-pips { font-size: clamp(1.75rem, 8.8vw, 3.35rem); }
 }
+
+.illustrated-skin .main-menu-screen {
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+.illustrated-skin .main-menu-screen::-webkit-scrollbar {
+  display: none;
+}
