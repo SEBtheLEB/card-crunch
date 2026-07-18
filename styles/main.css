@@ -3812,14 +3812,22 @@ h2 {
   filter: drop-shadow(0 0 1px rgba(255, 235, 177, .48));
 }
 
-[data-crunch-damage="1"] .cutin-fracture-piece[data-fracture-stage="1"],
-[data-crunch-damage="2"] .cutin-fracture-piece:not([data-fracture-stage="3"]),
+[data-crunch-damage="1"] .cutin-fracture-piece,
+[data-crunch-damage="2"] .cutin-fracture-piece,
 [data-crunch-damage="3"] .cutin-fracture-piece {
   opacity: 1;
 }
 
+[data-crunch-damage="1"] .cutin-fracture-piece {
+  stroke: rgba(45, 22, 14, .68);
+  stroke-width: 1.15;
+  filter: drop-shadow(0 0 .7px rgba(255, 235, 177, .38));
+}
+
 [data-crunch-damage="2"] .cutin-fracture-piece {
+  stroke: #241009;
   stroke-width: 1.8;
+  filter: drop-shadow(0 0 1px rgba(255, 204, 93, .5));
 }
 
 [data-crunch-damage="3"] .cutin-fracture-piece {
@@ -5405,6 +5413,8 @@ h2 {
    Crunch Bank while the displayed value rolls upward. */
 .cutin-card.is-shattering,
 .cutin-live-card.is-shattering,
+.cutin-card.is-precut-source,
+.cutin-live-card.is-precut-source,
 .cutin-card.is-consumed-after-shatter,
 .cutin-live-card.is-consumed-after-shatter {
   opacity: 0 !important;
@@ -5428,10 +5438,57 @@ h2 {
   animation: none !important;
 }
 
+.cutin-card-shard.is-precut-piece {
+  visibility: visible;
+  opacity: 1;
+  transform-origin: 50% 50% !important;
+  will-change: transform, filter;
+}
+
+.cutin-card-shard.is-precut-light {
+  filter: drop-shadow(0 0 .75px rgba(34, 16, 10, .66));
+}
+
+.cutin-card-shard.is-precut-heavy {
+  filter: drop-shadow(0 0 1.35px rgba(15, 5, 3, .96)) brightness(.94);
+}
+
+.cutin-card-shard.is-precut-piece[data-crunch-damage="1"] {
+  animation: precutCardHitOne 180ms cubic-bezier(.2, 1.45, .28, 1) both !important;
+}
+
+.cutin-card-shard.is-precut-piece[data-crunch-damage="2"] {
+  animation: precutCardHitTwo 210ms cubic-bezier(.2, 1.4, .28, 1) both !important;
+}
+
+.cutin-card-shard.is-precut-piece[data-crunch-damage="3"] {
+  animation: precutCardHitThree 250ms cubic-bezier(.16, 1.4, .24, 1) both !important;
+}
+
 .cutin-card-shard.is-vacuuming {
   visibility: visible;
   will-change: transform, opacity;
   animation: cutinCardShardVacuum var(--shard-duration, 740ms) cubic-bezier(.28, .02, .08, 1) var(--shard-delay, 0ms) both !important;
+}
+
+@keyframes precutCardHitOne {
+  0% { transform: scale(.985); }
+  55% { transform: scale(1.035); }
+  100% { transform: scale(1); }
+}
+
+@keyframes precutCardHitTwo {
+  0% { transform: scale(1); }
+  40% { transform: scale(.97); }
+  72% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+@keyframes precutCardHitThree {
+  0% { transform: scale(1); }
+  35% { transform: scale(.94); }
+  68% { transform: scale(1.055); }
+  100% { transform: scale(1); }
 }
 
 .cutin-card-shard::before {

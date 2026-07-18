@@ -100,6 +100,9 @@ if (!cutsceneSource.includes("registerShardBankContact") || !cutsceneSource.incl
 if (!cutsceneSource.includes("is-consumed-after-shatter") || !css.includes(".cutin-live-card.is-consumed-after-shatter")) {
   throw new Error("Consumed cut-in cards can reappear after the vacuum finishes");
 }
+if (!cutsceneSource.includes("showPreparedCardAssembly") || !cutsceneSource.includes("is-precut-piece") || !css.includes("precutCardHitThree")) {
+  throw new Error("Preassembled shard damage states are missing");
+}
 if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSource.includes("data-cutin-card-id") || !css.includes("cutin-shared-card-flight")) {
   throw new Error("Shared card-to-cutin transitions are missing");
 }

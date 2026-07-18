@@ -359,7 +359,7 @@ async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null
   if (!stage || !cards.length || isCrunchSkipRequested()) return;
 
   cards.forEach(createCardFractureMap);
-  if (bankEl) prepareCutinCardShards(cards, bankEl);
+  const prepared = bankEl ? prepareCutinCardShards(cards, bankEl) : null;
 
   for (let hit = 1; hit <= CUTSCENE_CONFIG.interactiveCrunchHits; hit += 1) {
     await advance.waitForTap(0);
@@ -370,6 +370,7 @@ async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null
     cards.forEach((card) => {
       card.dataset.crunchDamage = String(hit);
     });
+    if (prepared) showPreparedCardAssembly(prepared, hit);
     playGameSfx(`crunch_hit_${hit}`);
     spawnCrunchDamageBurst(overlay, cards, hit);
     prompt.textContent = hit < CUTSCENE_CONFIG.interactiveCrunchHits
@@ -449,7 +450,6 @@ function createCardFractureMap(card) {
       const variant = row * CARD_SHARD_CONFIG.columns + column;
       const polygon = document.createElementNS(namespace, "polygon");
       polygon.classList.add("cutin-fracture-piece");
-      polygon.dataset.fractureStage = String(getFractureStage(column, row));
       polygon.setAttribute("points", getPixelShardPolygon(column, row, variant)
         .map(([x, y]) => `${x},${y}`)
         .join(" "));
@@ -459,14 +459,6 @@ function createCardFractureMap(card) {
 
   layer.appendChild(svg);
   card.appendChild(layer);
-}
-
-function getFractureStage(column, row) {
-  const isCenter = (column === 1 || column === 2) && (row === 1 || row === 2);
-  if (isCenter) return 1;
-  const isCorner = (column === 0 || column === CARD_SHARD_CONFIG.columns - 1)
-    && (row === 0 || row === CARD_SHARD_CONFIG.rows - 1);
-  return isCorner ? 3 : 2;
 }
 
 function createMathCutinMarkup({ entry, matched, operator, equation, tier }) {
@@ -979,6 +971,17 @@ function prepareCutinCardShards(cardElements, bankEl) {
   return prepared;
 }
 
+function showPreparedCardAssembly(prepared, hit) {
+  if (!prepared || prepared.active) return;
+  prepared.cards.forEach((card) => card.classList.add("is-precut-source"));
+  prepared.shards.forEach((shard) => {
+    shard.classList.add("is-precut-piece");
+    shard.classList.toggle("is-precut-light", hit === 1);
+    shard.classList.toggle("is-precut-heavy", hit >= 2);
+    shard.dataset.crunchDamage = String(hit);
+  });
+}
+
 /* Reveals the pre-cut pieces in the same frame the intact cards disappear,
    then feeds them through a staggered top-to-bottom vacuum curve. */
 async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
@@ -989,7 +992,11 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
   if (!prepared) return;
   prepared.active = true;
   prepared.cards.forEach((card) => card.classList.add("is-shattering", "is-consumed-after-shatter"));
-  prepared.shards.forEach((shard) => shard.classList.add("is-vacuuming"));
+  prepared.shards.forEach((shard) => {
+    shard.classList.remove("is-precut-piece", "is-precut-light", "is-precut-heavy");
+    shard.removeAttribute("data-crunch-damage");
+    shard.classList.add("is-vacuuming");
+  });
   prepared.sparks.forEach((spark) => spark.classList.add("is-active"));
   bankEl.classList.add("bank-feeding");
   playGameSfx("crunch_vacuum");
@@ -1006,7 +1013,7 @@ function discardPreparedShardSet(prepared) {
   prepared.nodes.forEach((node) => node.remove());
   prepared.cards.forEach((card) => {
     preparedShardSets.delete(card);
-    card.classList.remove("is-shattering");
+    card.classList.remove("is-shattering", "is-precut-source");
     if (!prepared.active) card.classList.remove("is-consumed-after-shatter");
   });
   prepared.bankEl?.classList.remove("bank-feeding");
