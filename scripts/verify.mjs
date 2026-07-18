@@ -103,8 +103,11 @@ if (!cutsceneSource.includes("is-consumed-after-shatter") || !css.includes(".cut
 if (!cutsceneSource.includes("showPreparedCardAssembly") || !cutsceneSource.includes("is-precut-piece") || !css.includes("precutCardHitThree")) {
   throw new Error("Preassembled shard damage states are missing");
 }
-if (!cutsceneSource.includes("createPrecutSeamOverlay") || !css.includes("precutFractureNodeGrow") || !css.includes("precutCrackConnect")) {
-  throw new Error("Second-hit fracture growth and connection effects are missing");
+if (!cutsceneSource.includes("createPrecutSeamOverlay") || !cutsceneSource.includes("hashCutinSeed") || !css.includes("precutFractureNodeExpand")) {
+  throw new Error("Randomized transparent Crunch pits are missing");
+}
+if (cutsceneSource.includes("createCardFractureMap") || css.includes("precutCrackConnect")) {
+  throw new Error("The removed second-hit fracture-line renderer returned");
 }
 if (!cutsceneSource.includes("ensureCrunchDebrisEmitter") || !cutsceneSource.includes("drawPixelCrumb") || !css.includes("cutin-crunch-debris-canvas")) {
   throw new Error("Canvas-rendered Crunch crumbs are missing");
@@ -122,7 +125,7 @@ if (shardContactSource.includes("getBoundingClientRect")) {
 if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSource.includes("data-cutin-card-id") || !css.includes("cutin-shared-card-flight")) {
   throw new Error("Shared card-to-cutin transitions are missing");
 }
-if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("createCardFractureMap") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("cutin-live-card") || !css.includes("cutin-fracture-map") || !css.includes("cutin-card-shard.is-vacuuming")) {
+if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("--shard-burst-x") || !css.includes("--shard-rest-x") || !css.includes("cutin-card-shard.is-vacuuming")) {
   throw new Error("Three-hit interactive Crunch damage sequence is missing");
 }
 if (!audioSource.includes("playCrunchShardImpact") || !audioSource.includes("SHARD_IMPACT_MIN_INTERVAL") || !audioSource.includes("crunch_vacuum") || !audioSource.includes("crunch_hit_3")) {
