@@ -116,6 +116,23 @@ body::after {
     repeating-radial-gradient(circle at 50% 40%, rgba(255, 255, 255, .016) 0 1px, transparent 1px 8px);
 }
 
+/* Low-cost pixel/scanline pass. It sits above every screen, including
+   native cut-ins, but never participates in hit testing. */
+.pixel-screen-filter {
+  position: fixed;
+  z-index: 2147483000;
+  inset: 0;
+  pointer-events: none;
+  opacity: .2;
+  background:
+    repeating-linear-gradient(0deg, rgba(5, 10, 18, .18) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255, 248, 210, .035) 0 1px, transparent 1px 4px),
+    repeating-conic-gradient(from 45deg, rgba(255, 255, 255, .025) 0 25%, rgba(0, 0, 0, .035) 0 50%) 0 0 / 4px 4px;
+  mix-blend-mode: soft-light;
+  image-rendering: pixelated;
+  contain: strict;
+}
+
 @keyframes auroraDrift {
   from { transform: translate3d(-2%, -1.5%, 0) scale(1); }
   to { transform: translate3d(2%, 2%, 0) scale(1.06); }
@@ -134,6 +151,19 @@ button {
 
 button:disabled {
   cursor: default;
+}
+
+button:not(:disabled),
+.card:not(:disabled) {
+  transform-origin: center;
+  -webkit-touch-callout: none;
+}
+
+button.is-pressing:not(:disabled),
+.card.is-pressing:not(:disabled) {
+  scale: .965;
+  filter: brightness(1.12) saturate(1.08);
+  transition: scale .035s linear, filter .035s linear;
 }
 
 /* --------------------------------------------------------------------------
@@ -1278,6 +1308,15 @@ button.tap-pop:not(.card) {
   box-shadow: 0 0 18px rgba(255, 229, 138, .72);
   transform: translate(-50%, -50%) scale(.3);
   animation: tapRipple .32s ease-out both;
+}
+
+.tap-spray-particle,
+.counter-spark,
+.spark-particle,
+.cutin-bank-fly,
+.cutin-flying-points {
+  contain: layout paint style;
+  will-change: transform, opacity;
 }
 
 /* --------------------------------------------------------------------------
@@ -2515,6 +2554,54 @@ h2 {
 .menu-list-card span {
   color: var(--text-dim);
   font-size: clamp(.72rem, 3vw, .9rem);
+}
+
+.play-games-button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 66px;
+  margin-top: 14px;
+  padding: 10px 16px;
+  border: 2px solid rgba(255, 229, 138, .62);
+  border-radius: 17px;
+  background: linear-gradient(180deg, #ffd96a, #e89a18);
+  box-shadow: 0 6px 0 #704000, 0 12px 24px rgba(0, 0, 0, .3);
+  color: #261500;
+  text-align: left;
+}
+
+.play-games-button span {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(57, 29, 0, .15);
+  font-size: 1.5rem;
+}
+
+.play-games-button strong {
+  font-family: var(--font-display);
+  font-size: clamp(.86rem, 3.8vw, 1.15rem);
+  line-height: 1.1;
+}
+
+.play-games-button:active {
+  translate: 0 4px;
+  box-shadow: 0 2px 0 #704000, 0 7px 14px rgba(0, 0, 0, .25);
+}
+
+.play-games-status {
+  margin: 12px 4px 0;
+  color: var(--text-dim);
+  font-size: clamp(.82rem, 3.4vw, 1rem);
+  font-weight: 900;
+  line-height: 1.3;
+  text-align: center;
 }
 
 .menu-card-grid {

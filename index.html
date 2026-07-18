@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/main.css?v=74">
+    <link rel="stylesheet" href="styles/main.css?v=75">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -151,6 +151,11 @@
               <article><strong>Best Score</strong><span id="leaderboardBestScore">0</span></article>
               <article><strong>Global Scores</strong><span class="soon-tag">Coming Soon</span></article>
             </div>
+            <button class="play-games-button" id="playLeaderboardButton" type="button">
+              <span aria-hidden="true">&#9819;</span>
+              <strong>Open Play Leaderboard</strong>
+            </button>
+            <p class="play-games-status" id="playLeaderboardStatus" aria-live="polite">Your best run is submitted when a run ends.</p>
           </section>
 
           <section class="menu-page" data-page="shop" aria-labelledby="shopTitle">
@@ -254,6 +259,7 @@
       </div>
     </section>
 
-    <script type="module" src="src/main.js?v=74"></script>
+    <div class="pixel-screen-filter" aria-hidden="true"></div>
+    <script type="module" src="src/main.js?v=75"></script>
   </body>
 </html>

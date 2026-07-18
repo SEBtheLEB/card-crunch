@@ -3,7 +3,8 @@ import {
   hideCrunchSkipText,
   isCrunchSkipRequested,
   showCrunchSkipText
-} from "./crunchCutscene.js?v=74";
+} from "./crunchCutscene.js?v=75";
+import { playGameSfx } from "./audio.js?v=75";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -71,12 +72,14 @@ export const soundHooks = {
   no_match: null,
   timer_warning: null,
   target_clear: null,
+  level_clear: null,
   fever_start: null,
   fever_end: null,
   game_over: null
 };
 
 export function playSfx(name) {
+  playGameSfx(name);
   if (typeof soundHooks[name] === "function") {
     soundHooks[name]();
   }

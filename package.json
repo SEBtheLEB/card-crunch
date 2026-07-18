@@ -1,0 +1,23 @@
+{
+  "name": "card-crunch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Card Crunch mobile arcade card game",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-web.mjs",
+    "android:sync": "npm run build && cap sync android",
+    "android:debug": "npm run android:sync && cd android && gradlew.bat assembleDebug",
+    "android:bundle": "npm run android:sync && cd android && gradlew.bat bundleRelease",
+    "android:open": "cap open android",
+    "test": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.4.2",
+    "@capacitor/core": "8.4.2",
+    "@capacitor/haptics": "8.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.4.2"
+  }
+}

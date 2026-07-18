@@ -1,24 +1,34 @@
-import { createGame } from "./gameState.js?v=74";
-import { createUI } from "./ui.js?v=74";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=74";
-import { adManager } from "./ads.js?v=74";
-import { grantShieldToken, hasShieldToken } from "./save.js?v=74";
+import { createGame } from "./gameState.js?v=75";
+import { createUI } from "./ui.js?v=75";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=75";
+import { adManager } from "./ads.js?v=75";
+import { grantShieldToken, hasShieldToken } from "./save.js?v=75";
+import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=75";
+import { haptic } from "./haptics.js?v=75";
+import { bindInstantAction } from "./input.js?v=75";
+import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=75";
 
 const ui = createUI();
 const game = createGame(ui);
-bindInstantButton(ui.elements.startButton, () => ui.showMenuPage("pots"));
-bindInstantButton(ui.elements.backToMenuButton, () => {
+installAudioUnlock();
+initializePlayGames();
+bindInstantAction(ui.elements.startButton, () => ui.showMenuPage("pots"));
+bindInstantAction(ui.elements.backToMenuButton, () => {
   ui.showMap(false);
   ui.showStart(true);
 });
-bindInstantButton(ui.elements.exitLevelButton, game.exitAndSave);
-bindInstantButton(ui.elements.restartButton, game.playAgain);
-bindInstantButton(ui.elements.returnToPotsButton, game.returnToMap);
-bindInstantButton(ui.elements.reviveAdButton, game.onReviveAd);
-bindInstantButton(ui.elements.recoverAdButton, game.onRecoverAd);
-bindInstantButton(ui.elements.hintAdButton, game.onHintAd);
+bindInstantAction(ui.elements.exitLevelButton, game.exitAndSave);
+bindInstantAction(ui.elements.restartButton, game.playAgain);
+bindInstantAction(ui.elements.returnToPotsButton, game.returnToMap);
+bindInstantAction(ui.elements.reviveAdButton, game.onReviveAd);
+bindInstantAction(ui.elements.recoverAdButton, game.onRecoverAd);
+bindInstantAction(ui.elements.hintAdButton, game.onHintAd);
+bindInstantAction(ui.elements.playLeaderboardButton, async () => {
+  const opened = await showPlayLeaderboard();
+  if (!opened) ui.elements.playLeaderboardStatus.textContent = "Google Play Games connects in the Android release build.";
+});
 let shieldRewardPending = false;
-bindInstantButton(ui.elements.shieldAdButton, async () => {
+bindInstantAction(ui.elements.shieldAdButton, async () => {
   if (shieldRewardPending) return;
   if (hasShieldToken()) return;
   shieldRewardPending = true;
@@ -76,16 +86,18 @@ function installReactivePressFeedback() {
       target.style.setProperty("--tap-x", `${event.clientX - rect.left}px`);
       target.style.setProperty("--tap-y", `${event.clientY - rect.top}px`);
       target.classList.add("tap-pop");
+      target.classList.add("is-pressing");
       sprayTapParticles(event.clientX, event.clientY, getTapTone(target));
 
-      if (target.classList.contains("crunch-button") || target.classList.contains("primary-button")) {
-        navigator.vibrate?.(12);
-      } else if (target.classList.contains("card")) {
-        navigator.vibrate?.(6);
-      }
+      if (!target.classList.contains("card")) playGameSfx("tap");
+      haptic("tap");
     },
     { passive: true }
   );
+
+  const releasePress = (event) => event.target.closest?.(".is-pressing")?.classList.remove("is-pressing");
+  document.addEventListener("pointerup", releasePress, { capture: true, passive: true });
+  document.addEventListener("pointercancel", releasePress, { capture: true, passive: true });
 
   document.addEventListener("animationend", (event) => {
     if (event.animationName === "tapPop" || event.animationName === "cardTapPop") {
@@ -94,24 +106,13 @@ function installReactivePressFeedback() {
   });
 }
 
-/* Single click listener: with touch-action: manipulation there is no
-   mobile click delay, and no pointerup/click double-fire to dedupe. */
-function bindInstantButton(button, action) {
-  if (!button || typeof action !== "function") return;
-  button.addEventListener("click", (event) => {
-    if (button.disabled) return;
-    event.preventDefault();
-    action(event);
-  });
-}
-
 function bindMenuNavigation() {
   document.querySelectorAll("[data-menu-page]").forEach((button) => {
-    bindInstantButton(button, () => ui.showMenuPage(button.dataset.menuPage));
+    bindInstantAction(button, () => ui.showMenuPage(button.dataset.menuPage));
   });
 
-  bindInstantButton(ui.elements.hamburgerButton, () => ui.showMenuPage("settings"));
-  bindInstantButton(ui.elements.resetSaveButton, () => {
+  bindInstantAction(ui.elements.hamburgerButton, () => ui.showMenuPage("settings"));
+  bindInstantAction(ui.elements.resetSaveButton, () => {
     const confirmed = window.confirm("Reset Card Crunch save data? This clears pots, best score, coins, and saved runs.");
     if (!confirmed) return;
     [
@@ -131,6 +132,7 @@ function loadSettings() {
   ui.elements.musicToggle.checked = settings.music !== false;
   ui.elements.motionToggle.checked = Boolean(settings.reduceMotion);
   document.documentElement.classList.toggle("reduce-motion", Boolean(settings.reduceMotion));
+  setAudioSettings(settings);
 
   [ui.elements.soundToggle, ui.elements.musicToggle, ui.elements.motionToggle].forEach((input) => {
     input?.addEventListener("change", saveSettings);
@@ -145,6 +147,7 @@ function saveSettings() {
   };
   localStorage.setItem("cardCrunchSettings", JSON.stringify(settings));
   document.documentElement.classList.toggle("reduce-motion", settings.reduceMotion);
+  setAudioSettings(settings);
 }
 
 function getTapTone(target) {

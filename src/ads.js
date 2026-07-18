@@ -1,3 +1,5 @@
+import { bindInstantAction } from "./input.js?v=75";
+
 /*
  * Ad manager abstraction for Card Crunch.
  *
@@ -15,6 +17,7 @@
  */
 
 const AD_STATS_KEY = "cardCrunchAdStats";
+const IS_NATIVE_APP = Boolean(globalThis.Capacitor?.isNativePlatform?.());
 
 const INTERSTITIAL_RULES = {
   minRunsBetween: 4,
@@ -45,7 +48,7 @@ export const adManager = {
 
   canShowRewardedAd() {
     if (this.provider) return Boolean(this.provider.isRewardedReady?.());
-    return true;
+    return !IS_NATIVE_APP;
   },
 
   /*
@@ -165,23 +168,11 @@ function showPlaceholderRewarded(rewardType) {
       claimEl.textContent = "CLAIM REWARD";
     }, 1000);
 
-    bindInstantAdButton(claimEl, () => {
+    bindInstantAction(claimEl, () => {
       if (claimEl.disabled) return;
       finish(true);
-    });
-    bindInstantAdButton(closeEl, () => finish(false));
+    }, { stopPropagation: true });
+    bindInstantAction(closeEl, () => finish(false), { stopPropagation: true });
     document.body.appendChild(overlay);
-  });
-}
-
-/* Single click listener: no mobile delay (touch-action: manipulation) and
-   no pointerup/click double-fire. */
-function bindInstantAdButton(button, action) {
-  if (!button || typeof action !== "function") return;
-  button.addEventListener("click", (event) => {
-    if (button.disabled) return;
-    event.preventDefault();
-    event.stopPropagation();
-    action(event);
   });
 }

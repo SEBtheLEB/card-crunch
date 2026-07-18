@@ -1,18 +1,19 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=74";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=74";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=74";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=74";
-import { ensurePlayableHand } from "./handSafety.js?v=74";
-import { clearRunSave, consumeShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=74";
-import { formatCompactNumber } from "./format.js?v=74";
-import { adManager } from "./ads.js?v=74";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=75";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=75";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=75";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=75";
+import { ensurePlayableHand } from "./handSafety.js?v=75";
+import { clearRunSave, consumeShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=75";
+import { formatCompactNumber } from "./format.js?v=75";
+import { adManager } from "./ads.js?v=75";
+import { submitBestScore } from "./playGames.js?v=75";
 import {
   animateBust,
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=74";
+} from "./animations.js?v=75";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -236,7 +237,9 @@ export function createGame(ui) {
     state.streak = crunch.streakAfterCrunch;
     localStorage.setItem("cardCrunchBestStreak", String(Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak)));
     state.bestRunStreak = Math.max(state.bestRunStreak, state.streak);
+    const enteringFever = !state.fever && state.streak >= 15;
     state.fever = state.streak >= 15;
+    if (enteringFever) playSfx("fever_start");
     raiseBankMultiplier(selectedCards.length);
     ui.elements.scoreValue.textContent = formatCompactNumber(state.score);
     ui.elements.streakValue.textContent = String(state.streak);
@@ -404,6 +407,7 @@ export function createGame(ui) {
     pendingRunSave = null;
     clearRunSave();
     playSfx("game_over");
+    submitBestScore(state.bestScore);
 
     if (state.safeBankShieldActive && state.activePot && state.score > 0) {
       const saved = Math.round(state.score * SHIELD_SAVE_RATE);
@@ -463,6 +467,7 @@ export function createGame(ui) {
     ui.showGameOver(false);
     ui.setMessage("REVIVED! 1 life left - bank it or risk it", "good");
     ui.playReviveJuice();
+    playSfx("revive");
     startNewRound();
   }
 

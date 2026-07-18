@@ -1,4 +1,5 @@
-import { formatCompactNumber } from "./format.js?v=74";
+import { formatCompactNumber } from "./format.js?v=75";
+import { playGameSfx } from "./audio.js?v=75";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -300,6 +301,7 @@ async function playEntryCutin(overlay, entry, tier, advance) {
   overlay.innerHTML = isMathEntry(entry)
     ? createMathCutinMarkup({ entry, matched, operator, equation, tier })
     : createMatchCutinMarkup({ entry, matched, operator, equation, tier });
+  playGameSfx(getEntrySound(entry));
   await advance.waitForTap(tier === "full" ? CUTSCENE_CONFIG.minFullCutinAdvanceDelay : CUTSCENE_CONFIG.minCutinAdvanceDelay);
 }
 
@@ -359,6 +361,7 @@ async function playFinalTotal(overlay, total, scoreEl, tier, advance, bank = nul
   `;
 
   const totalEl = overlay.querySelector(".cutin-final strong");
+  playGameSfx("score_total");
   await advance.waitForTap(CUTSCENE_CONFIG.minFinalFlyDelay);
   if (bank) {
     await bank.setValue(total, totalEl, total, advance);
@@ -367,6 +370,7 @@ async function playFinalTotal(overlay, total, scoreEl, tier, advance, bank = nul
     flyGhostToScore(totalEl, scoreEl.getBoundingClientRect());
     await advance.waitForTap(CUTSCENE_CONFIG.minFinalCloseDelay);
   }
+  playGameSfx("score_arrive");
 }
 
 async function playCrunchBonusSteps(overlay, breakdown, total, tier, advance, bank) {
@@ -386,6 +390,7 @@ async function playCrunchBonusSteps(overlay, breakdown, total, tier, advance, ba
       </div>
     </div>
   `;
+  playGameSfx("score_step");
   await waitMaybe(advance, CUTSCENE_CONFIG.autoBonusStepDuration);
   await bank.rampTo(total, advance);
 }
@@ -514,6 +519,14 @@ function getEquationText(entry) {
 
 function isMathEntry(entry) {
   return entry.matchType === "add" || entry.matchType === "subtract";
+}
+
+function getEntrySound(entry) {
+  if ((entry.matchedCards?.length ?? 0) > 1 && (entry.matchType === "rank" || entry.matchType === "suit")) return "double_match";
+  if (entry.matchType === "suit") return "suit_match";
+  if (entry.matchType === "rank") return "rank_match";
+  if (entry.matchType === "add" || entry.matchType === "subtract") return "math_combo";
+  return "card_resolve";
 }
 
 function getMatchOperatorText(entry, fallback) {

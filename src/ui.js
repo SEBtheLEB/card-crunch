@@ -1,7 +1,8 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=74";
-import { isPotUnlocked } from "./progression.js?v=74";
-import { formatCompactNumber } from "./format.js?v=74";
-import { hasShieldToken } from "./save.js?v=74";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=75";
+import { isPotUnlocked } from "./progression.js?v=75";
+import { formatCompactNumber } from "./format.js?v=75";
+import { hasShieldToken } from "./save.js?v=75";
+import { bindInstantAction } from "./input.js?v=75";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -62,6 +63,8 @@ export function createUI() {
     menuCoinsValue: document.querySelector("#menuCoinsValue"),
     profileBestScore: document.querySelector("#profileBestScore"),
     leaderboardBestScore: document.querySelector("#leaderboardBestScore"),
+    playLeaderboardButton: document.querySelector("#playLeaderboardButton"),
+    playLeaderboardStatus: document.querySelector("#playLeaderboardStatus"),
     profileStreak: document.querySelector("#profileStreak"),
     profileCrunches: document.querySelector("#profileCrunches"),
     profilePotsCleared: document.querySelector("#profilePotsCleared"),
@@ -504,18 +507,6 @@ function getRunEndCopy(summary, potComplete) {
   if (summary.canRecover) return "Watch an ad to recover half of your lost cash into this pot.";
   if (summary.lost > 0) return "Unbanked cash was lost. Bank earlier next run, or try again for a bigger pot.";
   return "No unbanked cash was lost. Shuffle up and start another run.";
-}
-
-/* touch-action: manipulation is set globally, so `click` already fires
-   without the legacy 300ms mobile delay. A single click listener is both
-   instant and immune to pointerup/click double-firing. */
-function bindInstantAction(element, action) {
-  if (!element || typeof action !== "function") return;
-  element.addEventListener("click", (event) => {
-    if (element.disabled) return;
-    event.preventDefault();
-    action(event);
-  });
 }
 
 function createCard(card, options = {}) {

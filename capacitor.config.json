@@ -1,0 +1,12 @@
+{
+  "appId": "com.sebtheleb.cardcrunch",
+  "appName": "Card Crunch",
+  "webDir": "dist",
+  "backgroundColor": "#092b2a",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#092b2a",
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  }
+}
