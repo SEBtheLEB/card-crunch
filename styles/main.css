@@ -771,6 +771,10 @@ button.is-pressing:not(:disabled),
   text-shadow: 0 0 16px var(--red-glow), 0 4px 0 rgba(4, 5, 13, .9);
 }
 
+.combo-label:empty {
+  visibility: hidden;
+}
+
 .pop-message {
   animation: messagePop .54s cubic-bezier(.16, 1, .3, 1) both;
 }

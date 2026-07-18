@@ -1,14 +1,17 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=85";
-import { isPotUnlocked } from "./progression.js?v=85";
-import { formatCompactNumber } from "./format.js?v=85";
-import { hasShieldToken } from "./save.js?v=85";
-import { bindInstantAction } from "./input.js?v=85";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=85";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=86";
+import { isPotUnlocked } from "./progression.js?v=86";
+import { formatCompactNumber } from "./format.js?v=86";
+import { hasShieldToken } from "./save.js?v=86";
+import { bindInstantAction } from "./input.js?v=86";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=86";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
   let bonusOfferEl = null;
   let bonusOfferTimer = null;
+  let messageTimer = null;
+  let messageFrame = null;
+  let messageGeneration = 0;
   const elements = {
     shell: document.querySelector("#gameShell"),
     tableZone: document.querySelector("#tableZone"),
@@ -114,15 +117,37 @@ export function createUI() {
       }
       elements.shell.classList.toggle("is-locked", state.locked);
     },
-    setMessage(message, tone = "neutral") {
+    setMessage(message, tone = "neutral", duration = 1600) {
+      const generation = ++messageGeneration;
+      if (messageTimer) window.clearTimeout(messageTimer);
+      if (messageFrame) window.cancelAnimationFrame(messageFrame);
       elements.comboLabel.textContent = message;
       elements.comboLabel.dataset.tone = tone;
       elements.comboLabel.classList.remove("pop-message");
-      requestAnimationFrame(() => elements.comboLabel.classList.add("pop-message"));
+      messageFrame = window.requestAnimationFrame(() => {
+        messageFrame = null;
+        if (generation !== messageGeneration || !elements.comboLabel.textContent) return;
+        elements.comboLabel.classList.add("pop-message");
+      });
+      messageTimer = duration > 0
+        ? window.setTimeout(() => {
+            if (generation === messageGeneration) ui.clearMessage();
+          }, duration)
+        : null;
     },
     clearMessage() {
+      messageGeneration += 1;
+      if (messageTimer) {
+        window.clearTimeout(messageTimer);
+        messageTimer = null;
+      }
+      if (messageFrame) {
+        window.cancelAnimationFrame(messageFrame);
+        messageFrame = null;
+      }
       elements.comboLabel.textContent = "";
       elements.comboLabel.dataset.tone = "neutral";
+      elements.comboLabel.classList.remove("pop-message");
     },
     showStart(show) {
       elements.startScreen.classList.toggle("is-visible", show);

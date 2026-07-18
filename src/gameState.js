@@ -1,21 +1,21 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=85";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=85";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=85";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=85";
-import { ensurePlayableHand } from "./handSafety.js?v=85";
-import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=85";
-import { formatCompactNumber } from "./format.js?v=85";
-import { adManager } from "./ads.js?v=85";
-import { submitBestScore } from "./playGames.js?v=85";
-import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=85";
-import { purchaseManager } from "./purchases.js?v=85";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=86";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=86";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=86";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=86";
+import { ensurePlayableHand } from "./handSafety.js?v=86";
+import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=86";
+import { formatCompactNumber } from "./format.js?v=86";
+import { adManager } from "./ads.js?v=86";
+import { submitBestScore } from "./playGames.js?v=86";
+import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=86";
+import { purchaseManager } from "./purchases.js?v=86";
 import {
   animateBust,
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=85";
+} from "./animations.js?v=86";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -77,6 +77,7 @@ export function createGame(ui) {
   function showMap() {
     stopTimer();
     ui.hideBonusBankOffer();
+    ui.clearMessage();
     state.locked = true;
     state.status = "menu";
     ui.renderMap(state.pots, handlers, pendingRunSave?.activePotId);
@@ -182,6 +183,7 @@ export function createGame(ui) {
     state.status = "crunching";
     stopTimer();
     ui.hideBonusBankOffer();
+    ui.clearMessage();
     resetCrunchSkipRequest();
     ui.render(state, handlers);
 
@@ -423,6 +425,7 @@ export function createGame(ui) {
 
   function finishClearedRun() {
     stopTimer();
+    ui.clearMessage();
     state.locked = true;
     state.status = "runEnded";
     state.score = 0;
@@ -441,6 +444,7 @@ export function createGame(ui) {
   function endRun() {
     stopTimer();
     ui.hideBonusBankOffer();
+    ui.clearMessage();
     state.locked = true;
     state.status = "runEnded";
     pendingRunSave = null;
@@ -520,10 +524,10 @@ export function createGame(ui) {
     state.misses = state.maxMisses - 1;
     state.lostUnbankedMoney = 0;
     ui.showGameOver(false);
-    ui.setMessage("REVIVED! 1 life left - bank it or risk it", "good");
     ui.playReviveJuice();
     playSfx("revive");
     startNewRound();
+    ui.setMessage("REVIVED! 1 life left - bank it or risk it", "good");
   }
 
   async function onRecoverAd() {
@@ -575,6 +579,7 @@ export function createGame(ui) {
     finalizeRunLoss();
     stopTimer();
     ui.hideBonusBankOffer();
+    ui.clearMessage();
     state.selectedHandIndexes = [];
     state.activePot = null;
     pendingRunSave = null;
@@ -692,6 +697,7 @@ export function createGame(ui) {
     if (state.status !== "playing") return;
     stopTimer();
     ui.hideBonusBankOffer();
+    ui.clearMessage();
     persistRun();
     pendingRunSave = loadRunSave();
     state.locked = true;
@@ -704,6 +710,7 @@ export function createGame(ui) {
   }
 
   function startNewRound() {
+    ui.clearMessage();
     const hasReplacementSlots = state.hand.some((card) => !card);
     state.stack.forEach((card) => state.discard.push(card));
     state.stack = drawCards(state, state.baseStackCount);

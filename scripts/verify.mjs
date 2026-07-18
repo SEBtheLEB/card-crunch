@@ -68,10 +68,12 @@ if (regen.energy !== 12 || economyModule.ECONOMY_CONFIG.energyPerRun !== 5 || ec
   throw new Error("Energy regeneration or run cost is incorrect");
 }
 
-const [cutsceneSource, themeSource, cardSkinSource, css] = await Promise.all([
+const [cutsceneSource, themeSource, cardSkinSource, gameStateSource, uiSource, css] = await Promise.all([
   readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
   readFile(resolve(root, "src/themes.js"), "utf8"),
   readFile(resolve(root, "src/cardSkins.js"), "utf8"),
+  readFile(resolve(root, "src/gameState.js"), "utf8"),
+  readFile(resolve(root, "src/ui.js"), "utf8"),
   readFile(resolve(root, "styles/main.css"), "utf8")
 ]);
 if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createPixelShardClip") || !css.includes("cutin-card-shard")) {
@@ -94,10 +96,13 @@ if (!cardSkinSource.includes("cardCrunchCardSkin") || !cardSkinSource.includes("
 if (!css.includes('html[data-card-skin="dark"]') || !css.includes('html[data-card-skin="pink"]') || !css.includes('html[data-card-skin="gold"]') || !css.includes('html[data-card-skin="rainbow"]')) {
   throw new Error("One or more card skin styles are missing");
 }
+if (!gameStateSource.includes("function startNewRound() {\n    ui.clearMessage();") || !uiSource.includes("messageGeneration")) {
+  throw new Error("Round message cleanup regression guards are missing");
+}
 
 const fullscreenSource = await readFile(resolve(root, "src/fullscreen.js"), "utf8");
 if (!fullscreenSource.includes("requestFullscreen") || !fullscreenSource.includes("exitFullscreen")) {
   throw new Error("Fullscreen API hooks are missing");
 }
 
-console.log(`Verified ${results.length} scoring cases, economy rewards, energy regeneration, selectable themes and card skins, fullscreen controls, release UI hooks, and card-shard VFX.`);
+console.log(`Verified ${results.length} scoring cases, economy rewards, energy regeneration, round message cleanup, selectable themes and card skins, fullscreen controls, release UI hooks, and card-shard VFX.`);
