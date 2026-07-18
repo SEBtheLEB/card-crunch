@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/main.css?v=75">
+    <link rel="stylesheet" href="styles/main.css?v=76">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -27,15 +27,6 @@
         </section>
       </header>
 
-      <section class="timer-strip" id="timerShell" aria-label="Turn timer">
-        <span class="timer-icon" aria-hidden="true">&#9200;</span>
-        <span class="timer-copy">Turn</span>
-        <strong id="timerValue">10s</strong>
-        <div class="timer-track">
-          <div class="timer-fill" id="timerRing"></div>
-        </div>
-      </section>
-
       <section class="target-strip" aria-label="Level target">
         <div>
           <span>Pot <strong id="levelValue">1</strong></span>
@@ -43,6 +34,15 @@
         </div>
         <div class="target-track">
           <div class="target-fill" id="targetFill"></div>
+        </div>
+      </section>
+
+      <section class="timer-strip" id="timerShell" aria-label="Turn timer">
+        <span class="timer-icon" aria-hidden="true">&#9200;</span>
+        <span class="timer-copy">Turn</span>
+        <strong id="timerValue">10s</strong>
+        <div class="timer-track">
+          <div class="timer-fill" id="timerRing"></div>
         </div>
       </section>
 
@@ -260,6 +260,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-    <script type="module" src="src/main.js?v=75"></script>
+    <script type="module" src="src/main.js?v=76"></script>
   </body>
 </html>

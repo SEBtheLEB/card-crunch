@@ -1,12 +1,12 @@
-import { createGame } from "./gameState.js?v=75";
-import { createUI } from "./ui.js?v=75";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=75";
-import { adManager } from "./ads.js?v=75";
-import { grantShieldToken, hasShieldToken } from "./save.js?v=75";
-import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=75";
-import { haptic } from "./haptics.js?v=75";
-import { bindInstantAction } from "./input.js?v=75";
-import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=75";
+import { createGame } from "./gameState.js?v=76";
+import { createUI } from "./ui.js?v=76";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=76";
+import { adManager } from "./ads.js?v=76";
+import { grantShieldToken, hasShieldToken } from "./save.js?v=76";
+import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=76";
+import { haptic } from "./haptics.js?v=76";
+import { bindInstantAction } from "./input.js?v=76";
+import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=76";
 
 const ui = createUI();
 const game = createGame(ui);
@@ -85,7 +85,11 @@ function installReactivePressFeedback() {
       const rect = target.getBoundingClientRect();
       target.style.setProperty("--tap-x", `${event.clientX - rect.left}px`);
       target.style.setProperty("--tap-y", `${event.clientY - rect.top}px`);
-      target.classList.add("tap-pop");
+      if (target.classList.contains("card")) {
+        target.classList.add("card-touching");
+      } else {
+        target.classList.add("tap-pop");
+      }
       target.classList.add("is-pressing");
       sprayTapParticles(event.clientX, event.clientY, getTapTone(target));
 
@@ -95,7 +99,10 @@ function installReactivePressFeedback() {
     { passive: true }
   );
 
-  const releasePress = (event) => event.target.closest?.(".is-pressing")?.classList.remove("is-pressing");
+  const releasePress = (event) => {
+    const target = event.target.closest?.(".is-pressing, .card-touching");
+    target?.classList.remove("is-pressing", "card-touching");
+  };
   document.addEventListener("pointerup", releasePress, { capture: true, passive: true });
   document.addEventListener("pointercancel", releasePress, { capture: true, passive: true });
 
