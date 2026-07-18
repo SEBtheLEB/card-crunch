@@ -458,6 +458,10 @@ button.is-pressing:not(:disabled),
   padding: clamp(8px, 1.8dvh, 16px) clamp(6px, 2vw, 18px);
 }
 
+.table-zone.has-staged-cards .base-stack-card {
+  transform: translateY(clamp(-11px, -1.4dvh, -6px)) rotate(var(--stack-rotate, 0deg)) scale(.94);
+}
+
 .combo-line {
   position: absolute;
   inset: 0;
@@ -493,6 +497,81 @@ button.is-pressing:not(:disabled),
 .table-zone .card {
   cursor: default;
   filter: drop-shadow(0 16px 14px rgba(0, 0, 0, .55));
+}
+
+.selected-card-tray {
+  position: absolute;
+  right: 0;
+  bottom: clamp(-3px, -.35dvh, 0px);
+  left: 0;
+  z-index: 8;
+  display: flex;
+  min-height: clamp(76px, 11dvh, 112px);
+  align-items: end;
+  justify-content: center;
+  gap: clamp(3px, 1.5vw, 10px);
+  padding: 0 clamp(8px, 3vw, 22px);
+  pointer-events: none;
+}
+
+.selected-card-tray .card {
+  --gesture-x: 0px;
+  --gesture-y: 0px;
+  flex: 0 0 auto;
+  width: clamp(54px, 15.5vw, 90px);
+  max-width: 90px;
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  transform: translate3d(var(--gesture-x), var(--gesture-y), 0) rotate(var(--stage-rotate, 0deg));
+  transform-origin: center;
+  transition: transform .16s cubic-bezier(.18, 1.4, .28, 1), filter .12s ease, box-shadow .12s ease;
+  filter: drop-shadow(0 0 13px rgba(255, 197, 61, .78)) drop-shadow(0 9px 7px rgba(0, 0, 0, .66));
+}
+
+.selected-card-tray .card .card-center {
+  width: 58%;
+  height: 44%;
+}
+
+.selected-card-tray .card-rank {
+  font-size: clamp(1rem, 5.2vw, 1.9rem);
+}
+
+.selected-card-tray .card-pips {
+  font-size: clamp(1.25rem, 6.2vw, 2.35rem);
+}
+
+.selected-card-tray .card-corner {
+  font-size: clamp(.56rem, 2.35vw, .82rem);
+}
+
+.selected-card-tray .card::before {
+  border-color: rgba(255, 197, 61, .9);
+  box-shadow: inset 0 0 13px rgba(255, 197, 61, .2), 0 0 11px rgba(255, 197, 61, .52);
+}
+
+.selected-card-tray .card .card-center::after {
+  content: attr(data-order);
+  position: absolute;
+  top: -13px;
+  right: -13px;
+  display: grid;
+  width: clamp(23px, 6.2vw, 29px);
+  aspect-ratio: 1;
+  place-items: center;
+  color: #2c1802;
+  border: 2px solid #2c1802;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--gold-hot), var(--gold));
+  font-family: var(--font-display);
+  font-size: clamp(.7rem, 2.8vw, .92rem);
+  line-height: 1;
+  box-shadow: 0 0 12px var(--gold-glow), 0 3px 0 rgba(6, 4, 16, .6);
+}
+
+.selected-card-tray .card:not(:disabled):active {
+  cursor: grabbing;
 }
 
 .game-shell.streak-hot .table-zone .card,
@@ -594,6 +673,14 @@ button.is-pressing:not(:disabled),
   font-size: clamp(2.1rem, 10.4vw, 4.4rem);
 }
 
+.table-zone .selected-card-tray .card-rank {
+  font-size: clamp(1rem, 5.2vw, 1.9rem);
+}
+
+.table-zone .selected-card-tray .card-pips {
+  font-size: clamp(1.25rem, 6.2vw, 2.35rem);
+}
+
 .card-pips .hero-pip {
   display: block;
   transform: translateY(-.04em);
@@ -662,11 +749,52 @@ button.is-pressing:not(:disabled),
   perspective: 800px;
 }
 
+.hand-card-slot {
+  position: relative;
+  display: grid;
+  width: 100%;
+  max-width: 128px;
+  aspect-ratio: .72;
+  align-items: end;
+  justify-self: center;
+}
+
+.hand-card-slot::before {
+  content: "";
+  position: absolute;
+  inset: 8% 7% 3%;
+  opacity: 0;
+  border: 2px dashed rgba(255, 223, 144, .24);
+  border-radius: 12px;
+  background: rgba(4, 10, 21, .2);
+  clip-path: var(--pixel-card-silhouette);
+  transition: opacity .14s ease, border-color .14s ease;
+}
+
+.hand-card-slot.is-staged::before {
+  opacity: 1;
+  border-color: rgba(255, 208, 91, .38);
+}
+
+.hand-card-slot.is-staged::after {
+  content: attr(data-order);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 226, 151, .6);
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 5vw, 1.8rem);
+}
+
 .hand-zone .card {
+  --gesture-x: 0px;
+  --gesture-y: 0px;
   width: 100%;
   max-width: 128px;
   justify-self: center;
-  transform: translateY(var(--fan-lift, 0px)) rotate(var(--fan-rotate, 0deg));
+  touch-action: none;
+  transform: translate3d(var(--gesture-x), calc(var(--fan-lift, 0px) + var(--gesture-y)), 0) rotate(var(--fan-rotate, 0deg));
   transform-origin: center;
   transition:
     transform .14s cubic-bezier(.18, 1.5, .28, 1),
@@ -769,6 +897,53 @@ button.is-pressing:not(:disabled),
 .combo-label[data-tone="bad"] {
   color: #ff8d9a;
   text-shadow: 0 0 16px var(--red-glow), 0 4px 0 rgba(4, 5, 13, .9);
+}
+
+.hand-zone .card.is-card-dragging,
+.selected-card-tray .card.is-card-dragging {
+  z-index: 24;
+  cursor: grabbing;
+  transition: filter .1s ease, box-shadow .1s ease;
+  filter: drop-shadow(0 0 20px rgba(255, 218, 112, .88)) brightness(1.08);
+  will-change: transform;
+}
+
+.card.card-gesture-return {
+  transition: transform .2s cubic-bezier(.22, 1.5, .3, 1), filter .12s ease !important;
+}
+
+.card.card-in-flight {
+  z-index: 30;
+  pointer-events: none;
+  will-change: translate, scale;
+  filter: drop-shadow(0 0 20px rgba(255, 218, 112, .92)) drop-shadow(0 10px 8px rgba(0, 0, 0, .55));
+}
+
+.card-flight-trail {
+  --flight-color: rgba(255, 218, 112, .78);
+  position: fixed;
+  z-index: 110;
+  display: block;
+  pointer-events: none;
+  border: 3px solid var(--flight-color);
+  border-radius: 11px;
+  background: rgba(255, 218, 112, .12);
+  background: color-mix(in srgb, var(--flight-color) 18%, transparent);
+  clip-path: var(--pixel-card-silhouette);
+  filter: blur(.35px) drop-shadow(0 0 8px var(--flight-color));
+  opacity: .65;
+  animation: cardFlightTrailFade 360ms ease-out var(--flight-delay, 0ms) both;
+  transform: scale(var(--flight-scale, 1));
+}
+
+.card-flight-trail.card-red { --flight-color: rgba(255, 77, 104, .85); }
+.card-flight-trail.card-clubs { --flight-color: rgba(74, 224, 144, .82); }
+.card-flight-trail.card-black { --flight-color: rgba(122, 201, 255, .8); }
+
+@keyframes cardFlightTrailFade {
+  0% { opacity: 0; transform: scale(calc(var(--flight-scale, 1) * .84)); }
+  18% { opacity: .7; }
+  100% { opacity: 0; transform: scale(calc(var(--flight-scale, 1) * 1.08)); }
 }
 
 .combo-label:empty {
@@ -1040,6 +1215,7 @@ button.is-pressing:not(:disabled),
 }
 
 .game-shell.resolve-spotlight .table-zone .resolve-reference-card,
+.game-shell.resolve-spotlight .table-zone .resolve-selected-card,
 .game-shell.resolve-spotlight .hand-zone .resolve-reference-card,
 .game-shell.resolve-spotlight .hand-zone .resolve-selected-card,
 .game-shell.resolve-spotlight .table-card-slot.resolve-reference-slot .card {
@@ -4035,6 +4211,16 @@ h2 {
     padding: 2px 3px;
   }
 
+  .selected-card-tray {
+    min-height: clamp(70px, 10.5dvh, 92px);
+    gap: 3px;
+    padding-inline: 12px;
+  }
+
+  .selected-card-tray .card {
+    width: clamp(52px, 15vw, 66px);
+  }
+
   .table-card-slot {
     width: auto;
     max-height: 25dvh;
@@ -4052,6 +4238,10 @@ h2 {
   }
 
   .hand-zone .card {
+    max-width: min(22vw, 94px);
+  }
+
+  .hand-card-slot {
     max-width: min(22vw, 94px);
   }
 
@@ -4225,6 +4415,14 @@ h2 {
 
   .table-card-slot {
     max-height: 26dvh;
+  }
+
+  .selected-card-tray {
+    min-height: 66px;
+  }
+
+  .selected-card-tray .card {
+    width: clamp(48px, 13.8vw, 62px);
   }
 
   .hand-zone {

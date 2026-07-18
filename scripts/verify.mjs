@@ -8,6 +8,7 @@ const required = [
   "src/audio.js",
   "src/haptics.js",
   "src/input.js",
+  "src/cardGestures.js",
   "src/playGames.js",
   "src/fullscreen.js",
   "src/themes.js",
@@ -71,10 +72,11 @@ if (regen.energy !== 12 || economyModule.ECONOMY_CONFIG.energyPerRun !== 5 || ec
   throw new Error("Energy regeneration or run cost is incorrect");
 }
 
-const [cutsceneSource, themeSource, cardSkinSource, gameStateSource, uiSource, css] = await Promise.all([
+const [cutsceneSource, themeSource, cardSkinSource, cardGestureSource, gameStateSource, uiSource, css] = await Promise.all([
   readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
   readFile(resolve(root, "src/themes.js"), "utf8"),
   readFile(resolve(root, "src/cardSkins.js"), "utf8"),
+  readFile(resolve(root, "src/cardGestures.js"), "utf8"),
   readFile(resolve(root, "src/gameState.js"), "utf8"),
   readFile(resolve(root, "src/ui.js"), "utf8"),
   readFile(resolve(root, "styles/main.css"), "utf8")
@@ -95,6 +97,9 @@ if (!css.includes('html[data-theme="gold-table"]') || !css.includes('html[data-t
 }
 if (!cardSkinSource.includes("cardCrunchCardSkin") || !cardSkinSource.includes("spawnRainbowCardTrail")) {
   throw new Error("Persistent card skin selection or rainbow trails are missing");
+}
+if (!cardGestureSource.includes("bindCardGesture") || !cardGestureSource.includes("spawnCardFlightTrail") || !uiSource.includes("selectedCardTray")) {
+  throw new Error("Tap/flick staging controls or card flight trails are missing");
 }
 if (!css.includes('html[data-card-skin="dark"]') || !css.includes('html[data-card-skin="pink"]') || !css.includes('html[data-card-skin="gold"]') || !css.includes('html[data-card-skin="rainbow"]')) {
   throw new Error("One or more card skin styles are missing");

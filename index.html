@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/main.css?v=87">
+    <link rel="stylesheet" href="styles/main.css?v=88">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -51,6 +51,7 @@
 
       <section class="table-zone stack-zone" id="tableZone" aria-label="Stack cards">
         <div class="combo-line" id="comboLine"></div>
+        <div class="selected-card-tray" id="selectedCardTray" aria-label="Cards staged for Crunch" aria-live="polite"></div>
       </section>
 
       <section class="message-zone" aria-live="polite" aria-atomic="true">
@@ -398,6 +399,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-    <script type="module" src="src/main.js?v=87"></script>
+    <script type="module" src="src/main.js?v=88"></script>
   </body>
 </html>

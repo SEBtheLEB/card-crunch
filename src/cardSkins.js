@@ -41,7 +41,7 @@ export function installRainbowCardTrail() {
     "pointerdown",
     (event) => {
       if (document.documentElement.dataset.cardSkin !== "rainbow") return;
-      const card = event.target.closest?.(".hand-zone .card");
+      const card = event.target.closest?.(".hand-zone .card, .selected-card-tray .card");
       if (!card || card.disabled) return;
       spawnRainbowCardTrail(card);
     },

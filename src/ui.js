@@ -1,9 +1,10 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=87";
-import { isPotUnlocked } from "./progression.js?v=87";
-import { formatCompactNumber } from "./format.js?v=87";
-import { hasShieldToken } from "./save.js?v=87";
-import { bindInstantAction } from "./input.js?v=87";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=87";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=88";
+import { isPotUnlocked } from "./progression.js?v=88";
+import { formatCompactNumber } from "./format.js?v=88";
+import { hasShieldToken } from "./save.js?v=88";
+import { bindInstantAction } from "./input.js?v=88";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=88";
+import { animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=88";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -15,6 +16,7 @@ export function createUI() {
   const elements = {
     shell: document.querySelector("#gameShell"),
     tableZone: document.querySelector("#tableZone"),
+    selectedCardTray: document.querySelector("#selectedCardTray"),
     handZone: document.querySelector("#handZone"),
     scorePanel: document.querySelector(".score-panel"),
     scoreLabel: document.querySelector(".score-panel .hud-label"),
@@ -303,7 +305,8 @@ export function createUI() {
       window.setTimeout(() => card.classList.remove("hint-glow"), 3200);
     },
     getHandCardElement(index) {
-      return elements.handZone.querySelector(`[data-hand-index="${index}"]`);
+      return elements.selectedCardTray.querySelector(`[data-hand-index="${index}"]`)
+        ?? elements.handZone.querySelector(`[data-hand-index="${index}"]`);
     },
     getAllStackCardElements() {
       return [...elements.tableZone.querySelectorAll("[data-stack-card]")];
@@ -536,7 +539,7 @@ function sprayFromElement(element, tone = "gold") {
 }
 
 function renderStack(elements, state) {
-  elements.tableZone.innerHTML = '<div class="combo-line" id="comboLine"></div>';
+  elements.tableZone.querySelectorAll(":scope > .base-stack-card").forEach((slot) => slot.remove());
   elements.tableZone.style.setProperty("--stack-count", String(state.stack.length));
   elements.tableZone.style.setProperty("--stack-size", "clamp(118px, 40vw, 190px)");
   state.stack.forEach((card, index) => {
@@ -547,7 +550,7 @@ function renderStack(elements, state) {
     const cardEl = createCard(card, { stackIndex: index });
     dealIn(cardEl, index * 70);
     slot.appendChild(cardEl);
-    elements.tableZone.appendChild(slot);
+    elements.tableZone.insertBefore(slot, elements.selectedCardTray);
   });
 }
 
@@ -600,21 +603,43 @@ function renderCrunch(elements, state, handlers) {
   elements.crunchButton.classList.toggle("crunch-danger", preview.canCrunch && state.timeLeft <= 3);
 }
 
-/* Patch the hand in place. Rebuilding a card element on every selection
-   was the source of ghost double-taps (the browser's compatibility click
-   landed on the freshly-created element and toggled the selection right
-   back off) and of transitions snapping instead of animating. A slot's
-   element is only replaced when a genuinely new card is dealt into it. */
+/* Cards keep the same DOM node as they move between a fixed hand slot and
+   the staged table tray. That keeps taps immediate, preserves listeners,
+   and lets the renderer animate both tap and flick selection with FLIP. */
 function renderHand(elements, state, handlers) {
   const zone = elements.handZone;
+  const tray = elements.selectedCardTray;
   const disabled = state.locked || state.status !== "playing";
+  const previousRects = new Map();
+  const previousZones = new Map();
+  const previousCardIds = new Map();
+
+  [...zone.querySelectorAll("[data-hand-index]"), ...tray.querySelectorAll("[data-hand-index]")].forEach((button) => {
+    const index = Number(button.dataset.handIndex);
+    previousRects.set(index, button.getBoundingClientRect());
+    previousZones.set(index, button.closest(".selected-card-tray") ? "tray" : "hand");
+    previousCardIds.set(index, button.dataset.cardId);
+  });
+
+  for (let index = 0; index < 4; index += 1) {
+    if (zone.querySelector(`[data-hand-slot="${index}"]`)) continue;
+    const slot = document.createElement("div");
+    slot.className = "hand-card-slot";
+    slot.dataset.handSlot = String(index);
+    slot.setAttribute("role", "presentation");
+    zone.appendChild(slot);
+  }
+
+  const cardsByIndex = new Map();
 
   for (let index = 0; index < 4; index += 1) {
     const card = state.hand[index] ?? null;
-    let button = zone.querySelector(`[data-hand-index="${index}"]`);
+    let button = zone.querySelector(`[data-hand-index="${index}"]`)
+      ?? tray.querySelector(`[data-hand-index="${index}"]`);
 
     if (!card) {
       button?.remove();
+      zone.querySelector(`[data-hand-slot="${index}"]`)?.classList.remove("is-occupied", "is-staged");
       continue;
     }
 
@@ -622,25 +647,63 @@ function renderHand(elements, state, handlers) {
       const fresh = createCard(card, { handIndex: index, isButton: true });
       fresh.dataset.cardId = card.id;
       dealIn(fresh, index * 45);
-      bindInstantAction(fresh, () => handlers.onCardSelect(index));
+      bindCardGesture(fresh, () => handlers.onCardSelect(index));
       if (button) {
-        zone.replaceChild(fresh, button);
+        button.replaceWith(fresh);
       } else {
-        const nextSibling = [...zone.children].find((el) => Number(el.dataset.handIndex) > index) ?? null;
-        zone.insertBefore(fresh, nextSibling);
+        zone.querySelector(`[data-hand-slot="${index}"]`)?.appendChild(fresh);
       }
       button = fresh;
     }
 
     const order = state.selectedHandIndexes.indexOf(index);
     button.classList.toggle("is-hand-selected", order >= 0);
+    button.classList.toggle("is-staged-card", order >= 0);
     if (order >= 0) {
       button.dataset.order = String(order + 1);
+      button.style.setProperty("--stage-rotate", `${[-4, -1.5, 1.5, 4][order] ?? 0}deg`);
+      button.setAttribute("aria-label", `${card.rank} of ${card.suit}, selected ${order + 1}. Tap or swipe down to return to your hand.`);
     } else {
       delete button.dataset.order;
+      button.style.removeProperty("--stage-rotate");
+      button.setAttribute("aria-label", `${card.rank} of ${card.suit}. Tap or swipe up to stage for Crunch.`);
     }
     if (button.disabled !== disabled) button.disabled = disabled;
+    cardsByIndex.set(index, button);
   }
+
+  state.selectedHandIndexes.forEach((index) => {
+    const button = cardsByIndex.get(index);
+    if (button) tray.appendChild(button);
+  });
+
+  for (let index = 0; index < 4; index += 1) {
+    const button = cardsByIndex.get(index);
+    const slot = zone.querySelector(`[data-hand-slot="${index}"]`);
+    const selected = state.selectedHandIndexes.includes(index);
+    if (button && !selected) slot.appendChild(button);
+    slot.classList.toggle("is-occupied", Boolean(button));
+    slot.classList.toggle("is-staged", Boolean(button) && selected);
+    slot.dataset.order = selected ? String(state.selectedHandIndexes.indexOf(index) + 1) : "";
+  }
+
+  const selectedCount = state.selectedHandIndexes.length;
+  tray.classList.toggle("has-cards", selectedCount > 0);
+  tray.dataset.count = String(selectedCount);
+  tray.setAttribute("aria-label", selectedCount ? `${selectedCount} card${selectedCount === 1 ? "" : "s"} staged for Crunch` : "No cards staged for Crunch");
+  elements.tableZone.classList.toggle("has-staged-cards", selectedCount > 0);
+
+  requestAnimationFrame(() => {
+    cardsByIndex.forEach((button, index) => {
+      const fromRect = previousRects.get(index);
+      if (!fromRect || previousCardIds.get(index) !== button.dataset.cardId || button.dataset.cardId !== state.hand[index]?.id) return;
+      const toRect = button.getBoundingClientRect();
+      const currentZone = button.closest(".selected-card-tray") ? "tray" : "hand";
+      animateCardTransfer(button, fromRect, toRect, {
+        withTrail: previousZones.get(index) !== currentZone
+      });
+    });
+  });
 }
 
 /* Staggered deal-in pop for newly drawn cards. The delay is cleared on a
