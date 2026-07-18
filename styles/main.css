@@ -142,6 +142,14 @@ body::after {
   contain: strict;
 }
 
+/* Keep the pixel character without compositing a blend layer over dozens of
+   moving card fragments during Crunch. */
+body.is-crunch-focus-active .pixel-screen-filter {
+  opacity: .2;
+  mix-blend-mode: normal;
+  background: repeating-linear-gradient(0deg, rgba(1, 5, 10, .18) 0 1px, transparent 1px 4px);
+}
+
 @keyframes auroraDrift {
   from { transform: translate3d(-2%, -1.5%, 0) scale(1); }
   to { transform: translate3d(2%, 2%, 0) scale(1.06); }
@@ -3802,14 +3810,14 @@ h2 {
 
 .cutin-fracture-piece {
   fill: transparent;
-  stroke: #2d160e;
+  stroke: rgba(83, 57, 40, .46);
   stroke-width: 1.4;
   stroke-linecap: square;
   stroke-linejoin: miter;
   vector-effect: non-scaling-stroke;
   opacity: 0;
   transition: opacity 90ms steps(2, end), stroke-width 90ms steps(2, end);
-  filter: drop-shadow(0 0 1px rgba(255, 235, 177, .48));
+  filter: none;
 }
 
 [data-crunch-damage="1"] .cutin-fracture-piece,
@@ -3819,21 +3827,21 @@ h2 {
 }
 
 [data-crunch-damage="1"] .cutin-fracture-piece {
-  stroke: rgba(45, 22, 14, .68);
+  stroke: rgba(91, 65, 47, .4);
   stroke-width: 1.15;
-  filter: drop-shadow(0 0 .7px rgba(255, 235, 177, .38));
+  filter: none;
 }
 
 [data-crunch-damage="2"] .cutin-fracture-piece {
-  stroke: #241009;
-  stroke-width: 1.8;
-  filter: drop-shadow(0 0 1px rgba(255, 204, 93, .5));
+  stroke: rgba(72, 47, 34, .56);
+  stroke-width: 1.65;
+  filter: none;
 }
 
 [data-crunch-damage="3"] .cutin-fracture-piece {
-  stroke: #1c0907;
-  stroke-width: 2.2;
-  filter: drop-shadow(0 0 2px rgba(255, 204, 93, .58));
+  stroke: rgba(57, 35, 26, .7);
+  stroke-width: 2;
+  filter: none;
 }
 
 .crunch-cutscene-overlay[data-crunch-hit="1"] .cutin-live-card,
@@ -3851,40 +3859,14 @@ h2 {
   animation: cutinCrunchHitThree 250ms cubic-bezier(.16, 1.5, .24, 1) both !important;
 }
 
-.cutin-crunch-chip,
-.cutin-crunch-crumb {
+.cutin-crunch-debris-canvas {
   position: fixed;
-  z-index: 10;
+  z-index: 15;
+  inset: 0;
   display: block;
   pointer-events: none;
-}
-
-.cutin-crunch-chip {
-  width: var(--chip-size);
-  height: auto;
-  aspect-ratio: 1.4;
-  margin: -3px 0 0 -4px;
-  border: 1px solid #24130b;
-  background: #fff1c9;
-  box-shadow: 0 0 5px rgba(255, 215, 101, .65);
-  animation: cutinCrunchChipFly 470ms cubic-bezier(.14, .76, .24, 1) var(--chip-delay) both;
-}
-
-.cutin-crunch-chip.is-red-chip { border-color: #7e1722; background: #ffd6cb; }
-.cutin-crunch-chip.is-dark-chip { border-color: #111827; background: #d7d4bd; }
-
-.cutin-crunch-crumb {
-  width: 5px;
-  height: 5px;
-  margin: -2px 0 0 -2px;
-  background: #f7e2ad;
-  box-shadow: 0 0 4px rgba(255, 218, 105, .48);
-  animation: cutinCrunchCrumbFall var(--crumb-duration) cubic-bezier(.18, .58, .4, 1) var(--crumb-delay) both;
-}
-
-.cutin-crunch-crumb.is-gold-crumb {
-  background: #ffc53c;
-  box-shadow: 0 0 7px rgba(255, 196, 44, .82);
+  contain: strict;
+  image-rendering: pixelated;
 }
 
 @keyframes cutinCrunchPromptPulse {
@@ -3899,42 +3881,26 @@ h2 {
 
 @keyframes cutinCrunchHitOne {
   0%, 100% { transform: translateY(0) scale(1); }
-  38% { transform: translateY(7px) scale(1.055, .91); filter: brightness(1.28); }
+  38% { transform: translateY(7px) scale(1.055, .91); }
   68% { transform: translateY(-4px) scale(.98, 1.035); }
 }
 
 @keyframes cutinCrunchHitTwo {
   0%, 100% { transform: translateY(0) scale(1); }
-  32% { transform: translateY(10px) rotate(-1deg) scale(1.075, .86); filter: brightness(1.36); }
+  32% { transform: translateY(10px) rotate(-1deg) scale(1.075, .86); }
   58% { transform: translateY(-6px) rotate(1deg) scale(.965, 1.055); }
 }
 
 @keyframes cutinCrunchHitThree {
   0%, 100% { transform: translateY(0) scale(1); }
-  25% { transform: translateY(14px) rotate(1deg) scale(1.1, .78); filter: brightness(1.48); }
+  25% { transform: translateY(14px) rotate(1deg) scale(1.1, .78); }
   48% { transform: translateY(-8px) rotate(-1.5deg) scale(.94, 1.08); }
   72% { transform: translateY(3px) rotate(.6deg) scale(1.025, .94); }
 }
 
-@keyframes cutinCrunchChipFly {
-  0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(0) scale(.55); }
-  14% { opacity: 1; }
-  72% { opacity: 1; transform: translate3d(var(--chip-x), var(--chip-y), 0) rotate(var(--chip-rotation)) scale(1); }
-  100% { opacity: 0; transform: translate3d(var(--chip-x-far), var(--chip-y-far), 0) rotate(var(--chip-rotation)) scale(.35); }
-}
-
-@keyframes cutinCrunchCrumbFall {
-  0% { opacity: 0; transform: translate3d(0, -5px, 0) rotate(0) scale(.45); }
-  12% { opacity: 1; }
-  82% { opacity: 1; }
-  100% { opacity: 0; transform: translate3d(var(--crumb-x), var(--crumb-y), 0) rotate(190deg) scale(.75); }
-}
-
 .reduce-motion .crunch-cutscene-overlay[data-crunch-hit] .cutin-live-card,
 .reduce-motion .cutin-stage[data-crunch-hit] .cutin-card:not(.dim):not(.cutin-layout-proxy),
-.reduce-motion .cutin-crunch-prompt,
-.reduce-motion .cutin-crunch-chip,
-.reduce-motion .cutin-crunch-crumb {
+.reduce-motion .cutin-crunch-prompt {
   animation-duration: 80ms !important;
 }
 
@@ -5432,7 +5398,8 @@ h2 {
   aspect-ratio: auto;
   rotate: none !important;
   pointer-events: none;
-  contain: layout paint style;
+  contain: strict;
+  backface-visibility: hidden;
   visibility: hidden;
   opacity: 0;
   animation: none !important;
@@ -5442,15 +5409,15 @@ h2 {
   visibility: visible;
   opacity: 1;
   transform-origin: 50% 50% !important;
-  will-change: transform, filter;
+  will-change: transform;
 }
 
 .cutin-card-shard.is-precut-light {
-  filter: drop-shadow(0 0 .75px rgba(34, 16, 10, .66));
+  filter: none;
 }
 
 .cutin-card-shard.is-precut-heavy {
-  filter: drop-shadow(0 0 1.35px rgba(15, 5, 3, .96)) brightness(.94);
+  filter: none;
 }
 
 .cutin-card-shard.is-precut-piece[data-crunch-damage="1"] {
@@ -5474,7 +5441,8 @@ h2 {
   border-radius: 4px;
   clip-path: var(--pixel-card-silhouette);
   pointer-events: none;
-  contain: layout paint style;
+  contain: strict;
+  backface-visibility: hidden;
 }
 
 .precut-seam-overlay svg {
@@ -5486,17 +5454,17 @@ h2 {
 
 .precut-seam-overlay .cutin-fracture-piece {
   opacity: 0;
-  stroke: #160704;
-  stroke-width: 1.75;
+  stroke: rgba(72, 49, 35, .5);
+  stroke-width: 1.55;
   stroke-dasharray: 150;
   stroke-dashoffset: 150;
-  filter: drop-shadow(0 0 1px rgba(7, 2, 1, .96));
+  filter: none;
   transition: none;
 }
 
 .precut-seam-overlay.is-growing {
   visibility: visible;
-  opacity: 1;
+  opacity: .88;
 }
 
 .precut-seam-overlay.is-growing .cutin-fracture-piece {
@@ -5505,9 +5473,9 @@ h2 {
 }
 
 .precut-seam-overlay.is-break-ready .cutin-fracture-piece {
-  stroke: #090201;
-  stroke-width: 2.25;
-  filter: drop-shadow(0 0 2px rgba(5, 1, 0, 1));
+  stroke: rgba(50, 32, 24, .68);
+  stroke-width: 1.95;
+  filter: none;
 }
 
 .precut-fracture-node {
@@ -5516,9 +5484,9 @@ h2 {
   width: 7px;
   height: 7px;
   margin: -3.5px 0 0 -3.5px;
-  background: #130604;
+  background: rgba(65, 44, 32, .56);
   clip-path: polygon(18% 0, 82% 0, 82% 14%, 100% 14%, 100% 82%, 84% 82%, 84% 100%, 18% 100%, 18% 84%, 0 84%, 0 18%, 18% 18%);
-  box-shadow: 0 0 5px rgba(8, 2, 1, .9);
+  box-shadow: 0 0 2px rgba(255, 232, 179, .26);
   opacity: 0;
   transform: scale(.25) rotate(0deg);
 }
@@ -5531,12 +5499,13 @@ h2 {
   width: 9px;
   height: 9px;
   margin: -4.5px 0 0 -4.5px;
-  background: #080201;
+  background: rgba(49, 31, 23, .72);
 }
 
 .cutin-card-shard.is-vacuuming {
   visibility: visible;
   will-change: transform, opacity;
+  backface-visibility: hidden;
   animation: cutinCardShardVacuum var(--shard-duration, 740ms) cubic-bezier(.28, .02, .08, 1) var(--shard-delay, 0ms) both !important;
 }
 

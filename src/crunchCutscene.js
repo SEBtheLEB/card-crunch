@@ -29,8 +29,16 @@ const CARD_SHARD_CONFIG = {
   cardDelayStep: 18,
   intakeSparks: 10
 };
+const CRUNCH_DEBRIS_CONFIG = {
+  maxParticles: 320,
+  devicePixelRatioCap: 1.35,
+  particlesPerHit: [0, 12, 20, 40],
+  gravity: 1480,
+  maxLifetime: 2200
+};
 const tapBounceTimers = new WeakMap();
 const preparedShardSets = new WeakMap();
+const crunchDebrisEmitters = new WeakMap();
 let skipAllRequested = false;
 let skipTextElement = null;
 let skipTextLocks = 0;
@@ -139,7 +147,7 @@ export function createCrunchBankCounter({ panelEl = null, labelEl = null, valueE
       value += amount;
       if (cardElements.length) {
         playGameSfx("score_step");
-        const feedDuration = getCardFeedDuration(cardElements.length);
+        const feedDuration = getCardFeedDuration(cardElements.length, getShardGrid(cardElements.length));
         await Promise.all([
           feedCutinCardsToBank(cardElements, element, advance),
           countBankTo(counterValueEl, previous, value, advance, feedDuration)
@@ -358,8 +366,9 @@ async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null
   const cards = getActiveCutinCards(overlay);
   if (!stage || !cards.length || isCrunchSkipRequested()) return;
 
-  cards.forEach(createCardFractureMap);
-  const prepared = bankEl ? prepareCutinCardShards(cards, bankEl) : null;
+  const shardGrid = getShardGrid(cards.length);
+  cards.forEach((card) => createCardFractureMap(card, shardGrid));
+  const prepared = bankEl ? prepareCutinCardShards(cards, bankEl, shardGrid) : null;
 
   for (let hit = 1; hit <= CUTSCENE_CONFIG.interactiveCrunchHits; hit += 1) {
     await advance.waitForTap(0);
@@ -384,58 +393,175 @@ async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null
 }
 
 function spawnCrunchDamageBurst(overlay, cards, hit) {
-  const fragment = document.createDocumentFragment();
-  const debris = [];
+  const emitter = ensureCrunchDebrisEmitter(overlay);
+  const activeCards = cards.filter((card) => card?.isConnected);
+  if (!emitter || !activeCards.length) return;
 
-  cards.forEach((card, cardIndex) => {
+  const reduceMotion = document.documentElement.classList.contains("reduce-motion")
+    || document.body.classList.contains("reduce-motion");
+  const desiredPerCard = reduceMotion
+    ? Math.min(5, CRUNCH_DEBRIS_CONFIG.particlesPerHit[hit] ?? 5)
+    : CRUNCH_DEBRIS_CONFIG.particlesPerHit[hit] ?? 12;
+  const available = Math.max(0, CRUNCH_DEBRIS_CONFIG.maxParticles - emitter.particles.length);
+  const perCard = Math.min(desiredPerCard, Math.floor(available / activeCards.length));
+
+  activeCards.forEach((card, cardIndex) => {
     const rect = card.getBoundingClientRect();
-    const chipCount = 4 + hit * 3;
-    for (let index = 0; index < chipCount; index += 1) {
-      const chip = document.createElement("i");
-      const seed = index + cardIndex * 11 + hit * 17;
-      const originX = rect.left + rect.width * (.24 + ((seed * 29) % 53) / 100);
-      const originY = rect.top + rect.height * (.18 + ((seed * 19) % 59) / 100);
-      const direction = index % 2 === 0 ? -1 : 1;
-      const travelX = direction * (20 + (seed % 6) * 9 + hit * 7);
-      const travelY = -18 - (seed % 5) * 8 + hit * 13;
-      chip.className = `cutin-crunch-chip ${card.classList.contains("card-red") ? "is-red-chip" : "is-dark-chip"}`;
-      chip.setAttribute("aria-hidden", "true");
-      chip.style.left = `${originX}px`;
-      chip.style.top = `${originY}px`;
-      chip.style.setProperty("--chip-x", `${travelX}px`);
-      chip.style.setProperty("--chip-y", `${travelY}px`);
-      chip.style.setProperty("--chip-x-far", `${travelX * 1.18}px`);
-      chip.style.setProperty("--chip-y-far", `${travelY + 32}px`);
-      chip.style.setProperty("--chip-rotation", `${direction * (70 + seed % 110)}deg`);
-      chip.style.setProperty("--chip-delay", `${(index % 4) * 13}ms`);
-      chip.style.setProperty("--chip-size", `${5 + seed % 5}px`);
-      debris.push(chip);
-      fragment.appendChild(chip);
-    }
+    let randomState = ((hit + 1) * 2654435761 + (cardIndex + 3) * 2246822519 + Math.round(rect.left * 17)) >>> 0;
+    const nextRandom = () => {
+      randomState = (Math.imul(randomState, 1664525) + 1013904223) >>> 0;
+      return randomState / 4294967296;
+    };
+    const palette = card.classList.contains("card-red")
+      ? ["#fff0c6", "#e74a5f", "#792031"]
+      : ["#fff0c6", "#26324b", "#111827"];
 
-    if (hit === CUTSCENE_CONFIG.interactiveCrunchHits) {
-      for (let index = 0; index < 16; index += 1) {
-        const crumb = document.createElement("i");
-        const seed = index + cardIndex * 23;
-        crumb.className = `cutin-crunch-crumb ${index % 4 === 0 ? "is-gold-crumb" : ""}`;
-        crumb.setAttribute("aria-hidden", "true");
-        crumb.style.left = `${rect.left + rect.width * (.18 + ((seed * 31) % 65) / 100)}px`;
-        crumb.style.top = `${rect.top + rect.height * (.34 + ((seed * 17) % 42) / 100)}px`;
-        crumb.style.setProperty("--crumb-x", `${((seed % 9) - 4) * 12}px`);
-        crumb.style.setProperty("--crumb-y", `${72 + (seed % 6) * 18}px`);
-        crumb.style.setProperty("--crumb-delay", `${(index % 8) * 17}ms`);
-        crumb.style.setProperty("--crumb-duration", `${430 + (seed % 5) * 55}ms`);
-        debris.push(crumb);
-        fragment.appendChild(crumb);
-      }
+    for (let index = 0; index < perCard; index += 1) {
+      const horizontalBias = nextRandom() < .5 ? -1 : 1;
+      const size = 3 + Math.floor(nextRandom() * (hit === 3 ? 7 : 5));
+      emitter.particles.push({
+        x: rect.left + rect.width * (.12 + nextRandom() * .76),
+        y: rect.top + rect.height * (.16 + nextRandom() * .66),
+        vx: horizontalBias * (65 + nextRandom() * (150 + hit * 42)),
+        vy: -(190 + nextRandom() * (210 + hit * 42)),
+        gravity: CRUNCH_DEBRIS_CONFIG.gravity * (.86 + nextRandom() * .28),
+        drag: .986 + nextRandom() * .008,
+        size,
+        length: size + 2 + Math.floor(nextRandom() * 7),
+        vertical: nextRandom() > .55,
+        color: index % 7 === 0 ? "#ffc83d" : palette[index % palette.length],
+        edge: index % 7 === 0 ? "#8c4c05" : palette[2],
+        age: 0,
+        delay: (index % 8) * 10,
+        maxAge: CRUNCH_DEBRIS_CONFIG.maxLifetime - Math.floor(nextRandom() * 280)
+      });
     }
   });
 
-  overlay.appendChild(fragment);
-  window.setTimeout(() => debris.forEach((node) => node.remove()), hit === CUTSCENE_CONFIG.interactiveCrunchHits ? 820 : 520);
+  startCrunchDebrisEmitter(emitter);
 }
 
-function createCardFractureMap(card) {
+function ensureCrunchDebrisEmitter(overlay) {
+  const existing = crunchDebrisEmitters.get(overlay);
+  if (existing?.canvas?.isConnected) return existing;
+
+  const canvas = document.createElement("canvas");
+  canvas.className = "cutin-crunch-debris-canvas";
+  canvas.setAttribute("aria-hidden", "true");
+  const context = canvas.getContext("2d", { alpha: true, desynchronized: true });
+  if (!context) return null;
+
+  const emitter = {
+    overlay,
+    canvas,
+    context,
+    particles: [],
+    running: false,
+    lastFrame: 0,
+    width: 0,
+    height: 0,
+    dpr: 1
+  };
+  syncCrunchDebrisCanvas(emitter);
+  overlay.appendChild(canvas);
+  crunchDebrisEmitters.set(overlay, emitter);
+  return emitter;
+}
+
+function syncCrunchDebrisCanvas(emitter) {
+  const width = Math.max(1, window.innerWidth);
+  const height = Math.max(1, window.innerHeight);
+  const dpr = Math.min(window.devicePixelRatio || 1, CRUNCH_DEBRIS_CONFIG.devicePixelRatioCap);
+  if (emitter.width === width && emitter.height === height && emitter.dpr === dpr) return;
+  emitter.width = width;
+  emitter.height = height;
+  emitter.dpr = dpr;
+  emitter.canvas.width = Math.round(width * dpr);
+  emitter.canvas.height = Math.round(height * dpr);
+  emitter.canvas.style.width = `${width}px`;
+  emitter.canvas.style.height = `${height}px`;
+  emitter.context.setTransform(dpr, 0, 0, dpr, 0, 0);
+  emitter.context.imageSmoothingEnabled = false;
+}
+
+function startCrunchDebrisEmitter(emitter) {
+  if (emitter.running) return;
+  emitter.running = true;
+  emitter.lastFrame = performance.now();
+
+  const drawFrame = (now) => {
+    if (!emitter.canvas.isConnected || !emitter.overlay.isConnected) {
+      emitter.running = false;
+      emitter.particles.length = 0;
+      return;
+    }
+
+    syncCrunchDebrisCanvas(emitter);
+    const deltaSeconds = Math.min(.034, Math.max(.001, (now - emitter.lastFrame) / 1000));
+    emitter.lastFrame = now;
+    const { context, width, height, particles } = emitter;
+    context.clearRect(0, 0, width, height);
+
+    let writeIndex = 0;
+    for (let index = 0; index < particles.length; index += 1) {
+      const particle = particles[index];
+      particle.age += deltaSeconds * 1000;
+      if (particle.age < particle.delay) {
+        particles[writeIndex] = particle;
+        writeIndex += 1;
+        continue;
+      }
+
+      particle.vy += particle.gravity * deltaSeconds;
+      particle.vx *= Math.pow(particle.drag, deltaSeconds * 60);
+      particle.x += particle.vx * deltaSeconds;
+      particle.y += particle.vy * deltaSeconds;
+      if (particle.y > height + 24 || particle.age > particle.maxAge || particle.x < -60 || particle.x > width + 60) continue;
+
+      const fade = particle.age > particle.maxAge - 260
+        ? Math.max(0, (particle.maxAge - particle.age) / 260)
+        : 1;
+      drawPixelCrumb(context, particle, fade);
+      particles[writeIndex] = particle;
+      writeIndex += 1;
+    }
+    particles.length = writeIndex;
+
+    if (particles.length) {
+      window.requestAnimationFrame(drawFrame);
+    } else {
+      emitter.running = false;
+      context.clearRect(0, 0, width, height);
+    }
+  };
+
+  window.requestAnimationFrame(drawFrame);
+}
+
+function drawPixelCrumb(context, particle, opacity) {
+  const x = Math.round(particle.x);
+  const y = Math.round(particle.y);
+  const width = particle.vertical ? particle.size : particle.length;
+  const height = particle.vertical ? particle.length : particle.size;
+  context.globalAlpha = opacity;
+  context.fillStyle = particle.edge;
+  context.fillRect(x - 1, y - 1, width + 2, height + 2);
+  context.fillStyle = particle.color;
+  context.fillRect(x, y, width, height);
+  context.fillStyle = "rgba(255, 248, 200, .72)";
+  context.fillRect(x, y, Math.max(1, Math.floor(width * .55)), 1);
+  if (width >= 7 || height >= 7) {
+    context.clearRect(x + width - 2, y + height - 2, 2, 2);
+  }
+  context.globalAlpha = 1;
+}
+
+function getShardGrid(cardCount) {
+  if (cardCount <= 2) return { columns: 4, rows: 4 };
+  return { columns: 3, rows: 3 };
+}
+
+function createCardFractureMap(card, grid = CARD_SHARD_CONFIG) {
   if (!card || card.querySelector(".cutin-fracture-map")) return;
   const namespace = "http://www.w3.org/2000/svg";
   const layer = document.createElement("span");
@@ -445,12 +571,12 @@ function createCardFractureMap(card) {
   svg.setAttribute("viewBox", "0 0 100 100");
   svg.setAttribute("preserveAspectRatio", "none");
 
-  for (let row = 0; row < CARD_SHARD_CONFIG.rows; row += 1) {
-    for (let column = 0; column < CARD_SHARD_CONFIG.columns; column += 1) {
-      const variant = row * CARD_SHARD_CONFIG.columns + column;
+  for (let row = 0; row < grid.rows; row += 1) {
+    for (let column = 0; column < grid.columns; column += 1) {
+      const variant = row * grid.columns + column;
       const polygon = document.createElementNS(namespace, "polygon");
       polygon.classList.add("cutin-fracture-piece");
-      polygon.setAttribute("points", getPixelShardPolygon(column, row, variant)
+      polygon.setAttribute("points", getPixelShardPolygon(column, row, variant, grid.columns, grid.rows)
         .map(([x, y]) => `${x},${y}`)
         .join(" "));
       svg.appendChild(polygon);
@@ -837,12 +963,17 @@ function flyGhostToScore(sourceEl, scoreRect) {
 
 /* Prebuilds the exact fracture pieces while the player is reading the cut-in.
    The impact frame only starts transforms, avoiding a burst of cloning/layout. */
-function prepareCutinCardShards(cardElements, bankEl) {
+function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
   const cards = cardElements.filter((card) => card?.isConnected);
   if (!cards.length || !bankEl?.isConnected) return null;
+  const grid = requestedGrid ?? getShardGrid(cards.length);
 
   const existing = preparedShardSets.get(cards[0]);
-  if (existing && existing.bankEl === bankEl && cards.every((card) => preparedShardSets.get(card) === existing)) {
+  if (existing
+    && existing.bankEl === bankEl
+    && existing.grid.columns === grid.columns
+    && existing.grid.rows === grid.rows
+    && cards.every((card) => preparedShardSets.get(card) === existing)) {
     return existing;
   }
 
@@ -859,27 +990,40 @@ function prepareCutinCardShards(cardElements, bankEl) {
   const sparks = [];
   const seams = [];
   const fragment = document.createDocumentFragment();
-  const totalShardCount = measurements.length * CARD_SHARD_CONFIG.rows * CARD_SHARD_CONFIG.columns;
+  const totalShardCount = measurements.length * grid.rows * grid.columns;
   let latestArrival = 0;
 
   measurements.forEach(({ card, rect }, cardIndex) => {
-    const seam = createPrecutSeamOverlay(card, rect);
+    const seam = createPrecutSeamOverlay(card, rect, grid);
     if (seam) {
       seams.push(seam);
       nodes.push(seam);
       fragment.appendChild(seam);
     }
 
-    for (let row = 0; row < CARD_SHARD_CONFIG.rows; row += 1) {
-      for (let column = 0; column < CARD_SHARD_CONFIG.columns; column += 1) {
-        const shardIndex = row * CARD_SHARD_CONFIG.columns + column;
-        const shard = card.cloneNode(true);
-        const cellWidth = 100 / CARD_SHARD_CONFIG.columns;
-        const cellHeight = 100 / CARD_SHARD_CONFIG.rows;
-        const pieceX = rect.left + (column + .5) * (rect.width / CARD_SHARD_CONFIG.columns);
-        const pieceY = rect.top + (row + .5) * (rect.height / CARD_SHARD_CONFIG.rows);
-        const centerColumn = (CARD_SHARD_CONFIG.columns - 1) / 2;
-        const centerRow = (CARD_SHARD_CONFIG.rows - 1) / 2;
+    const shardTemplate = card.cloneNode(true);
+    shardTemplate.querySelectorAll(".cutin-fracture-map").forEach((node) => node.remove());
+    shardTemplate.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
+    shardTemplate.classList.remove(
+      "is-shattering",
+      "cutin-live-card",
+      "cutin-shared-card-flight",
+      "cutin-shared-target",
+      "cutin-layout-proxy"
+    );
+    shardTemplate.removeAttribute("data-crunch-damage");
+    shardTemplate.removeAttribute("aria-label");
+
+    for (let row = 0; row < grid.rows; row += 1) {
+      for (let column = 0; column < grid.columns; column += 1) {
+        const shardIndex = row * grid.columns + column;
+        const shard = shardTemplate.cloneNode(true);
+        const cellWidth = 100 / grid.columns;
+        const cellHeight = 100 / grid.rows;
+        const pieceX = rect.left + (column + .5) * (rect.width / grid.columns);
+        const pieceY = rect.top + (row + .5) * (rect.height / grid.rows);
+        const centerColumn = (grid.columns - 1) / 2;
+        const centerRow = (grid.rows - 1) / 2;
         const spreadX = (column - centerColumn) * 19 + ((shardIndex + cardIndex) % 3 - 1) * 5;
         const spreadY = (row - centerRow) * 13 - 8 - (shardIndex % 2) * 4;
         const flyX = targetX - pieceX + ((shardIndex % 3) - 1) * 3;
@@ -899,25 +1043,14 @@ function prepareCutinCardShards(cardElements, bankEl) {
         latestArrival = Math.max(latestArrival, arrivalAt);
 
         shard.classList.add("cutin-card-shard");
-        shard.classList.remove(
-          "is-shattering",
-          "cutin-live-card",
-          "cutin-shared-card-flight",
-          "cutin-shared-target",
-          "cutin-layout-proxy"
-        );
-        shard.removeAttribute("data-crunch-damage");
         shard.setAttribute("aria-hidden", "true");
-        shard.removeAttribute("aria-label");
-        shard.querySelectorAll(".cutin-fracture-map").forEach((node) => node.remove());
-        shard.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
         shard.style.removeProperty("filter");
         shard.style.removeProperty("transform");
         shard.style.left = `${rect.left}px`;
         shard.style.top = `${rect.top}px`;
         shard.style.width = `${rect.width}px`;
         shard.style.height = `${rect.height}px`;
-        shard.style.clipPath = createPixelShardClip(column, row, shardIndex);
+        shard.style.clipPath = createPixelShardClip(column, row, shardIndex, grid.columns, grid.rows);
         shard.style.transformOrigin = `${(column + .5) * cellWidth}% ${(row + .5) * cellHeight}%`;
         shard.style.setProperty("--shard-break-x", `${spreadX}px`);
         shard.style.setProperty("--shard-break-y", `${spreadY}px`);
@@ -936,7 +1069,7 @@ function prepareCutinCardShards(cardElements, bankEl) {
         shard.style.setProperty("--shard-rotation-mid", `${rotation * .72}deg`);
         shard.style.setProperty("--shard-rotation", `${rotation}deg`);
         registerShardBankContact(shard, bankEl, {
-          progress: (cardIndex * CARD_SHARD_CONFIG.rows * CARD_SHARD_CONFIG.columns + shardIndex + 1) / totalShardCount,
+          progress: (cardIndex * grid.rows * grid.columns + shardIndex + 1) / totalShardCount,
           strength: row === 0 ? .85 : 1
         });
         nodes.push(shard);
@@ -972,15 +1105,16 @@ function prepareCutinCardShards(cardElements, bankEl) {
     shards,
     sparks,
     seams,
+    grid,
     latestArrival,
-    totalDuration: Math.max(getCardFeedDuration(measurements.length), latestArrival + 90),
+    totalDuration: Math.max(getCardFeedDuration(measurements.length, grid), latestArrival + 90),
     active: false
   };
   prepared.cards.forEach((card) => preparedShardSets.set(card, prepared));
   return prepared;
 }
 
-function createPrecutSeamOverlay(card, rect) {
+function createPrecutSeamOverlay(card, rect, grid) {
   const fractureMap = card.querySelector(".cutin-fracture-map");
   if (!fractureMap) return null;
 
@@ -994,12 +1128,12 @@ function createPrecutSeamOverlay(card, rect) {
   seam.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
 
   let nodeIndex = 0;
-  for (let row = 1; row < CARD_SHARD_CONFIG.rows; row += 1) {
-    for (let column = 1; column < CARD_SHARD_CONFIG.columns; column += 1) {
+  for (let row = 1; row < grid.rows; row += 1) {
+    for (let column = 1; column < grid.columns; column += 1) {
       const node = document.createElement("i");
       node.className = "precut-fracture-node";
-      node.style.left = `${column / CARD_SHARD_CONFIG.columns * 100}%`;
-      node.style.top = `${row / CARD_SHARD_CONFIG.rows * 100}%`;
+      node.style.left = `${column / grid.columns * 100}%`;
+      node.style.top = `${row / grid.rows * 100}%`;
       node.style.setProperty("--node-delay", `${nodeIndex * 14}ms`);
       seam.appendChild(node);
       nodeIndex += 1;
@@ -1064,26 +1198,21 @@ function discardPreparedShardSet(prepared) {
 function registerShardBankContact(shard, bankEl, impact) {
   shard.addEventListener("animationend", (event) => {
     if (event.animationName !== "cutinCardShardVacuum" || !shard.isConnected || !bankEl?.isConnected) return;
-    const shardRect = shard.getBoundingClientRect();
-    const bankRect = bankEl.getBoundingClientRect();
-    const contactPadding = 16;
-    const touchesBank = shardRect.right >= bankRect.left - contactPadding
-      && shardRect.left <= bankRect.right + contactPadding
-      && shardRect.bottom >= bankRect.top - contactPadding
-      && shardRect.top <= bankRect.bottom + contactPadding;
-    if (touchesBank) playCrunchShardImpact(impact);
+    // Every path is calculated to terminate inside the intake. Avoiding a
+    // geometry read here prevents a forced layout for every arriving shard.
+    playCrunchShardImpact(impact);
   }, { once: true });
 }
 
-function createPixelShardClip(column, row, variant) {
-  return `polygon(${getPixelShardPolygon(column, row, variant)
+function createPixelShardClip(column, row, variant, columns, rows) {
+  return `polygon(${getPixelShardPolygon(column, row, variant, columns, rows)
     .map(([x, y]) => `${x}% ${y}%`)
     .join(", ")})`;
 }
 
-function getPixelShardPolygon(column, row, variant) {
-  const cellWidth = 100 / CARD_SHARD_CONFIG.columns;
-  const cellHeight = 100 / CARD_SHARD_CONFIG.rows;
+function getPixelShardPolygon(column, row, variant, columns = CARD_SHARD_CONFIG.columns, rows = CARD_SHARD_CONFIG.rows) {
+  const cellWidth = 100 / columns;
+  const cellHeight = 100 / rows;
   const overlap = .35;
   const x0 = Math.max(0, column * cellWidth - overlap);
   const x1 = Math.min(100, (column + 1) * cellWidth + overlap);
@@ -1110,9 +1239,9 @@ function getPixelShardPolygon(column, row, variant) {
   ];
 }
 
-function getCardFeedDuration(cardCount) {
-  const lastRow = CARD_SHARD_CONFIG.rows - 1;
-  const lastColumn = CARD_SHARD_CONFIG.columns - 1;
+function getCardFeedDuration(cardCount, grid = CARD_SHARD_CONFIG) {
+  const lastRow = grid.rows - 1;
+  const lastColumn = grid.columns - 1;
   const finalRowDelay = CARD_SHARD_CONFIG.rowReleaseDelays[lastRow] ?? lastRow * 55;
   const finalTravelDuration = CARD_SHARD_CONFIG.duration - lastRow * CARD_SHARD_CONFIG.rowDurationStep + 10;
   return finalRowDelay

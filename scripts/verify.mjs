@@ -106,6 +106,19 @@ if (!cutsceneSource.includes("showPreparedCardAssembly") || !cutsceneSource.incl
 if (!cutsceneSource.includes("createPrecutSeamOverlay") || !css.includes("precutFractureNodeGrow") || !css.includes("precutCrackConnect")) {
   throw new Error("Second-hit fracture growth and connection effects are missing");
 }
+if (!cutsceneSource.includes("ensureCrunchDebrisEmitter") || !cutsceneSource.includes("drawPixelCrumb") || !css.includes("cutin-crunch-debris-canvas")) {
+  throw new Error("Canvas-rendered Crunch crumbs are missing");
+}
+if (!cutsceneSource.includes("getShardGrid") || !cutsceneSource.includes("const shardTemplate = card.cloneNode(true)")) {
+  throw new Error("Adaptive multi-card shard preparation is missing");
+}
+const shardContactSource = cutsceneSource.slice(
+  cutsceneSource.indexOf("function registerShardBankContact"),
+  cutsceneSource.indexOf("function createPixelShardClip")
+);
+if (shardContactSource.includes("getBoundingClientRect")) {
+  throw new Error("Shard bank impacts must not force layout reads");
+}
 if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSource.includes("data-cutin-card-id") || !css.includes("cutin-shared-card-flight")) {
   throw new Error("Shared card-to-cutin transitions are missing");
 }
