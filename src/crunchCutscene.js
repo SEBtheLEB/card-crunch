@@ -1,5 +1,5 @@
-import { formatCompactNumber } from "./format.js?v=79";
-import { playGameSfx } from "./audio.js?v=79";
+import { formatCompactNumber } from "./format.js?v=81";
+import { playGameSfx } from "./audio.js?v=81";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -16,12 +16,10 @@ const CUTSCENE_CONFIG = {
   fadeOutDuration: 160
 };
 const CARD_SHARD_CONFIG = {
-  columns: 3,
-  rows: 3,
-  duration: 720,
-  stagger: 17,
-  cardStagger: 42,
-  intakeSparks: 8
+  columns: 4,
+  rows: 4,
+  duration: 760,
+  intakeSparks: 10
 };
 const tapBounceTimers = new WeakMap();
 let skipAllRequested = false;
@@ -599,7 +597,6 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
 
   const nodes = [];
   const fragment = document.createDocumentFragment();
-  let longestDelay = 0;
 
   measurements.forEach(({ card, rect }, cardIndex) => {
     card.classList.add("is-shattering");
@@ -609,17 +606,14 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
         const shard = card.cloneNode(true);
         const cellWidth = 100 / CARD_SHARD_CONFIG.columns;
         const cellHeight = 100 / CARD_SHARD_CONFIG.rows;
-        const top = Math.max(0, row * cellHeight - .45);
-        const right = Math.max(0, 100 - (column + 1) * cellWidth - .45);
-        const bottom = Math.max(0, 100 - (row + 1) * cellHeight - .45);
-        const left = Math.max(0, column * cellWidth - .45);
         const pieceX = rect.left + (column + .5) * (rect.width / CARD_SHARD_CONFIG.columns);
         const pieceY = rect.top + (row + .5) * (rect.height / CARD_SHARD_CONFIG.rows);
-        const spreadX = (column - 1) * 18 + ((shardIndex + cardIndex) % 3 - 1) * 5;
-        const spreadY = (row - 1) * 12 - 6 - (shardIndex % 2) * 4;
+        const centerColumn = (CARD_SHARD_CONFIG.columns - 1) / 2;
+        const centerRow = (CARD_SHARD_CONFIG.rows - 1) / 2;
+        const spreadX = (column - centerColumn) * 19 + ((shardIndex + cardIndex) % 3 - 1) * 5;
+        const spreadY = (row - centerRow) * 13 - 8 - (shardIndex % 2) * 4;
         const flyX = targetX - pieceX + ((shardIndex % 3) - 1) * 3;
         const flyY = targetY - pieceY;
-        const delay = cardIndex * CARD_SHARD_CONFIG.cardStagger + shardIndex * CARD_SHARD_CONFIG.stagger;
 
         shard.classList.add("cutin-card-shard");
         shard.classList.remove("is-shattering");
@@ -630,7 +624,7 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
         shard.style.top = `${rect.top}px`;
         shard.style.width = `${rect.width}px`;
         shard.style.height = `${rect.height}px`;
-        shard.style.clipPath = `inset(${top}% ${right}% ${bottom}% ${left}%)`;
+        shard.style.clipPath = createPixelShardClip(column, row, shardIndex + cardIndex);
         shard.style.transformOrigin = `${(column + .5) * cellWidth}% ${(row + .5) * cellHeight}%`;
         shard.style.setProperty("--shard-break-x", `${spreadX}px`);
         shard.style.setProperty("--shard-break-y", `${spreadY}px`);
@@ -642,8 +636,6 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
         shard.style.setProperty("--shard-rotation-small", `${rotation * .3}deg`);
         shard.style.setProperty("--shard-rotation-mid", `${rotation * .72}deg`);
         shard.style.setProperty("--shard-rotation", `${rotation}deg`);
-        shard.style.setProperty("--shard-delay", `${delay}ms`);
-        longestDelay = Math.max(longestDelay, delay);
         nodes.push(shard);
         fragment.appendChild(shard);
       }
@@ -669,18 +661,44 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
 
   document.body.appendChild(fragment);
   bankEl.classList.add("bank-feeding");
-  const totalDuration = Math.max(getCardFeedDuration(measurements.length), CARD_SHARD_CONFIG.duration + longestDelay + 70);
+  const totalDuration = getCardFeedDuration(measurements.length);
   await waitMaybe(advance, totalDuration);
   nodes.forEach((node) => node.remove());
-  measurements.forEach(({ card }) => card.classList.remove("is-shattering"));
   bankEl.classList.remove("bank-feeding");
 }
 
+function createPixelShardClip(column, row, variant) {
+  const cellWidth = 100 / CARD_SHARD_CONFIG.columns;
+  const cellHeight = 100 / CARD_SHARD_CONFIG.rows;
+  const overlap = .35;
+  const x0 = Math.max(0, column * cellWidth - overlap);
+  const x1 = Math.min(100, (column + 1) * cellWidth + overlap);
+  const y0 = Math.max(0, row * cellHeight - overlap);
+  const y1 = Math.min(100, (row + 1) * cellHeight + overlap);
+  const stepX = 3.4 + (variant % 3) * .7;
+  const stepY = 3.5 + ((variant + row) % 3) * .65;
+  const topShift = variant % 2 === 0 ? stepY : 0;
+  const bottomShift = variant % 2 === 0 ? 0 : stepY;
+
+  return `polygon(
+    ${x0}% ${y0 + topShift}%,
+    ${x0 + stepX}% ${y0 + topShift}%,
+    ${x0 + stepX}% ${y0}%,
+    ${x1 - stepX}% ${y0}%,
+    ${x1 - stepX}% ${y0 + stepY}%,
+    ${x1}% ${y0 + stepY}%,
+    ${x1}% ${y1 - bottomShift}%,
+    ${x1 - stepX}% ${y1 - bottomShift}%,
+    ${x1 - stepX}% ${y1}%,
+    ${x0 + stepX}% ${y1}%,
+    ${x0 + stepX}% ${y1 - stepY}%,
+    ${x0}% ${y1 - stepY}%
+  )`;
+}
+
 function getCardFeedDuration(cardCount) {
-  const shardCount = CARD_SHARD_CONFIG.rows * CARD_SHARD_CONFIG.columns;
   return CARD_SHARD_CONFIG.duration
-    + Math.max(0, cardCount - 1) * CARD_SHARD_CONFIG.cardStagger
-    + Math.max(0, shardCount - 1) * CARD_SHARD_CONFIG.stagger
+    + Math.max(0, cardCount - 1) * 22
     + 70;
 }
 

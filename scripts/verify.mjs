@@ -44,8 +44,12 @@ const [cutsceneSource, css] = await Promise.all([
   readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
   readFile(resolve(root, "styles/main.css"), "utf8")
 ]);
-if (!cutsceneSource.includes("feedCutinCardsToBank") || !css.includes("cutin-card-shard")) {
+if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createPixelShardClip") || !css.includes("cutin-card-shard")) {
   throw new Error("Crunch Bank card-shard animation hooks are missing");
+}
+
+if (!css.includes("--pixel-card-silhouette") || !css.includes("visibility: hidden")) {
+  throw new Error("Pixel silhouettes or consumed-card hiding are missing");
 }
 
 const fullscreenSource = await readFile(resolve(root, "src/fullscreen.js"), "utf8");
