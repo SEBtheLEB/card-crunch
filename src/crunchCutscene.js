@@ -539,11 +539,11 @@ function getOperatorText(entry) {
 }
 
 function getEquationText(entry) {
+  if (entry.matchType === "rank") return createRepeatedMatchEquation(entry, "rank");
+  if (entry.matchType === "suit") return createRepeatedMatchEquation(entry, "suitSymbol");
   if (entry.equation) {
     return `${entry.equation.left} ${entry.equation.operator} ${entry.equation.right} = ${entry.equation.result}`;
   }
-  if (entry.matchType === "rank") return createRepeatedMatchEquation(entry, "rank");
-  if (entry.matchType === "suit") return createRepeatedMatchEquation(entry, "suitSymbol");
   return entry.label;
 }
 

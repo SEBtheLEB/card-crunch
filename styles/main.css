@@ -7070,6 +7070,7 @@ html[data-card-skin="rainbow"] .cutin-card {
 }
 
 .tutorial-page.is-active {
+  position: relative;
   width: min(100%, 520px);
   justify-self: center;
   gap: clamp(8px, 1.45dvh, 13px);
@@ -7230,10 +7231,70 @@ html[data-card-skin="rainbow"] .cutin-card {
   justify-content: center;
 }
 
+.tutorial-table-stage {
+  position: relative;
+  min-height: clamp(172px, 23dvh, 208px);
+}
+
 .tutorial-table {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
   grid-template-columns: repeat(2, clamp(72px, 21vw, 98px));
   min-height: clamp(104px, 15dvh, 135px);
   gap: clamp(22px, 8vw, 44px);
+}
+
+.tutorial-table-card-slot {
+  width: 100%;
+  max-height: none;
+  padding: 3%;
+  border-radius: 11px;
+  background: radial-gradient(80% 62% at 50% 42%, rgba(69, 215, 255, .07), transparent 75%);
+}
+
+.tutorial-selected-card-tray {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 8;
+  display: flex;
+  min-height: clamp(72px, 10dvh, 92px);
+  align-items: end;
+  justify-content: center;
+  gap: clamp(3px, 1.3vw, 8px);
+  padding: 0 8px;
+  pointer-events: none;
+}
+
+.tutorial-selected-card-tray::before {
+  content: "STAGED FOR CRUNCH";
+  position: absolute;
+  right: 9%;
+  bottom: 4px;
+  left: 9%;
+  z-index: -1;
+  min-height: 58px;
+  border: 2px dashed rgba(255, 213, 98, .2);
+  color: rgba(255, 234, 168, .42);
+  font: 900 clamp(.4rem, 1.8vw, .54rem) / 58px var(--font-pixel);
+  letter-spacing: .08em;
+  text-align: center;
+}
+
+.tutorial-selected-card-tray[data-count="0"]::before {
+  opacity: .56;
+}
+
+.tutorial-selected-card-tray .tutorial-card {
+  flex: 0 0 clamp(54px, 15vw, 72px);
+  width: clamp(54px, 15vw, 72px);
+  pointer-events: auto;
+  cursor: pointer;
+  transform: rotate(var(--tutorial-fan, 0deg));
+  filter: drop-shadow(0 0 12px rgba(255, 197, 61, .65)) drop-shadow(0 8px 7px rgba(0, 0, 0, .52));
 }
 
 .tutorial-hand {
@@ -7276,9 +7337,9 @@ html[data-card-skin="rainbow"] .cutin-card {
   font-size: clamp(.52rem, 2.2vw, .72rem);
 }
 
-.tutorial-hand .tutorial-card.is-tutorial-selected {
+.tutorial-selected-card-tray .tutorial-card.is-tutorial-selected {
   z-index: 3;
-  transform: translateY(-12px) rotate(var(--tutorial-fan, 0deg)) scale(1.035);
+  transform: translateY(-4px) rotate(var(--tutorial-fan, 0deg)) scale(1.035);
   filter: drop-shadow(0 0 9px rgba(255, 210, 66, .75));
 }
 
@@ -7305,6 +7366,52 @@ html[data-card-skin="rainbow"] .cutin-card {
 .tutorial-card.is-tutorial-match,
 .tutorial-card.is-tutorial-resolved {
   animation: tutorialCardSuccess .58s ease-in-out infinite alternate;
+}
+
+.tutorial-page .tutorial-card.resolve-selected-card {
+  z-index: 32;
+  transform: translateY(-22px) rotate(var(--tutorial-fan, 0deg)) scale(1.13);
+}
+
+.tutorial-bank-button.is-tutorial-banking {
+  animation: counterJuice .36s cubic-bezier(.16, 1.5, .28, 1) both;
+  filter: brightness(1.2) drop-shadow(0 0 18px rgba(46, 204, 128, .72));
+}
+
+.tutorial-page.resolve-spotlight::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255, 215, 95, .12), transparent 34%),
+    rgba(2, 7, 18, .8);
+  animation: resolveSpotlightIn .16s ease both;
+}
+
+.tutorial-page.resolve-spotlight .tutorial-table-stage,
+.tutorial-page.resolve-spotlight .tutorial-hand {
+  position: relative;
+  z-index: 5;
+}
+
+.tutorial-page.resolve-spotlight .tutorial-table-stage .card,
+.tutorial-page.resolve-spotlight .tutorial-hand .card {
+  opacity: .14;
+  filter: brightness(.42) saturate(.55);
+  transition: opacity .16s ease, filter .16s ease, transform .16s ease;
+}
+
+.tutorial-page.resolve-spotlight .tutorial-table-stage .resolve-reference-card,
+.tutorial-page.resolve-spotlight .tutorial-table-stage .resolve-selected-card,
+.tutorial-page.resolve-spotlight .tutorial-hand .resolve-reference-card,
+.tutorial-page.resolve-spotlight .tutorial-hand .resolve-selected-card,
+.tutorial-page.resolve-spotlight .tutorial-table-card-slot.resolve-reference-slot .card {
+  position: relative;
+  z-index: 30;
+  opacity: 1;
+  filter: drop-shadow(0 0 26px var(--gold-glow)) drop-shadow(0 0 48px rgba(255, 197, 61, .8)) brightness(1.14);
 }
 
 .tutorial-feedback {
@@ -7412,7 +7519,7 @@ html[data-card-skin="rainbow"] .cutin-card {
 }
 
 .tutorial-page.is-tutorial-complete .tutorial-mini-hud,
-.tutorial-page.is-tutorial-complete .tutorial-table,
+.tutorial-page.is-tutorial-complete .tutorial-table-stage,
 .tutorial-page.is-tutorial-complete .tutorial-hand {
   display: none;
 }
@@ -7461,6 +7568,10 @@ html[data-card-skin="rainbow"] .cutin-card {
     grid-template-columns: repeat(2, clamp(68px, 20vw, 84px));
   }
 
+  .tutorial-table-stage {
+    min-height: clamp(162px, 22dvh, 188px);
+  }
+
   .tutorial-hand {
     gap: 3px;
   }
@@ -7479,6 +7590,14 @@ html[data-card-skin="rainbow"] .cutin-card {
   .tutorial-table {
     min-height: 94px;
     grid-template-columns: repeat(2, 67px);
+  }
+
+  .tutorial-table-stage {
+    min-height: 150px;
+  }
+
+  .tutorial-selected-card-tray {
+    min-height: 66px;
   }
 
   .tutorial-hand {

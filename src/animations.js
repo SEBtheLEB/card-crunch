@@ -209,7 +209,9 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
 
 function applyResolveSpotlight(cards) {
   const activeCards = cards.filter(Boolean);
-  const shell = activeCards.find((card) => card.closest(".game-shell"))?.closest(".game-shell") ?? document.querySelector("#gameShell");
+  const shell = activeCards
+    .map((card) => card.closest(".game-shell, .tutorial-page"))
+    .find(Boolean) ?? document.querySelector("#gameShell");
   const slots = activeCards.map((card) => card.closest(".table-card-slot")).filter(Boolean);
 
   shell?.classList.add("resolve-spotlight");

@@ -116,6 +116,9 @@ if (!mainSource.includes("activePressTargets") || mainSource.includes('classList
 if (!tutorialSource.includes("Full-Hand Crunch") || !tutorialSource.includes("Bank Your Cash") || !tutorialSource.includes("MINUS CRUNCH")) {
   throw new Error("Tutorial lessons do not cover full-hand, banking, and arithmetic Crunches");
 }
+if (!tutorialSource.includes("animateCardTransfer") || !tutorialSource.includes("animateSelectionResolve") || !tutorialSource.includes("playCrunchEntryExplanation")) {
+  throw new Error("Tutorial does not use the live card-flight and Crunch cutscene pipeline");
+}
 if (!cardGestureSource.includes("flightAnimations") || !uiSource.includes("card-layout-moving")) {
   throw new Error("Card transfer stability guards are missing");
 }
