@@ -3800,33 +3800,32 @@ h2 {
   overflow: visible;
 }
 
-.cutin-crack-path,
 .cutin-fracture-piece {
   fill: transparent;
   stroke: #2d160e;
-  stroke-width: 1;
+  stroke-width: 1.4;
   stroke-linecap: square;
   stroke-linejoin: miter;
+  vector-effect: non-scaling-stroke;
   opacity: 0;
-  transition: opacity 70ms steps(2, end), stroke-width 70ms steps(2, end);
-  shape-rendering: crispEdges;
+  transition: opacity 90ms steps(2, end), stroke-width 90ms steps(2, end);
+  filter: drop-shadow(0 0 1px rgba(255, 235, 177, .48));
 }
 
-[data-crunch-damage="1"] .cutin-crack-path.fracture-stage-1,
-[data-crunch-damage="2"] .cutin-crack-path.fracture-stage-1,
-[data-crunch-damage="2"] .cutin-crack-path.fracture-stage-2,
-[data-crunch-damage="3"] .cutin-crack-path,
+[data-crunch-damage="1"] .cutin-fracture-piece[data-fracture-stage="1"],
+[data-crunch-damage="2"] .cutin-fracture-piece:not([data-fracture-stage="3"]),
 [data-crunch-damage="3"] .cutin-fracture-piece {
   opacity: 1;
 }
 
-[data-crunch-damage="2"] .cutin-crack-path {
-  stroke-width: 1.12;
+[data-crunch-damage="2"] .cutin-fracture-piece {
+  stroke-width: 1.8;
 }
 
 [data-crunch-damage="3"] .cutin-fracture-piece {
-  stroke: #180806;
-  stroke-width: 1.25;
+  stroke: #1c0907;
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 2px rgba(255, 204, 93, .58));
 }
 
 .crunch-cutscene-overlay[data-crunch-hit="1"] .cutin-live-card,

@@ -20,16 +20,17 @@ const CUTSCENE_CONFIG = {
   fadeOutDuration: 160
 };
 const CARD_SHARD_CONFIG = {
-  duration: 760,
-  maxReleaseDelay: 230,
-  pieceDelayJitter: 16,
+  columns: 4,
+  rows: 4,
+  duration: 740,
+  rowDurationStep: 38,
+  rowReleaseDelays: [0, 100, 168, 218],
+  columnDelayStep: 12,
   cardDelayStep: 18,
   intakeSparks: 10
 };
-const FRACTURE_GRID = { width: 72, height: 100 };
 const tapBounceTimers = new WeakMap();
 const preparedShardSets = new WeakMap();
-const fracturePatterns = new WeakMap();
 let skipAllRequested = false;
 let skipTextElement = null;
 let skipTextLocks = 0;
@@ -436,226 +437,36 @@ function spawnCrunchDamageBurst(overlay, cards, hit) {
 function createCardFractureMap(card) {
   if (!card || card.querySelector(".cutin-fracture-map")) return;
   const namespace = "http://www.w3.org/2000/svg";
-  const pattern = createFracturePattern(card);
   const layer = document.createElement("span");
   const svg = document.createElementNS(namespace, "svg");
   layer.className = "cutin-fracture-map";
   layer.setAttribute("aria-hidden", "true");
-  svg.setAttribute("viewBox", `0 0 ${FRACTURE_GRID.width} ${FRACTURE_GRID.height}`);
+  svg.setAttribute("viewBox", "0 0 100 100");
   svg.setAttribute("preserveAspectRatio", "none");
-  svg.setAttribute("shape-rendering", "crispEdges");
 
-  pattern.stageOne.forEach((points) => appendFracturePath(svg, points, "1", namespace));
-  pattern.stageTwo.forEach((points) => appendFracturePath(svg, points, "2", namespace));
-  pattern.fragments.forEach((fragment) => {
-    const polygon = document.createElementNS(namespace, "polygon");
-    polygon.classList.add("cutin-fracture-piece");
-    polygon.setAttribute("points", formatFracturePoints(fragment.points));
-    svg.appendChild(polygon);
-  });
+  for (let row = 0; row < CARD_SHARD_CONFIG.rows; row += 1) {
+    for (let column = 0; column < CARD_SHARD_CONFIG.columns; column += 1) {
+      const variant = row * CARD_SHARD_CONFIG.columns + column;
+      const polygon = document.createElementNS(namespace, "polygon");
+      polygon.classList.add("cutin-fracture-piece");
+      polygon.dataset.fractureStage = String(getFractureStage(column, row));
+      polygon.setAttribute("points", getPixelShardPolygon(column, row, variant)
+        .map(([x, y]) => `${x},${y}`)
+        .join(" "));
+      svg.appendChild(polygon);
+    }
+  }
 
   layer.appendChild(svg);
   card.appendChild(layer);
 }
 
-function appendFracturePath(svg, points, stage, namespace) {
-  if (points.length < 2) return;
-  const path = document.createElementNS(namespace, "polyline");
-  path.classList.add("cutin-crack-path", `fracture-stage-${stage}`);
-  path.setAttribute("points", formatFracturePoints(points));
-  svg.appendChild(path);
-}
-
-function createFracturePattern(card) {
-  const cached = fracturePatterns.get(card);
-  if (cached) return cached;
-
-  const key = card.dataset.cutinCardId || card.dataset.cardId || card.textContent.trim();
-  const seed = hashFractureKey(key);
-  const random = createSeededRandom(seed);
-  const sectorCount = random() > .52 ? 7 : 6;
-  const perimeter = 2 * (FRACTURE_GRID.width + FRACTURE_GRID.height);
-  const sectorSize = perimeter / sectorCount;
-  const offset = random() * sectorSize;
-  const entries = Array.from({ length: sectorCount }, (_, index) => {
-    const jitter = (random() - .5) * sectorSize * .3;
-    const t = wrapPerimeter(offset + index * sectorSize + jitter, perimeter);
-    return { t, point: pointOnCardPerimeter(t) };
-  }).sort((a, b) => a.t - b.t);
-
-  const center = snapFracturePoint({
-    x: FRACTURE_GRID.width * (.5 + (random() - .5) * .09),
-    y: FRACTURE_GRID.height * (.52 + (random() - .5) * .09)
-  });
-  const ring = entries.map(({ point }) => {
-    const progress = .55 + random() * .1;
-    return snapFracturePoint({
-      x: point.x + (center.x - point.x) * progress + (random() - .5) * 2,
-      y: point.y + (center.y - point.y) * progress + (random() - .5) * 3
-    });
-  });
-  const core = ring.map((point) => {
-    const dx = point.x - center.x;
-    const dy = point.y - center.y;
-    const length = Math.max(1, Math.hypot(dx, dy));
-    const radius = 4 + random() * 3;
-    return snapFracturePoint({
-      x: center.x + dx / length * radius,
-      y: center.y + dy / length * radius
-    });
-  });
-
-  const spokes = entries.map(({ point }, index) => createAngularFracturePath(point, ring[index], 5, random, 2.2));
-  const ringEdges = ring.map((point, index) => createAngularFracturePath(point, ring[(index + 1) % sectorCount], 3, random, 1.6));
-  const connectors = ring.map((point, index) => createAngularFracturePath(point, core[index], 3, random, 1.25));
-  const coreEdges = core.map((point, index) => createAngularFracturePath(point, core[(index + 1) % sectorCount], 2, random, .7));
-  const fragments = [];
-
-  entries.forEach((entry, index) => {
-    const nextIndex = (index + 1) % sectorCount;
-    const nextEntry = entries[nextIndex];
-    const perimeterPoints = getPerimeterArc(entry.t, nextEntry.t, nextEntry.point);
-    fragments.push({
-      points: joinFracturePaths(
-        [entry.point, ...perimeterPoints],
-        spokes[nextIndex],
-        [...ringEdges[index]].reverse(),
-        [...spokes[index]].reverse()
-      )
-    });
-    fragments.push({
-      points: joinFracturePaths(
-        ringEdges[index],
-        connectors[nextIndex],
-        [...coreEdges[index]].reverse(),
-        [...connectors[index]].reverse()
-      )
-    });
-  });
-  fragments.push({ points: joinFracturePaths(...coreEdges) });
-
-  const shuffledIndexes = Array.from({ length: sectorCount }, (_, index) => index);
-  for (let index = shuffledIndexes.length - 1; index > 0; index -= 1) {
-    const swap = Math.floor(random() * (index + 1));
-    [shuffledIndexes[index], shuffledIndexes[swap]] = [shuffledIndexes[swap], shuffledIndexes[index]];
-  }
-  const primaryCount = 1 + Math.floor(random() * 3);
-  const primaryIndexes = shuffledIndexes.slice(0, primaryCount);
-  const secondaryIndexes = shuffledIndexes.slice(primaryCount, primaryCount + 1 + Math.floor(random() * 2));
-  const stageOne = [];
-  const stageTwo = [];
-
-  primaryIndexes.forEach((index) => {
-    const path = spokes[index];
-    const firstLength = 2 + Math.floor(random() * 2);
-    stageOne.push(path.slice(0, firstLength));
-    stageTwo.push(path.slice(firstLength - 1));
-    if (random() > .45) stageTwo.push(ringEdges[index].slice(0, 2 + Math.floor(random() * 2)));
-  });
-  secondaryIndexes.forEach((index) => {
-    const pathLength = 3 + Math.floor(random() * 3);
-    stageTwo.push(spokes[index].slice(0, pathLength));
-  });
-  const branchCount = 1 + Math.floor(random() * 3);
-  shuffledIndexes.slice(-branchCount).forEach((index) => {
-    stageTwo.push(ringEdges[index].slice(0, 2 + Math.floor(random() * 2)));
-    if (random() > .55) stageTwo.push(connectors[index].slice(0, 2));
-  });
-
-  const pattern = { seed, stageOne, stageTwo, fragments };
-  card.dataset.fractureSeed = String(seed);
-  fracturePatterns.set(card, pattern);
-  return pattern;
-}
-
-function createAngularFracturePath(start, end, segmentCount, random, jitterAmount) {
-  const points = [snapFracturePoint(start)];
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const length = Math.max(1, Math.hypot(dx, dy));
-  const perpendicular = { x: -dy / length, y: dx / length };
-  for (let index = 1; index < segmentCount; index += 1) {
-    const progress = index / segmentCount;
-    const jitter = (random() - .5) * jitterAmount * (index % 2 === 0 ? .75 : 1);
-    points.push(snapFracturePoint({
-      x: start.x + dx * progress + perpendicular.x * jitter,
-      y: start.y + dy * progress + perpendicular.y * jitter
-    }));
-  }
-  points.push(snapFracturePoint(end));
-  return points;
-}
-
-function getPerimeterArc(start, end, endPoint) {
-  const perimeter = 2 * (FRACTURE_GRID.width + FRACTURE_GRID.height);
-  let resolvedEnd = end;
-  if (resolvedEnd <= start) resolvedEnd += perimeter;
-  const cornerStops = [
-    FRACTURE_GRID.width,
-    FRACTURE_GRID.width + FRACTURE_GRID.height,
-    FRACTURE_GRID.width * 2 + FRACTURE_GRID.height,
-    perimeter,
-    perimeter + FRACTURE_GRID.width,
-    perimeter + FRACTURE_GRID.width + FRACTURE_GRID.height
-  ];
-  const corners = cornerStops
-    .filter((stop) => stop > start && stop < resolvedEnd)
-    .map((stop) => pointOnCardPerimeter(stop % perimeter));
-  return [...corners, endPoint];
-}
-
-function pointOnCardPerimeter(value) {
-  const { width, height } = FRACTURE_GRID;
-  const perimeter = 2 * (width + height);
-  const t = wrapPerimeter(value, perimeter);
-  if (t <= width) return snapFracturePoint({ x: t, y: 0 });
-  if (t <= width + height) return snapFracturePoint({ x: width, y: t - width });
-  if (t <= width * 2 + height) return snapFracturePoint({ x: width - (t - width - height), y: height });
-  return snapFracturePoint({ x: 0, y: height - (t - width * 2 - height) });
-}
-
-function joinFracturePaths(...paths) {
-  const points = [];
-  paths.forEach((path) => path.forEach((point) => {
-    const previous = points[points.length - 1];
-    if (!previous || previous.x !== point.x || previous.y !== point.y) points.push(point);
-  }));
-  return points;
-}
-
-function snapFracturePoint(point) {
-  return {
-    x: Math.max(0, Math.min(FRACTURE_GRID.width, Math.round(point.x))),
-    y: Math.max(0, Math.min(FRACTURE_GRID.height, Math.round(point.y)))
-  };
-}
-
-function formatFracturePoints(points) {
-  return points.map(({ x, y }) => `${x},${y}`).join(" ");
-}
-
-function wrapPerimeter(value, perimeter) {
-  return ((value % perimeter) + perimeter) % perimeter;
-}
-
-function hashFractureKey(value) {
-  let hash = 2166136261;
-  for (const character of String(value)) {
-    hash ^= character.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
-function createSeededRandom(seed) {
-  let value = seed >>> 0;
-  return () => {
-    value += 0x6d2b79f5;
-    let mixed = value;
-    mixed = Math.imul(mixed ^ mixed >>> 15, mixed | 1);
-    mixed ^= mixed + Math.imul(mixed ^ mixed >>> 7, mixed | 61);
-    return ((mixed ^ mixed >>> 14) >>> 0) / 4294967296;
-  };
+function getFractureStage(column, row) {
+  const isCenter = (column === 1 || column === 2) && (row === 1 || row === 2);
+  if (isCenter) return 1;
+  const isCorner = (column === 0 || column === CARD_SHARD_CONFIG.columns - 1)
+    && (row === 0 || row === CARD_SHARD_CONFIG.rows - 1);
+  return isCorner ? 3 : 2;
 }
 
 function createMathCutinMarkup({ entry, matched, operator, equation, tier }) {
@@ -885,7 +696,6 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
     flight.removeAttribute("id");
     flight.removeAttribute("aria-label");
     flight.setAttribute("aria-hidden", "true");
-    flight.dataset.cutinCardId = card.id;
     flight.disabled = true;
     flight.classList.remove(
       "card-selected",
@@ -1056,24 +866,22 @@ function prepareCutinCardShards(cardElements, bankEl) {
   const shards = [];
   const sparks = [];
   const fragment = document.createDocumentFragment();
-  const measuredPatterns = measurements.map((measurement) => ({
-    ...measurement,
-    pattern: createFracturePattern(measurement.card)
-  }));
-  const totalShardCount = measuredPatterns.reduce((total, { pattern }) => total + pattern.fragments.length, 0);
+  const totalShardCount = measurements.length * CARD_SHARD_CONFIG.rows * CARD_SHARD_CONFIG.columns;
   let latestArrival = 0;
-  let globalShardIndex = 0;
 
-  measuredPatterns.forEach(({ card, rect, pattern }, cardIndex) => {
-    pattern.fragments.forEach(({ points }, shardIndex) => {
-        const centroid = getFractureCentroid(points);
-        const pieceRandom = createSeededRandom(pattern.seed + Math.imul(shardIndex + 1, 2654435761));
+  measurements.forEach(({ card, rect }, cardIndex) => {
+    for (let row = 0; row < CARD_SHARD_CONFIG.rows; row += 1) {
+      for (let column = 0; column < CARD_SHARD_CONFIG.columns; column += 1) {
+        const shardIndex = row * CARD_SHARD_CONFIG.columns + column;
         const shard = card.cloneNode(true);
-        const pieceX = rect.left + centroid.x / FRACTURE_GRID.width * rect.width;
-        const pieceY = rect.top + centroid.y / FRACTURE_GRID.height * rect.height;
-        const verticalProgress = centroid.y / FRACTURE_GRID.height;
-        const spreadX = (centroid.x - FRACTURE_GRID.width / 2) * .62 + (pieceRandom() - .5) * 9;
-        const spreadY = (centroid.y - FRACTURE_GRID.height / 2) * .2 - 10 + (pieceRandom() - .5) * 6;
+        const cellWidth = 100 / CARD_SHARD_CONFIG.columns;
+        const cellHeight = 100 / CARD_SHARD_CONFIG.rows;
+        const pieceX = rect.left + (column + .5) * (rect.width / CARD_SHARD_CONFIG.columns);
+        const pieceY = rect.top + (row + .5) * (rect.height / CARD_SHARD_CONFIG.rows);
+        const centerColumn = (CARD_SHARD_CONFIG.columns - 1) / 2;
+        const centerRow = (CARD_SHARD_CONFIG.rows - 1) / 2;
+        const spreadX = (column - centerColumn) * 19 + ((shardIndex + cardIndex) % 3 - 1) * 5;
+        const spreadY = (row - centerRow) * 13 - 8 - (shardIndex % 2) * 4;
         const flyX = targetX - pieceX + ((shardIndex % 3) - 1) * 3;
         const flyY = targetY - pieceY;
         const archDirection = pieceX < targetX ? -1 : 1;
@@ -1084,10 +892,9 @@ function prepareCutinCardShards(cardElements, bankEl) {
         const funnelY = flyY * .69;
         const intakeX = flyX * .93 + archDirection * 2;
         const intakeY = flyY * .92;
-        const launchDelay = verticalProgress * CARD_SHARD_CONFIG.maxReleaseDelay
-          + pieceRandom() * CARD_SHARD_CONFIG.pieceDelayJitter
-          + cardIndex * CARD_SHARD_CONFIG.cardDelayStep;
-        const travelDuration = CARD_SHARD_CONFIG.duration - verticalProgress * 92 + pieceRandom() * 18;
+        const rowDelay = CARD_SHARD_CONFIG.rowReleaseDelays[row] ?? row * 55;
+        const launchDelay = rowDelay + column * CARD_SHARD_CONFIG.columnDelayStep + cardIndex * CARD_SHARD_CONFIG.cardDelayStep;
+        const travelDuration = CARD_SHARD_CONFIG.duration - row * CARD_SHARD_CONFIG.rowDurationStep + ((column + cardIndex) % 3) * 5;
         const arrivalAt = launchDelay + travelDuration;
         latestArrival = Math.max(latestArrival, arrivalAt);
 
@@ -1110,8 +917,8 @@ function prepareCutinCardShards(cardElements, bankEl) {
         shard.style.top = `${rect.top}px`;
         shard.style.width = `${rect.width}px`;
         shard.style.height = `${rect.height}px`;
-        shard.style.clipPath = createFractureClipPath(points);
-        shard.style.transformOrigin = `${centroid.x / FRACTURE_GRID.width * 100}% ${centroid.y / FRACTURE_GRID.height * 100}%`;
+        shard.style.clipPath = createPixelShardClip(column, row, shardIndex);
+        shard.style.transformOrigin = `${(column + .5) * cellWidth}% ${(row + .5) * cellHeight}%`;
         shard.style.setProperty("--shard-break-x", `${spreadX}px`);
         shard.style.setProperty("--shard-break-y", `${spreadY}px`);
         shard.style.setProperty("--shard-curve-x", `${curveX}px`);
@@ -1124,19 +931,19 @@ function prepareCutinCardShards(cardElements, bankEl) {
         shard.style.setProperty("--shard-fly-y", `${flyY}px`);
         shard.style.setProperty("--shard-delay", `${launchDelay}ms`);
         shard.style.setProperty("--shard-duration", `${travelDuration}ms`);
-        const rotation = (pieceRandom() - .5) * 92 + (centroid.x < FRACTURE_GRID.width / 2 ? -12 : 12);
+        const rotation = (column - row) * 26 + (shardIndex % 2 ? 18 : -18);
         shard.style.setProperty("--shard-rotation-small", `${rotation * .3}deg`);
         shard.style.setProperty("--shard-rotation-mid", `${rotation * .72}deg`);
         shard.style.setProperty("--shard-rotation", `${rotation}deg`);
         registerShardBankContact(shard, bankEl, {
-          progress: (globalShardIndex + 1) / totalShardCount,
-          strength: verticalProgress < .28 ? .85 : 1
+          progress: (cardIndex * CARD_SHARD_CONFIG.rows * CARD_SHARD_CONFIG.columns + shardIndex + 1) / totalShardCount,
+          strength: row === 0 ? .85 : 1
         });
-        globalShardIndex += 1;
         nodes.push(shard);
         shards.push(shard);
         fragment.appendChild(shard);
-    });
+      }
+    }
   });
 
   for (let index = 0; index < CARD_SHARD_CONFIG.intakeSparks; index += 1) {
@@ -1219,25 +1026,51 @@ function registerShardBankContact(shard, bankEl, impact) {
   }, { once: true });
 }
 
-function createFractureClipPath(points) {
-  return `polygon(${points.map(({ x, y }) => (
-    `${x / FRACTURE_GRID.width * 100}% ${y / FRACTURE_GRID.height * 100}%`
-  )).join(", ")})`;
+function createPixelShardClip(column, row, variant) {
+  return `polygon(${getPixelShardPolygon(column, row, variant)
+    .map(([x, y]) => `${x}% ${y}%`)
+    .join(", ")})`;
 }
 
-function getFractureCentroid(points) {
-  const total = points.reduce((sum, point) => ({ x: sum.x + point.x, y: sum.y + point.y }), { x: 0, y: 0 });
-  return {
-    x: total.x / points.length,
-    y: total.y / points.length
-  };
+function getPixelShardPolygon(column, row, variant) {
+  const cellWidth = 100 / CARD_SHARD_CONFIG.columns;
+  const cellHeight = 100 / CARD_SHARD_CONFIG.rows;
+  const overlap = .35;
+  const x0 = Math.max(0, column * cellWidth - overlap);
+  const x1 = Math.min(100, (column + 1) * cellWidth + overlap);
+  const y0 = Math.max(0, row * cellHeight - overlap);
+  const y1 = Math.min(100, (row + 1) * cellHeight + overlap);
+  const stepX = 3.4 + (variant % 3) * .7;
+  const stepY = 3.5 + ((variant + row) % 3) * .65;
+  const topShift = variant % 2 === 0 ? stepY : 0;
+  const bottomShift = variant % 2 === 0 ? 0 : stepY;
+
+  return [
+    [x0, y0 + topShift],
+    [x0 + stepX, y0 + topShift],
+    [x0 + stepX, y0],
+    [x1 - stepX, y0],
+    [x1 - stepX, y0 + stepY],
+    [x1, y0 + stepY],
+    [x1, y1 - bottomShift],
+    [x1 - stepX, y1 - bottomShift],
+    [x1 - stepX, y1],
+    [x0 + stepX, y1],
+    [x0 + stepX, y1 - stepY],
+    [x0, y1 - stepY]
+  ];
 }
 
 function getCardFeedDuration(cardCount) {
-  return CARD_SHARD_CONFIG.maxReleaseDelay
+  const lastRow = CARD_SHARD_CONFIG.rows - 1;
+  const lastColumn = CARD_SHARD_CONFIG.columns - 1;
+  const finalRowDelay = CARD_SHARD_CONFIG.rowReleaseDelays[lastRow] ?? lastRow * 55;
+  const finalTravelDuration = CARD_SHARD_CONFIG.duration - lastRow * CARD_SHARD_CONFIG.rowDurationStep + 10;
+  return finalRowDelay
+    + lastColumn * CARD_SHARD_CONFIG.columnDelayStep
     + Math.max(0, cardCount - 1) * CARD_SHARD_CONFIG.cardDelayStep
-    + CARD_SHARD_CONFIG.duration
-    + 110;
+    + finalTravelDuration
+    + 90;
 }
 
 async function flyValueToBank(sourceEl, bankEl, value, advance = null) {
