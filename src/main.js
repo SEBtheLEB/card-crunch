@@ -1,15 +1,15 @@
-import { createGame } from "./gameState.js?v=88";
-import { createUI } from "./ui.js?v=88";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=88";
-import { adManager } from "./ads.js?v=88";
-import { grantShieldToken, hasShieldToken } from "./save.js?v=88";
-import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=88";
-import { haptic } from "./haptics.js?v=88";
-import { bindInstantAction } from "./input.js?v=88";
-import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=88";
-import { installFullscreenControls } from "./fullscreen.js?v=88";
-import { bindThemePicker, initializeTheme } from "./themes.js?v=88";
-import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=88";
+import { createGame } from "./gameState.js?v=90";
+import { createUI } from "./ui.js?v=90";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=90";
+import { adManager } from "./ads.js?v=90";
+import { grantShieldToken, hasShieldToken } from "./save.js?v=90";
+import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=90";
+import { haptic } from "./haptics.js?v=90";
+import { bindInstantAction } from "./input.js?v=90";
+import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=90";
+import { installFullscreenControls } from "./fullscreen.js?v=90";
+import { bindThemePicker, initializeTheme } from "./themes.js?v=90";
+import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=90";
 
 initializeTheme();
 initializeCardSkin();
@@ -94,43 +94,39 @@ window.CardCrunch = {
 console.table(runScoringSelfTests());
 
 function installReactivePressFeedback() {
-  const selector = "button:not(:disabled), .card:not(:disabled)";
+  const selector = "button:not(:disabled):not(.card):not(.crunch-skip-text)";
+  const activePressTargets = new Set();
+  const clearPressedTargets = () => {
+    activePressTargets.forEach((target) => target.classList.remove("is-pressing"));
+    activePressTargets.clear();
+  };
 
   document.addEventListener(
     "pointerdown",
     (event) => {
       const target = event.target.closest(selector);
-      if (!target || target.classList.contains("crunch-skip-text")) return;
+      if (!target) return;
 
-      const rect = target.getBoundingClientRect();
-      target.style.setProperty("--tap-x", `${event.clientX - rect.left}px`);
-      target.style.setProperty("--tap-y", `${event.clientY - rect.top}px`);
-      if (target.classList.contains("card")) {
-        target.classList.add("card-touching");
-      } else {
-        target.classList.add("tap-pop");
-      }
+      clearPressedTargets();
       target.classList.add("is-pressing");
-      sprayTapParticles(event.clientX, event.clientY, getTapTone(target));
+      activePressTargets.add(target);
+      if (isPrimaryJuiceButton(target)) {
+        sprayTapParticles(event.clientX, event.clientY, getTapTone(target), 4);
+      }
 
-      if (!target.classList.contains("card")) playGameSfx("tap");
+      playGameSfx("tap");
       haptic("tap");
     },
     { passive: true }
   );
 
-  const releasePress = (event) => {
-    const target = event.target.closest?.(".is-pressing, .card-touching");
-    target?.classList.remove("is-pressing", "card-touching");
-  };
-  document.addEventListener("pointerup", releasePress, { capture: true, passive: true });
-  document.addEventListener("pointercancel", releasePress, { capture: true, passive: true });
+  document.addEventListener("pointerup", clearPressedTargets, { capture: true, passive: true });
+  document.addEventListener("pointercancel", clearPressedTargets, { capture: true, passive: true });
+  window.addEventListener("blur", clearPressedTargets);
+}
 
-  document.addEventListener("animationend", (event) => {
-    if (event.animationName === "tapPop" || event.animationName === "cardTapPop") {
-      event.target.classList.remove("tap-pop");
-    }
-  });
+function isPrimaryJuiceButton(target) {
+  return target.matches(".play-button, .crunch-button, .bank-button, .primary-button, .map-pot");
 }
 
 function bindMenuNavigation() {
@@ -192,7 +188,7 @@ function getTapTone(target) {
   return "gold";
 }
 
-function sprayTapParticles(x, y, tone = "gold") {
+function sprayTapParticles(x, y, tone = "gold", requestedAmount = null) {
   const colorsByTone = {
     gold: ["#ffe894", "#ffbf3f", "#fff8d0"],
     blue: ["#76c6ff", "#42a1ff", "#dff4ff"],
@@ -201,7 +197,7 @@ function sprayTapParticles(x, y, tone = "gold") {
   };
   const colors = colorsByTone[tone] ?? colorsByTone.gold;
   const isSmallScreen = window.matchMedia?.("(max-width: 640px)").matches;
-  const amount = isSmallScreen ? (tone === "gold" ? 8 : 6) : (tone === "gold" ? 12 : 9);
+  const amount = requestedAmount ?? (isSmallScreen ? (tone === "gold" ? 8 : 6) : (tone === "gold" ? 12 : 9));
 
   for (let i = 0; i < amount; i += 1) {
     const particle = document.createElement("i");

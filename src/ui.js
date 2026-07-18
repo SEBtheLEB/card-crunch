@@ -1,10 +1,10 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=88";
-import { isPotUnlocked } from "./progression.js?v=88";
-import { formatCompactNumber } from "./format.js?v=88";
-import { hasShieldToken } from "./save.js?v=88";
-import { bindInstantAction } from "./input.js?v=88";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=88";
-import { animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=88";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=90";
+import { isPotUnlocked } from "./progression.js?v=90";
+import { formatCompactNumber } from "./format.js?v=90";
+import { hasShieldToken } from "./save.js?v=90";
+import { bindInstantAction } from "./input.js?v=90";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=90";
+import { animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=90";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -254,8 +254,17 @@ export function createUI() {
         <small>Watch ad</small>
       `;
       bindInstantAction(offer, () => {
-        this.hideBonusBankOffer();
+        if (offer.dataset.claimed === "true") return;
+        offer.dataset.claimed = "true";
+        offer.disabled = true;
+        if (bonusOfferTimer) {
+          window.clearTimeout(bonusOfferTimer);
+          bonusOfferTimer = null;
+        }
+        if (bonusOfferEl === offer) bonusOfferEl = null;
+        offer.classList.add("is-claiming");
         onWatch();
+        window.setTimeout(() => offer.remove(), 140);
       });
       document.body.appendChild(offer);
       bonusOfferEl = offer;
@@ -657,6 +666,15 @@ function renderHand(elements, state, handlers) {
     }
 
     const order = state.selectedHandIndexes.indexOf(index);
+    const destinationZone = order >= 0 ? "tray" : "hand";
+    const crossesZones = previousZones.has(index)
+      && previousZones.get(index) !== destinationZone
+      && previousCardIds.get(index) === button.dataset.cardId;
+    if (crossesZones) {
+      button.classList.add("card-layout-moving");
+      button.classList.remove("card-enter");
+      button.style.animationDelay = "";
+    }
     button.classList.toggle("is-hand-selected", order >= 0);
     button.classList.toggle("is-staged-card", order >= 0);
     if (order >= 0) {
@@ -693,16 +711,18 @@ function renderHand(elements, state, handlers) {
   tray.setAttribute("aria-label", selectedCount ? `${selectedCount} card${selectedCount === 1 ? "" : "s"} staged for Crunch` : "No cards staged for Crunch");
   elements.tableZone.classList.toggle("has-staged-cards", selectedCount > 0);
 
-  requestAnimationFrame(() => {
-    cardsByIndex.forEach((button, index) => {
-      const fromRect = previousRects.get(index);
-      if (!fromRect || previousCardIds.get(index) !== button.dataset.cardId || button.dataset.cardId !== state.hand[index]?.id) return;
-      const toRect = button.getBoundingClientRect();
-      const currentZone = button.closest(".selected-card-tray") ? "tray" : "hand";
-      animateCardTransfer(button, fromRect, toRect, {
-        withTrail: previousZones.get(index) !== currentZone
-      });
+  cardsByIndex.forEach((button, index) => {
+    const fromRect = previousRects.get(index);
+    if (!fromRect || previousCardIds.get(index) !== button.dataset.cardId || button.dataset.cardId !== state.hand[index]?.id) return;
+    const toRect = button.getBoundingClientRect();
+    const currentZone = button.closest(".selected-card-tray") ? "tray" : "hand";
+    const previousZone = previousZones.get(index);
+    const shouldAnimate = previousZone !== currentZone || (previousZone === "tray" && currentZone === "tray");
+    if (!shouldAnimate) return;
+    animateCardTransfer(button, fromRect, toRect, {
+      withTrail: previousZone !== currentZone
     });
+    requestAnimationFrame(() => button.classList.remove("card-layout-moving"));
   });
 }
 

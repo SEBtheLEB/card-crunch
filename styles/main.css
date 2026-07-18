@@ -168,11 +168,10 @@ button:not(:disabled),
   -webkit-touch-callout: none;
 }
 
-button.is-pressing:not(:disabled),
-.card.is-pressing:not(:disabled) {
-  scale: .965;
-  filter: brightness(1.12) saturate(1.08);
-  transition: scale .035s linear, filter .035s linear;
+button.is-pressing:not(:disabled) {
+  scale: .975;
+  filter: brightness(1.06);
+  transition: scale .05s ease-out, filter .05s ease-out;
 }
 
 /* --------------------------------------------------------------------------
@@ -456,10 +455,6 @@ button.is-pressing:not(:disabled),
   gap: clamp(14px, 5vw, 34px);
   min-height: 0;
   padding: clamp(8px, 1.8dvh, 16px) clamp(6px, 2vw, 18px);
-}
-
-.table-zone.has-staged-cards .base-stack-card {
-  transform: translateY(clamp(-11px, -1.4dvh, -6px)) rotate(var(--stack-rotate, 0deg)) scale(.94);
 }
 
 .combo-line {
@@ -805,10 +800,6 @@ button.is-pressing:not(:disabled),
   filter: drop-shadow(0 0 16px rgba(255, 197, 61, .7));
 }
 
-.hand-zone .card.card-touching {
-  filter: drop-shadow(0 0 14px rgba(255, 229, 138, .68)) brightness(1.08);
-}
-
 @media (hover: hover) and (pointer: fine) {
   .hand-zone .card:not(:disabled):not(.is-hand-selected):hover {
     transform: translateY(calc(var(--fan-lift, 0px) - 14px)) scale(1.035) rotate(var(--fan-rotate, 0deg));
@@ -862,9 +853,12 @@ button.is-pressing:not(:disabled),
   transition: transform .2s cubic-bezier(.22, 1.5, .3, 1), filter .12s ease !important;
 }
 
+.card.card-layout-moving {
+  transition: none !important;
+}
+
 .card.card-in-flight {
   z-index: 30;
-  pointer-events: none;
   will-change: translate, scale;
   filter: drop-shadow(0 0 20px rgba(255, 218, 112, .92)) drop-shadow(0 10px 8px rgba(0, 0, 0, .55));
 }
@@ -1437,33 +1431,6 @@ button.is-pressing:not(:disabled),
   filter: drop-shadow(0 0 18px rgba(255, 197, 61, .9)) drop-shadow(0 0 26px rgba(255, 122, 40, .58));
 }
 
-/* --------------------------------------------------------------------------
-   Tap feedback (main.js sets --tap-x/--tap-y and toggles .tap-pop)
-   -------------------------------------------------------------------------- */
-
-.card.tap-pop {
-  animation: cardTapPop .2s cubic-bezier(.18, 1.5, .28, 1) both;
-}
-
-button.tap-pop:not(.card) {
-  animation: tapPop .18s cubic-bezier(.18, 1.5, .28, 1) both;
-}
-
-.tap-pop.tap-pop::after {
-  content: "";
-  position: absolute;
-  left: var(--tap-x, 50%);
-  top: var(--tap-y, 50%);
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  pointer-events: none;
-  background: rgba(255, 229, 138, .72);
-  box-shadow: 0 0 18px rgba(255, 229, 138, .72);
-  transform: translate(-50%, -50%) scale(.3);
-  animation: tapRipple .32s ease-out both;
-}
-
 .tap-spray-particle,
 .counter-spark,
 .spark-particle,
@@ -1540,12 +1507,6 @@ button.tap-pop:not(.card) {
   text-shadow:
     0 0 18px rgba(255, 226, 120, .95),
     0 8px 20px rgba(0, 0, 0, .62);
-}
-
-.crunch-skip-text.tap-pop,
-.crunch-skip-text.tap-pop.tap-pop::after {
-  animation: none;
-  content: none;
 }
 
 .cutin-stage {
@@ -3302,26 +3263,6 @@ h2 {
   50% { transform: scale(.94); }
 }
 
-@keyframes tapPop {
-  0% { transform: translateY(0) scale(1); filter: brightness(1); }
-  42% { transform: translateY(0) scale(.93); filter: brightness(1.16) saturate(1.18); }
-  100% { transform: translateY(0) scale(1); filter: brightness(1); }
-}
-
-@keyframes cardTapPop {
-  0% { transform: translateY(var(--fan-lift, 0px)) rotate(var(--fan-rotate, 0deg)) scale(1); }
-  38% {
-    transform: translateY(calc(var(--fan-lift, 0px) - 18px)) rotate(var(--fan-rotate, 0deg)) scale(1.08);
-    filter: brightness(1.12) drop-shadow(0 0 22px rgba(255, 229, 138, .85));
-  }
-  100% { transform: translateY(var(--fan-lift, 0px)) rotate(var(--fan-rotate, 0deg)) scale(1); }
-}
-
-@keyframes tapRipple {
-  0% { opacity: .9; transform: translate(-50%, -50%) scale(.3); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(6.5); }
-}
-
 @keyframes counterJuice {
   0% { transform: scale(1); }
   38% { transform: scale(1.32) rotate(-1deg); }
@@ -3787,9 +3728,19 @@ h2 {
   text-transform: uppercase;
 }
 
+.bonus-bank-offer.is-claiming {
+  pointer-events: none;
+  animation: bonusOfferClaim .14s ease-out both;
+}
+
 @keyframes bonusOfferIn {
   from { opacity: 0; transform: translateX(-50%) translateY(14px) scale(.9); }
   to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+@keyframes bonusOfferClaim {
+  from { opacity: 1; transform: translateX(-50%) scale(1); }
+  to { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(.96); }
 }
 
 /* Run summary screen */
@@ -6667,8 +6618,7 @@ html[data-card-skin="rainbow"] .cutin-card::after {
   animation: rainbowFoilShift 1.35s steps(10) infinite;
 }
 
-html[data-card-skin="rainbow"] .hand-zone .card.is-hand-selected,
-html[data-card-skin="rainbow"] .hand-zone .card.card-touching {
+html[data-card-skin="rainbow"] .selected-card-tray .card {
   border-color: transparent;
   filter: drop-shadow(-5px 0 7px rgba(255, 79, 129, .65)) drop-shadow(5px 0 7px rgba(87, 200, 255, .65)) brightness(1.08);
 }

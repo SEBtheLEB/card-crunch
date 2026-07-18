@@ -1,5 +1,5 @@
-import { formatCompactNumber } from "./format.js?v=88";
-import { playGameSfx } from "./audio.js?v=88";
+import { formatCompactNumber } from "./format.js?v=90";
+import { playGameSfx } from "./audio.js?v=90";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -275,7 +275,7 @@ export async function playCrunchTotalExplanation({ total, scoreEl, tier = "norma
       await playFinalTotal(overlay, total, scoreEl, tier, advance);
     }
     overlay.classList.add("is-leaving");
-    await waitMaybe(advance, CUTSCENE_CONFIG.fadeOutDuration);
+    await (advance.fastForwarded ? sleep(CUTSCENE_CONFIG.fadeOutDuration) : waitMaybe(advance, CUTSCENE_CONFIG.fadeOutDuration));
   } finally {
     advance.destroy();
     overlay.remove();
@@ -409,6 +409,7 @@ async function playCrunchBonusSteps(overlay, breakdown, total, tier, advance, ba
       </div>
     </div>
   `;
+  overlay.classList.add("is-bonus-screen");
   playGameSfx("score_step");
   await waitMaybe(advance, CUTSCENE_CONFIG.autoBonusStepDuration);
   await bank.rampTo(total, advance);
@@ -426,12 +427,19 @@ function createOverlay(tier) {
 
 function createAdvanceController(overlay) {
   const waiters = new Set();
+  let fastForwarded = false;
   const finishAllWaiters = () => {
     [...waiters].forEach((finish) => finish());
   };
   const onAdvance = (event) => {
     if (event.target?.closest?.(".crunch-skip-text")) return;
     event.preventDefault();
+    if (overlay.classList.contains("is-bonus-screen")) {
+      fastForwarded = true;
+      overlay.classList.add("is-leaving");
+      finishAllWaiters();
+      return;
+    }
     playTapBounce(overlay);
     const [next] = waiters;
     if (next) next();
@@ -442,8 +450,11 @@ function createAdvanceController(overlay) {
   window.addEventListener(CRUNCH_SKIP_EVENT, onSkipAll);
 
   return {
+    get fastForwarded() {
+      return fastForwarded;
+    },
     waitForTap(minMs = 0) {
-      if (isCrunchSkipRequested()) return Promise.resolve();
+      if (isCrunchSkipRequested() || fastForwarded) return Promise.resolve();
       return new Promise((resolve) => {
         let finished = false;
         let canAdvance = minMs <= 0;
@@ -468,7 +479,7 @@ function createAdvanceController(overlay) {
       });
     },
     wait(ms) {
-      if (isCrunchSkipRequested()) return Promise.resolve();
+      if (isCrunchSkipRequested() || fastForwarded) return Promise.resolve();
       return new Promise((resolve) => {
         let finished = false;
         const finish = () => {

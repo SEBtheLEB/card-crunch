@@ -81,6 +81,7 @@ const [cutsceneSource, themeSource, cardSkinSource, cardGestureSource, gameState
   readFile(resolve(root, "src/ui.js"), "utf8"),
   readFile(resolve(root, "styles/main.css"), "utf8")
 ]);
+const mainSource = await readFile(resolve(root, "src/main.js"), "utf8");
 if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createPixelShardClip") || !css.includes("cutin-card-shard")) {
   throw new Error("Crunch Bank card-shard animation hooks are missing");
 }
@@ -100,6 +101,15 @@ if (!cardSkinSource.includes("cardCrunchCardSkin") || !cardSkinSource.includes("
 }
 if (!cardGestureSource.includes("bindCardGesture") || !cardGestureSource.includes("spawnCardFlightTrail") || !uiSource.includes("selectedCardTray")) {
   throw new Error("Tap/flick staging controls or card flight trails are missing");
+}
+if (!cutsceneSource.includes("is-bonus-screen") || !cutsceneSource.includes("fastForwarded")) {
+  throw new Error("One-tap Bonus Crunch fast-forward is missing");
+}
+if (!mainSource.includes("activePressTargets") || mainSource.includes('classList.add("tap-pop")')) {
+  throw new Error("Stable press feedback regression guards are missing");
+}
+if (!cardGestureSource.includes("flightAnimations") || !uiSource.includes("card-layout-moving")) {
+  throw new Error("Card transfer stability guards are missing");
 }
 if (!css.includes('html[data-card-skin="dark"]') || !css.includes('html[data-card-skin="pink"]') || !css.includes('html[data-card-skin="gold"]') || !css.includes('html[data-card-skin="rainbow"]')) {
   throw new Error("One or more card skin styles are missing");

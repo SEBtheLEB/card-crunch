@@ -5,6 +5,7 @@ const FLICK_VELOCITY = 0.36;
 const CLICK_GUARD_MS = 700;
 
 const recentPointerActions = new WeakMap();
+const flightAnimations = new WeakMap();
 
 export function bindCardGesture(element, action) {
   if (!element || typeof action !== "function") return () => {};
@@ -29,14 +30,14 @@ export function bindCardGesture(element, action) {
   };
 
   const invoke = (event, mode) => {
-    if (element.disabled || element.getAttribute("aria-disabled") === "true" || element.classList.contains("card-in-flight")) return;
+    if (element.disabled || element.getAttribute("aria-disabled") === "true") return;
     recentPointerActions.set(element, performance.now());
     action(event, { mode });
   };
 
   const onPointerDown = (event) => {
     if (event.button !== undefined && event.button !== 0) return;
-    if (element.disabled || element.getAttribute("aria-disabled") === "true" || element.classList.contains("card-in-flight")) return;
+    if (element.disabled || element.getAttribute("aria-disabled") === "true") return;
 
     const staged = element.classList.contains("is-staged-card");
     gesture = {
@@ -138,6 +139,7 @@ export function animateCardTransfer(card, fromRect, toRect, { withTrail = false 
   if (withTrail && !reducedMotion) spawnCardFlightTrail(card, fromRect, toRect);
 
   const duration = reducedMotion ? 80 : Math.min(390, Math.max(260, distance * 0.82));
+  flightAnimations.get(card)?.cancel();
   card.classList.add("card-in-flight");
   const animation = card.animate(
     [
@@ -151,13 +153,18 @@ export function animateCardTransfer(card, fromRect, toRect, { withTrail = false 
       fill: "both"
     }
   );
-  animation.finished.catch(() => {}).finally(() => card.classList.remove("card-in-flight"));
+  flightAnimations.set(card, animation);
+  animation.finished.catch(() => {}).finally(() => {
+    if (flightAnimations.get(card) !== animation) return;
+    flightAnimations.delete(card);
+    card.classList.remove("card-in-flight");
+  });
 }
 
 function spawnCardFlightTrail(card, fromRect, toRect) {
   const fragment = document.createDocumentFragment();
   const toneClass = [...card.classList].find((name) => name === "card-red" || name === "card-black" || name === "card-clubs") ?? "card-black";
-  const echoes = 6;
+  const echoes = 4;
 
   for (let index = 0; index < echoes; index += 1) {
     const progress = (index + 1) / (echoes + 1);
