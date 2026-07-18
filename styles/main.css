@@ -5426,13 +5426,13 @@ h2 {
   backface-visibility: hidden;
   visibility: hidden;
   opacity: 0;
+  transform-origin: var(--shard-origin, 50% 50%) !important;
   animation: none !important;
 }
 
 .cutin-card-shard.is-precut-piece {
   visibility: visible;
   opacity: 1;
-  transform-origin: 50% 50% !important;
   will-change: transform;
 }
 
@@ -5535,7 +5535,10 @@ h2 {
   transition: none !important;
   will-change: transform, opacity;
   backface-visibility: hidden;
-  animation: cutinCardShardVacuum var(--shard-duration, 820ms) cubic-bezier(.55, .05, .12, 1) var(--shard-delay, 0ms) both !important;
+}
+
+.cutin-card-shard.is-vacuuming {
+  animation: cutinCardShardVacuum var(--shard-duration, 820ms) cubic-bezier(.34, 0, .14, 1) var(--shard-delay, 0ms) both !important;
 }
 
 .cutin-card-shard.is-shattered-piece::before,
@@ -5564,9 +5567,8 @@ h2 {
 
 @keyframes precutCardHitThree {
   0% { transform: translate3d(0, 0, 0) rotate(0) scale(1); }
-  32% { transform: translate3d(var(--shard-burst-x), var(--shard-burst-y), 0) rotate(var(--shard-rotation-small)) scale(1); }
+  30% { transform: translate3d(var(--shard-burst-x), var(--shard-burst-y), 0) rotate(var(--shard-rotation-small)) scale(1); }
   68% { transform: translate3d(var(--shard-slide-x), var(--shard-slide-y), 0) rotate(var(--shard-rotation-rest)) scale(1); }
-  88% { transform: translate3d(var(--shard-rest-x), var(--shard-rest-y), 0) rotate(var(--shard-rotation-rest)) scale(1); }
   100% { transform: translate3d(var(--shard-rest-x), var(--shard-rest-y), 0) rotate(var(--shard-rotation-rest)) scale(1); }
 }
 
@@ -5632,25 +5634,21 @@ h2 {
     opacity: 1;
     transform: translate3d(var(--shard-rest-x), var(--shard-rest-y), 0) rotate(var(--shard-rotation-rest)) scale(1);
   }
-  18% {
+  10% {
     opacity: 1;
-    transform: translate3d(var(--shard-rest-x), var(--shard-rest-y), 0) rotate(var(--shard-rotation-rest)) scale(1);
+    transform: translate3d(var(--shard-draw-x), var(--shard-draw-y), 0) rotate(var(--shard-rotation-rest)) scale(.99);
   }
-  32% {
+  36% {
     opacity: 1;
-    transform: translate3d(var(--shard-draw-x), var(--shard-draw-y), 0) rotate(var(--shard-rotation-small)) scale(.97);
+    transform: translate3d(var(--shard-curve-x), var(--shard-curve-y), 0) rotate(var(--shard-rotation-mid)) scale(.82);
   }
-  56% {
+  68% {
     opacity: 1;
-    transform: translate3d(var(--shard-curve-x), var(--shard-curve-y), 0) rotate(var(--shard-rotation-mid)) scale(.78);
+    transform: translate3d(var(--shard-funnel-x), var(--shard-funnel-y), 0) rotate(var(--shard-rotation)) scale(.44);
   }
-  79% {
-    opacity: 1;
-    transform: translate3d(var(--shard-funnel-x), var(--shard-funnel-y), 0) rotate(var(--shard-rotation)) scale(.38);
-  }
-  94% {
+  91% {
     opacity: .92;
-    transform: translate3d(var(--shard-intake-x), var(--shard-intake-y), 0) rotate(var(--shard-rotation)) scale(.15, .08);
+    transform: translate3d(var(--shard-intake-x), var(--shard-intake-y), 0) rotate(var(--shard-rotation)) scale(.16, .09);
   }
   100% {
     opacity: 0;

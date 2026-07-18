@@ -1090,7 +1090,7 @@ function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
         shard.style.width = `${rect.width}px`;
         shard.style.height = `${rect.height}px`;
         shard.style.clipPath = createPixelShardClip(column, row, shardIndex, grid.columns, grid.rows);
-        shard.style.transformOrigin = `${(column + .5) * cellWidth}% ${(row + .5) * cellHeight}%`;
+        shard.style.setProperty("--shard-origin", `${(column + .5) * cellWidth}% ${(row + .5) * cellHeight}%`);
         shard.style.setProperty("--shard-burst-x", `${burstX}px`);
         shard.style.setProperty("--shard-burst-y", `${burstY}px`);
         shard.style.setProperty("--shard-slide-x", `${slideX}px`);

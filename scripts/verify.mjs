@@ -149,6 +149,9 @@ if (!preparedAssemblySource.includes("hit >= CUTSCENE_CONFIG.interactiveCrunchHi
 if (!cutsceneSource.includes('classList.toggle("is-shattered-piece"') || !css.includes(".cutin-card-shard.is-shattered-piece::before") || !css.includes("box-shadow: none !important")) {
   throw new Error("Vacuuming shards must not inherit card frames or decorative overlays");
 }
+if (!cutsceneSource.includes('setProperty("--shard-origin"') || !css.includes("transform-origin: var(--shard-origin") || /cutinCardShardVacuum[\s\S]{0,500}\b18%/.test(css)) {
+  throw new Error("Shard scatter and vacuum animations must share one pivot without a dead hold");
+}
 if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSource.includes("data-cutin-card-id") || !css.includes("cutin-shared-card-flight")) {
   throw new Error("Shared card-to-cutin transitions are missing");
 }
