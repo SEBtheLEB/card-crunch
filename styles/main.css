@@ -7618,3 +7618,122 @@ html[data-card-skin="rainbow"] .cutin-card {
 .reduce-motion .is-tutorial-wrong .tutorial-hand {
   animation: none !important;
 }
+
+/* Live-board tutorial ----------------------------------------------------- */
+.game-shell.tutorial-mode .target-strip {
+  min-height: clamp(82px, 11dvh, 102px);
+  padding: clamp(8px, 1.3dvh, 12px) clamp(10px, 3vw, 18px);
+  border-color: #173e58;
+  background:
+    linear-gradient(90deg, rgba(102, 216, 255, .08) 0 8px, transparent 8px calc(100% - 8px), rgba(255, 210, 73, .08) calc(100% - 8px)),
+    linear-gradient(180deg, #102b3b, #081a27);
+  box-shadow: inset 0 0 0 2px #245878, 0 5px 0 #031019, 0 0 18px rgba(69, 215, 255, .14);
+}
+
+.game-shell.tutorial-mode .target-summary,
+.game-shell.tutorial-mode .target-track {
+  display: none;
+}
+
+.tutorial-coach {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 3px clamp(9px, 2.8vw, 15px);
+  min-width: 0;
+  color: #fff9d7;
+}
+
+.tutorial-coach[hidden] {
+  display: none;
+}
+
+.tutorial-coach > div {
+  grid-row: 1 / 3;
+  display: grid;
+  min-width: clamp(92px, 27vw, 128px);
+  gap: 5px;
+  padding-right: clamp(8px, 2vw, 13px);
+  border-right: 2px solid rgba(111, 211, 255, .28);
+}
+
+.tutorial-coach span,
+.tutorial-coach strong,
+.tutorial-coach p,
+.tutorial-coach small {
+  margin: 0;
+  font-weight: 900;
+  line-height: 1.22;
+}
+
+.tutorial-coach span {
+  color: #75dfff;
+  font: 900 clamp(.44rem, 1.8vw, .58rem) / 1.2 var(--font-pixel);
+  text-transform: uppercase;
+}
+
+.tutorial-coach strong {
+  color: #ffe578;
+  font: 900 clamp(.58rem, 2.4vw, .78rem) / 1.15 var(--font-pixel);
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 #4a2b00;
+}
+
+.tutorial-coach p {
+  align-self: end;
+  overflow-wrap: anywhere;
+  font-size: clamp(.67rem, 2.65vw, .86rem);
+}
+
+.tutorial-coach small {
+  align-self: start;
+  color: #b9dce5;
+  font-size: clamp(.57rem, 2.25vw, .72rem);
+}
+
+.tutorial-coach.is-complete {
+  text-align: center;
+}
+
+.tutorial-coach.is-complete > div {
+  border-right-color: rgba(255, 221, 98, .4);
+}
+
+.hand-zone .card.tutorial-guided-card:not(.is-staged-card) {
+  z-index: 5;
+  animation: liveTutorialGuide .9s ease-in-out infinite alternate;
+}
+
+@keyframes liveTutorialGuide {
+  from {
+    filter: drop-shadow(3px 6px 0 rgba(3, 4, 10, .72));
+  }
+  to {
+    filter: drop-shadow(0 0 15px rgba(255, 218, 86, .9)) brightness(1.08);
+  }
+}
+
+@media (max-height: 740px) {
+  .game-shell.tutorial-mode .target-strip {
+    min-height: 76px;
+    padding-block: 7px;
+  }
+
+  .tutorial-coach > div {
+    min-width: 88px;
+  }
+
+  .tutorial-coach p {
+    font-size: clamp(.62rem, 2.5vw, .76rem);
+  }
+
+  .tutorial-coach small {
+    font-size: clamp(.52rem, 2vw, .64rem);
+  }
+}
+
+.reduce-motion .hand-zone .card.tutorial-guided-card {
+  animation: none !important;
+  filter: drop-shadow(0 0 10px rgba(255, 218, 86, .75));
+}

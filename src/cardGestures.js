@@ -139,12 +139,14 @@ export function animateCardTransfer(card, fromRect, toRect, { withTrail = false 
   if (withTrail && !reducedMotion) spawnCardFlightTrail(card, fromRect, toRect);
 
   const duration = reducedMotion ? 80 : Math.min(390, Math.max(260, distance * 0.82));
+  const startScaleX = fromRect.width / Math.max(1, toRect.width);
+  const startScaleY = fromRect.height / Math.max(1, toRect.height);
   flightAnimations.get(card)?.cancel();
   card.classList.add("card-in-flight");
   const animation = card.animate(
     [
-      { translate: `${dx}px ${dy}px`, scale: ".96", offset: 0 },
-      { translate: `${dx * .44}px ${dy * .36 - 12}px`, scale: "1.055", offset: .62 },
+      { translate: `${dx}px ${dy}px`, scale: `${startScaleX} ${startScaleY}`, offset: 0 },
+      { translate: `${dx * .44}px ${dy * .36 - 12}px`, scale: `${1 + (startScaleX - 1) * .28} ${1 + (startScaleY - 1) * .28}`, offset: .62 },
       { translate: "0px 0px", scale: "1", offset: 1 }
     ],
     {

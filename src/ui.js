@@ -106,6 +106,7 @@ export function createUI() {
   const ui = {
     elements,
     render(state, handlers) {
+      elements.shell.classList.toggle("tutorial-mode", Boolean(state.isTutorial));
       renderHud(elements, state);
       const stackSignature = getStackSignature(state);
       if (renderCache.stack !== stackSignature) {
@@ -339,6 +340,7 @@ function renderHud(elements, state) {
     : { progress: 0, remaining: isEndless ? "Endless" : 0 };
 
   setText(elements.scoreValue, formatCompactNumber(state.score), cache, "score");
+  setText(elements.scoreLabel, state.isTutorial ? "Practice Cash \u00b7 Unbanked" : "Run Cash \u00b7 Unbanked", cache, "scoreLabel");
   setText(elements.streakValue, String(state.streak ?? 0), cache, "streak");
   setText(elements.timerValue, String(Math.ceil(state.timeLeft)), cache, "timer");
   const livesLeft = Math.max(0, (state.maxMisses ?? 3) - (state.misses ?? 0));
@@ -583,7 +585,7 @@ function renderCrunch(elements, state, handlers) {
   elements.multiPanel.classList.toggle("multi-warm", (state.bankMultiplier ?? 1) >= 2);
   elements.multiPanel.classList.toggle("multi-hot", (state.bankMultiplier ?? 1) >= 4);
 
-  const canBank = playing && Boolean(state.activePot) && state.score > 0;
+  const canBank = playing && (Boolean(state.activePot) || Boolean(state.tutorialBankStep)) && state.score > 0;
   if (cache.canBank !== canBank) {
     cache.canBank = canBank;
     elements.bankButton.disabled = !canBank;
@@ -592,8 +594,8 @@ function renderCrunch(elements, state, handlers) {
   setText(elements.bankAmountValue, `$${formatCompactNumber(state.score ?? 0)}`, cache, "bankAmount");
 
   if (elements.hintAdButton) {
-    const hintHidden = state.hintAdUsedThisRun || state.status === "menu";
-    const hintDisabled = !playing || state.hintAdUsedThisRun;
+    const hintHidden = !state.isTutorial && (state.hintAdUsedThisRun || state.status === "menu");
+    const hintDisabled = !playing || (!state.isTutorial && state.hintAdUsedThisRun);
     if (cache.hintHidden !== hintHidden) {
       cache.hintHidden = hintHidden;
       elements.hintAdButton.hidden = hintHidden;
@@ -602,9 +604,14 @@ function renderCrunch(elements, state, handlers) {
       cache.hintDisabled = hintDisabled;
       elements.hintAdButton.disabled = hintDisabled;
     }
+    const hintLabel = state.isTutorial ? "Highlight the next tutorial card" : "Watch ad to reveal a valid crunch";
+    if (cache.hintLabel !== hintLabel) {
+      cache.hintLabel = hintLabel;
+      elements.hintAdButton.setAttribute("aria-label", hintLabel);
+    }
   }
 
-  const crunchDisabled = state.locked || state.status !== "playing" || !preview.canCrunch;
+  const crunchDisabled = state.locked || state.status !== "playing" || state.tutorialBankStep || !preview.canCrunch;
   if (cache.crunchDisabled !== crunchDisabled) {
     cache.crunchDisabled = crunchDisabled;
     elements.crunchButton.disabled = crunchDisabled;
@@ -621,7 +628,7 @@ function renderCrunch(elements, state, handlers) {
 function renderHand(elements, state, handlers) {
   const zone = elements.handZone;
   const tray = elements.selectedCardTray;
-  const disabled = state.locked || state.status !== "playing";
+  const disabled = state.locked || state.status !== "playing" || state.tutorialBankStep;
   const previousRects = new Map();
   const previousZones = new Map();
   const previousCardIds = new Map();
@@ -680,6 +687,8 @@ function renderHand(elements, state, handlers) {
     }
     button.classList.toggle("is-hand-selected", order >= 0);
     button.classList.toggle("is-staged-card", order >= 0);
+    const tutorialGuideIndex = state.tutorialExpectedIndexes?.[state.selectedHandIndexes.length];
+    button.classList.toggle("tutorial-guided-card", Boolean(state.isTutorial) && !state.tutorialBankStep && order < 0 && tutorialGuideIndex === index);
     if (order >= 0) {
       button.dataset.order = String(order + 1);
       button.style.setProperty("--stage-rotate", `${[-4, -1.5, 1.5, 4][order] ?? 0}deg`);
@@ -788,6 +797,8 @@ function getHandSignature(state) {
   return [
     state.hand.map((card) => card.id).join("|"),
     state.selectedHandIndexes.join("|"),
+    state.tutorialExpectedIndexes?.join("|") ?? "",
+    state.tutorialBankStep ? "bank-step" : "card-step",
     state.locked ? "locked" : "open",
     state.status
   ].join("::");

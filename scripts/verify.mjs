@@ -57,8 +57,11 @@ if ((html.match(/data-card-skin-id=/g) ?? []).length !== 5 || !html.includes("sk
 if (!html.includes("run-scoreboard") || !html.includes("summaryRecoveryTicker")) {
   throw new Error("Arcade run summary structure is missing");
 }
-if (!html.includes('data-menu-page="tutorial"') || !html.includes("tutorialPractice") || !html.includes("tutorialBankButton")) {
-  throw new Error("Fixed tutorial page hooks are missing");
+if (!html.includes("tutorialStartButton") || !html.includes("tutorialCoach") || !html.includes("bottom-status")) {
+  throw new Error("Live-board tutorial hooks are missing");
+}
+if (html.includes('id="tutorialPage"')) {
+  throw new Error("Tutorial must use the real game board, not a separate practice layout");
 }
 
 const economyModule = await import(`../src/economy.js?verify=${Date.now()}`);
@@ -113,11 +116,11 @@ if (!cutsceneSource.includes("is-bonus-screen") || !cutsceneSource.includes("fas
 if (!mainSource.includes("activePressTargets") || mainSource.includes('classList.add("tap-pop")')) {
   throw new Error("Stable press feedback regression guards are missing");
 }
-if (!tutorialSource.includes("Full-Hand Crunch") || !tutorialSource.includes("Bank Your Cash") || !tutorialSource.includes("MINUS CRUNCH")) {
+if (!tutorialSource.includes("Full Crunch") || !tutorialSource.includes("Bank Your Cash") || !tutorialSource.includes("Minus Crunch")) {
   throw new Error("Tutorial lessons do not cover full-hand, banking, and arithmetic Crunches");
 }
-if (!tutorialSource.includes("animateCardTransfer") || !tutorialSource.includes("animateSelectionResolve") || !tutorialSource.includes("playCrunchEntryExplanation")) {
-  throw new Error("Tutorial does not use the live card-flight and Crunch cutscene pipeline");
+if (!gameStateSource.includes("startTutorial") || !gameStateSource.includes("advanceTutorialLesson") || !gameStateSource.includes("playCrunchEntryExplanation")) {
+  throw new Error("Tutorial does not run through the live game-state and Crunch pipeline");
 }
 if (!cardGestureSource.includes("flightAnimations") || !uiSource.includes("card-layout-moving")) {
   throw new Error("Card transfer stability guards are missing");

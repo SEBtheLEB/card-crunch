@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/main.css?v=92">
+    <link rel="stylesheet" href="styles/main.css?v=93">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -31,12 +31,20 @@
       </header>
 
       <section class="target-strip" aria-label="Level target">
-        <div>
+        <div class="target-summary">
           <span>Pot <strong id="levelValue">1</strong></span>
           <span>Left <strong id="targetValue">1,000,000</strong></span>
         </div>
         <div class="target-track">
           <div class="target-fill" id="targetFill"></div>
+        </div>
+        <div class="tutorial-coach" id="tutorialCoach" hidden aria-live="polite" aria-atomic="true">
+          <div>
+            <span id="tutorialProgress">Lesson 1 of 6</span>
+            <strong id="tutorialStepTitle">Suit Match</strong>
+          </div>
+          <p id="tutorialInstruction">Match the Heart, then press Crunch.</p>
+          <small id="tutorialDetail">Matching suits connect.</small>
         </div>
       </section>
 
@@ -147,55 +155,7 @@
             <section class="menu-tile-grid" aria-label="More modes">
               <button data-menu-page="shop" type="button"><span aria-hidden="true">&#9670;</span><strong>Store</strong><small>Coins &amp; boosts</small></button>
               <button data-menu-page="themes" type="button"><span aria-hidden="true">&spades;</span><strong>Themes</strong><small>Deck styles</small></button>
-              <button class="tutorial-menu-tile" data-menu-page="tutorial" type="button"><span aria-hidden="true">?</span><strong>Tutorial</strong><small>Learn every Crunch</small></button>
-            </section>
-          </section>
-
-          <section class="menu-page tutorial-page" data-page="tutorial" id="tutorialPage" aria-labelledby="tutorialTitle">
-            <header class="tutorial-page-header">
-              <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
-              <div>
-                <span id="tutorialProgress">Lesson 1 of 6</span>
-                <h2 id="tutorialTitle">How To Crunch</h2>
-              </div>
-            </header>
-
-            <section class="tutorial-instruction" aria-live="polite" aria-atomic="true">
-              <span id="tutorialStepLabel">Match 1</span>
-              <h3 id="tutorialStepTitle">Suit Match</h3>
-              <p id="tutorialInstruction">Find the Heart in your hand.</p>
-              <small id="tutorialDetail">Matching suits connect.</small>
-            </section>
-
-            <section class="tutorial-practice" id="tutorialPractice" aria-label="Tutorial practice table">
-              <div class="tutorial-mini-hud">
-                <article>
-                  <span>Practice Cash</span>
-                  <strong id="tutorialCashValue">$0</strong>
-                </article>
-                <article>
-                  <span>Multiplier</span>
-                  <strong id="tutorialMultiplierValue">x1</strong>
-                </article>
-              </div>
-
-              <div class="tutorial-table-stage">
-                <div class="tutorial-table" id="tutorialTable" aria-label="Tutorial table cards"></div>
-                <div class="tutorial-selected-card-tray" id="tutorialSelectedCardTray" aria-label="Cards staged for Crunch"></div>
-              </div>
-              <p class="tutorial-feedback" id="tutorialFeedback" aria-live="polite"></p>
-              <div class="tutorial-hand" id="tutorialHand" aria-label="Tutorial hand"></div>
-
-              <div class="tutorial-actions">
-                <button class="tutorial-bank-button" id="tutorialBankButton" type="button" disabled>
-                  <span>Bank</span>
-                  <strong id="tutorialBankAmount">$0</strong>
-                </button>
-                <button class="tutorial-crunch-button" id="tutorialCrunchButton" type="button" disabled>Select A Card</button>
-              </div>
-
-              <button class="tutorial-next-button" id="tutorialNextButton" type="button" hidden>Next Lesson</button>
-              <button class="tutorial-finish-button" id="tutorialFinishButton" data-menu-page="home" type="button" hidden>Back To Main Menu</button>
+              <button class="tutorial-menu-tile" id="tutorialStartButton" type="button"><span aria-hidden="true">?</span><strong>Tutorial</strong><small>Learn every Crunch</small></button>
             </section>
           </section>
 
@@ -448,6 +408,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-    <script type="module" src="src/main.js?v=92"></script>
+    <script type="module" src="src/main.js?v=93"></script>
   </body>
 </html>

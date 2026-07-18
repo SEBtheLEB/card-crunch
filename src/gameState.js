@@ -28,6 +28,7 @@ export function createGame(ui) {
   let pendingRunSave = loadRunSave();
   let pendingEnergyStart = null;
   let economyActionPending = false;
+  let tutorialSession = null;
   const state = {
     deck: [],
     discard: [],
@@ -71,7 +72,10 @@ export function createGame(ui) {
     bonusBankAdUsedForLastDeposit: true,
     hintAdUsedThisRun: false,
     rewardAdInProgress: false,
-    runStartedAt: 0
+    runStartedAt: 0,
+    isTutorial: false,
+    tutorialBankStep: false,
+    tutorialExpectedIndexes: []
   };
 
   function showMap() {
@@ -113,6 +117,11 @@ export function createGame(ui) {
   function start(pot = state.pots.find((item) => !item.complete) ?? state.pots[0]) {
     stopTimer();
     ui.hideBonusBankOffer();
+    tutorialSession?.hooks?.onExit?.();
+    tutorialSession = null;
+    state.isTutorial = false;
+    state.tutorialBankStep = false;
+    state.tutorialExpectedIndexes = [];
     state.deck = shuffle(createDeck());
     state.discard = [];
     state.stack = drawCards(state, state.baseStackCount);
@@ -164,8 +173,110 @@ export function createGame(ui) {
     requestNewRun(null);
   }
 
+  function startTutorial(lessons, hooks = {}) {
+    if (!Array.isArray(lessons) || lessons.length === 0) return;
+    stopTimer();
+    ui.hideBonusBankOffer();
+    ui.clearMessage();
+    tutorialSession?.hooks?.onExit?.();
+    tutorialSession = { lessons, hooks, index: 0 };
+
+    state.deck = [];
+    state.discard = [];
+    state.selectedHandIndexes = [];
+    state.score = 0;
+    state.streak = 0;
+    state.misses = 0;
+    state.maxMisses = 3;
+    state.level = 0;
+    state.target = 0;
+    state.activePot = null;
+    state.fever = false;
+    state.bankMultiplier = 1;
+    state.bestRunMultiplier = 1;
+    state.bestRunStreak = 0;
+    state.bankedThisRun = 0;
+    state.runGrossCash = 0;
+    state.hintAdUsedThisRun = false;
+    state.safeBankShieldActive = false;
+    state.timeLeft = state.turnSeconds;
+    state.isTutorial = true;
+    state.locked = false;
+    state.status = "playing";
+
+    ui.showStart(false);
+    ui.showMap(false);
+    ui.showGameOver(false);
+    loadTutorialLesson();
+  }
+
+  function loadTutorialLesson() {
+    const lesson = tutorialSession?.lessons?.[tutorialSession.index];
+    if (!lesson) {
+      void completeTutorial();
+      return;
+    }
+
+    state.stack = [...lesson.table];
+    state.hand = [...lesson.hand];
+    state.selectedHandIndexes = [];
+    state.tutorialExpectedIndexes = [...(lesson.expected ?? [])];
+    state.tutorialBankStep = lesson.type === "bank";
+    state.timeLeft = state.turnSeconds;
+    state.locked = false;
+    state.status = "playing";
+    ui.clearMessage();
+    ui.render(state, handlers);
+    tutorialSession.hooks?.onLesson?.({
+      lesson,
+      index: tutorialSession.index,
+      total: tutorialSession.lessons.length,
+      score: state.score,
+      multiplier: state.bankMultiplier
+    });
+  }
+
+  async function advanceTutorialLesson() {
+    await sleep(520);
+    if (!tutorialSession || !state.isTutorial) return;
+    tutorialSession.index += 1;
+    loadTutorialLesson();
+  }
+
+  async function completeTutorial() {
+    if (!tutorialSession || !state.isTutorial) return;
+    state.locked = true;
+    state.status = "tutorialComplete";
+    state.tutorialBankStep = false;
+    state.tutorialExpectedIndexes = [];
+    ui.render(state, handlers);
+    tutorialSession.hooks?.onComplete?.();
+    playSfx("target_clear");
+    await sleep(1800);
+    exitTutorial();
+  }
+
+  function exitTutorial() {
+    if (!state.isTutorial && !tutorialSession) return;
+    stopTimer();
+    ui.hideBonusBankOffer();
+    ui.clearMessage();
+    const hooks = tutorialSession?.hooks;
+    tutorialSession = null;
+    state.isTutorial = false;
+    state.tutorialBankStep = false;
+    state.tutorialExpectedIndexes = [];
+    state.selectedHandIndexes = [];
+    state.locked = true;
+    state.status = "menu";
+    hooks?.onExit?.();
+    ui.render(state, handlers);
+    showMap();
+    ui.showMenuPage("home");
+  }
+
   function onCardSelect(handIndex) {
-    if (state.locked || state.status !== "playing") return;
+    if (state.locked || state.status !== "playing" || state.tutorialBankStep) return;
     ui.hideBonusBankOffer();
     playSfx(state.selectedHandIndexes.includes(handIndex) ? "card_deselect" : "card_select");
     if (state.selectedHandIndexes.includes(handIndex)) {
@@ -174,7 +285,7 @@ export function createGame(ui) {
       state.selectedHandIndexes.push(handIndex);
     }
     ui.render(state, handlers);
-    persistRun();
+    if (!state.isTutorial) persistRun();
   }
 
   async function onCrunch() {
@@ -197,6 +308,11 @@ export function createGame(ui) {
     });
 
     playSfx("crunch_start");
+
+    if (state.isTutorial && !isTutorialSelectionCorrect()) {
+      await rejectTutorialSelection(crunch);
+      return;
+    }
 
     if (!crunch.success) {
       await animateSelectionResolve({
@@ -258,11 +374,7 @@ export function createGame(ui) {
     // Money stays as unbanked Run Money - the pot only fills when banking.
     state.score += crunch.total;
     state.runGrossCash += crunch.total;
-    localStorage.setItem("cardCrunchTotalCrunches", String(Number(localStorage.getItem("cardCrunchTotalCrunches") ?? 0) + selectedCards.length));
-    state.bestScore = Math.max(state.bestScore, state.score);
-    localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
     state.streak = crunch.streakAfterCrunch;
-    localStorage.setItem("cardCrunchBestStreak", String(Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak)));
     state.bestRunStreak = Math.max(state.bestRunStreak, state.streak);
     const enteringFever = !state.fever && state.streak >= 15;
     state.fever = state.streak >= 15;
@@ -271,7 +383,52 @@ export function createGame(ui) {
     ui.elements.scoreValue.textContent = formatCompactNumber(state.score);
     ui.elements.streakValue.textContent = String(state.streak);
     discardSelectedCards();
+
+    if (state.isTutorial) {
+      await advanceTutorialLesson();
+      return;
+    }
+
+    localStorage.setItem("cardCrunchTotalCrunches", String(Number(localStorage.getItem("cardCrunchTotalCrunches") ?? 0) + selectedCards.length));
+    state.bestScore = Math.max(state.bestScore, state.score);
+    localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
+    localStorage.setItem("cardCrunchBestStreak", String(Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak)));
     startNewRound();
+  }
+
+  function isTutorialSelectionCorrect() {
+    const expected = state.tutorialExpectedIndexes ?? [];
+    return state.selectedHandIndexes.length === expected.length
+      && state.selectedHandIndexes.every((index, position) => index === expected[position]);
+  }
+
+  async function rejectTutorialSelection(crunch) {
+    if (crunch.success) {
+      state.locked = false;
+      state.status = "playing";
+      ui.setMessage("Follow the lesson order shown above", "bad", 2200);
+      ui.render(state, handlers);
+      return;
+    }
+
+    await animateSelectionResolve({
+      selectedHandCards: state.selectedHandIndexes.map((index) => ui.getHandCardElement(index)),
+      baseStackCards: ui.getAllStackCardElements(),
+      resolution: crunch.resolution,
+      fail: true,
+      onEntryResolved: async (entry) => {
+        await playCrunchEntryExplanation({ entry: createCutsceneEntry(entry), tier: "normal" });
+      }
+    });
+    await playBustCutin({
+      failedCard: crunch.resolution.failedCard,
+      activeStack: crunch.resolution.activeStack
+    });
+    state.selectedHandIndexes = [];
+    state.locked = false;
+    state.status = "playing";
+    ui.setMessage("Try again - follow the lesson above", "bad", 2200);
+    ui.render(state, handlers);
   }
 
   function raiseBankMultiplier(selectedCount) {
@@ -281,6 +438,10 @@ export function createGame(ui) {
   }
 
   async function bankRun() {
+    if (state.isTutorial) {
+      await bankTutorialCash();
+      return;
+    }
     if (state.locked || state.status !== "playing" || !state.activePot || state.score <= 0) return;
     state.locked = true;
     stopTimer();
@@ -312,6 +473,20 @@ export function createGame(ui) {
     persistRun();
     startTimer();
     offerBonusBankAd(amount);
+  }
+
+  async function bankTutorialCash() {
+    if (state.locked || state.status !== "playing" || !state.tutorialBankStep || state.score <= 0) return;
+    state.locked = true;
+    const amount = state.score;
+    state.score = 0;
+    state.bankMultiplier = 1;
+    playSfx("bank");
+    ui.setMessage(`BANKED $${formatCompactNumber(amount)}! Multi reset to x1`, "good", 0);
+    ui.playBankJuice(amount);
+    ui.render(state, handlers);
+    await sleep(720);
+    await completeTutorial();
   }
 
   function offerBonusBankAd(depositAmount) {
@@ -352,6 +527,16 @@ export function createGame(ui) {
   }
 
   async function onHintAd() {
+    if (state.isTutorial && !state.locked && state.status === "playing") {
+      const nextIndex = state.tutorialExpectedIndexes.find((index) => !state.selectedHandIndexes.includes(index));
+      if (Number.isInteger(nextIndex)) {
+        ui.setMessage("This is the next card", "good");
+        ui.flashHint(nextIndex);
+      } else if (state.tutorialBankStep) {
+        ui.setMessage("Tap BANK to protect your practice cash", "good");
+      }
+      return;
+    }
     if (state.locked || state.status !== "playing" || state.hintAdUsedThisRun || state.rewardAdInProgress) return;
     if (!adManager.canShowRewardedAd()) return;
     state.rewardAdInProgress = true;
@@ -576,6 +761,10 @@ export function createGame(ui) {
   }
 
   function returnToMap() {
+    if (state.isTutorial) {
+      exitTutorial();
+      return;
+    }
     finalizeRunLoss();
     stopTimer();
     ui.hideBonusBankOffer();
@@ -694,6 +883,10 @@ export function createGame(ui) {
 
   /* Exit Pot mid-run: keep the run resumable instead of forfeiting cash. */
   function exitAndSave() {
+    if (state.isTutorial) {
+      exitTutorial();
+      return;
+    }
     if (state.status !== "playing") return;
     stopTimer();
     ui.hideBonusBankOffer();
@@ -848,6 +1041,7 @@ export function createGame(ui) {
   }
 
   function persistRun() {
+    if (state.isTutorial) return;
     saveRunState(state);
   }
 
@@ -866,6 +1060,7 @@ export function createGame(ui) {
     state,
     start,
     startEndless,
+    startTutorial,
     showMap,
     enterLevel,
     returnToMap,
