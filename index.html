@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/main.css?v=81">
+    <link rel="stylesheet" href="styles/main.css?v=83">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -94,15 +94,18 @@
 
       <div class="menu-shell">
         <header class="menu-topbar" aria-label="Player stats">
-          <section class="menu-chip coin-chip">
+          <button class="menu-chip coin-chip" data-menu-page="shop" type="button" aria-label="Open store. Coin balance 0">
             <span class="chip-icon" aria-hidden="true">&#9670;</span>
             <strong id="menuCoinsValue">0</strong>
-          </section>
-          <section class="menu-chip energy-chip">
+          </button>
+          <button class="menu-chip energy-chip" data-menu-page="shop" type="button" aria-label="Open store. Energy 30 of 30">
             <span class="chip-icon energy-icon" aria-hidden="true">&#9889;</span>
-            <strong id="menuEnergyValue">8s</strong>
+            <span class="energy-copy">
+              <strong id="menuEnergyValue">30</strong>
+              <small id="menuEnergyTimer">FULL</small>
+            </span>
             <i><b></b></i>
-          </section>
+          </button>
           <div class="menu-topbar-actions">
             <button class="menu-icon-button" data-menu-page="leaderboard" type="button" aria-label="Leaderboard">&#9819;</button>
             <button class="menu-icon-button fullscreen-toggle-button" data-fullscreen-toggle type="button" aria-label="Enter full screen" aria-pressed="false"><span class="fullscreen-icon" aria-hidden="true">&#x26F6;</span></button>
@@ -164,11 +167,42 @@
           <section class="menu-page" data-page="shop" aria-labelledby="shopTitle">
             <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
             <h2 id="shopTitle">Store</h2>
-            <div class="menu-card-grid">
-              <article><strong>Extra Lives</strong><span class="soon-tag">Coming Soon</span></article>
-              <article><strong>Coin Pack</strong><span class="soon-tag">Coming Soon</span></article>
-              <article><strong>Card Skin</strong><span class="soon-tag">Coming Soon</span></article>
-              <article><strong>Streak Saver</strong><span class="soon-tag">Coming Soon</span></article>
+            <div class="store-wallet" aria-label="Wallet">
+              <span><i aria-hidden="true">&#9670;</i><b id="storeCoinsValue">0</b> Coins</span>
+              <span><i aria-hidden="true">&#9889;</i><b id="storeEnergyValue">30/30</b> Energy</span>
+            </div>
+            <p class="store-status" id="storeStatus" aria-live="polite">Energy refills automatically while you are away.</p>
+            <div class="store-grid">
+              <button class="store-item energy-store-item" id="buyEnergyButton" type="button">
+                <i aria-hidden="true">&#9889;</i>
+                <strong>+5 Energy</strong>
+                <span id="buyEnergyPrice">75 Coins</span>
+                <small>Keep playing now</small>
+              </button>
+              <button class="store-item ad-store-item" id="watchEnergyAdButton" type="button">
+                <i aria-hidden="true">&#9654;</i>
+                <strong>Free Energy</strong>
+                <span>Watch Ad &middot; +5</span>
+                <small id="energyAdsRemaining">4 left today</small>
+              </button>
+              <button class="store-item shield-store-item" id="buyShieldButton" type="button">
+                <i aria-hidden="true">&#9829;</i>
+                <strong>Bank Shield</strong>
+                <span id="buyShieldPrice">500 Coins</span>
+                <small>Save 25% when a run busts</small>
+              </button>
+              <button class="store-item ad-store-item" id="watchCoinAdButton" type="button">
+                <i aria-hidden="true">&#9670;</i>
+                <strong>Coin Drop</strong>
+                <span>Watch Ad &middot; +125</span>
+                <small id="coinAdsRemaining">3 left today</small>
+              </button>
+              <button class="store-item premium-store-item" id="buyCoinPackButton" type="button">
+                <i aria-hidden="true">&#9733;</i>
+                <strong>Coin Vault</strong>
+                <span>1,500 Coins &middot; $1.99</span>
+                <small>Google Play purchase</small>
+              </button>
             </div>
           </section>
 
@@ -196,7 +230,7 @@
           <section class="menu-page" data-page="pots" aria-hidden="true">
             <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
             <h2>Pick a Pot</h2>
-            <p class="menu-page-copy">Crunch cards for run cash, then bank it before you bust. Only banked cash fills the pot.</p>
+            <p class="menu-page-copy">Fresh runs use 5 Energy. Crunch for run cash, then bank it before you bust.</p>
             <div class="menu-level-map" id="levelMap"></div>
             <button class="ad-button shield-ad-button" id="shieldAdButton" type="button">
               <i aria-hidden="true">&#9654;</i>
@@ -232,6 +266,7 @@
           <p class="summary-copy" id="runEndCopy">Watch an ad to revive, or recover part of your lost cash into the pot.</p>
         </div>
         <div class="run-summary-rows">
+          <article class="summary-coins-row"><span>Coins earned</span><strong class="sum-coins" id="summaryCoins">+0</strong></article>
           <article><span>Banked this run</span><strong class="sum-good" id="summaryBanked">$0</strong></article>
           <article id="summaryShieldRow" hidden><span>Shield auto-banked</span><strong class="sum-good" id="summaryShield">$0</strong></article>
           <article id="summaryRecoveredRow" hidden><span>Recovered to pot</span><strong class="sum-good" id="summaryRecovered">$0</strong></article>
@@ -257,12 +292,33 @@
             <b aria-hidden="true">AD</b>
           </button>
         </div>
-        <button class="primary-button" id="restartButton" type="button">Play Again</button>
+        <button class="primary-button" id="restartButton" type="button">Play Again &middot; &#9889;5</button>
         <button class="secondary-button" id="returnToPotsButton" type="button">Return to Pots</button>
       </div>
     </section>
 
+    <section class="modal-screen energy-gate-screen" id="energyGateScreen" aria-labelledby="energyGateTitle" aria-hidden="true">
+      <div class="modal-card energy-gate-card">
+        <span class="energy-gate-icon" aria-hidden="true">&#9889;</span>
+        <p class="eyebrow">Out of Energy</p>
+        <h2 id="energyGateTitle">Need 5 Energy</h2>
+        <p id="energyGateCopy">Energy restores automatically. Refill now or come back when the timer finishes.</p>
+        <div class="energy-gate-meter">
+          <strong id="energyGateValue">0/30</strong>
+          <span id="energyGateTimer">Next in 12:00</span>
+        </div>
+        <button class="ad-button energy-gate-ad" id="energyGateAdButton" type="button">
+          <i aria-hidden="true">&#9654;</i>
+          <span>Watch Ad: +5 Energy</span>
+          <small id="energyGateAdRemaining">4 refills left today</small>
+          <b aria-hidden="true">AD</b>
+        </button>
+        <button class="primary-button energy-coin-button" id="energyGateCoinButton" type="button">Use 75 Coins</button>
+        <button class="secondary-button" id="energyGateCloseButton" type="button">Not Now</button>
+      </div>
+    </section>
+
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-    <script type="module" src="src/main.js?v=81"></script>
+    <script type="module" src="src/main.js?v=83"></script>
   </body>
 </html>

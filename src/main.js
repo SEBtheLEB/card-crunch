@@ -1,13 +1,13 @@
-import { createGame } from "./gameState.js?v=81";
-import { createUI } from "./ui.js?v=81";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=81";
-import { adManager } from "./ads.js?v=81";
-import { grantShieldToken, hasShieldToken } from "./save.js?v=81";
-import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=81";
-import { haptic } from "./haptics.js?v=81";
-import { bindInstantAction } from "./input.js?v=81";
-import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=81";
-import { installFullscreenControls } from "./fullscreen.js?v=81";
+import { createGame } from "./gameState.js?v=83";
+import { createUI } from "./ui.js?v=83";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=83";
+import { adManager } from "./ads.js?v=83";
+import { grantShieldToken, hasShieldToken } from "./save.js?v=83";
+import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=83";
+import { haptic } from "./haptics.js?v=83";
+import { bindInstantAction } from "./input.js?v=83";
+import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=83";
+import { installFullscreenControls } from "./fullscreen.js?v=83";
 
 const ui = createUI();
 const game = createGame(ui);
@@ -25,6 +25,14 @@ bindInstantAction(ui.elements.returnToPotsButton, game.returnToMap);
 bindInstantAction(ui.elements.reviveAdButton, game.onReviveAd);
 bindInstantAction(ui.elements.recoverAdButton, game.onRecoverAd);
 bindInstantAction(ui.elements.hintAdButton, game.onHintAd);
+bindInstantAction(ui.elements.buyEnergyButton, game.buyEnergyWithCoins);
+bindInstantAction(ui.elements.watchEnergyAdButton, game.onEnergyAd);
+bindInstantAction(ui.elements.buyShieldButton, game.buyShieldWithCoins);
+bindInstantAction(ui.elements.watchCoinAdButton, game.onCoinAd);
+bindInstantAction(ui.elements.buyCoinPackButton, game.buyCoinPack);
+bindInstantAction(ui.elements.energyGateAdButton, game.onEnergyAd);
+bindInstantAction(ui.elements.energyGateCoinButton, game.buyEnergyWithCoins);
+bindInstantAction(ui.elements.energyGateCloseButton, game.closeEnergyGate);
 bindInstantAction(ui.elements.playLeaderboardButton, async () => {
   const opened = await showPlayLeaderboard();
   if (!opened) ui.elements.playLeaderboardStatus.textContent = "Google Play Games connects in the Android release build.";
@@ -44,6 +52,9 @@ bindInstantAction(ui.elements.shieldAdButton, async () => {
 game.showMap();
 bindMenuNavigation();
 loadSettings();
+game.refreshEconomy();
+window.setInterval(game.refreshEconomy, 1000);
+window.addEventListener("focus", game.refreshEconomy);
 
 document.addEventListener(
   "touchmove",
@@ -129,6 +140,9 @@ function bindMenuNavigation() {
       "cardCrunchLevelPots",
       "cardCrunchRunSave",
       "cardCrunchCoins",
+      "cardCrunchEconomyV1",
+      "cardCrunchShieldToken",
+      "cardCrunchAdStats",
       "cardCrunchTotalCrunches"
     ].forEach((key) => localStorage.removeItem(key));
     window.location.reload();

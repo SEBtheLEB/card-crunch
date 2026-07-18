@@ -1,8 +1,9 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=81";
-import { isPotUnlocked } from "./progression.js?v=81";
-import { formatCompactNumber } from "./format.js?v=81";
-import { hasShieldToken } from "./save.js?v=81";
-import { bindInstantAction } from "./input.js?v=81";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=83";
+import { isPotUnlocked } from "./progression.js?v=83";
+import { formatCompactNumber } from "./format.js?v=83";
+import { hasShieldToken } from "./save.js?v=83";
+import { bindInstantAction } from "./input.js?v=83";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=83";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -41,6 +42,7 @@ export function createUI() {
     gameOverTitle: document.querySelector("#gameOverTitle"),
     runEndCopy: document.querySelector("#runEndCopy"),
     summaryBanked: document.querySelector("#summaryBanked"),
+    summaryCoins: document.querySelector("#summaryCoins"),
     summaryLost: document.querySelector("#summaryLost"),
     summaryLostRow: document.querySelector("#summaryLostRow"),
     summaryShield: document.querySelector("#summaryShield"),
@@ -60,7 +62,27 @@ export function createUI() {
     hamburgerButton: document.querySelector("#hamburgerButton"),
     shieldAdButton: document.querySelector("#shieldAdButton"),
     menuEnergyValue: document.querySelector("#menuEnergyValue"),
+    menuEnergyTimer: document.querySelector("#menuEnergyTimer"),
+    menuEnergyButton: document.querySelector(".energy-chip"),
     menuCoinsValue: document.querySelector("#menuCoinsValue"),
+    menuCoinsButton: document.querySelector(".coin-chip"),
+    storeCoinsValue: document.querySelector("#storeCoinsValue"),
+    storeEnergyValue: document.querySelector("#storeEnergyValue"),
+    storeStatus: document.querySelector("#storeStatus"),
+    buyEnergyButton: document.querySelector("#buyEnergyButton"),
+    watchEnergyAdButton: document.querySelector("#watchEnergyAdButton"),
+    buyShieldButton: document.querySelector("#buyShieldButton"),
+    watchCoinAdButton: document.querySelector("#watchCoinAdButton"),
+    buyCoinPackButton: document.querySelector("#buyCoinPackButton"),
+    energyAdsRemaining: document.querySelector("#energyAdsRemaining"),
+    coinAdsRemaining: document.querySelector("#coinAdsRemaining"),
+    energyGateScreen: document.querySelector("#energyGateScreen"),
+    energyGateValue: document.querySelector("#energyGateValue"),
+    energyGateTimer: document.querySelector("#energyGateTimer"),
+    energyGateAdButton: document.querySelector("#energyGateAdButton"),
+    energyGateAdRemaining: document.querySelector("#energyGateAdRemaining"),
+    energyGateCoinButton: document.querySelector("#energyGateCoinButton"),
+    energyGateCloseButton: document.querySelector("#energyGateCloseButton"),
     profileBestScore: document.querySelector("#profileBestScore"),
     leaderboardBestScore: document.querySelector("#leaderboardBestScore"),
     playLeaderboardButton: document.querySelector("#playLeaderboardButton"),
@@ -131,6 +153,7 @@ export function createUI() {
           <span>${locked ? "Locked" : hasSavedRun ? "Continue" : "Pot"} ${pot.id}</span>
           <strong>${locked ? "LOCK" : hasSavedRun ? "Saved" : pot.complete ? "Full" : formatCompactNumber(Math.max(0, pot.target - pot.progress))}</strong>
           <small>${locked ? "Clear prior pot" : pot.complete ? "Cleared" : `${Math.round(progress * 100)}% full`}</small>
+          ${!locked && !pot.complete ? `<em>${hasSavedRun ? "FREE RESUME" : "\u26A15 ENERGY"}</em>` : ""}
           <i><b style="width: ${progress * 100}%"></b></i>
         `;
         bindInstantAction(button, () => handlers.onLevelSelect(pot.id));
@@ -148,6 +171,7 @@ export function createUI() {
       elements.gameOverTitle.textContent = potComplete ? "Pot Filled!" : "Run Over";
       elements.runEndCopy.textContent = getRunEndCopy(summary, potComplete);
 
+      elements.summaryCoins.textContent = `+${formatCompactNumber(summary.coinsEarned ?? 0)}`;
       elements.summaryBanked.textContent = `$${formatCompactNumber(summary.banked)}`;
       elements.summaryLost.textContent = `-$${formatCompactNumber(summary.lost)}`;
       elements.summaryLostRow.hidden = summary.lost <= 0;
@@ -173,6 +197,18 @@ export function createUI() {
       elements.restartButton.hidden = potComplete;
 
       this.showGameOver(true);
+      window.setTimeout(() => popCounter(elements.summaryCoins, "gold"), 120);
+    },
+    showEnergyGate(show, snapshot = economy.getSnapshot()) {
+      elements.energyGateScreen.classList.toggle("is-visible", show);
+      elements.energyGateScreen.setAttribute("aria-hidden", String(!show));
+      if (!show) return;
+      renderEnergyGate(elements, snapshot);
+    },
+    setStoreStatus(message, tone = "neutral") {
+      if (!elements.storeStatus) return;
+      elements.storeStatus.textContent = message;
+      elements.storeStatus.dataset.tone = tone;
     },
     /* Rewarded offer chip shown after a bank deposit; expires quietly. */
     showBonusBankOffer(bonusAmount, onWatch) {
@@ -319,20 +355,74 @@ function showMenuPage(elements, pageName = "home") {
 }
 
 function renderMenuStats(elements, state) {
-  const coins = Number(localStorage.getItem("cardCrunchCoins") ?? 0);
+  const wallet = economy.getSnapshot();
+  const previousWallet = elements._menuWalletCache;
+  const coins = wallet.coins;
   const totalCrunches = Number(localStorage.getItem("cardCrunchTotalCrunches") ?? 0);
   const bestStreak = Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak ?? 0);
   const potsCleared = state.pots?.filter((pot) => pot.complete).length ?? 0;
 
-  if (elements.menuEnergyValue) elements.menuEnergyValue.textContent = String(state.turnSeconds - 2);
-  if (elements.menuCoinsValue) elements.menuCoinsValue.textContent = formatCompactNumber(state.bestScore ?? coins);
+  if (elements.menuEnergyValue) elements.menuEnergyValue.textContent = String(wallet.energy);
+  if (elements.menuEnergyTimer) elements.menuEnergyTimer.textContent = wallet.energy >= wallet.energyMax ? "FULL" : formatEnergyTime(wallet.nextEnergyInMs);
+  if (elements.menuEnergyButton) {
+    elements.menuEnergyButton.style.setProperty("--energy-progress", wallet.energyProgress.toFixed(3));
+    elements.menuEnergyButton.setAttribute("aria-label", `Open store. Energy ${wallet.energy} of ${wallet.energyMax}${wallet.energy < wallet.energyMax ? `. Next energy in ${formatEnergyTime(wallet.nextEnergyInMs)}` : ""}`);
+  }
+  if (elements.menuCoinsValue) elements.menuCoinsValue.textContent = formatCompactNumber(coins);
+  if (elements.menuCoinsButton) elements.menuCoinsButton.setAttribute("aria-label", `Open store. Coin balance ${coins}`);
+  if (elements.storeCoinsValue) elements.storeCoinsValue.textContent = formatCompactNumber(coins);
+  if (elements.storeEnergyValue) elements.storeEnergyValue.textContent = `${wallet.energy}/${wallet.energyMax}`;
+  if (elements.buyEnergyButton) elements.buyEnergyButton.disabled = !wallet.canBuyEnergy;
+  if (elements.watchEnergyAdButton) elements.watchEnergyAdButton.disabled = !wallet.canWatchEnergyAd;
+  if (elements.watchCoinAdButton) elements.watchCoinAdButton.disabled = !wallet.canWatchCoinAd;
+  if (elements.energyAdsRemaining) {
+    const refillRoom = wallet.energy <= wallet.energyMax - ECONOMY_CONFIG.energyAdReward;
+    elements.energyAdsRemaining.textContent = wallet.energy >= wallet.energyMax
+      ? "Energy full"
+      : refillRoom ? `${wallet.energyAdsRemaining} left today` : "Use energy first";
+  }
+  if (elements.coinAdsRemaining) elements.coinAdsRemaining.textContent = `${wallet.coinAdsRemaining} left today`;
+  if (elements.buyShieldButton) {
+    const armed = hasShieldToken();
+    elements.buyShieldButton.disabled = armed || coins < ECONOMY_CONFIG.shieldCoinCost;
+    const label = elements.buyShieldButton.querySelector("small");
+    if (label) label.textContent = armed ? "Already armed for next run" : "Save 25% when a run busts";
+  }
   if (elements.profileBestScore) elements.profileBestScore.textContent = formatCompactNumber(state.bestScore ?? 0);
   if (elements.leaderboardBestScore) elements.leaderboardBestScore.textContent = formatCompactNumber(state.bestScore ?? 0);
   if (elements.profileStreak) elements.profileStreak.textContent = String(bestStreak);
   if (elements.profileCrunches) elements.profileCrunches.textContent = `${formatCompactNumber(totalCrunches)} crunches`;
   if (elements.profilePotsCleared) elements.profilePotsCleared.textContent = String(potsCleared);
   if (elements.profileCoins) elements.profileCoins.textContent = formatCompactNumber(coins);
+  if (previousWallet) {
+    if (coins > previousWallet.coins) popCounter(elements.menuCoinsValue, "gold");
+    if (wallet.energy > previousWallet.energy) popCounter(elements.menuEnergyValue, "blue");
+  }
+  elements._menuWalletCache = { coins, energy: wallet.energy };
   refreshShieldOffer(elements);
+}
+
+function renderEnergyGate(elements, snapshot) {
+  elements.energyGateValue.textContent = `${snapshot.energy}/${snapshot.energyMax}`;
+  elements.energyGateTimer.textContent = snapshot.energy >= snapshot.energyMax ? "Energy full" : `Next in ${formatEnergyTime(snapshot.nextEnergyInMs)}`;
+  elements.energyGateAdButton.disabled = !snapshot.canWatchEnergyAd;
+  const refillRoom = snapshot.energy <= snapshot.energyMax - ECONOMY_CONFIG.energyAdReward;
+  elements.energyGateAdRemaining.textContent = snapshot.canWatchEnergyAd
+    ? `${snapshot.energyAdsRemaining} refills left today`
+    : snapshot.energy >= snapshot.energyMax
+      ? "Energy full"
+      : refillRoom ? "No ad refills left today" : "Use energy first";
+  elements.energyGateCoinButton.disabled = !snapshot.canBuyEnergy;
+  elements.energyGateCoinButton.textContent = snapshot.coins >= ECONOMY_CONFIG.energyCoinCost
+    ? `Use ${ECONOMY_CONFIG.energyCoinCost} Coins`
+    : `Need ${ECONOMY_CONFIG.energyCoinCost} Coins`;
+}
+
+function formatEnergyTime(milliseconds) {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 function refreshShieldOffer(elements) {

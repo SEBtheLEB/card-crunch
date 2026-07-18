@@ -1,19 +1,21 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=81";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=81";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=81";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=81";
-import { ensurePlayableHand } from "./handSafety.js?v=81";
-import { clearRunSave, consumeShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=81";
-import { formatCompactNumber } from "./format.js?v=81";
-import { adManager } from "./ads.js?v=81";
-import { submitBestScore } from "./playGames.js?v=81";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=83";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=83";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=83";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=83";
+import { ensurePlayableHand } from "./handSafety.js?v=83";
+import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=83";
+import { formatCompactNumber } from "./format.js?v=83";
+import { adManager } from "./ads.js?v=83";
+import { submitBestScore } from "./playGames.js?v=83";
+import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=83";
+import { purchaseManager } from "./purchases.js?v=83";
 import {
   animateBust,
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=81";
+} from "./animations.js?v=83";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -24,6 +26,8 @@ const BONUS_BANK_RATE = 0.25;
 
 export function createGame(ui) {
   let pendingRunSave = loadRunSave();
+  let pendingEnergyStart = null;
+  let economyActionPending = false;
   const state = {
     deck: [],
     discard: [],
@@ -57,6 +61,9 @@ export function createGame(ui) {
     lostUnbankedMoney: 0,
     shieldSaved: 0,
     recoveredAmount: 0,
+    runGrossCash: 0,
+    coinsEarnedThisRun: 0,
+    coinRewardGranted: 0,
     safeBankShieldActive: false,
     // Rewarded ad locks (one use per run / per deposit)
     reviveAdUsedThisRun: false,
@@ -85,7 +92,21 @@ export function createGame(ui) {
     if (pendingRunSave?.activePotId === levelId && restoreRun(pendingRunSave, pot)) return;
     pendingRunSave = null;
     clearRunSave();
+    requestNewRun(pot);
+  }
+
+  function requestNewRun(pot = null) {
+    if (!economy.spendRunEnergy()) {
+      pendingEnergyStart = { pot };
+      ui.renderMenuStats(state);
+      ui.showEnergyGate(true, economy.getSnapshot());
+      return false;
+    }
+    pendingEnergyStart = null;
+    ui.showEnergyGate(false);
+    ui.renderMenuStats(state);
     start(pot);
+    return true;
   }
 
   function start(pot = state.pots.find((item) => !item.complete) ?? state.pots[0]) {
@@ -113,6 +134,9 @@ export function createGame(ui) {
     state.lostUnbankedMoney = 0;
     state.shieldSaved = 0;
     state.recoveredAmount = 0;
+    state.runGrossCash = 0;
+    state.coinsEarnedThisRun = 0;
+    state.coinRewardGranted = 0;
     state.reviveAdUsedThisRun = false;
     state.recoveryAdUsedThisRun = false;
     state.bonusBankAdUsedForLastDeposit = true;
@@ -136,7 +160,7 @@ export function createGame(ui) {
   function startEndless() {
     pendingRunSave = null;
     clearRunSave();
-    start(null);
+    requestNewRun(null);
   }
 
   function onCardSelect(handIndex) {
@@ -231,6 +255,7 @@ export function createGame(ui) {
 
     // Money stays as unbanked Run Money - the pot only fills when banking.
     state.score += crunch.total;
+    state.runGrossCash += crunch.total;
     localStorage.setItem("cardCrunchTotalCrunches", String(Number(localStorage.getItem("cardCrunchTotalCrunches") ?? 0) + selectedCards.length));
     state.bestScore = Math.max(state.bestScore, state.score);
     localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
@@ -393,7 +418,21 @@ export function createGame(ui) {
     ui.setMessage("Pot Filled!", "good");
     playSfx("level_clear");
     await animateTargetClear(ui.elements.shell);
-    returnToMap();
+    finishClearedRun();
+  }
+
+  function finishClearedRun() {
+    stopTimer();
+    state.locked = true;
+    state.status = "runEnded";
+    state.score = 0;
+    state.lostUnbankedMoney = 0;
+    pendingRunSave = null;
+    clearRunSave();
+    submitBestScore(state.bestScore);
+    grantRunCoins({ potCleared: true });
+    ui.render(state, handlers);
+    showRunSummary();
   }
 
   /* Out of lives: unbanked Run Money is now at risk. The shield (if armed)
@@ -422,8 +461,23 @@ export function createGame(ui) {
     }
 
     state.lostUnbankedMoney = state.score;
+    grantRunCoins({ potCleared: Boolean(state.activePot?.complete) });
     ui.render(state, handlers);
     showRunSummary();
+  }
+
+  function grantRunCoins({ potCleared = false } = {}) {
+    const reward = calculateRunCoinReward({
+      grossCash: state.runGrossCash,
+      bestStreak: state.bestRunStreak,
+      potCleared
+    });
+    const delta = Math.max(0, reward.total - state.coinRewardGranted);
+    if (delta > 0) economy.addCoins(delta);
+    state.coinRewardGranted += delta;
+    state.coinsEarnedThisRun = reward.total;
+    ui.renderMenuStats(state);
+    return reward;
   }
 
   function showRunSummary() {
@@ -434,6 +488,7 @@ export function createGame(ui) {
       recovered: state.recoveredAmount,
       bestMultiplier: state.bestRunMultiplier,
       bestStreak: state.bestRunStreak,
+      coinsEarned: state.coinsEarnedThisRun,
       pot: state.activePot,
       canRevive:
         !state.reviveAdUsedThisRun &&
@@ -489,6 +544,7 @@ export function createGame(ui) {
     state.score = 0;
     playSfx("bank");
     savePots(state.pots);
+    if (state.activePot.complete) grantRunCoins({ potCleared: true });
     showRunSummary();
   }
 
@@ -512,7 +568,7 @@ export function createGame(ui) {
       returnToMap();
       return;
     }
-    start(pot);
+    requestNewRun(pot);
   }
 
   function returnToMap() {
@@ -531,6 +587,104 @@ export function createGame(ui) {
     ui.showGameOver(false);
     ui.showStart(true);
     ui.showMap(false);
+  }
+
+  async function onEnergyAd() {
+    if (economyActionPending || !economy.canClaimEnergyAd() || !adManager.canShowRewardedAd()) return;
+    economyActionPending = true;
+    ui.setStoreStatus("Loading rewarded energy...", "neutral");
+    const earned = await adManager.showRewardedAd("energyRefill");
+    economyActionPending = false;
+    if (!earned) {
+      ui.setStoreStatus("Energy reward was not claimed.", "bad");
+      refreshEconomy();
+      return;
+    }
+    const amount = economy.claimEnergyAd();
+    playSfx("score_arrive");
+    ui.setStoreStatus(`+${amount} energy added.`, "good");
+    refreshEconomy();
+    retryPendingEnergyStart();
+  }
+
+  function buyEnergyWithCoins() {
+    if (economyActionPending) return;
+    if (!economy.buyEnergyRefill()) {
+      ui.setStoreStatus("You need 75 coins, or your energy is already full.", "bad");
+      refreshEconomy();
+      return;
+    }
+    playSfx("bank");
+    ui.setStoreStatus("+5 energy purchased.", "good");
+    refreshEconomy();
+    retryPendingEnergyStart();
+  }
+
+  async function onCoinAd() {
+    if (economyActionPending || !economy.canClaimCoinAd() || !adManager.canShowRewardedAd()) return;
+    economyActionPending = true;
+    ui.setStoreStatus("Loading coin drop...", "neutral");
+    const earned = await adManager.showRewardedAd("coinDrop");
+    economyActionPending = false;
+    if (!earned) {
+      ui.setStoreStatus("Coin reward was not claimed.", "bad");
+      refreshEconomy();
+      return;
+    }
+    const amount = economy.claimCoinAd();
+    playSfx("score_arrive");
+    ui.setStoreStatus(`+${formatCompactNumber(amount)} coins added.`, "good");
+    refreshEconomy();
+  }
+
+  function buyShieldWithCoins() {
+    if (economyActionPending || hasShieldToken()) return;
+    if (!economy.spendCoins(ECONOMY_CONFIG.shieldCoinCost)) {
+      ui.setStoreStatus(`You need ${ECONOMY_CONFIG.shieldCoinCost} coins.`, "bad");
+      return;
+    }
+    grantShieldToken();
+    playSfx("bank");
+    ui.setStoreStatus("Safe Bank Shield armed for your next Pot run.", "good");
+    refreshEconomy();
+  }
+
+  async function buyCoinPack() {
+    if (economyActionPending) return;
+    economyActionPending = true;
+    ui.setStoreStatus("Opening Google Play purchase...", "neutral");
+    const result = await purchaseManager.buy(ECONOMY_CONFIG.coinPackProductId);
+    economyActionPending = false;
+    if (!result.success) {
+      ui.setStoreStatus("Coin Vault activates in the signed Android Google Play build.", "neutral");
+      return;
+    }
+    economy.addCoins(ECONOMY_CONFIG.coinPackAmount);
+    playSfx("score_arrive");
+    ui.setStoreStatus(`+${formatCompactNumber(ECONOMY_CONFIG.coinPackAmount)} coins purchased.`, "good");
+    refreshEconomy();
+  }
+
+  function closeEnergyGate() {
+    pendingEnergyStart = null;
+    ui.showEnergyGate(false);
+  }
+
+  function retryPendingEnergyStart() {
+    if (!pendingEnergyStart) return;
+    if (economy.getSnapshot().energy < ECONOMY_CONFIG.energyPerRun) {
+      ui.showEnergyGate(true, economy.getSnapshot());
+      return;
+    }
+    const { pot } = pendingEnergyStart;
+    requestNewRun(pot);
+  }
+
+  function refreshEconomy() {
+    ui.renderMenuStats(state);
+    if (ui.elements.energyGateScreen?.classList.contains("is-visible")) {
+      ui.showEnergyGate(true, economy.getSnapshot());
+    }
   }
 
   /* Exit Pot mid-run: keep the run resumable instead of forfeiting cash. */
@@ -668,6 +822,9 @@ export function createGame(ui) {
     state.lostUnbankedMoney = 0;
     state.shieldSaved = 0;
     state.recoveredAmount = 0;
+    state.runGrossCash = Math.max(0, Number(save.runGrossCash) || state.score);
+    state.coinsEarnedThisRun = Math.max(0, Number(save.coinsEarnedThisRun) || 0);
+    state.coinRewardGranted = Math.max(0, Number(save.coinRewardGranted) || 0);
     state.runStartedAt = Date.now();
     state.locked = false;
     state.status = "playing";
@@ -712,7 +869,14 @@ export function createGame(ui) {
     bankRun,
     onReviveAd,
     onRecoverAd,
-    onHintAd
+    onHintAd,
+    onEnergyAd,
+    onCoinAd,
+    buyEnergyWithCoins,
+    buyShieldWithCoins,
+    buyCoinPack,
+    closeEnergyGate,
+    refreshEconomy
   };
 }
 

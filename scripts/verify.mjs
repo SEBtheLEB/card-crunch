@@ -10,6 +10,8 @@ const required = [
   "src/input.js",
   "src/playGames.js",
   "src/fullscreen.js",
+  "src/economy.js",
+  "src/purchases.js",
   "styles/main.css",
   "capacitor.config.json"
 ];
@@ -39,6 +41,24 @@ if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButt
 if ((html.match(/data-fullscreen-toggle/g) ?? []).length !== 2) {
   throw new Error("Menu and gameplay fullscreen controls are missing");
 }
+if (!html.includes("summaryCoins") || !html.includes("energyGateScreen") || !html.includes("buyEnergyButton")) {
+  throw new Error("Economy UI hooks are missing");
+}
+
+const economyModule = await import(`../src/economy.js?verify=${Date.now()}`);
+const lowReward = economyModule.calculateRunCoinReward({ grossCash: 100_000, bestStreak: 2 });
+const highReward = economyModule.calculateRunCoinReward({ grossCash: 1_000_000, bestStreak: 8, potCleared: true });
+if (lowReward.total <= 0 || highReward.total <= lowReward.total) {
+  throw new Error("Run coin rewards do not scale with performance");
+}
+const regen = economyModule.calculateRegeneratedEnergy({
+  energy: 10,
+  updatedAt: 1_000,
+  now: 1_000 + economyModule.ECONOMY_CONFIG.energyRegenMs * 2
+});
+if (regen.energy !== 12 || economyModule.ECONOMY_CONFIG.energyPerRun !== 5 || economyModule.ECONOMY_CONFIG.energyMax !== 30) {
+  throw new Error("Energy regeneration or run cost is incorrect");
+}
 
 const [cutsceneSource, css] = await Promise.all([
   readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
@@ -57,4 +77,4 @@ if (!fullscreenSource.includes("requestFullscreen") || !fullscreenSource.include
   throw new Error("Fullscreen API hooks are missing");
 }
 
-console.log(`Verified ${results.length} scoring cases, compact values, fullscreen controls, release UI hooks, and card-shard VFX.`);
+console.log(`Verified ${results.length} scoring cases, economy rewards, energy regeneration, fullscreen controls, release UI hooks, and card-shard VFX.`);
