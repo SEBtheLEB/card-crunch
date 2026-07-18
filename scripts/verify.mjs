@@ -91,10 +91,10 @@ const [cutsceneSource, themeSource, cardSkinSource, cardGestureSource, gameState
 const mainSource = await readFile(resolve(root, "src/main.js"), "utf8");
 const tutorialSource = await readFile(resolve(root, "src/tutorial.js"), "utf8");
 const audioSource = await readFile(resolve(root, "src/audio.js"), "utf8");
-if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createPixelShardClip") || !css.includes("cutin-card-shard")) {
+if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createFractureClipPath") || !css.includes("cutin-card-shard")) {
   throw new Error("Crunch Bank card-shard animation hooks are missing");
 }
-if (!cutsceneSource.includes("registerShardBankContact") || !cutsceneSource.includes("rowReleaseDelays") || !css.includes("cutinCardShardVacuum")) {
+if (!cutsceneSource.includes("registerShardBankContact") || !cutsceneSource.includes("maxReleaseDelay") || !css.includes("cutinCardShardVacuum")) {
   throw new Error("Crunch Bank vacuum sequencing or shard contact hooks are missing");
 }
 if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSource.includes("data-cutin-card-id") || !css.includes("cutin-shared-card-flight")) {
@@ -102,6 +102,12 @@ if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSourc
 }
 if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("createCardFractureMap") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("cutin-live-card") || !css.includes("cutin-fracture-map") || !css.includes("cutin-card-shard.is-vacuuming")) {
   throw new Error("Three-hit interactive Crunch damage sequence is missing");
+}
+if (!cutsceneSource.includes("createFracturePattern") || !cutsceneSource.includes("createSeededRandom") || !cutsceneSource.includes("pointOnCardPerimeter") || !cutsceneSource.includes("fracturePatterns = new WeakMap")) {
+  throw new Error("Seeded edge-entry fracture generation is missing");
+}
+if (!cutsceneSource.includes("stageOne") || !cutsceneSource.includes("stageTwo") || !cutsceneSource.includes("pattern.fragments") || !css.includes("fracture-stage-1") || !css.includes("fracture-stage-2")) {
+  throw new Error("Cumulative fracture stages or matching final fragments are missing");
 }
 if (!audioSource.includes("playCrunchShardImpact") || !audioSource.includes("SHARD_IMPACT_MIN_INTERVAL") || !audioSource.includes("crunch_vacuum") || !audioSource.includes("crunch_hit_3")) {
   throw new Error("Crunch Bank impact mixing or vacuum audio is missing");
