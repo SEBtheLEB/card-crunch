@@ -29,6 +29,7 @@ const CARD_SHARD_CONFIG = {
   cardDelayStep: 18,
   intakeSparks: 10
 };
+const SHARD_IMPACT_BUCKET_MS = 38;
 const CRUNCH_DEBRIS_CONFIG = {
   maxParticles: 320,
   devicePixelRatioCap: 1.35,
@@ -985,6 +986,7 @@ function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
   const shards = [];
   const sparks = [];
   const seams = [];
+  const impacts = [];
   const fragment = document.createDocumentFragment();
   const totalShardCount = measurements.length * grid.rows * grid.columns;
   let latestArrival = 0;
@@ -1077,7 +1079,8 @@ function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
         shard.style.setProperty("--shard-rotation-mid", `${rotation * .72}deg`);
         shard.style.setProperty("--shard-rotation-rest", `${rotation * .26}deg`);
         shard.style.setProperty("--shard-rotation", `${rotation}deg`);
-        registerShardBankContact(shard, bankEl, {
+        impacts.push({
+          arrivalAt,
           progress: (cardIndex * grid.rows * grid.columns + shardIndex + 1) / totalShardCount,
           strength: row === 0 ? .85 : 1
         });
@@ -1116,6 +1119,8 @@ function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
     seams,
     grid,
     latestArrival,
+    impactSchedule: createShardImpactSchedule(impacts),
+    impactTimers: [],
     totalDuration: Math.max(getCardFeedDuration(measurements.length, grid), latestArrival + 90),
     active: false
   };
@@ -1185,6 +1190,7 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
   prepared.sparks.forEach((spark) => spark.classList.add("is-active"));
   bankEl.classList.add("bank-feeding");
   playGameSfx("crunch_vacuum");
+  schedulePreparedShardImpacts(prepared);
   await waitMaybe(advance, prepared.totalDuration);
   discardPreparedShardSet(prepared);
 }
@@ -1195,6 +1201,8 @@ function discardPreparedCardShards(card) {
 }
 
 function discardPreparedShardSet(prepared) {
+  prepared.impactTimers?.forEach((timerId) => window.clearTimeout(timerId));
+  prepared.impactTimers = [];
   prepared.nodes.forEach((node) => node.remove());
   prepared.cards.forEach((card) => {
     preparedShardSets.delete(card);
@@ -1204,13 +1212,34 @@ function discardPreparedShardSet(prepared) {
   prepared.bankEl?.classList.remove("bank-feeding");
 }
 
-function registerShardBankContact(shard, bankEl, impact) {
-  shard.addEventListener("animationend", (event) => {
-    if (event.animationName !== "cutinCardShardVacuum" || !shard.isConnected || !bankEl?.isConnected) return;
-    // Every path is calculated to terminate inside the intake. Avoiding a
-    // geometry read here prevents a forced layout for every arriving shard.
+function createShardImpactSchedule(impacts) {
+  const buckets = new Map();
+  impacts.forEach(({ arrivalAt, progress, strength }) => {
+    const bucketAt = Math.ceil(arrivalAt / SHARD_IMPACT_BUCKET_MS) * SHARD_IMPACT_BUCKET_MS;
+    const bucket = buckets.get(bucketAt) ?? { arrivalAt: bucketAt, progress: 0, strength: 0, count: 0 };
+    bucket.progress += progress;
+    bucket.strength += strength;
+    bucket.count += 1;
+    buckets.set(bucketAt, bucket);
+  });
+
+  return [...buckets.values()]
+    .sort((a, b) => a.arrivalAt - b.arrivalAt)
+    .map((bucket) => ({
+      arrivalAt: bucket.arrivalAt,
+      impact: {
+        progress: bucket.progress / bucket.count,
+        strength: Math.min(4, bucket.strength)
+      }
+    }));
+}
+
+function schedulePreparedShardImpacts(prepared) {
+  prepared.impactTimers?.forEach((timerId) => window.clearTimeout(timerId));
+  prepared.impactTimers = prepared.impactSchedule.map(({ arrivalAt, impact }) => window.setTimeout(() => {
+    if (!prepared.active || !prepared.bankEl?.isConnected) return;
     playCrunchShardImpact(impact);
-  }, { once: true });
+  }, arrivalAt));
 }
 
 function createPixelShardClip(column, row, variant, columns, rows) {

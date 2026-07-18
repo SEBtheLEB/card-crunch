@@ -95,7 +95,7 @@ const audioSource = await readFile(resolve(root, "src/audio.js"), "utf8");
 if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createPixelShardClip") || !css.includes("cutin-card-shard")) {
   throw new Error("Crunch Bank card-shard animation hooks are missing");
 }
-if (!cutsceneSource.includes("registerShardBankContact") || !cutsceneSource.includes("rowReleaseDelays") || !css.includes("cutinCardShardVacuum")) {
+if (!cutsceneSource.includes("createShardImpactSchedule") || !cutsceneSource.includes("schedulePreparedShardImpacts") || !cutsceneSource.includes("rowReleaseDelays") || !css.includes("cutinCardShardVacuum")) {
   throw new Error("Crunch Bank vacuum sequencing or shard contact hooks are missing");
 }
 if (!cutsceneSource.includes("is-consumed-after-shatter") || !css.includes(".cutin-live-card.is-consumed-after-shatter")) {
@@ -114,11 +114,14 @@ if (!cutsceneSource.includes("getShardGrid") || !cutsceneSource.includes("const 
   throw new Error("Adaptive multi-card shard preparation is missing");
 }
 const shardContactSource = cutsceneSource.slice(
-  cutsceneSource.indexOf("function registerShardBankContact"),
+  cutsceneSource.indexOf("function createShardImpactSchedule"),
   cutsceneSource.indexOf("function createPixelShardClip")
 );
 if (shardContactSource.includes("getBoundingClientRect")) {
   throw new Error("Shard bank impacts must not force layout reads");
+}
+if (shardContactSource.includes("animationend")) {
+  throw new Error("Shard bank audio must not depend on unreliable animationend events");
 }
 if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSource.includes("data-cutin-card-id") || !css.includes("cutin-shared-card-flight")) {
   throw new Error("Shared card-to-cutin transitions are missing");
