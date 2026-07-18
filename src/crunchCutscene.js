@@ -857,11 +857,19 @@ function prepareCutinCardShards(cardElements, bankEl) {
   const nodes = [];
   const shards = [];
   const sparks = [];
+  const seams = [];
   const fragment = document.createDocumentFragment();
   const totalShardCount = measurements.length * CARD_SHARD_CONFIG.rows * CARD_SHARD_CONFIG.columns;
   let latestArrival = 0;
 
   measurements.forEach(({ card, rect }, cardIndex) => {
+    const seam = createPrecutSeamOverlay(card, rect);
+    if (seam) {
+      seams.push(seam);
+      nodes.push(seam);
+      fragment.appendChild(seam);
+    }
+
     for (let row = 0; row < CARD_SHARD_CONFIG.rows; row += 1) {
       for (let column = 0; column < CARD_SHARD_CONFIG.columns; column += 1) {
         const shardIndex = row * CARD_SHARD_CONFIG.columns + column;
@@ -963,12 +971,41 @@ function prepareCutinCardShards(cardElements, bankEl) {
     nodes,
     shards,
     sparks,
+    seams,
     latestArrival,
     totalDuration: Math.max(getCardFeedDuration(measurements.length), latestArrival + 90),
     active: false
   };
   prepared.cards.forEach((card) => preparedShardSets.set(card, prepared));
   return prepared;
+}
+
+function createPrecutSeamOverlay(card, rect) {
+  const fractureMap = card.querySelector(".cutin-fracture-map");
+  if (!fractureMap) return null;
+
+  const seam = fractureMap.cloneNode(true);
+  seam.className = "precut-seam-overlay";
+  seam.setAttribute("aria-hidden", "true");
+  seam.style.left = `${rect.left}px`;
+  seam.style.top = `${rect.top}px`;
+  seam.style.width = `${rect.width}px`;
+  seam.style.height = `${rect.height}px`;
+  seam.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
+
+  let nodeIndex = 0;
+  for (let row = 1; row < CARD_SHARD_CONFIG.rows; row += 1) {
+    for (let column = 1; column < CARD_SHARD_CONFIG.columns; column += 1) {
+      const node = document.createElement("i");
+      node.className = "precut-fracture-node";
+      node.style.left = `${column / CARD_SHARD_CONFIG.columns * 100}%`;
+      node.style.top = `${row / CARD_SHARD_CONFIG.rows * 100}%`;
+      node.style.setProperty("--node-delay", `${nodeIndex * 14}ms`);
+      seam.appendChild(node);
+      nodeIndex += 1;
+    }
+  }
+  return seam;
 }
 
 function showPreparedCardAssembly(prepared, hit) {
@@ -979,6 +1016,10 @@ function showPreparedCardAssembly(prepared, hit) {
     shard.classList.toggle("is-precut-light", hit === 1);
     shard.classList.toggle("is-precut-heavy", hit >= 2);
     shard.dataset.crunchDamage = String(hit);
+  });
+  prepared.seams.forEach((seam) => {
+    seam.classList.toggle("is-growing", hit >= 2);
+    seam.classList.toggle("is-break-ready", hit >= 3);
   });
 }
 
@@ -997,6 +1038,7 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
     shard.removeAttribute("data-crunch-damage");
     shard.classList.add("is-vacuuming");
   });
+  prepared.seams.forEach((seam) => seam.remove());
   prepared.sparks.forEach((spark) => spark.classList.add("is-active"));
   bankEl.classList.add("bank-feeding");
   playGameSfx("crunch_vacuum");

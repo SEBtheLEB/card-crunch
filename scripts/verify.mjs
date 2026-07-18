@@ -103,6 +103,9 @@ if (!cutsceneSource.includes("is-consumed-after-shatter") || !css.includes(".cut
 if (!cutsceneSource.includes("showPreparedCardAssembly") || !cutsceneSource.includes("is-precut-piece") || !css.includes("precutCardHitThree")) {
   throw new Error("Preassembled shard damage states are missing");
 }
+if (!cutsceneSource.includes("createPrecutSeamOverlay") || !css.includes("precutFractureNodeGrow") || !css.includes("precutCrackConnect")) {
+  throw new Error("Second-hit fracture growth and connection effects are missing");
+}
 if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSource.includes("data-cutin-card-id") || !css.includes("cutin-shared-card-flight")) {
   throw new Error("Shared card-to-cutin transitions are missing");
 }
