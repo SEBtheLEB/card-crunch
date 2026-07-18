@@ -7,6 +7,7 @@ import {
 import { playGameSfx } from "./audio.js?v=90";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const RESOLVE_HANDOFF_DELAY = 220;
 
 function createSequenceAdvanceController() {
   const waiters = new Set();
@@ -179,8 +180,7 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
       burstAround(handCard, 14, particleType);
       matchedCards.forEach((card) => burstAround(card, 14, particleType));
       if (entry.matchType === "add" || entry.matchType === "subtract") drawComboStreak(handCard, matchedCards);
-      await advance.wait(560);
-      await popStoredLabel(handCard, `+${entry.basePoints} ${getShortMatchLabel(entry)}`, particleType, advance);
+      await advance.wait(RESOLVE_HANDOFF_DELAY);
       await onEntryResolved?.(entry, i, {
         sourceCards: [
           ...entry.matchedCards.map((card, index) => ({ card, element: matchedCards[index] })),
@@ -448,10 +448,4 @@ function getCombinedRect(elements) {
   const right = Math.max(...rects.map((rect) => rect.right));
   const bottom = Math.max(...rects.map((rect) => rect.bottom));
   return { left, top, width: right - left, height: bottom - top };
-}
-
-function getShortMatchLabel(entry) {
-  if (entry.matchType === "add") return "SUM";
-  if (entry.matchType === "subtract") return "MINUS";
-  return entry.label;
 }

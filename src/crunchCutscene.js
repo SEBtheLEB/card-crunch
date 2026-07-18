@@ -261,6 +261,9 @@ export async function playCrunchEntryExplanation({ entry, tier = "normal", bank 
   if (!entry) return;
 
   const overlay = createOverlay(tier);
+  if (sourceCards.some(({ element }) => element?.isConnected)) {
+    overlay.classList.add("is-shared-handoff");
+  }
   const advance = createAdvanceController(overlay);
   document.body.appendChild(overlay);
   let restoreSharedCards = () => {};
@@ -788,15 +791,7 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
     flight.removeAttribute("aria-label");
     flight.setAttribute("aria-hidden", "true");
     flight.disabled = true;
-    flight.classList.remove(
-      "card-selected",
-      "card-match-glow",
-      "resolve-reference-card",
-      "resolve-selected-card",
-      "is-vibrating",
-      "is-hand-selected",
-      "is-staged-card"
-    );
+    flight.classList.remove("is-vibrating", "is-hand-selected", "is-staged-card");
     flight.classList.add("cutin-shared-card-flight");
     flight.style.left = `${targetRect.left}px`;
     flight.style.top = `${targetRect.top}px`;
@@ -852,6 +847,7 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
     flight.style.transform = "translate3d(0, 0, 0) scale(1)";
     flight.style.filter = "brightness(1.06) drop-shadow(0 0 14px rgba(255, 207, 72, .5))";
     animation.cancel();
+    flight.classList.remove("card-selected", "card-match-glow", "resolve-reference-card", "resolve-selected-card");
     flight.classList.add("cutin-live-card");
     target.classList.add("cutin-layout-proxy");
   });

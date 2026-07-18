@@ -79,8 +79,9 @@ if (regen.energy !== 12 || economyModule.ECONOMY_CONFIG.energyPerRun !== 5 || ec
   throw new Error("Energy regeneration or run cost is incorrect");
 }
 
-const [cutsceneSource, themeSource, cardSkinSource, cardGestureSource, gameStateSource, uiSource, css] = await Promise.all([
+const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardGestureSource, gameStateSource, uiSource, css] = await Promise.all([
   readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
+  readFile(resolve(root, "src/animations.js"), "utf8"),
   readFile(resolve(root, "src/themes.js"), "utf8"),
   readFile(resolve(root, "src/cardSkins.js"), "utf8"),
   readFile(resolve(root, "src/cardGestures.js"), "utf8"),
@@ -124,6 +125,16 @@ if (shardContactSource.includes("getBoundingClientRect")) {
 }
 if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSource.includes("data-cutin-card-id") || !css.includes("cutin-shared-card-flight")) {
   throw new Error("Shared card-to-cutin transitions are missing");
+}
+const selectionResolveSource = animationsSource.slice(
+  animationsSource.indexOf("export async function animateSelectionResolve"),
+  animationsSource.indexOf("function applyResolveSpotlight")
+);
+if (!selectionResolveSource.includes("RESOLVE_HANDOFF_DELAY") || selectionResolveSource.includes("popStoredLabel")) {
+  throw new Error("Crunch highlights must hand directly into the cut-in without a transient label");
+}
+if (!cutsceneSource.includes("is-shared-handoff") || !css.includes("cutsceneBackdropIn")) {
+  throw new Error("Blink-free shared-card cut-in backdrop is missing");
 }
 if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("--shard-burst-x") || !css.includes("--shard-rest-x") || !css.includes("cutin-card-shard.is-vacuuming")) {
   throw new Error("Three-hit interactive Crunch damage sequence is missing");

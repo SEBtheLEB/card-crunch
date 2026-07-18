@@ -321,7 +321,6 @@ export function createGame(ui) {
         resolution: crunch.resolution,
         fail: true,
         onEntryResolved: async (entry, _index, transition) => {
-          ui.setMessage(entry.cutinLabel ?? entry.label, "good");
           await playCrunchEntryExplanation({
             entry: createCutsceneEntry(entry),
             tier: "normal",
@@ -350,7 +349,6 @@ export function createGame(ui) {
         resolution: crunch.resolution,
         fail: false,
         onEntryResolved: async (entry, index, transition) => {
-          ui.setMessage(crunch.cutscene.entries[index]?.label ?? entry.cutinLabel ?? entry.label, "good");
           await playCrunchEntryExplanation({
             entry: crunch.cutscene.entries[index] ?? createCutsceneEntry(entry),
             tier: crunch.cutscene.tier,
