@@ -1198,11 +1198,15 @@ function showPreparedCardAssembly(prepared, hit) {
     shard.classList.add("is-precut-piece");
     shard.classList.toggle("is-precut-light", hit === 1);
     shard.classList.toggle("is-precut-heavy", hit >= 2);
+    shard.classList.toggle("is-shattered-piece", hit >= CUTSCENE_CONFIG.interactiveCrunchHits);
     shard.dataset.crunchDamage = String(hit);
   });
+  if (hit >= CUTSCENE_CONFIG.interactiveCrunchHits) {
+    clearPreparedDamageArtifacts(prepared);
+    return;
+  }
   prepared.seams.forEach((seam) => {
     seam.classList.toggle("is-growing", hit >= 2);
-    seam.classList.toggle("is-break-ready", hit >= 3);
   });
 }
 
@@ -1391,7 +1395,7 @@ async function countBankTo(valueEl, from, to, advance = null, duration = 520) {
     if (advance) advance.wait(duration).then(done);
     const tick = (now) => {
       if (finished) return;
-      const progress = Math.min(1, (now - startedAt) / duration);
+      const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
       const eased = 1 - Math.pow(1 - progress, 3);
       const value = Math.round(from + (to - from) * eased);
       const rendered = formatCompactNumber(value);
@@ -1416,7 +1420,7 @@ function countBankBy(valueEl, counterState, amount, duration) {
   return new Promise((resolve) => {
     let renderedAmount = 0;
     const tick = (now) => {
-      const progress = Math.min(1, (now - startedAt) / duration);
+      const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
       const eased = 1 - Math.pow(1 - progress, 3);
       const nextAmount = Math.round(amount * eased);
       counterState.value += nextAmount - renderedAmount;

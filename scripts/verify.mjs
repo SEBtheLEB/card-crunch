@@ -139,6 +139,16 @@ if (!cutsceneSource.includes("activeBankFeeds") || !cutsceneSource.includes("beg
 if (!cutsceneSource.includes("clearPreparedDamageArtifacts") || !cutsceneSource.includes('querySelectorAll(".cutin-fracture-map")')) {
   throw new Error("Fracture overlays must be removed as soon as cards shatter");
 }
+const preparedAssemblySource = cutsceneSource.slice(
+  cutsceneSource.indexOf("function showPreparedCardAssembly"),
+  cutsceneSource.indexOf("async function feedCutinCardsToBank")
+);
+if (!preparedAssemblySource.includes("hit >= CUTSCENE_CONFIG.interactiveCrunchHits") || !preparedAssemblySource.includes("clearPreparedDamageArtifacts(prepared)")) {
+  throw new Error("Third-hit scattering must clear fracture art before the vacuum starts");
+}
+if (!cutsceneSource.includes('classList.toggle("is-shattered-piece"') || !css.includes(".cutin-card-shard.is-shattered-piece::before") || !css.includes("box-shadow: none !important")) {
+  throw new Error("Vacuuming shards must not inherit card frames or decorative overlays");
+}
 if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSource.includes("data-cutin-card-id") || !css.includes("cutin-shared-card-flight")) {
   throw new Error("Shared card-to-cutin transitions are missing");
 }
