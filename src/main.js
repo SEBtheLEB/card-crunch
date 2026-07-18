@@ -1,14 +1,16 @@
-import { createGame } from "./gameState.js?v=83";
-import { createUI } from "./ui.js?v=83";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=83";
-import { adManager } from "./ads.js?v=83";
-import { grantShieldToken, hasShieldToken } from "./save.js?v=83";
-import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=83";
-import { haptic } from "./haptics.js?v=83";
-import { bindInstantAction } from "./input.js?v=83";
-import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=83";
-import { installFullscreenControls } from "./fullscreen.js?v=83";
+import { createGame } from "./gameState.js?v=84";
+import { createUI } from "./ui.js?v=84";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=84";
+import { adManager } from "./ads.js?v=84";
+import { grantShieldToken, hasShieldToken } from "./save.js?v=84";
+import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=84";
+import { haptic } from "./haptics.js?v=84";
+import { bindInstantAction } from "./input.js?v=84";
+import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=84";
+import { installFullscreenControls } from "./fullscreen.js?v=84";
+import { bindThemePicker, initializeTheme } from "./themes.js?v=84";
 
+initializeTheme();
 const ui = createUI();
 const game = createGame(ui);
 installAudioUnlock();
@@ -51,6 +53,7 @@ bindInstantAction(ui.elements.shieldAdButton, async () => {
 });
 game.showMap();
 bindMenuNavigation();
+bindThemePicker(bindInstantAction);
 loadSettings();
 game.refreshEconomy();
 window.setInterval(game.refreshEconomy, 1000);
@@ -143,6 +146,7 @@ function bindMenuNavigation() {
       "cardCrunchEconomyV1",
       "cardCrunchShieldToken",
       "cardCrunchAdStats",
+      "cardCrunchTheme",
       "cardCrunchTotalCrunches"
     ].forEach((key) => localStorage.removeItem(key));
     window.location.reload();

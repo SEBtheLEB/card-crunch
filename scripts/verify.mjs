@@ -10,6 +10,7 @@ const required = [
   "src/input.js",
   "src/playGames.js",
   "src/fullscreen.js",
+  "src/themes.js",
   "src/economy.js",
   "src/purchases.js",
   "styles/main.css",
@@ -44,6 +45,9 @@ if ((html.match(/data-fullscreen-toggle/g) ?? []).length !== 2) {
 if (!html.includes("summaryCoins") || !html.includes("energyGateScreen") || !html.includes("buyEnergyButton")) {
   throw new Error("Economy UI hooks are missing");
 }
+if ((html.match(/data-theme-id=/g) ?? []).length !== 3 || !html.includes("gold-table") || !html.includes("knight-deck")) {
+  throw new Error("Selectable theme controls are missing");
+}
 
 const economyModule = await import(`../src/economy.js?verify=${Date.now()}`);
 const lowReward = economyModule.calculateRunCoinReward({ grossCash: 100_000, bestStreak: 2 });
@@ -60,8 +64,9 @@ if (regen.energy !== 12 || economyModule.ECONOMY_CONFIG.energyPerRun !== 5 || ec
   throw new Error("Energy regeneration or run cost is incorrect");
 }
 
-const [cutsceneSource, css] = await Promise.all([
+const [cutsceneSource, themeSource, css] = await Promise.all([
   readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
+  readFile(resolve(root, "src/themes.js"), "utf8"),
   readFile(resolve(root, "styles/main.css"), "utf8")
 ]);
 if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createPixelShardClip") || !css.includes("cutin-card-shard")) {
@@ -72,9 +77,16 @@ if (!css.includes("--pixel-card-silhouette") || !css.includes("visibility: hidde
   throw new Error("Pixel silhouettes or consumed-card hiding are missing");
 }
 
+if (!themeSource.includes("cardCrunchTheme") || !themeSource.includes("card-crunch-theme-change")) {
+  throw new Error("Persistent theme selection hooks are missing");
+}
+if (!css.includes('html[data-theme="gold-table"]') || !css.includes('html[data-theme="knight-deck"]')) {
+  throw new Error("Gold Table or Knight Deck styles are missing");
+}
+
 const fullscreenSource = await readFile(resolve(root, "src/fullscreen.js"), "utf8");
 if (!fullscreenSource.includes("requestFullscreen") || !fullscreenSource.includes("exitFullscreen")) {
   throw new Error("Fullscreen API hooks are missing");
 }
 
-console.log(`Verified ${results.length} scoring cases, economy rewards, energy regeneration, fullscreen controls, release UI hooks, and card-shard VFX.`);
+console.log(`Verified ${results.length} scoring cases, economy rewards, energy regeneration, selectable themes, fullscreen controls, release UI hooks, and card-shard VFX.`);

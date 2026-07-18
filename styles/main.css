@@ -5695,3 +5695,419 @@ button.menu-chip:active {
     padding-inline: 6px;
   }
 }
+
+/* ==========================================================================
+   Selectable table and deck themes
+   ========================================================================== */
+
+.theme-page-copy,
+.theme-status {
+  margin: 0 2px 10px;
+  color: var(--text-dim);
+  font-size: clamp(.68rem, 2.7vw, .82rem);
+  font-weight: 900;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.theme-picker {
+  display: grid;
+  gap: 10px;
+}
+
+.theme-option {
+  position: relative;
+  display: grid;
+  grid-template-columns: clamp(92px, 28vw, 122px) minmax(0, 1fr) auto;
+  min-height: clamp(94px, 15dvh, 118px);
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border: 3px solid #07101e;
+  clip-path: var(--pixel-panel-silhouette);
+  background: #11233a;
+  box-shadow: inset 0 0 0 2px #35526b, 4px 4px 0 rgba(2, 5, 10, .78);
+  color: #fff4ca;
+  text-align: left;
+}
+
+.theme-option.is-theme-selected {
+  border-color: #5a3908;
+  background: #25354a;
+  box-shadow: inset 0 0 0 2px #ffcf55, 4px 4px 0 rgba(2, 5, 10, .78), 0 0 18px rgba(255, 203, 70, .3);
+}
+
+.theme-option:active {
+  transform: scale(.97);
+  filter: brightness(1.16);
+}
+
+.theme-option-copy {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.theme-option strong,
+.theme-option em {
+  font-family: var(--font-pixel);
+  text-transform: uppercase;
+}
+
+.theme-option strong {
+  font-size: clamp(.56rem, 2.2vw, .72rem);
+  line-height: 1.35;
+}
+
+.theme-option small {
+  color: #b9ccd2;
+  font-size: clamp(.63rem, 2.45vw, .77rem);
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.theme-option em {
+  align-self: end;
+  padding: 6px 5px;
+  color: #9eeaff;
+  font-size: clamp(.35rem, 1.4vw, .46rem);
+  font-style: normal;
+  line-height: 1.2;
+  text-align: right;
+}
+
+.theme-option.is-theme-selected em {
+  color: #ffe786;
+}
+
+.theme-preview {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.35;
+  overflow: hidden;
+  border: 3px solid #050913;
+  clip-path: polygon(7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 7px), 0 7px);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .15);
+}
+
+.theme-preview-rim {
+  position: absolute;
+  inset: 10% 7%;
+  border: 2px solid rgba(255, 231, 150, .48);
+  border-radius: 50%;
+  transform: rotate(-8deg);
+}
+
+.theme-preview-card {
+  position: absolute;
+  top: 18%;
+  display: grid;
+  width: 31%;
+  aspect-ratio: .72;
+  place-items: center;
+  border: 2px solid #090b13;
+  background: #f9edc9;
+  box-shadow: 3px 4px 0 rgba(0, 0, 0, .55);
+  color: #182034;
+  font-size: clamp(.82rem, 4vw, 1.25rem);
+  font-style: normal;
+}
+
+.theme-card-one { left: 24%; transform: rotate(-12deg); }
+.theme-card-two { right: 24%; transform: rotate(10deg); color: #d72e44; }
+
+.theme-preview-midnight {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(43, 160, 91, .88), transparent 52%),
+    #081326;
+}
+
+.theme-preview-gold {
+  background:
+    radial-gradient(circle at 50% 42%, #297b45 0 46%, transparent 48%),
+    repeating-linear-gradient(45deg, #c88924 0 5px, #f1c35d 5px 9px);
+}
+
+.theme-preview-gold .theme-preview-rim { border-color: #ffdd73; box-shadow: 0 0 8px #d9961f; }
+.theme-preview-gold .theme-preview-card { border-color: #7b4a08; background: #fff2c7; }
+
+.theme-preview-knight {
+  background:
+    linear-gradient(135deg, transparent 0 43%, rgba(192, 220, 237, .14) 43% 48%, transparent 48%),
+    repeating-linear-gradient(0deg, #18243c 0 10px, #101a2c 10px 20px);
+}
+
+.theme-preview-knight .theme-preview-rim {
+  border-color: #aabccc;
+  border-radius: 3px 3px 50% 50%;
+  box-shadow: 0 0 8px rgba(152, 207, 239, .45);
+}
+
+.theme-preview-knight .theme-preview-card {
+  clip-path: polygon(7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 10px), 50% 100%, 0 calc(100% - 10px), 0 7px);
+  border-color: #66798c;
+  background: #dce0d3;
+}
+
+.theme-status {
+  min-height: 1.3em;
+  margin-top: 11px;
+  color: #ffe786;
+  font-family: var(--font-pixel);
+  font-size: clamp(.42rem, 1.7vw, .54rem);
+  text-transform: uppercase;
+}
+
+/* Gold Table: a warmer, brighter casino room with emerald velvet and
+   ivory cards held in thick gilded frames. */
+html[data-theme="gold-table"] {
+  --bg-0: #07150d;
+  --bg-1: #102d1b;
+  --bg-2: #245e35;
+  --casino-table-bg:
+    radial-gradient(92% 64% at 50% 42%, transparent 0 61%, rgba(255, 216, 92, .2) 62% 64%, transparent 65%),
+    repeating-linear-gradient(90deg, rgba(255, 244, 180, .025) 0 3px, transparent 3px 9px),
+    radial-gradient(88% 72% at 50% 38%, #2b8650 0%, #185c35 50%, #0d3823 74%, transparent 88%),
+    linear-gradient(180deg, #33230d 0%, #102d1b 18%, #07150d 100%);
+  --glass: rgba(28, 48, 31, .88);
+  --glass-bright: rgba(45, 78, 45, .82);
+  --hairline: rgba(255, 219, 101, .38);
+  --hairline-bright: rgba(255, 239, 166, .88);
+  --gold: #f7bb32;
+  --gold-hot: #fff0a0;
+  --gold-deep: #9f5700;
+  --gold-bevel: #5f3304;
+  --gold-glow: rgba(255, 197, 62, .9);
+  --cyan: #6ce0c0;
+  --cyan-glow: rgba(79, 221, 185, .6);
+  --violet: #c95872;
+  --card-face: #fff8df;
+  --card-face-warm: #ead9a7;
+  --card-edge: #714409;
+  --ink: #25322b;
+  --suit-red: #c9263e;
+  --suit-green: #11623d;
+  --cream: #fff4c7;
+  --text-dim: rgba(255, 241, 196, .72);
+}
+
+html[data-theme="gold-table"] body::before {
+  background:
+    radial-gradient(34% 25% at 20% 18%, rgba(255, 222, 100, .17), transparent 70%),
+    radial-gradient(30% 22% at 78% 20%, rgba(255, 238, 155, .14), transparent 72%),
+    radial-gradient(38% 28% at 50% 72%, rgba(30, 155, 83, .18), transparent 72%);
+}
+
+html[data-theme="gold-table"] .score-panel,
+html[data-theme="gold-table"] .menu-topbar,
+html[data-theme="gold-table"] .stored-panel,
+html[data-theme="gold-table"] .bottom-status,
+html[data-theme="gold-table"] .modal-card {
+  border-color: #664108;
+  background: #173c27;
+  box-shadow: inset 0 0 0 2px #d8a631, 4px 4px 0 rgba(27, 13, 2, .78);
+}
+
+html[data-theme="gold-table"] .target-strip {
+  border-color: #644005;
+  background: linear-gradient(180deg, #9e6c1c, #4f3109);
+  box-shadow: inset 0 0 0 2px #ffd86d, 0 5px 0 #281704;
+}
+
+html[data-theme="gold-table"] .timer-strip {
+  border-color: #68c69c;
+  background: #123b2a;
+  box-shadow: inset 0 0 0 2px #2e7855;
+}
+
+html[data-theme="gold-table"] .timer-icon,
+html[data-theme="gold-table"] .timer-copy,
+html[data-theme="gold-table"] .timer-strip > strong {
+  color: #bcffe0;
+  text-shadow: 2px 2px 0 #052117;
+}
+
+html[data-theme="gold-table"] .timer-fill {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 12px, rgba(40, 78, 4, .28) 12px 15px),
+    linear-gradient(180deg, #e8ffb7 0 34%, #72e099 34% 72%, #1e975b 72%);
+}
+
+html[data-theme="gold-table"] .card,
+html[data-theme="gold-table"] .cutin-card {
+  border-color: #75470b;
+  border-radius: 9px;
+  background:
+    repeating-conic-gradient(from 45deg, rgba(147, 99, 26, .035) 0 25%, transparent 0 50%) 0 0 / 8px 8px,
+    linear-gradient(150deg, #fffbe8, #f5e7bd 58%, #ddc78d);
+  box-shadow: 0 6px 0 #3e2305, 4px 9px 0 rgba(0, 0, 0, .28), inset 0 0 0 3px #ffedaa;
+}
+
+html[data-theme="gold-table"] .card::before,
+html[data-theme="gold-table"] .cutin-card::before {
+  border-color: rgba(151, 94, 12, .55);
+  box-shadow: inset 0 0 0 1px rgba(255, 218, 108, .45);
+}
+
+html[data-theme="gold-table"] .crunch-button,
+html[data-theme="gold-table"] .play-button {
+  border-color: #553000;
+  background: linear-gradient(180deg, #fff0a0, #efae21 62%, #bc6c09);
+  box-shadow: inset 0 0 0 2px rgba(255, 250, 205, .62), 0 6px 0 #5f3304, 0 0 20px rgba(255, 194, 51, .36);
+}
+
+html[data-theme="gold-table"] .bank-button.bank-ready {
+  border-color: #06351e;
+  background: linear-gradient(180deg, #8af2ac, #28b96a 68%, #147b43);
+}
+
+html[data-theme="gold-table"] .crunch-cutscene-overlay {
+  background: rgba(4, 18, 10, .88);
+}
+
+/* Knight Deck: cool stone table, steel HUD, crimson banners, and notched
+   heraldic cards that remain high contrast at phone size. */
+html[data-theme="knight-deck"] {
+  --bg-0: #080c15;
+  --bg-1: #111a2c;
+  --bg-2: #273954;
+  --casino-table-bg:
+    radial-gradient(88% 54% at 50% 34%, transparent 0 59%, rgba(166, 202, 224, .14) 60% 62%, transparent 63%),
+    linear-gradient(45deg, rgba(182, 211, 228, .035) 25%, transparent 25% 75%, rgba(182, 211, 228, .035) 75%) 0 0 / 24px 24px,
+    linear-gradient(-45deg, rgba(0, 0, 0, .07) 25%, transparent 25% 75%, rgba(0, 0, 0, .07) 75%) 0 0 / 24px 24px,
+    radial-gradient(94% 74% at 50% 38%, #243b55 0%, #17273d 52%, #0d1626 78%, transparent 90%),
+    linear-gradient(180deg, #111a2c, #080c15);
+  --glass: rgba(19, 28, 44, .9);
+  --glass-bright: rgba(39, 53, 75, .86);
+  --hairline: rgba(166, 197, 216, .35);
+  --hairline-bright: rgba(211, 228, 237, .78);
+  --gold: #c3a75a;
+  --gold-hot: #f1df9b;
+  --gold-deep: #76602e;
+  --gold-bevel: #3e3522;
+  --gold-glow: rgba(223, 205, 135, .65);
+  --cyan: #8bcbe6;
+  --cyan-glow: rgba(115, 199, 236, .6);
+  --violet: #ac6e9f;
+  --danger: #d94754;
+  --emerald: #4ca47d;
+  --card-face: #e7e5d5;
+  --card-face-warm: #c9c8b9;
+  --card-edge: #53677a;
+  --ink: #172233;
+  --suit-red: #ad2e3c;
+  --suit-green: #2b6551;
+  --cream: #edf2ed;
+  --text-dim: rgba(217, 228, 234, .68);
+}
+
+html[data-theme="knight-deck"] body::before {
+  background:
+    radial-gradient(26% 24% at 76% 14%, rgba(198, 225, 239, .16), transparent 72%),
+    linear-gradient(110deg, transparent 0 48%, rgba(157, 199, 224, .06) 48% 51%, transparent 51%);
+}
+
+html[data-theme="knight-deck"] .score-panel,
+html[data-theme="knight-deck"] .menu-topbar,
+html[data-theme="knight-deck"] .stored-panel,
+html[data-theme="knight-deck"] .bottom-status,
+html[data-theme="knight-deck"] .modal-card {
+  border-color: #28384b;
+  background:
+    repeating-linear-gradient(135deg, rgba(217, 232, 240, .035) 0 3px, transparent 3px 8px),
+    #172238;
+  box-shadow: inset 0 0 0 2px #71859a, 4px 4px 0 rgba(2, 5, 10, .8);
+}
+
+html[data-theme="knight-deck"] .target-strip {
+  border-color: #3e1520;
+  background: linear-gradient(180deg, #843242, #431722);
+  box-shadow: inset 0 0 0 2px #c66a70, 0 5px 0 #1e0a10;
+}
+
+html[data-theme="knight-deck"] .target-fill {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 12px, rgba(73, 14, 26, .32) 12px 15px),
+    linear-gradient(180deg, #ffc1b6 0 34%, #db5360 34% 72%, #8d2235 72%);
+}
+
+html[data-theme="knight-deck"] .timer-strip {
+  border-color: #7898b1;
+  background: #101c30;
+  box-shadow: inset 0 0 0 2px #344f68;
+}
+
+html[data-theme="knight-deck"] .card,
+html[data-theme="knight-deck"] .cutin-card {
+  border-color: #51687c;
+  border-radius: 3px;
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 12px), calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 12px), 0 8px);
+  background:
+    linear-gradient(135deg, transparent 0 45%, rgba(73, 91, 104, .055) 45% 48%, transparent 48%),
+    repeating-linear-gradient(0deg, transparent 0 9px, rgba(50, 63, 70, .055) 9px 10px),
+    linear-gradient(150deg, #f0eee0, #d7d7c9 58%, #bebfb3);
+  box-shadow: 0 6px 0 #101827, 4px 9px 0 rgba(0, 0, 0, .3), inset 0 0 0 2px #edf2eb;
+}
+
+html[data-theme="knight-deck"] .card::before,
+html[data-theme="knight-deck"] .cutin-card::before {
+  inset: 6px;
+  border: 2px solid #8797a0;
+  border-radius: 1px;
+  clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 9px), calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 9px), 0 6px);
+}
+
+html[data-theme="knight-deck"] .card::after {
+  background:
+    linear-gradient(60deg, transparent 0 47%, rgba(92, 109, 119, .08) 47% 50%, transparent 50%),
+    repeating-linear-gradient(0deg, transparent 0 9px, rgba(28, 37, 44, .045) 9px 10px);
+}
+
+html[data-theme="knight-deck"] .card-pips .hero-pip {
+  filter: drop-shadow(2px 2px 0 rgba(93, 108, 116, .34));
+}
+
+html[data-theme="knight-deck"] .crunch-button,
+html[data-theme="knight-deck"] .play-button {
+  border-color: #2d1820;
+  background: linear-gradient(180deg, #e16669, #ad3344 62%, #6d1d2d);
+  box-shadow: inset 0 0 0 2px rgba(255, 216, 210, .44), 0 6px 0 #38101a, 0 0 18px rgba(202, 60, 75, .3);
+}
+
+html[data-theme="knight-deck"] .crunch-button,
+html[data-theme="knight-deck"] .play-button span {
+  color: #fff8e8;
+}
+
+html[data-theme="knight-deck"] .bank-button.bank-ready {
+  border-color: #243943;
+  background: linear-gradient(180deg, #b9d4dc, #658fa1 68%, #385d70);
+}
+
+html[data-theme="knight-deck"] .crunch-cutscene-overlay {
+  background: rgba(6, 10, 19, .9);
+}
+
+html[data-theme="knight-deck"] .cutin-operator,
+html[data-theme="knight-deck"] .cutin-title {
+  color: #e8e1b7;
+  text-shadow: 0 0 18px rgba(188, 216, 232, .48), 3px 3px 0 #1b2332;
+}
+
+@media (max-width: 390px) {
+  .theme-option {
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .theme-option em {
+    position: absolute;
+    right: 10px;
+    bottom: 8px;
+  }
+
+  .theme-option-copy {
+    padding-bottom: 18px;
+  }
+}

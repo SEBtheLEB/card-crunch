@@ -1,9 +1,9 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=83";
-import { isPotUnlocked } from "./progression.js?v=83";
-import { formatCompactNumber } from "./format.js?v=83";
-import { hasShieldToken } from "./save.js?v=83";
-import { bindInstantAction } from "./input.js?v=83";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=83";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=84";
+import { isPotUnlocked } from "./progression.js?v=84";
+import { formatCompactNumber } from "./format.js?v=84";
+import { hasShieldToken } from "./save.js?v=84";
+import { bindInstantAction } from "./input.js?v=84";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=84";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };

@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/main.css?v=83">
+    <link rel="stylesheet" href="styles/main.css?v=84">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -209,11 +209,37 @@
           <section class="menu-page" data-page="themes" aria-labelledby="themesTitle">
             <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
             <h2 id="themesTitle">Themes</h2>
-            <div class="menu-card-grid">
-              <article class="selected"><strong>Midnight Gold</strong><span>Selected</span></article>
-              <article class="locked"><strong>Gold Table</strong><span>Locked</span></article>
-              <article class="locked"><strong>Night Deck</strong><span>Locked</span></article>
+            <p class="theme-page-copy">Choose a table and deck. Your theme is saved instantly.</p>
+            <div class="theme-picker" id="themePicker" role="group" aria-label="Card Crunch themes">
+              <button class="theme-option is-theme-selected" data-theme-id="midnight-gold" type="button" aria-pressed="true">
+                <span class="theme-preview theme-preview-midnight" aria-hidden="true">
+                  <i class="theme-preview-rim"></i>
+                  <i class="theme-preview-card theme-card-one">&spades;</i>
+                  <i class="theme-preview-card theme-card-two">&hearts;</i>
+                </span>
+                <span class="theme-option-copy"><strong>Midnight Gold</strong><small>Aurora felt and arcade gold</small></span>
+                <em>Selected</em>
+              </button>
+              <button class="theme-option" data-theme-id="gold-table" type="button" aria-pressed="false">
+                <span class="theme-preview theme-preview-gold" aria-hidden="true">
+                  <i class="theme-preview-rim"></i>
+                  <i class="theme-preview-card theme-card-one">&diams;</i>
+                  <i class="theme-preview-card theme-card-two">&clubs;</i>
+                </span>
+                <span class="theme-option-copy"><strong>Gold Table</strong><small>Emerald velvet and gilded ivory</small></span>
+                <em>Try Theme</em>
+              </button>
+              <button class="theme-option" data-theme-id="knight-deck" type="button" aria-pressed="false">
+                <span class="theme-preview theme-preview-knight" aria-hidden="true">
+                  <i class="theme-preview-rim"></i>
+                  <i class="theme-preview-card theme-card-one">&#9818;</i>
+                  <i class="theme-preview-card theme-card-two">&spades;</i>
+                </span>
+                <span class="theme-option-copy"><strong>Knight Deck</strong><small>Moonlit steel and heraldic parchment</small></span>
+                <em>Try Theme</em>
+              </button>
             </div>
+            <p class="theme-status" id="themeStatus" aria-live="polite">Midnight Gold equipped.</p>
           </section>
 
           <section class="menu-page" data-page="settings" aria-labelledby="settingsTitle">
@@ -319,6 +345,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-    <script type="module" src="src/main.js?v=83"></script>
+    <script type="module" src="src/main.js?v=84"></script>
   </body>
 </html>
