@@ -136,6 +136,9 @@ if (!cutsceneSource.includes("pendingBankEffects") || !cutsceneSource.includes("
 if (!cutsceneSource.includes("activeBankFeeds") || !cutsceneSource.includes("beginBankFeed") || !cutsceneSource.includes("endBankFeed")) {
   throw new Error("Overlapping card vacuums must keep the Crunch Bank feed state active");
 }
+if (!cutsceneSource.includes("clearPreparedDamageArtifacts") || !cutsceneSource.includes('querySelectorAll(".cutin-fracture-map")')) {
+  throw new Error("Fracture overlays must be removed as soon as cards shatter");
+}
 if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSource.includes("data-cutin-card-id") || !css.includes("cutin-shared-card-flight")) {
   throw new Error("Shared card-to-cutin transitions are missing");
 }

@@ -1215,19 +1215,31 @@ async function feedCutinCardsToBank(cardElements, bankEl) {
   const prepared = prepareCutinCardShards(cards, bankEl);
   if (!prepared) return;
   prepared.active = true;
+  clearPreparedDamageArtifacts(prepared);
   prepared.cards.forEach((card) => card.classList.add("is-shattering", "is-consumed-after-shatter"));
   prepared.shards.forEach((shard) => {
     shard.classList.remove("is-precut-piece", "is-precut-light", "is-precut-heavy");
     shard.removeAttribute("data-crunch-damage");
     shard.classList.add("is-vacuuming");
   });
-  prepared.seams.forEach((seam) => seam.remove());
   prepared.sparks.forEach((spark) => spark.classList.add("is-active"));
   beginBankFeed(prepared);
   playGameSfx("crunch_vacuum");
   schedulePreparedShardImpacts(prepared);
   await sleep(prepared.totalDuration);
   discardPreparedShardSet(prepared);
+}
+
+function clearPreparedDamageArtifacts(prepared) {
+  prepared.seams.forEach((seam) => seam.remove());
+  prepared.seams.length = 0;
+  prepared.cards.forEach((card) => {
+    card.removeAttribute("data-crunch-damage");
+    card.querySelectorAll(".cutin-fracture-map").forEach((layer) => layer.remove());
+    const overlay = card.closest(".crunch-cutscene-overlay");
+    overlay?.removeAttribute("data-crunch-hit");
+    overlay?.querySelector(".cutin-stage")?.removeAttribute("data-crunch-hit");
+  });
 }
 
 function discardPreparedCardShards(card) {
