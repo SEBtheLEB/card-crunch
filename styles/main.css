@@ -5405,7 +5405,9 @@ h2 {
 /* Pixel-card intake: each tapped explanation is diced and vacuumed into the
    Crunch Bank while the displayed value rolls upward. */
 .cutin-card.is-shattering,
-.cutin-live-card.is-shattering {
+.cutin-live-card.is-shattering,
+.cutin-card.is-consumed-after-shatter,
+.cutin-live-card.is-consumed-after-shatter {
   opacity: 0 !important;
   visibility: hidden;
   animation: none !important;

@@ -1181,7 +1181,7 @@ async function feedCutinCardsToBank(cardElements, bankEl, advance = null) {
   const prepared = prepareCutinCardShards(cards, bankEl);
   if (!prepared) return;
   prepared.active = true;
-  prepared.cards.forEach((card) => card.classList.add("is-shattering"));
+  prepared.cards.forEach((card) => card.classList.add("is-shattering", "is-consumed-after-shatter"));
   prepared.shards.forEach((shard) => shard.classList.add("is-vacuuming"));
   prepared.sparks.forEach((spark) => spark.classList.add("is-active"));
   bankEl.classList.add("bank-feeding");
@@ -1200,6 +1200,7 @@ function discardPreparedShardSet(prepared) {
   prepared.cards.forEach((card) => {
     preparedShardSets.delete(card);
     card.classList.remove("is-shattering");
+    if (!prepared.active) card.classList.remove("is-consumed-after-shatter");
   });
   prepared.bankEl?.classList.remove("bank-feeding");
 }

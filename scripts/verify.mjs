@@ -97,6 +97,9 @@ if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes
 if (!cutsceneSource.includes("registerShardBankContact") || !cutsceneSource.includes("maxReleaseDelay") || !css.includes("cutinCardShardVacuum")) {
   throw new Error("Crunch Bank vacuum sequencing or shard contact hooks are missing");
 }
+if (!cutsceneSource.includes("is-consumed-after-shatter") || !css.includes(".cutin-live-card.is-consumed-after-shatter")) {
+  throw new Error("Consumed cut-in cards can reappear after the vacuum finishes");
+}
 if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSource.includes("data-cutin-card-id") || !css.includes("cutin-shared-card-flight")) {
   throw new Error("Shared card-to-cutin transitions are missing");
 }
