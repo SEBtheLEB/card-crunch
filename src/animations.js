@@ -7,7 +7,7 @@ import {
 import { playGameSfx } from "./audio.js?v=120";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const RESOLVE_HIGHLIGHT_TAP_GUARD = 180;
+const RESOLVE_HIGHLIGHT_DURATION_MS = 700;
 
 function createSequenceAdvanceController() {
   const waiters = new Set();
@@ -202,7 +202,7 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
       burstAround(handCard, 14, particleType);
       matchedCards.forEach((card) => burstAround(card, 14, particleType));
       if (entry.matchType === "add" || entry.matchType === "subtract") drawComboStreak(handCard, matchedCards);
-      await advance.waitForTap(RESOLVE_HIGHLIGHT_TAP_GUARD);
+      await advance.wait(RESOLVE_HIGHLIGHT_DURATION_MS);
       await onEntryResolved?.(entry, i, {
         sourceCards: [
           ...entry.matchedCards.map((card, index) => ({ card, element: matchedCards[index] })),

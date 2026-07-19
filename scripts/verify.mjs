@@ -128,6 +128,11 @@ if (!cutsceneSource.includes("createShardImpactSchedule") || !cutsceneSource.inc
 if (!cutsceneSource.includes("is-consumed-after-shatter") || !css.includes(".cutin-live-card.is-consumed-after-shatter")) {
   throw new Error("Consumed cut-in cards can reappear after the vacuum finishes");
 }
+if (!animationsSource.includes("const RESOLVE_HIGHLIGHT_DURATION_MS = 700")
+  || !animationsSource.includes("await advance.wait(RESOLVE_HIGHLIGHT_DURATION_MS)")
+  || animationsSource.includes("waitForTap(RESOLVE_HIGHLIGHT")) {
+  throw new Error("Resolved-card highlights must auto-advance after 700ms while remaining skippable");
+}
 if (!cutsceneSource.includes("showPreparedCardAssembly") || !cutsceneSource.includes("is-precut-piece") || !css.includes("precutCardHitThree")) {
   throw new Error("Preassembled shard damage states are missing");
 }
@@ -186,8 +191,10 @@ const selectionResolveSource = animationsSource.slice(
   animationsSource.indexOf("export async function animateSelectionResolve"),
   animationsSource.indexOf("function applyResolveSpotlight")
 );
-if (!selectionResolveSource.includes("waitForTap(RESOLVE_HIGHLIGHT_TAP_GUARD)") || selectionResolveSource.includes("popStoredLabel")) {
-  throw new Error("Crunch highlights must wait for a deliberate tap before entering the cut-in");
+if (!selectionResolveSource.includes("advance.wait(RESOLVE_HIGHLIGHT_DURATION_MS)")
+  || selectionResolveSource.includes("waitForTap(RESOLVE_HIGHLIGHT")
+  || selectionResolveSource.includes("popStoredLabel")) {
+  throw new Error("Crunch highlights must auto-advance into the cut-in without a mandatory tap");
 }
 if (!cutsceneSource.includes("is-shared-handoff") || !css.includes("cutsceneBackdropIn")) {
   throw new Error("Blink-free shared-card cut-in backdrop is missing");

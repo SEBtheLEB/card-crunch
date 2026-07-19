@@ -16,7 +16,7 @@ import {
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=120";
+} from "./animations.js?v=123";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
