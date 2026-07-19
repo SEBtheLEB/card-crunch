@@ -4,7 +4,7 @@ import { formatCompactNumber } from "./format.js?v=90";
 import { hasShieldToken } from "./save.js?v=90";
 import { bindInstantAction } from "./input.js?v=90";
 import { ECONOMY_CONFIG, economy } from "./economy.js?v=90";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=114";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=115";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -744,8 +744,13 @@ function renderHand(elements, state, handlers) {
       || previous.index !== index
       || (previous.zone === "tray" && currentZone === "tray");
     if (!shouldAnimate) return;
+    const shiftsWithinHand = previous.zone === "hand"
+      && currentZone === "hand"
+      && previous.index !== index;
     animateCardTransfer(button, previous.rect, toRect, {
-      withTrail: previous.zone !== currentZone
+      withTrail: previous.zone !== currentZone,
+      motion: shiftsWithinHand ? "hand-shift" : "standard",
+      duration: shiftsWithinHand ? 500 : null
     });
     requestAnimationFrame(() => button.classList.remove("card-layout-moving"));
   });

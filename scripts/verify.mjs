@@ -209,13 +209,23 @@ if (!gameStateSource.includes("survivingCards") || !gameStateSource.includes("Ar
 if (!cardGestureSource.includes("export function animateCardDealIn") || !uiSource.includes("animateCardDealIn") || !css.includes("card-deal-pending")) {
   throw new Error("Left-to-right hand refill dealing or its flight trail is missing");
 }
+if (!cardGestureSource.includes('motion: "deal"') || !cardGestureSource.includes("normalizedOrder * 115") || !uiSource.includes('motion: shiftsWithinHand ? "hand-shift"')) {
+  throw new Error("Paced card deal or synchronized survivor shift is missing");
+}
+if (!gameStateSource.includes("HAND_DEAL_FLIGHT_MS") || !gameStateSource.includes("dealToken !== state.timerToken") || !gameStateSource.includes("finishHandDeal(4)")) {
+  throw new Error("The turn timer must wait for the hand deal to finish");
+}
 if (!uiSource.includes("const currentIndex = Number(button.dataset.handIndex)")) {
   throw new Error("Repositioned hand cards must select their current slot");
 }
 if (!css.includes('html[data-card-skin="dark"]') || !css.includes('html[data-card-skin="pink"]') || !css.includes('html[data-card-skin="gold"]') || !css.includes('html[data-card-skin="rainbow"]')) {
   throw new Error("One or more card skin styles are missing");
 }
-if (!gameStateSource.includes("function startNewRound() {\n    ui.clearMessage();") || !uiSource.includes("messageGeneration")) {
+const roundStartSource = gameStateSource.slice(
+  gameStateSource.indexOf("function startNewRound()"),
+  gameStateSource.indexOf("function startTimer()")
+);
+if (!roundStartSource.includes("ui.clearMessage();") || !uiSource.includes("messageGeneration")) {
   throw new Error("Round message cleanup regression guards are missing");
 }
 if (!uiSource.includes("animateSummaryNumber") || !css.includes("Arcade run summary")) {

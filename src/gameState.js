@@ -23,6 +23,10 @@ const RUN_MULTIPLIER_COMBO_STEP = 0.1;
 const SHIELD_SAVE_RATE = 0.25;
 const RECOVERY_RATE = 0.5;
 const BONUS_BANK_RATE = 0.25;
+const HAND_DEAL_LEAD_IN_MS = 110;
+const HAND_DEAL_FLIGHT_MS = 620;
+const HAND_DEAL_STAGGER_MS = 150;
+const HAND_DEAL_LAND_MS = 300;
 
 export function createGame(ui) {
   let pendingRunSave = loadRunSave();
@@ -155,7 +159,7 @@ export function createGame(ui) {
     state.safeBankShieldActive = Boolean(pot) && hasShieldToken();
     state.runStartedAt = Date.now();
     state.timeLeft = state.turnSeconds;
-    state.locked = false;
+    state.locked = true;
     state.status = "playing";
     ui.showStart(false);
     ui.showMap(false);
@@ -164,7 +168,7 @@ export function createGame(ui) {
     if (state.safeBankShieldActive) ui.setMessage("Shield armed: busting out auto-banks 25%", "good");
     ui.render(state, handlers);
     persistRun();
-    startTimer();
+    finishHandDeal(4);
   }
 
   function startEndless() {
@@ -907,18 +911,41 @@ export function createGame(ui) {
   }
 
   function startNewRound() {
+    stopTimer();
     ui.clearMessage();
     const hasReplacementSlots = state.hand.some((card) => !card);
+    const replacementCount = state.hand.filter((card) => !card).length;
     state.stack.forEach((card) => state.discard.push(card));
     state.stack = drawCards(state, state.baseStackCount);
     refillHand({ allowOccupiedSafety: !hasReplacementSlots });
     state.selectedHandIndexes = [];
     state.timeLeft = state.turnSeconds;
     state.status = "playing";
-    state.locked = false;
+    state.locked = replacementCount > 0;
     ui.render(state, handlers);
     persistRun();
-    startTimer();
+    finishHandDeal(replacementCount);
+  }
+
+  function finishHandDeal(replacementCount) {
+    if (replacementCount <= 0) {
+      state.locked = false;
+      ui.render(state, handlers);
+      startTimer();
+      return;
+    }
+    const dealToken = state.timerToken;
+    const dealDuration = HAND_DEAL_LEAD_IN_MS
+      + HAND_DEAL_FLIGHT_MS
+      + Math.max(0, replacementCount - 1) * HAND_DEAL_STAGGER_MS
+      + HAND_DEAL_LAND_MS;
+    window.setTimeout(() => {
+      if (dealToken !== state.timerToken || state.status !== "playing") return;
+      state.locked = false;
+      ui.render(state, handlers);
+      persistRun();
+      startTimer();
+    }, dealDuration);
   }
 
   function startTimer() {

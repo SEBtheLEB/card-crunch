@@ -877,7 +877,7 @@ button.is-pressing:not(:disabled) {
 }
 
 .card.card-deal-landed {
-  animation: cardDealLand 220ms cubic-bezier(.16, 1.4, .3, 1) both;
+  animation: cardDealLand 280ms cubic-bezier(.16, 1.32, .3, 1) both;
 }
 
 @keyframes cardDealLand {
@@ -899,7 +899,7 @@ button.is-pressing:not(:disabled) {
   clip-path: var(--pixel-card-silhouette);
   filter: blur(.35px) drop-shadow(0 0 8px var(--flight-color));
   opacity: .65;
-  animation: cardFlightTrailFade 360ms ease-out var(--flight-delay, 0ms) both;
+  animation: cardFlightTrailFade var(--flight-duration, 360ms) ease-out var(--flight-delay, 0ms) both;
   transform: scale(var(--flight-scale, 1));
 }
 

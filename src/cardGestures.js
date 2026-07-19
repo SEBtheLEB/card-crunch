@@ -128,7 +128,11 @@ export function bindCardGesture(element, action) {
   };
 }
 
-export function animateCardTransfer(card, fromRect, toRect, { withTrail = false } = {}) {
+export function animateCardTransfer(card, fromRect, toRect, {
+  withTrail = false,
+  motion = "standard",
+  duration: requestedDuration = null
+} = {}) {
   if (!card || !fromRect || !toRect) return null;
   const dx = fromRect.left - toRect.left;
   const dy = fromRect.top - toRect.top;
@@ -136,25 +140,47 @@ export function animateCardTransfer(card, fromRect, toRect, { withTrail = false 
   if (distance < 2) return null;
 
   const reducedMotion = document.documentElement.classList.contains("reduce-motion");
-  if (withTrail && !reducedMotion) spawnCardFlightTrail(card, fromRect, toRect);
+  const duration = reducedMotion
+    ? 80
+    : requestedDuration ?? Math.min(390, Math.max(260, distance * 0.82));
+  if (withTrail && !reducedMotion) {
+    spawnCardFlightTrail(card, fromRect, toRect, {
+      duration: motion === "deal" ? Math.round(duration * .86) : 360,
+      arcHeight: motion === "deal" ? 22 : 12
+    });
+  }
 
-  const duration = reducedMotion ? 80 : Math.min(390, Math.max(260, distance * 0.82));
   const startScaleX = fromRect.width / Math.max(1, toRect.width);
   const startScaleY = fromRect.height / Math.max(1, toRect.height);
+  const frames = motion === "deal"
+    ? [
+        { translate: `${dx}px ${dy}px`, scale: `${startScaleX} ${startScaleY}`, offset: 0 },
+        { translate: `${dx * .68}px ${dy * .7 - 22}px`, scale: `${.98 + (startScaleX - 1) * .5} ${.98 + (startScaleY - 1) * .5}`, offset: .34 },
+        { translate: `${dx * .2}px ${dy * .14 - 9}px`, scale: "1.018", offset: .8 },
+        { translate: "0px 0px", scale: "1", offset: 1 }
+      ]
+    : motion === "hand-shift"
+      ? [
+          { translate: `${dx}px ${dy}px`, scale: "1", offset: 0 },
+          { translate: `${dx * .24}px -4px`, scale: "1.008", offset: .74 },
+          { translate: "0px 0px", scale: "1", offset: 1 }
+        ]
+      : [
+          { translate: `${dx}px ${dy}px`, scale: `${startScaleX} ${startScaleY}`, offset: 0 },
+          { translate: `${dx * .44}px ${dy * .36 - 12}px`, scale: `${1 + (startScaleX - 1) * .28} ${1 + (startScaleY - 1) * .28}`, offset: .62 },
+          { translate: "0px 0px", scale: "1", offset: 1 }
+        ];
   flightAnimations.get(card)?.cancel();
   card.classList.add("card-in-flight");
-  const animation = card.animate(
-    [
-      { translate: `${dx}px ${dy}px`, scale: `${startScaleX} ${startScaleY}`, offset: 0 },
-      { translate: `${dx * .44}px ${dy * .36 - 12}px`, scale: `${1 + (startScaleX - 1) * .28} ${1 + (startScaleY - 1) * .28}`, offset: .62 },
-      { translate: "0px 0px", scale: "1", offset: 1 }
-    ],
-    {
-      duration,
-      easing: "cubic-bezier(.18, .86, .24, 1.12)",
-      fill: "both"
-    }
-  );
+  const animation = card.animate(frames, {
+    duration,
+    easing: motion === "deal"
+      ? "cubic-bezier(.18, .72, .2, 1)"
+      : motion === "hand-shift"
+        ? "cubic-bezier(.2, .78, .22, 1)"
+        : "cubic-bezier(.18, .86, .24, 1.12)",
+    fill: "both"
+  });
   flightAnimations.set(card, animation);
   animation.finished.catch(() => {}).finally(() => {
     if (flightAnimations.get(card) !== animation) return;
@@ -170,33 +196,38 @@ export function animateCardTransfer(card, fromRect, toRect, { withTrail = false 
 export function animateCardDealIn(card, dealOrder = 0) {
   if (!card) return;
   const reducedMotion = document.documentElement.classList.contains("reduce-motion");
-  const delay = reducedMotion ? 0 : Math.max(0, dealOrder) * 72;
+  const normalizedOrder = Math.max(0, dealOrder);
+  const delay = reducedMotion ? 0 : 110 + normalizedOrder * 115;
 
   const launch = () => {
     if (!card.isConnected) return;
     const toRect = card.getBoundingClientRect();
-    const laneOffset = Math.max(0, dealOrder) * 18;
+    const laneOffset = normalizedOrder * 18;
     const fromRect = {
       left: -toRect.width - 30 - laneOffset,
-      top: toRect.top + Math.min(34, toRect.height * .18) + laneOffset * .18,
-      width: toRect.width * .94,
-      height: toRect.height * .94
+      top: toRect.top + Math.min(46, toRect.height * .24) + laneOffset * .22,
+      width: toRect.width * .9,
+      height: toRect.height * .9
     };
-    const animation = animateCardTransfer(card, fromRect, toRect, { withTrail: true });
+    const animation = animateCardTransfer(card, fromRect, toRect, {
+      withTrail: true,
+      motion: "deal",
+      duration: 620 + normalizedOrder * 35
+    });
     card.classList.remove("card-deal-pending");
 
     if (!animation) return;
     animation.finished.catch(() => {}).finally(() => {
       if (!card.isConnected) return;
       card.classList.add("card-deal-landed");
-      window.setTimeout(() => card.classList.remove("card-deal-landed"), 240);
+      window.setTimeout(() => card.classList.remove("card-deal-landed"), 300);
     });
   };
 
   window.setTimeout(() => requestAnimationFrame(launch), delay);
 }
 
-function spawnCardFlightTrail(card, fromRect, toRect) {
+function spawnCardFlightTrail(card, fromRect, toRect, { duration = 360, arcHeight = 12 } = {}) {
   const fragment = document.createDocumentFragment();
   const toneClass = [...card.classList].find((name) => name === "card-red" || name === "card-black" || name === "card-clubs") ?? "card-black";
   const echoes = 4;
@@ -206,10 +237,11 @@ function spawnCardFlightTrail(card, fromRect, toRect) {
     const echo = document.createElement("i");
     echo.className = `card-flight-trail ${toneClass}`;
     echo.style.left = `${fromRect.left + (toRect.left - fromRect.left) * progress}px`;
-    echo.style.top = `${fromRect.top + (toRect.top - fromRect.top) * progress - Math.sin(progress * Math.PI) * 12}px`;
+    echo.style.top = `${fromRect.top + (toRect.top - fromRect.top) * progress - Math.sin(progress * Math.PI) * arcHeight}px`;
     echo.style.width = `${fromRect.width + (toRect.width - fromRect.width) * progress}px`;
     echo.style.height = `${fromRect.height + (toRect.height - fromRect.height) * progress}px`;
     echo.style.setProperty("--flight-delay", `${index * 18}ms`);
+    echo.style.setProperty("--flight-duration", `${duration}ms`);
     echo.style.setProperty("--flight-scale", `${.86 + progress * .18}`);
     echo.addEventListener("animationend", () => echo.remove(), { once: true });
     fragment.appendChild(echo);
