@@ -4,7 +4,7 @@ import { formatCompactNumber } from "./format.js?v=90";
 import { hasShieldToken } from "./save.js?v=90";
 import { bindInstantAction } from "./input.js?v=90";
 import { ECONOMY_CONFIG, economy } from "./economy.js?v=90";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=117";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=120";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };

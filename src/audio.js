@@ -5,7 +5,9 @@ const SETTINGS_KEY = "cardCrunchSettings";
 const MAX_ACTIVE_VOICES = 28;
 const SHARD_IMPACT_MIN_INTERVAL = 24;
 const CARD_PLAY_SAMPLE_URL = new URL("../assets/sfx/playing-card.mp3", import.meta.url).href;
+const DEAL_SAMPLE_URLS = [1, 2, 3, 4].map((index) => new URL(`../assets/sfx/deal-hand-${index}.mp3`, import.meta.url).href);
 const CARD_PLAY_MAX_VOICES = 4;
+const DEAL_SAMPLE_MAX_VOICES = 3;
 const CARD_PLAY_VARIANTS = [
   { rate: .94, gain: .27, pan: -.08, offset: .002 },
   { rate: .985, gain: .3, pan: .04, offset: .006 },
@@ -28,6 +30,11 @@ let cardPlayBuffer = null;
 let cardPlayBufferPromise = null;
 let lastCardPlayVariant = -1;
 const activeCardPlayVoices = new Set();
+let dealBuffers = [];
+let dealBufferPromise = null;
+let dealSamplePool = [];
+let lastDealSampleIndex = -1;
+const activeDealVoices = new Set();
 let settings = readSettings();
 const cardPlayEncodedPromise = fetch(CARD_PLAY_SAMPLE_URL, { cache: "force-cache" })
   .then((response) => {
@@ -35,12 +42,19 @@ const cardPlayEncodedPromise = fetch(CARD_PLAY_SAMPLE_URL, { cache: "force-cache
     return response.arrayBuffer();
   })
   .catch(() => null);
+const dealEncodedPromises = DEAL_SAMPLE_URLS.map((url) => fetch(url, { cache: "force-cache" })
+  .then((response) => {
+    if (!response.ok) throw new Error(`Deal sample failed: ${response.status}`);
+    return response.arrayBuffer();
+  })
+  .catch(() => null));
 
 export function installAudioUnlock() {
   const unlock = () => {
     ensureAudio();
     context?.resume?.().catch(() => {});
     void loadCardPlayBuffer();
+    void loadDealBuffers();
     syncMusic();
   };
   document.addEventListener("pointerdown", unlock, { capture: true, once: true, passive: true });
@@ -140,6 +154,22 @@ function loadCardPlayBuffer() {
   return cardPlayBufferPromise;
 }
 
+function loadDealBuffers() {
+  if (dealBuffers.length) return Promise.resolve(dealBuffers);
+  if (!context) return Promise.resolve([]);
+  if (dealBufferPromise) return dealBufferPromise;
+  dealBufferPromise = Promise.all(dealEncodedPromises)
+    .then((encodedSamples) => Promise.all(encodedSamples.map((encoded) => (
+      encoded ? context.decodeAudioData(encoded) : Promise.resolve(null)
+    ))))
+    .then((buffers) => {
+      dealBuffers = buffers.filter(Boolean);
+      return dealBuffers;
+    })
+    .catch(() => []);
+  return dealBufferPromise;
+}
+
 function playCardThrowSample() {
   if (!context || !cardPlayBuffer || activeVoices >= MAX_ACTIVE_VOICES) {
     void loadCardPlayBuffer();
@@ -185,6 +215,69 @@ function playCardThrowSample() {
   source.start(start, offset);
   source.addEventListener("ended", () => {
     if (activeCardPlayVoices.delete(source)) activeVoices = Math.max(0, activeVoices - 1);
+    source.disconnect();
+    envelope.disconnect();
+    panner?.disconnect();
+  }, { once: true });
+  return true;
+}
+
+function playDealSample() {
+  if (!context || !dealBuffers.length || activeVoices >= MAX_ACTIVE_VOICES) {
+    void loadDealBuffers();
+    return false;
+  }
+
+  if (!dealSamplePool.length) {
+    dealSamplePool = dealBuffers.map((_, index) => index);
+    for (let index = dealSamplePool.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [dealSamplePool[index], dealSamplePool[swapIndex]] = [dealSamplePool[swapIndex], dealSamplePool[index]];
+    }
+    if (dealSamplePool.length > 1 && dealSamplePool[0] === lastDealSampleIndex) {
+      [dealSamplePool[0], dealSamplePool[1]] = [dealSamplePool[1], dealSamplePool[0]];
+    }
+  }
+
+  const sampleIndex = dealSamplePool.shift();
+  const buffer = dealBuffers[sampleIndex];
+  if (!buffer) return false;
+  lastDealSampleIndex = sampleIndex;
+
+  const start = context.currentTime;
+  const source = context.createBufferSource();
+  const envelope = context.createGain();
+  const panner = typeof context.createStereoPanner === "function" ? context.createStereoPanner() : null;
+  const playbackRate = .985 + Math.random() * .03;
+  const gain = .255 + Math.random() * .035;
+  const end = start + Math.max(.04, buffer.duration / playbackRate);
+
+  if (activeDealVoices.size >= DEAL_SAMPLE_MAX_VOICES) {
+    const oldest = activeDealVoices.values().next().value;
+    if (oldest && activeDealVoices.delete(oldest)) activeVoices = Math.max(0, activeVoices - 1);
+    try { oldest?.stop(start); } catch {}
+  }
+
+  activeVoices += 1;
+  activeDealVoices.add(source);
+  source.buffer = buffer;
+  source.playbackRate.setValueAtTime(playbackRate, start);
+  envelope.gain.setValueAtTime(.0001, start);
+  envelope.gain.exponentialRampToValueAtTime(gain, start + .006);
+  envelope.gain.setValueAtTime(gain, Math.max(start + .008, end - .024));
+  envelope.gain.exponentialRampToValueAtTime(.0001, end);
+  if (panner) panner.pan.setValueAtTime((sampleIndex - 1.5) * .035, start);
+
+  source.connect(envelope);
+  if (panner) {
+    envelope.connect(panner);
+    panner.connect(master);
+  } else {
+    envelope.connect(master);
+  }
+  source.start(start);
+  source.addEventListener("ended", () => {
+    if (activeDealVoices.delete(source)) activeVoices = Math.max(0, activeVoices - 1);
     source.disconnect();
     envelope.disconnect();
     panner?.disconnect();
@@ -256,6 +349,11 @@ const EFFECTS = {
     noise({ duration: 0.035, gain: 0.035, highpass: 2200 });
   },
   card_deselect: () => tone({ frequency: 460, endFrequency: 300, duration: 0.06, gain: 0.06, type: "triangle" }),
+  card_deal: () => {
+    if (playDealSample()) return;
+    tone({ frequency: 390, endFrequency: 520, duration: .045, gain: .045, type: "triangle" });
+    noise({ duration: .026, gain: .022, highpass: 1800 });
+  },
   valid_add: () => arpeggio([440, 660], { gain: 0.065 }),
   invalid_card: () => {
     tone({ frequency: 150, endFrequency: 75, duration: 0.18, gain: 0.12, type: "sawtooth" });

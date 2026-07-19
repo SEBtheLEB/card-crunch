@@ -1,5 +1,5 @@
 import { formatCompactNumber } from "./format.js?v=90";
-import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=116";
+import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=120";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -296,8 +296,9 @@ export async function playCrunchExplanation({ cutscene, scoreEl }) {
 export async function playCrunchEntryExplanation({ entry, tier = "normal", bank = null, sourceCards = [] }) {
   if (!entry) return;
 
-  const overlay = createOverlay(tier);
-  if (sourceCards.some(({ element }) => element?.isConnected)) {
+  const hasSharedHandoff = sourceCards.some(({ element }) => element?.isConnected);
+  const overlay = createOverlay(tier, { deferFocus: hasSharedHandoff });
+  if (hasSharedHandoff) {
     overlay.classList.add("is-shared-handoff");
   }
   const advance = createAdvanceController(overlay);
@@ -717,12 +718,12 @@ async function playCrunchBonusSteps(overlay, breakdown, total, tier, advance, ba
   await bank.rampTo(total, advance);
 }
 
-function createOverlay(tier) {
+function createOverlay(tier, { deferFocus = false } = {}) {
   const overlay = document.createElement("section");
   overlay.className = `crunch-cutscene-overlay cutscene-${tier}`;
   overlay.setAttribute("aria-live", "assertive");
   overlay.setAttribute("aria-label", "Crunch explanation. Tap to advance.");
-  document.body.classList.add("is-crunch-focus-active");
+  if (!deferFocus) document.body.classList.add("is-crunch-focus-active");
   showCrunchSkipText();
   return overlay;
 }
@@ -832,11 +833,14 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
     .filter(({ card, element }) => card?.id && element?.isConnected)
     .map(({ card, element }) => ({ card, element, rect: element.getBoundingClientRect() }))
     .filter(({ rect }) => rect.width > 0 && rect.height > 0);
-  if (!sources.length || isCrunchSkipRequested()) return () => {};
+  if (!sources.length || isCrunchSkipRequested()) {
+    activateSharedHandoff(overlay);
+    return () => {};
+  }
 
   const targets = [...overlay.querySelectorAll(".cutin-card[data-cutin-card-id]")];
   const hiddenSources = [];
-  const animations = [];
+  const transfers = [];
 
   sources.forEach(({ card, element, rect }, index) => {
     const target = targets.find((candidate) => candidate.dataset.cutinCardId === card.id);
@@ -867,41 +871,66 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
     const scaleY = rect.height / targetRect.height;
     const delay = index * CUTSCENE_CONFIG.sharedCardStagger;
     const duration = CUTSCENE_CONFIG.sharedCardDuration;
+    const initialTransform = `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`;
+    const initialFilter = "brightness(1.14) drop-shadow(0 0 24px rgba(255, 207, 72, .82))";
 
+    flight.style.transform = initialTransform;
+    flight.style.filter = initialFilter;
     overlay.appendChild(flight);
+    transfers.push({
+      target,
+      flight,
+      element,
+      delay,
+      duration,
+      frames: [
+        {
+          transform: initialTransform,
+          filter: initialFilter,
+          offset: 0
+        },
+        {
+          transform: `translate3d(${translateX * .9}px, ${translateY * .8 - 14}px, 0) scale(${scaleX * 1.025}, ${scaleY * 1.025})`,
+          filter: "brightness(1.28) drop-shadow(0 0 34px rgba(255, 215, 92, .95))",
+          offset: .24
+        },
+        {
+          transform: `translate3d(${translateX * .24}px, ${translateY * .2 - 9}px, 0) scale(${1 + (scaleX - 1) * .2}, ${1 + (scaleY - 1) * .2})`,
+          filter: "brightness(1.18) drop-shadow(0 0 22px rgba(255, 207, 72, .72))",
+          offset: .78
+        },
+        {
+          transform: "translate3d(0, 0, 0) scale(1)",
+          filter: "brightness(1.08) drop-shadow(0 0 14px rgba(255, 207, 72, .52))",
+          offset: 1
+        }
+      ]
+    });
+  });
+
+  if (!transfers.length) {
+    activateSharedHandoff(overlay);
+    return () => {};
+  }
+
+  // Paint the flight cards directly over their live sources before hiding
+  // anything. This removes the one-frame hole that looked like a blink.
+  await waitForPaint();
+  activateSharedHandoff(overlay);
+  const animations = transfers.map(({ target, flight, element, delay, duration, frames }) => {
     element.classList.add("cutin-shared-source-hidden");
     hiddenSources.push(element);
     const animation = flight.animate([
-      {
-        transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`,
-        filter: "brightness(1.14) drop-shadow(0 0 24px rgba(255, 207, 72, .82))",
-        offset: 0
-      },
-      {
-        transform: `translate3d(${translateX * .9}px, ${translateY * .8 - 14}px, 0) scale(${scaleX * 1.025}, ${scaleY * 1.025})`,
-        filter: "brightness(1.28) drop-shadow(0 0 34px rgba(255, 215, 92, .95))",
-        offset: .24
-      },
-      {
-        transform: `translate3d(${translateX * .24}px, ${translateY * .2 - 9}px, 0) scale(${1 + (scaleX - 1) * .2}, ${1 + (scaleY - 1) * .2})`,
-        filter: "brightness(1.18) drop-shadow(0 0 22px rgba(255, 207, 72, .72))",
-        offset: .78
-      },
-      {
-        transform: "translate3d(0, 0, 0) scale(1)",
-        filter: "brightness(1.08) drop-shadow(0 0 14px rgba(255, 207, 72, .52))",
-        offset: 1
-      }
+      ...frames
     ], {
       duration,
       delay,
       easing: "cubic-bezier(.18, .82, .2, 1)",
       fill: "both"
     });
-    animations.push({ animation, target, flight });
+    return { animation, target, flight };
   });
 
-  if (!animations.length) return () => {};
   await advance.wait(CUTSCENE_CONFIG.sharedCardDuration + Math.max(0, animations.length - 1) * CUTSCENE_CONFIG.sharedCardStagger);
   animations.forEach(({ animation, target, flight }) => {
     try {
@@ -924,6 +953,17 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
     });
     hiddenSources.forEach((element) => element.classList.remove("cutin-shared-source-hidden"));
   };
+}
+
+function activateSharedHandoff(overlay) {
+  overlay.classList.add("is-handoff-ready");
+  document.body.classList.add("is-crunch-focus-active");
+}
+
+function waitForPaint() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  });
 }
 
 function orderMatchedCardsForEquation(entry) {

@@ -1,4 +1,5 @@
 import { DEAL_TIMING, getDealStartDelay } from "./dealTiming.js?v=117";
+import { playGameSfx } from "./audio.js?v=120";
 
 const TAP_SLOP = 12;
 const FLICK_DISTANCE = 42;
@@ -203,6 +204,7 @@ export function animateCardDealIn(card, dealOrder = 0, { zone = "hand" } = {}) {
 
   const launch = () => {
     if (!card.isConnected) return;
+    playGameSfx("card_deal");
     const toRect = card.getBoundingClientRect();
     const laneOffset = normalizedOrder * 18;
     const fromRect = {

@@ -18,6 +18,10 @@ const required = [
   "src/economy.js",
   "src/purchases.js",
   "assets/sfx/playing-card.mp3",
+  "assets/sfx/deal-hand-1.mp3",
+  "assets/sfx/deal-hand-2.mp3",
+  "assets/sfx/deal-hand-3.mp3",
+  "assets/sfx/deal-hand-4.mp3",
   "styles/main.css",
   "capacitor.config.json"
 ];
@@ -25,6 +29,11 @@ const required = [
 await Promise.all(required.map((file) => access(resolve(root, file))));
 if ((await stat(resolve(root, "assets/sfx/playing-card.mp3"))).size <= 0) {
   throw new Error("Card-play sample is empty");
+}
+for (let index = 1; index <= 4; index += 1) {
+  if ((await stat(resolve(root, `assets/sfx/deal-hand-${index}.mp3`))).size <= 0) {
+    throw new Error(`Deal sample ${index} is empty`);
+  }
 }
 
 const scoringModule = await import(`../src/scoring.js?verify=${Date.now()}`);
@@ -180,6 +189,19 @@ if (!selectionResolveSource.includes("waitForTap(RESOLVE_HIGHLIGHT_TAP_GUARD)") 
 if (!cutsceneSource.includes("is-shared-handoff") || !css.includes("cutsceneBackdropIn")) {
   throw new Error("Blink-free shared-card cut-in backdrop is missing");
 }
+const sharedHandoffSource = cutsceneSource.slice(
+  cutsceneSource.indexOf("async function transitionSourceCardsIntoCutin"),
+  cutsceneSource.indexOf("function orderMatchedCardsForEquation")
+);
+if (!sharedHandoffSource.includes("await waitForPaint()")
+  || sharedHandoffSource.indexOf("await waitForPaint()") > sharedHandoffSource.indexOf('element.classList.add("cutin-shared-source-hidden")')
+  || !sharedHandoffSource.includes("activateSharedHandoff(overlay)")
+  || !css.includes("is-shared-handoff.is-handoff-ready::after")) {
+  throw new Error("Shared cards must be painted before their live sources are hidden");
+}
+if (!animationsSource.includes('from "./crunchCutscene.js?v=120"') || !gameStateSource.includes('from "./crunchCutscene.js?v=120"')) {
+  throw new Error("Crunch skip and handoff state must use one shared module instance");
+}
 if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("--shard-burst-x") || !css.includes("cutin-fracture-map") || !css.includes("--shard-rest-x") || !css.includes("cutin-card-shard.is-vacuuming")) {
   throw new Error("Three-hit interactive Crunch damage sequence is missing");
 }
@@ -188,6 +210,9 @@ if (!audioSource.includes("playCrunchShardImpact") || !audioSource.includes("SHA
 }
 if (!audioSource.includes("playing-card.mp3") || !audioSource.includes("playCardThrowSample") || !audioSource.includes("CARD_PLAY_VARIANTS") || !audioSource.includes("lastCardPlayVariant")) {
   throw new Error("Varied sampled card-play audio is missing");
+}
+if (!audioSource.includes("DEAL_SAMPLE_URLS") || !audioSource.includes("playDealSample") || !audioSource.includes("dealSamplePool") || !cardGestureSource.includes('playGameSfx("card_deal")')) {
+  throw new Error("Sequential hand and table deal audio is missing");
 }
 
 if (!css.includes("--pixel-card-silhouette") || !css.includes("visibility: hidden")) {

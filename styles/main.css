@@ -1505,8 +1505,21 @@ button.is-pressing:not(:disabled) {
     radial-gradient(70% 46% at 50% 43%, rgba(255, 197, 61, .09), transparent 72%),
     repeating-linear-gradient(0deg, rgba(255, 255, 255, .018) 0 2px, transparent 2px 5px),
     rgba(2, 6, 14, .92);
+  opacity: 0;
   pointer-events: none;
+}
+
+.crunch-cutscene-overlay.is-shared-handoff.is-handoff-ready::after {
   animation: cutsceneBackdropIn .14s ease both;
+}
+
+.crunch-cutscene-overlay.is-shared-handoff::before {
+  opacity: 0;
+  transition: opacity .14s ease;
+}
+
+.crunch-cutscene-overlay.is-shared-handoff.is-handoff-ready::before {
+  opacity: 1;
 }
 
 .crunch-skip-text {
