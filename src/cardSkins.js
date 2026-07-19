@@ -5,7 +5,7 @@ import {
   getEquippedCardSkin as resolveCollectedCardSkin,
   isFullDeckSkinOwned,
   setFullDeckSkin
-} from "./cardCollection.js?v=150";
+} from "./cardCollection.js?v=151";
 
 const CARD_SKIN_STORAGE_KEY = "cardCrunchCardSkin";
 const SKIN_CLASS_PREFIX = "card-skin-";

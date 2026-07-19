@@ -1,4 +1,4 @@
-import { haptic } from "./haptics.js?v=150";
+import { haptic } from "./haptics.js?v=151";
 
 const AudioContextClass = globalThis.AudioContext ?? globalThis.webkitAudioContext;
 const SETTINGS_KEY = "cardCrunchSettings";
@@ -22,6 +22,7 @@ let musicTimer = null;
 let musicStep = 0;
 let activeVoices = 0;
 let shardImpactStep = 0;
+let lastShardHapticAt = 0;
 let cardPlayBuffer = null;
 let cardPlayBufferPromise = null;
 let lastCardPlayVariant = -1;
@@ -85,6 +86,17 @@ export function playGameSfx(name) {
 /* Each physical bank contact gets a very short low-gain voice. The clips are
    intentionally tiny so even a full-hand stream reads as coins without clipping. */
 export function playCrunchShardImpact({ progress = 0.5, strength = 1 } = {}) {
+  const arrival = Math.max(0, Math.min(1, progress));
+  const impactStrength = Math.max(.45, Math.min(1.8, strength));
+  const now = performance.now();
+  const isFinalImpact = arrival >= .999;
+  if (isFinalImpact || now - lastShardHapticAt >= 42) {
+    lastShardHapticAt = now;
+    haptic(impactStrength >= 1.2 || isFinalImpact ? "bankShardHeavy" : "bankShard", {
+      force: isFinalImpact
+    });
+  }
+
   if (!settings.sound) return;
   const audio = ensureAudio();
   if (!audio) return;
@@ -93,8 +105,6 @@ export function playCrunchShardImpact({ progress = 0.5, strength = 1 } = {}) {
   shardImpactStep += 1;
 
   const jitter = ((shardImpactStep * 17) % 9) - 4;
-  const arrival = Math.max(0, Math.min(1, progress));
-  const impactStrength = Math.max(.45, Math.min(1.8, strength));
   const gain = Math.min(0.021, 0.006 + impactStrength * 0.0065);
   const frequency = 185 + arrival * 82 + jitter * 5;
   tone({

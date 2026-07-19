@@ -201,6 +201,7 @@ const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollec
 const mainSource = await readFile(resolve(root, "src/main.js"), "utf8");
 const tutorialSource = await readFile(resolve(root, "src/tutorial.js"), "utf8");
 const audioSource = await readFile(resolve(root, "src/audio.js"), "utf8");
+const hapticsSource = await readFile(resolve(root, "src/haptics.js"), "utf8");
 const scoringSource = await readFile(resolve(root, "src/scoring.js"), "utf8");
 const scoreSurgeSource = await readFile(resolve(root, "src/scoreSurge.js"), "utf8");
 const arcadeModeSource = await readFile(resolve(root, "src/arcadeMode.js"), "utf8");
@@ -350,12 +351,18 @@ if (!cutsceneSource.includes("playInteractiveCardCrunch")
   throw new Error("Three-hit interactive Crunch damage sequence is missing");
 }
 if (!cutsceneSource.includes("assignCrunchShakeVectors")
+  || !cutsceneSource.includes("getDisplayedCrunchCards")
+  || !cutsceneSource.includes("is-crunch-shaking")
   || !cutsceneSource.includes("maxRotationByHit")
+  || !cutsceneSource.includes("pulseBankOnShardImpact")
   || !css.includes("--crunch-shake-x-a")
-  || !css.includes("--crunch-shake-r-c")) {
+  || !css.includes("--crunch-shake-r-c")
+  || !css.includes("transform-origin: 50% 50% !important")) {
   throw new Error("Crunch hits must assign bounded, varied per-card shake vectors");
 }
 if (!audioSource.includes("playCrunchShardImpact")
+  || !audioSource.includes("bankShardHeavy")
+  || !hapticsSource.includes("bankShard")
   || !audioSource.includes("impactStrength")
   || !audioSource.includes("crunch_vacuum")
   || !audioSource.includes("crunch_hit_3")

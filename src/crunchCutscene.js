@@ -1,8 +1,8 @@
-import { formatCompactNumber } from "./format.js?v=150";
-import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=150";
-import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=150";
-import { getPowerCardDetails } from "./arcadeMode.js?v=150";
-import { createScoreSurgePlan } from "./scoreSurge.js?v=150";
+import { formatCompactNumber } from "./format.js?v=151";
+import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=151";
+import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=151";
+import { getPowerCardDetails } from "./arcadeMode.js?v=151";
+import { createScoreSurgePlan } from "./scoreSurge.js?v=151";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -44,7 +44,7 @@ const SHARD_PHYSICS_CONFIG = {
   vacuumMaxSpeed: 1380,
   intakeRadius: 24,
   maxDuration: 4300,
-  impactCrumbs: 5
+  impactCrumbs: 7
 };
 const CRUNCH_DEBRIS_CONFIG = {
   maxParticles: 320,
@@ -695,6 +695,8 @@ async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null
   const cards = getActiveCutinCards(overlay);
   if (!stage || !cards.length || isCrunchSkipRequested()) return;
 
+  const reactingCards = getDisplayedCrunchCards(overlay);
+
   const shardGrid = getShardGrid(cards.length);
   cards.forEach((card) => createCardFractureMap(card, shardGrid));
   const prepared = bankEl ? prepareCutinCardShards(cards, bankEl, shardGrid) : null;
@@ -703,7 +705,7 @@ async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null
     await advance.waitForTap(0);
     if (isCrunchSkipRequested()) return;
 
-    assignCrunchShakeVectors(cards, hit);
+    assignCrunchShakeVectors(reactingCards, hit);
     stage.dataset.crunchHit = String(hit);
     overlay.dataset.crunchHit = String(hit);
     cards.forEach((card) => {
@@ -733,6 +735,14 @@ async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null
   prompt.remove();
 }
 
+function getDisplayedCrunchCards(overlay) {
+  const cards = [
+    ...overlay.querySelectorAll(".cutin-live-card"),
+    ...overlay.querySelectorAll(".cutin-card:not(.cutin-layout-proxy)")
+  ];
+  return [...new Set(cards)].filter((card) => card?.isConnected);
+}
+
 function assignCrunchShakeVectors(cards, hit) {
   const hitIndex = Math.max(1, Math.min(CUTSCENE_CONFIG.interactiveCrunchHits, hit));
   const maxX = CRUNCH_CARD_SHAKE_CONFIG.maxXByHit[hitIndex];
@@ -744,7 +754,7 @@ function assignCrunchShakeVectors(cards, hit) {
   };
   const clamp = (value, limit) => Math.max(-limit, Math.min(limit, value));
 
-  cards.forEach((card) => {
+  cards.forEach((card, index) => {
     const xA = signedMagnitude(maxX * .48, maxX);
     const yA = signedMagnitude(maxY * .3, maxY);
     const rotationA = signedMagnitude(maxRotation * .38, maxRotation);
@@ -764,6 +774,8 @@ function assignCrunchShakeVectors(cards, hit) {
     card.style.setProperty("--crunch-shake-x-c", `${xC.toFixed(2)}px`);
     card.style.setProperty("--crunch-shake-y-c", `${yC.toFixed(2)}px`);
     card.style.setProperty("--crunch-shake-r-c", `${rotationC.toFixed(2)}deg`);
+    card.style.setProperty("--crunch-shake-delay", `${Math.min(24, index * 6)}ms`);
+    card.classList.add("is-crunch-shaking");
   });
 }
 
@@ -1803,8 +1815,27 @@ function registerShardBankImpact(prepared, state, distance) {
   const speed = Math.hypot(state.vx, state.vy);
   const strength = Math.max(.55, Math.min(1.7, speed / 720 + (distance < 10 ? .25 : 0)));
   playCrunchShardImpact({ progress, strength });
+  pulseBankOnShardImpact(prepared.bankEl, prepared.arrivedCount, total, strength);
   spawnBankImpactCrumbs(prepared.targetX, prepared.targetY, strength);
   prepared.onImpact?.({ arrived: prepared.arrivedCount, total, progress, strength });
+}
+
+function pulseBankOnShardImpact(bankEl, arrived, total, strength) {
+  if (!bankEl?.isConnected) return;
+  const cadence = total >= 30 ? 4 : total >= 16 ? 3 : 2;
+  if (arrived !== 1 && arrived !== total && arrived % cadence !== 0) return;
+  const intensity = Math.max(.7, Math.min(1.7, Number(strength) || 1));
+  bankEl.animate?.([
+    { filter: "brightness(1) saturate(1)" },
+    {
+      filter: `brightness(${(1.2 + intensity * .2).toFixed(2)}) saturate(${(1.08 + intensity * .14).toFixed(2)}) drop-shadow(0 0 ${(8 + intensity * 7).toFixed(1)}px rgba(255, 207, 73, .82))`,
+      offset: .34
+    },
+    { filter: "brightness(1.06) saturate(1.04)" }
+  ], {
+    duration: arrived === total ? 210 : 125,
+    easing: "steps(4, end)"
+  });
 }
 
 function finishPreparedShardPhysics(prepared) {

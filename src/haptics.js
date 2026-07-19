@@ -4,6 +4,8 @@ const PATTERNS = {
   deselect: { style: "LIGHT", fallback: 5 },
   crunch: { style: "HEAVY", fallback: [18, 24, 34] },
   match: { style: "MEDIUM", fallback: [12, 18, 18] },
+  bankShard: { style: "LIGHT", fallback: 5 },
+  bankShardHeavy: { style: "MEDIUM", fallback: 9 },
   score: { notification: "SUCCESS", fallback: [14, 18, 28] },
   bank: { notification: "SUCCESS", fallback: [18, 24, 38] },
   warning: { notification: "WARNING", fallback: [20, 34, 20] },

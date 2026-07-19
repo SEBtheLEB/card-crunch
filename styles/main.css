@@ -4341,19 +4341,25 @@ h2 {
   stroke-width: 2;
 }
 
-.crunch-cutscene-overlay[data-crunch-hit="1"] .cutin-live-card,
-.cutin-stage[data-crunch-hit="1"] .cutin-card:not(.dim):not(.cutin-layout-proxy) {
-  animation: cutinCrunchHitOne 180ms cubic-bezier(.2, 1.55, .28, 1) both !important;
+.crunch-cutscene-overlay[data-crunch-hit="1"] .is-crunch-shaking,
+.cutin-stage[data-crunch-hit="1"] .is-crunch-shaking {
+  animation: cutinCrunchHitOne 210ms cubic-bezier(.2, 1.55, .28, 1) var(--crunch-shake-delay, 0ms) both !important;
 }
 
-.crunch-cutscene-overlay[data-crunch-hit="2"] .cutin-live-card,
-.cutin-stage[data-crunch-hit="2"] .cutin-card:not(.dim):not(.cutin-layout-proxy) {
-  animation: cutinCrunchHitTwo 210ms cubic-bezier(.2, 1.55, .28, 1) both !important;
+.crunch-cutscene-overlay[data-crunch-hit="2"] .is-crunch-shaking,
+.cutin-stage[data-crunch-hit="2"] .is-crunch-shaking {
+  animation: cutinCrunchHitTwo 240ms cubic-bezier(.2, 1.55, .28, 1) var(--crunch-shake-delay, 0ms) both !important;
 }
 
-.crunch-cutscene-overlay[data-crunch-hit="3"] .cutin-live-card,
-.cutin-stage[data-crunch-hit="3"] .cutin-card:not(.dim):not(.cutin-layout-proxy) {
-  animation: cutinCrunchHitThree 250ms cubic-bezier(.16, 1.5, .24, 1) both !important;
+.crunch-cutscene-overlay[data-crunch-hit="3"] .is-crunch-shaking,
+.cutin-stage[data-crunch-hit="3"] .is-crunch-shaking {
+  animation: cutinCrunchHitThree 285ms cubic-bezier(.16, 1.5, .24, 1) var(--crunch-shake-delay, 0ms) both !important;
+}
+
+.crunch-cutscene-overlay .is-crunch-shaking {
+  transform-origin: 50% 50% !important;
+  backface-visibility: hidden;
+  will-change: transform;
 }
 
 .cutin-crunch-debris-canvas {
@@ -4398,8 +4404,8 @@ h2 {
   84% { transform: translate3d(calc(var(--crunch-shake-x-c, 2px) * -.35), calc(var(--crunch-shake-y-c, 1px) * -.35), 0) rotate(calc(var(--crunch-shake-r-c, .8deg) * -.35)) scale(.99, 1.015); }
 }
 
-.reduce-motion .crunch-cutscene-overlay[data-crunch-hit] .cutin-live-card,
-.reduce-motion .cutin-stage[data-crunch-hit] .cutin-card:not(.dim):not(.cutin-layout-proxy),
+.reduce-motion .crunch-cutscene-overlay[data-crunch-hit] .is-crunch-shaking,
+.reduce-motion .cutin-stage[data-crunch-hit] .is-crunch-shaking,
 .reduce-motion .cutin-stage.is-bonus-reacting .cutin-card,
 .reduce-motion .cutin-stage.is-bonus-reacting .cutin-live-card,
 .reduce-motion .cutin-stage.is-multi-match-reacting .cutin-match-row,
