@@ -167,22 +167,21 @@ export function createUI() {
       elements.mapScreen.classList.toggle("is-visible", show);
       elements.mapScreen.setAttribute("aria-hidden", String(!show));
     },
-    renderMap(pots, handlers, savedLevelId = null) {
+    renderMap(pots, handlers) {
       elements.levelMap.innerHTML = "";
       pots.forEach((pot) => {
         const button = document.createElement("button");
         const progress = pot.target > 0 ? Math.min(1, pot.progress / pot.target) : 0;
-        const hasSavedRun = savedLevelId === pot.id && !pot.complete;
         const locked = !isPotUnlocked(pots, pot.id);
-        button.className = `map-pot ${pot.complete ? "is-complete" : ""} ${hasSavedRun ? "has-save" : ""} ${locked ? "is-locked" : ""}`;
+        button.className = `map-pot ${pot.complete ? "is-complete" : ""} ${locked ? "is-locked" : ""}`;
         button.type = "button";
         button.disabled = locked || pot.complete;
         button.setAttribute("aria-disabled", String(button.disabled));
         button.innerHTML = `
-          <span>${locked ? "Locked" : hasSavedRun ? "Continue" : "Pot"} ${pot.id}</span>
-          <strong>${locked ? "LOCK" : hasSavedRun ? "Saved" : pot.complete ? "Full" : formatCompactNumber(Math.max(0, pot.target - pot.progress))}</strong>
+          <span>${locked ? "Locked" : "Pot"} ${pot.id}</span>
+          <strong>${locked ? "LOCK" : pot.complete ? "Full" : formatCompactNumber(Math.max(0, pot.target - pot.progress))}</strong>
           <small>${locked ? "Clear prior pot" : pot.complete ? "Cleared" : `${Math.round(progress * 100)}% full`}</small>
-          ${!locked && !pot.complete ? `<em>${hasSavedRun ? "FREE RESUME" : "\u26A15 ENERGY"}</em>` : ""}
+          ${!locked && !pot.complete ? "<em>\u26A15 ENERGY</em>" : ""}
           <i><b style="width: ${progress * 100}%"></b></i>
         `;
         bindInstantAction(button, () => handlers.onLevelSelect(pot.id));

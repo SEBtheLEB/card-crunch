@@ -3013,11 +3013,6 @@ h2 {
   box-shadow: 0 0 12px rgba(255, 197, 61, .55);
 }
 
-.menu-level-map .map-pot.has-save {
-  border-color: rgba(255, 229, 138, .8);
-  animation: savedPotPulse 1.4s ease-in-out infinite alternate;
-}
-
 .menu-level-map .map-pot.is-complete {
   border-color: rgba(255, 229, 138, .6);
   background:
@@ -3085,11 +3080,6 @@ h2 {
   border-color: rgba(255, 229, 138, .5);
 }
 
-.level-map .map-pot.has-save {
-  border-color: rgba(255, 216, 138, .85);
-  box-shadow: 0 0 24px rgba(255, 197, 61, .22);
-}
-
 .level-map .map-pot.is-locked {
   opacity: .5;
   filter: grayscale(.4);
@@ -3152,11 +3142,6 @@ h2 {
 @keyframes modalCardIn {
   from { opacity: 0; transform: translateY(22px) scale(.92); }
   to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes savedPotPulse {
-  from { box-shadow: 0 12px 26px rgba(0, 0, 0, .4), 0 0 12px rgba(255, 197, 61, .2); }
-  to { box-shadow: 0 12px 26px rgba(0, 0, 0, .4), 0 0 30px rgba(255, 197, 61, .5); }
 }
 
 @keyframes caseMatchGlow {

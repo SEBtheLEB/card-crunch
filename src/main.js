@@ -1,5 +1,5 @@
-import { createGame } from "./gameState.js?v=120";
-import { createUI } from "./ui.js?v=120";
+import { createGame } from "./gameState.js?v=121";
+import { createUI } from "./ui.js?v=121";
 import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=90";
 import { adManager } from "./ads.js?v=90";
 import { grantShieldToken, hasShieldToken } from "./save.js?v=90";
@@ -25,7 +25,7 @@ bindInstantAction(ui.elements.backToMenuButton, () => {
   ui.showMap(false);
   ui.showStart(true);
 });
-bindInstantAction(ui.elements.exitLevelButton, game.exitAndSave);
+bindInstantAction(ui.elements.exitLevelButton, game.exitRun);
 bindInstantAction(ui.elements.restartButton, game.playAgain);
 bindInstantAction(ui.elements.returnToPotsButton, game.returnToMap);
 bindInstantAction(ui.elements.reviveAdButton, game.onReviveAd);

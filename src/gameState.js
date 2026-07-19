@@ -3,7 +3,7 @@ import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "
 import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=90";
 import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=120";
 import { ensurePlayableHand } from "./handSafety.js?v=90";
-import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken, loadRunSave, saveRunState } from "./save.js?v=90";
+import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=90";
 import { formatCompactNumber } from "./format.js?v=90";
 import { adManager } from "./ads.js?v=90";
 import { submitBestScore } from "./playGames.js?v=90";
@@ -26,7 +26,9 @@ const RECOVERY_RATE = 0.5;
 const BONUS_BANK_RATE = 0.25;
 
 export function createGame(ui) {
-  let pendingRunSave = loadRunSave();
+  // Runs are intentionally session-only. Remove snapshots created by older
+  // releases so reopening Card Crunch always starts with a clean run.
+  clearRunSave();
   let pendingEnergyStart = null;
   let economyActionPending = false;
   let tutorialSession = null;
@@ -86,7 +88,7 @@ export function createGame(ui) {
     ui.clearMessage();
     state.locked = true;
     state.status = "menu";
-    ui.renderMap(state.pots, handlers, pendingRunSave?.activePotId);
+    ui.renderMap(state.pots, handlers);
     ui.renderMenuStats(state);
     ui.showStart(true);
     ui.showGameOver(false);
@@ -96,8 +98,6 @@ export function createGame(ui) {
   function enterLevel(levelId) {
     const pot = state.pots.find((item) => item.id === levelId);
     if (!pot || pot.complete || !isPotUnlocked(state.pots, levelId)) return;
-    if (pendingRunSave?.activePotId === levelId && restoreRun(pendingRunSave, pot)) return;
-    pendingRunSave = null;
     clearRunSave();
     requestNewRun(pot);
   }
@@ -166,12 +166,10 @@ export function createGame(ui) {
     ui.clearMessage();
     if (state.safeBankShieldActive) ui.setMessage("Shield armed: busting out auto-banks 25%", "good");
     ui.render(state, handlers);
-    persistRun();
     finishHandDeal(4);
   }
 
   function startEndless() {
-    pendingRunSave = null;
     clearRunSave();
     requestNewRun(null);
   }
@@ -288,7 +286,6 @@ export function createGame(ui) {
       state.selectedHandIndexes.push(handIndex);
     }
     ui.render(state, handlers);
-    if (!state.isTutorial) persistRun();
   }
 
   async function onCrunch() {
@@ -466,7 +463,6 @@ export function createGame(ui) {
     ui.setMessage(`BANKED $${formatCompactNumber(amount)}! Multi reset to x1`, "good");
     ui.playBankJuice(amount);
     ui.render(state, handlers);
-    persistRun();
     await sleep(620);
 
     if (state.activePot.complete) {
@@ -477,7 +473,6 @@ export function createGame(ui) {
     state.locked = false;
     state.status = "playing";
     ui.render(state, handlers);
-    persistRun();
     startTimer();
     offerBonusBankAd(amount);
   }
@@ -520,7 +515,6 @@ export function createGame(ui) {
         playSfx("bank");
         ui.setMessage(`+$${formatCompactNumber(bonus)} bank bonus!`, "good");
         ui.playBankJuice(bonus);
-        persistRun();
         if (state.activePot?.complete) {
           await clearTarget();
           return;
@@ -622,7 +616,6 @@ export function createGame(ui) {
     state.status = "runEnded";
     state.score = 0;
     state.lostUnbankedMoney = 0;
-    pendingRunSave = null;
     clearRunSave();
     submitBestScore(state.bestScore);
     grantRunCoins({ potCleared: true });
@@ -639,7 +632,6 @@ export function createGame(ui) {
     ui.clearMessage();
     state.locked = true;
     state.status = "runEnded";
-    pendingRunSave = null;
     clearRunSave();
     playSfx("game_over");
     submitBestScore(state.bestScore);
@@ -776,12 +768,8 @@ export function createGame(ui) {
     stopTimer();
     ui.hideBonusBankOffer();
     ui.clearMessage();
-    state.selectedHandIndexes = [];
-    state.activePot = null;
-    pendingRunSave = null;
     clearRunSave();
-    state.locked = true;
-    state.status = "menu";
+    resetRunSession();
     ui.render(state, handlers);
     ui.renderMap(state.pots, handlers);
     ui.renderMenuStats(state);
@@ -888,8 +876,9 @@ export function createGame(ui) {
     }
   }
 
-  /* Exit Pot mid-run: keep the run resumable instead of forfeiting cash. */
-  function exitAndSave() {
+  /* Leaving a run forfeits all temporary progress. Banked pot progress and
+     other permanent save data are untouched. */
+  function exitRun() {
     if (state.isTutorial) {
       exitTutorial();
       return;
@@ -898,11 +887,10 @@ export function createGame(ui) {
     stopTimer();
     ui.hideBonusBankOffer();
     ui.clearMessage();
-    persistRun();
-    pendingRunSave = loadRunSave();
-    state.locked = true;
-    state.status = "menu";
-    ui.renderMap(state.pots, handlers, pendingRunSave?.activePotId);
+    clearRunSave();
+    resetRunSession();
+    ui.render(state, handlers);
+    ui.renderMap(state.pots, handlers);
     ui.renderMenuStats(state);
     ui.showStart(true);
     ui.showMenuPage("pots");
@@ -923,7 +911,6 @@ export function createGame(ui) {
     state.dealHandCount = replacementCount;
     state.locked = true;
     ui.render(state, handlers);
-    persistRun();
     finishHandDeal(replacementCount);
   }
 
@@ -936,7 +923,6 @@ export function createGame(ui) {
       state.dealHandCount = 0;
       state.locked = false;
       ui.render(state, handlers);
-      persistRun();
       startTimer();
     }, dealDuration);
   }
@@ -970,6 +956,43 @@ export function createGame(ui) {
       window.clearInterval(state.timerId);
       state.timerId = null;
     }
+  }
+
+  function resetRunSession() {
+    state.deck = [];
+    state.discard = [];
+    state.stack = [];
+    state.hand = [];
+    state.selectedHandIndexes = [];
+    state.score = 0;
+    state.streak = 0;
+    state.misses = 0;
+    state.level = 0;
+    state.activePot = null;
+    state.target = getTargetForLevel(1);
+    state.fever = false;
+    state.timeLeft = state.turnSeconds;
+    state.dealHandCount = 0;
+    state.bankMultiplier = 1;
+    state.bestRunMultiplier = 1;
+    state.bestRunStreak = 0;
+    state.bankedThisRun = 0;
+    state.lastBankDeposit = 0;
+    state.lostUnbankedMoney = 0;
+    state.shieldSaved = 0;
+    state.recoveredAmount = 0;
+    state.runGrossCash = 0;
+    state.coinsEarnedThisRun = 0;
+    state.coinRewardGranted = 0;
+    state.safeBankShieldActive = false;
+    state.reviveAdUsedThisRun = false;
+    state.recoveryAdUsedThisRun = false;
+    state.bonusBankAdUsedForLastDeposit = true;
+    state.hintAdUsedThisRun = false;
+    state.rewardAdInProgress = false;
+    state.runStartedAt = 0;
+    state.locked = true;
+    state.status = "menu";
   }
 
   function discardSelectedCards() {
@@ -1016,72 +1039,13 @@ export function createGame(ui) {
     return state.activePot.progress - before;
   }
 
-  function restoreRun(save, pot) {
-    if (!save.hand.length || save.hand.length > 4 || save.stack.length < state.baseStackCount) return false;
-    stopTimer();
-    state.maxMisses = 3;
-    state.deck = save.deck;
-    state.discard = save.discard;
-    state.stack = save.stack;
-    state.hand = save.hand;
-    state.selectedHandIndexes = save.selectedHandIndexes.filter((index) => Number.isInteger(index) && index >= 0 && index < state.hand.length);
-    state.score = Math.max(0, Number(save.score) || 0);
-    state.bestScore = Math.max(state.bestScore, Number(save.bestScore) || 0);
-    state.streak = Math.max(0, Number(save.streak) || 0);
-    state.misses = Math.min(state.maxMisses - 1, Math.max(0, Number(save.misses) || 0));
-    state.level = pot.id;
-    state.activePot = pot;
-    state.target = pot.target;
-    state.fever = Boolean(save.fever) || state.streak >= 15;
-    state.timeLeft = Math.min(state.turnSeconds, Math.max(1, Number(save.timeLeft) || state.turnSeconds));
-    state.bankMultiplier = Math.min(RUN_MULTIPLIER_MAX, Math.max(1, Number(save.bankMultiplier) || 1));
-    state.bestRunMultiplier = Math.max(state.bankMultiplier, Number(save.bestRunMultiplier) || 1);
-    state.bestRunStreak = Math.max(state.streak, Number(save.bestRunStreak) || 0);
-    state.bankedThisRun = Math.max(0, Number(save.bankedThisRun) || 0);
-    state.lastBankDeposit = Math.max(0, Number(save.lastBankDeposit) || 0);
-    state.bonusBankAdUsedForLastDeposit = save.bonusBankAdUsedForLastDeposit !== false;
-    state.reviveAdUsedThisRun = Boolean(save.reviveAdUsedThisRun);
-    state.recoveryAdUsedThisRun = false;
-    state.hintAdUsedThisRun = Boolean(save.hintAdUsedThisRun);
-    state.rewardAdInProgress = false;
-    state.safeBankShieldActive = Boolean(save.safeBankShieldActive) && hasShieldToken();
-    state.lostUnbankedMoney = 0;
-    state.shieldSaved = 0;
-    state.recoveredAmount = 0;
-    state.runGrossCash = Math.max(0, Number(save.runGrossCash) || state.score);
-    state.coinsEarnedThisRun = Math.max(0, Number(save.coinsEarnedThisRun) || 0);
-    state.coinRewardGranted = Math.max(0, Number(save.coinRewardGranted) || 0);
-    state.runStartedAt = Date.now();
-    state.locked = false;
-    state.status = "playing";
-    pendingRunSave = null;
-    ui.showStart(false);
-    ui.showMap(false);
-    ui.showGameOver(false);
-    ui.setMessage("Run restored", "good");
-    ensurePlayableHand(state);
-    ui.render(state, handlers);
-    persistRun();
-    startTimer();
-    return true;
-  }
-
-  function persistRun() {
-    if (state.isTutorial) return;
-    saveRunState(state);
-  }
-
   const handlers = {
     onCardSelect,
     onCrunch,
     onBank: bankRun,
     onLevelSelect: enterLevel,
-    onExitLevel: exitAndSave
+    onExitLevel: exitRun
   };
-  window.addEventListener("beforeunload", persistRun);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") persistRun();
-  });
   return {
     state,
     start,
@@ -1091,7 +1055,7 @@ export function createGame(ui) {
     enterLevel,
     returnToMap,
     playAgain,
-    exitAndSave,
+    exitRun,
     onCardSelect,
     onCrunch,
     bankRun,

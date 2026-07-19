@@ -249,6 +249,25 @@ if (!cardGestureSource.includes("flightAnimations") || !uiSource.includes("card-
 if (!gameStateSource.includes("survivingCards") || !gameStateSource.includes("Array(openSlots).fill(null)")) {
   throw new Error("Hand survivors must compact right before replacement cards are dealt");
 }
+const exitRunSource = gameStateSource.slice(
+  gameStateSource.indexOf("function exitRun()"),
+  gameStateSource.indexOf("function startNewRound()")
+);
+const resetRunSource = gameStateSource.slice(
+  gameStateSource.indexOf("function resetRunSession()"),
+  gameStateSource.indexOf("function discardSelectedCards()")
+);
+if (!exitRunSource.includes("clearRunSave();") || !exitRunSource.includes("resetRunSession();")
+  || !resetRunSource.includes("state.score = 0;") || !resetRunSource.includes("state.bankMultiplier = 1;")
+  || !resetRunSource.includes("state.activePot = null;")) {
+  throw new Error("Exiting a run must discard all temporary run progress");
+}
+if (gameStateSource.includes("restoreRun(") || gameStateSource.includes("persistRun(")
+  || gameStateSource.includes("loadRunSave") || gameStateSource.includes("saveRunState")
+  || uiSource.includes("FREE RESUME") || uiSource.includes("hasSavedRun")
+  || !mainSource.includes("game.exitRun")) {
+  throw new Error("Run resume behavior must stay disabled");
+}
 if (!cardGestureSource.includes("export function animateCardDealIn") || !uiSource.includes("animateCardDealIn") || !css.includes("card-deal-pending")) {
   throw new Error("Left-to-right hand refill dealing or its flight trail is missing");
 }
