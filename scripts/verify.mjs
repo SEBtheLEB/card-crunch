@@ -283,6 +283,18 @@ if (!cutsceneSource.includes("getCrossedScoreMilestone")
   || !audioSource.includes("score_ramp_peak")) {
   throw new Error("Major score magnitude celebration is missing");
 }
+if (!uiSource.includes("renderBonusBankAction")
+  || !uiSource.includes('dataset.action === "bonus-bank-ad"')
+  || !uiSource.includes("elements._bonusBankOffer")
+  || uiSource.includes('className = "bonus-bank-offer"')
+  || !css.includes(".crunch-button.crunch-ad-offer")
+  || css.includes(".bonus-bank-offer")) {
+  throw new Error("The post-bank rewarded offer must occupy the idle Crunch action instead of a popup");
+}
+if (!gameStateSource.includes("Math.min(Math.round(depositAmount * BONUS_BANK_RATE), remaining)")
+  || !gameStateSource.includes("{ completesPot }")) {
+  throw new Error("Post-bank rewards must cap to and identify the exact pot remainder");
+}
 if (!mainSource.includes("activePressTargets") || mainSource.includes('classList.add("tap-pop")')) {
   throw new Error("Stable press feedback regression guards are missing");
 }

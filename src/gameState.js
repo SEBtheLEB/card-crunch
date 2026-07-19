@@ -504,13 +504,18 @@ export function createGame(ui) {
   function offerBonusBankAd(depositAmount) {
     if (state.bonusBankAdUsedForLastDeposit) return;
     if (!adManager.canShowRewardedAd()) return;
-    const bonus = Math.round(depositAmount * BONUS_BANK_RATE);
+    const remaining = Math.max(0, (state.activePot?.target ?? 0) - (state.activePot?.progress ?? 0));
+    const bonus = Math.min(Math.round(depositAmount * BONUS_BANK_RATE), remaining);
     if (bonus <= 0) return;
+    const completesPot = bonus >= remaining;
 
     ui.showBonusBankOffer(bonus, async () => {
+      ui.hideBonusBankOffer();
       // Guard against stale offers: only the most recent deposit qualifies.
       if (state.rewardAdInProgress || state.bonusBankAdUsedForLastDeposit || state.status !== "playing" || state.locked) return;
-      if (Math.round(state.lastBankDeposit * BONUS_BANK_RATE) !== bonus) return;
+      const currentRemaining = Math.max(0, (state.activePot?.target ?? 0) - (state.activePot?.progress ?? 0));
+      const eligibleBonus = Math.min(Math.round(state.lastBankDeposit * BONUS_BANK_RATE), currentRemaining);
+      if (eligibleBonus !== bonus) return;
       state.rewardAdInProgress = true;
       state.bonusBankAdUsedForLastDeposit = true;
       state.locked = true;
@@ -520,11 +525,11 @@ export function createGame(ui) {
       const earned = await adManager.showRewardedAd("bonusBank");
       state.rewardAdInProgress = false;
       if (earned) {
-        depositToPot(bonus);
-        state.bankedThisRun += bonus;
+        const deposited = depositToPot(bonus);
+        state.bankedThisRun += deposited;
         playSfx("bank");
-        ui.setMessage(`+$${formatCompactNumber(bonus)} bank bonus!`, "good");
-        ui.playBankJuice(bonus);
+        ui.setMessage(`+$${formatCompactNumber(deposited)} bank bonus!`, "good");
+        ui.playBankJuice(deposited);
         if (state.activePot?.complete) {
           await clearTarget();
           return;
@@ -534,7 +539,7 @@ export function createGame(ui) {
       state.status = "playing";
       ui.render(state, handlers);
       startTimer();
-    });
+    }, { completesPot });
   }
 
   async function onHintAd() {

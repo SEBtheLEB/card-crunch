@@ -4074,56 +4074,72 @@ h2 {
   to { filter: drop-shadow(0 0 26px rgba(69, 215, 255, .95)); }
 }
 
-/* Post-bank bonus offer toast */
-/* Sits over the crunch row (disabled right after banking) so it never
-   covers the hand; the first card tap hides it via hideBonusBankOffer. */
-.bonus-bank-offer {
-  position: fixed;
-  z-index: 55;
-  left: 50%;
-  bottom: calc(212px + var(--safe-bottom));
+/* A post-bank reward replaces the idle SELECT CARDS action. It remains in
+   the same physical button and disappears the instant a card is staged. */
+.crunch-button.crunch-ad-offer {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas: "icon label" "icon sub";
-  column-gap: 10px;
-  row-gap: 2px;
-  align-items: center;
-  padding: 9px 16px;
-  transform: translateX(-50%);
-  border: 1px solid rgba(69, 215, 255, .5);
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(10, 42, 64, .96), rgba(4, 16, 30, .97));
-  box-shadow: 0 10px 26px rgba(0, 0, 0, .45), 0 0 22px rgba(69, 215, 255, .25);
-  color: #d9f5ff;
-  text-align: left;
-  animation: bonusOfferIn .32s cubic-bezier(.18, 1.4, .3, 1) both;
+  place-content: center;
+  gap: 4px;
+  border-color: #4bc7ff;
+  color: white;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .18), transparent 38%),
+    linear-gradient(180deg, #175b83, #0a314f 68%, #071d33);
+  box-shadow:
+    0 5px 0 #041524,
+    0 0 0 2px rgba(69, 215, 255, .16),
+    0 0 26px rgba(69, 215, 255, .56),
+    inset 0 0 18px rgba(142, 232, 255, .14);
+  text-shadow: 2px 2px 0 #041524, 0 0 12px rgba(142, 232, 255, .72);
+  animation: crunchAdOfferPulse .68s steps(4, end) infinite alternate;
 }
 
-.bonus-bank-offer i {
-  grid-area: icon;
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #9ee7ff, var(--cyan));
-  color: #063a52;
-  font-style: normal;
-  font-size: .7rem;
+.crunch-button.crunch-ad-offer::before {
+  content: "\25B6";
+  position: absolute;
+  left: clamp(9px, 2.8vw, 16px);
+  top: 50%;
+  color: #bff3ff;
+  font-size: clamp(.68rem, 3vw, 1rem);
+  translate: 0 -50%;
+  filter: drop-shadow(0 0 7px rgba(69, 215, 255, .8));
 }
 
-.bonus-bank-offer span {
-  grid-area: label;
-  font-size: clamp(.76rem, 3.2vw, .92rem);
-  letter-spacing: .06em;
-  text-transform: uppercase;
+.crunch-button.crunch-ad-offer span {
+  color: #e8faff;
+  font-size: clamp(.5rem, 2.15vw, .68rem);
+  line-height: 1;
+  letter-spacing: .08em;
 }
 
-.bonus-bank-offer small {
-  grid-area: sub;
-  color: rgba(217, 245, 255, .62);
-  font-size: clamp(.56rem, 2.4vw, .68rem);
-  text-transform: uppercase;
+.crunch-button.crunch-ad-offer strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: white;
+  font-family: var(--font-pixel);
+  font-size: clamp(.62rem, 2.7vw, .88rem);
+  font-weight: 400;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crunch-button.crunch-ad-offer.crunch-ad-finish {
+  border-color: #ffe47a;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .25), transparent 38%),
+    linear-gradient(180deg, #a56709, #674006 68%, #362000);
+  box-shadow:
+    0 5px 0 #2c1700,
+    0 0 0 2px rgba(255, 226, 105, .18),
+    0 0 32px rgba(255, 197, 61, .7),
+    inset 0 0 20px rgba(255, 238, 154, .2);
+  text-shadow: 2px 2px 0 #3c2100, 0 0 13px rgba(255, 226, 105, .8);
+}
+
+.crunch-button.crunch-ad-offer.crunch-ad-finish::before {
+  color: #fff3aa;
+  filter: drop-shadow(0 0 8px rgba(255, 197, 61, .9));
 }
 
 /* Shared-card handoff: the glowing table/hand cards become the cut-in cards
@@ -4386,19 +4402,15 @@ h2 {
   animation-duration: 80ms !important;
 }
 
-.bonus-bank-offer.is-claiming {
-  pointer-events: none;
-  animation: bonusOfferClaim .14s ease-out both;
-}
-
-@keyframes bonusOfferIn {
-  from { opacity: 0; transform: translateX(-50%) translateY(14px) scale(.9); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-}
-
-@keyframes bonusOfferClaim {
-  from { opacity: 1; transform: translateX(-50%) scale(1); }
-  to { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(.96); }
+@keyframes crunchAdOfferPulse {
+  from {
+    filter: brightness(1);
+    scale: 1;
+  }
+  to {
+    filter: brightness(1.2);
+    scale: 1.025;
+  }
 }
 
 /* Run summary screen */
@@ -4696,9 +4708,6 @@ h2 {
     padding: 0 9px;
   }
 
-  .bonus-bank-offer {
-    bottom: calc(198px + var(--safe-bottom));
-  }
 }
 
 /* ==========================================================================

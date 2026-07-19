@@ -8,7 +8,6 @@ import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardG
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
-  let bonusOfferEl = null;
   let bonusOfferTimer = null;
   let messageTimer = null;
   let messageFrame = null;
@@ -247,32 +246,15 @@ export function createUI() {
       elements.storeStatus.textContent = message;
       elements.storeStatus.dataset.tone = tone;
     },
-    /* Rewarded offer chip shown after a bank deposit; expires quietly. */
-    showBonusBankOffer(bonusAmount, onWatch) {
+    /* Post-bank reward temporarily takes over the idle Crunch action slot. */
+    showBonusBankOffer(bonusAmount, onWatch, { completesPot = false } = {}) {
       this.hideBonusBankOffer();
-      const offer = document.createElement("button");
-      offer.type = "button";
-      offer.className = "bonus-bank-offer";
-      offer.innerHTML = `
-        <i aria-hidden="true">&#9654;</i>
-        <span>+$${formatCompactNumber(bonusAmount)} bank bonus</span>
-        <small>Watch ad</small>
-      `;
-      bindInstantAction(offer, () => {
-        if (offer.dataset.claimed === "true") return;
-        offer.dataset.claimed = "true";
-        offer.disabled = true;
-        if (bonusOfferTimer) {
-          window.clearTimeout(bonusOfferTimer);
-          bonusOfferTimer = null;
-        }
-        if (bonusOfferEl === offer) bonusOfferEl = null;
-        offer.classList.add("is-claiming");
-        onWatch();
-        window.setTimeout(() => offer.remove(), 140);
-      });
-      document.body.appendChild(offer);
-      bonusOfferEl = offer;
+      elements._bonusBankOffer = { bonusAmount, onWatch, completesPot };
+      if (elements._crunchCache) {
+        elements._crunchCache.crunchDisabled = null;
+        elements._crunchCache.crunchContent = null;
+      }
+      renderBonusBankAction(elements, elements._bonusBankOffer);
       bonusOfferTimer = window.setTimeout(() => this.hideBonusBankOffer(), 12000);
     },
     hideBonusBankOffer() {
@@ -280,9 +262,17 @@ export function createUI() {
         window.clearTimeout(bonusOfferTimer);
         bonusOfferTimer = null;
       }
-      if (bonusOfferEl) {
-        bonusOfferEl.remove();
-        bonusOfferEl = null;
+      elements._bonusBankOffer = null;
+      if (elements._crunchCache) {
+        elements._crunchCache.crunchDisabled = null;
+        elements._crunchCache.crunchContent = null;
+      }
+      if (elements.crunchButton.dataset.action === "bonus-bank-ad") {
+        elements.crunchButton.dataset.action = "crunch";
+        elements.crunchButton.classList.remove("crunch-ad-offer", "crunch-ad-finish");
+        elements.crunchButton.textContent = "SELECT CARDS";
+        elements.crunchButton.disabled = true;
+        elements.crunchButton.setAttribute("aria-label", "Select cards to Crunch");
       }
     },
     playBankJuice(amount) {
@@ -767,7 +757,13 @@ function renderCrunch(elements, state, handlers) {
   if (cache.handlers !== handlers) {
     cache.handlers = handlers;
     bindInstantAction(elements.bankButton, () => cache.handlers.onBank?.());
-    bindInstantAction(elements.crunchButton, () => cache.handlers.onCrunch?.());
+    bindInstantAction(elements.crunchButton, () => {
+      if (elements.crunchButton.dataset.action === "bonus-bank-ad") {
+        elements._bonusBankOffer?.onWatch?.();
+        return;
+      }
+      cache.handlers.onCrunch?.();
+    });
   }
 
   setText(elements.multiValue, `x${formatRunMultiplier(state.bankMultiplier ?? 1)}`, cache, "multi");
@@ -809,15 +805,53 @@ function renderCrunch(elements, state, handlers) {
       : `Bank unlocks at a ${minimumBankStreak}-Crunch streak.`
   );
 
-  const crunchDisabled = state.locked || state.status !== "playing" || state.tutorialBankStep || !preview.canCrunch;
+  const bonusBankOffer = elements._bonusBankOffer;
+  const showBonusBankOffer = playing && !state.tutorialBankStep && !preview.canCrunch && Boolean(bonusBankOffer);
+  const crunchDisabled = state.locked
+    || state.status !== "playing"
+    || state.tutorialBankStep
+    || (!preview.canCrunch && !showBonusBankOffer);
   if (cache.crunchDisabled !== crunchDisabled) {
     cache.crunchDisabled = crunchDisabled;
     elements.crunchButton.disabled = crunchDisabled;
   }
-  setText(elements.crunchButton, preview.canCrunch ? `CRUNCH ${preview.selectedCount}` : "SELECT CARDS", cache, "crunchLabel");
+  const crunchContentKey = showBonusBankOffer
+    ? `ad:${bonusBankOffer.bonusAmount}:${bonusBankOffer.completesPot}`
+    : preview.canCrunch ? `crunch:${preview.selectedCount}` : "select";
+  if (cache.crunchContent !== crunchContentKey) {
+    cache.crunchContent = crunchContentKey;
+    if (showBonusBankOffer) {
+      renderBonusBankAction(elements, bonusBankOffer);
+    } else {
+      elements.crunchButton.dataset.action = "crunch";
+      elements.crunchButton.textContent = preview.canCrunch ? `CRUNCH ${preview.selectedCount}` : "SELECT CARDS";
+      elements.crunchButton.setAttribute("aria-label", preview.canCrunch ? `Crunch ${preview.selectedCount} selected cards` : "Select cards to Crunch");
+    }
+  }
   elements.crunchButton.classList.toggle("crunch-ready", preview.canCrunch);
   elements.crunchButton.classList.toggle("crunch-greedy", preview.selectedCount >= 3);
   elements.crunchButton.classList.toggle("crunch-danger", preview.canCrunch && state.timeLeft <= 3);
+  elements.crunchButton.classList.toggle("crunch-ad-offer", showBonusBankOffer);
+  elements.crunchButton.classList.toggle("crunch-ad-finish", showBonusBankOffer && bonusBankOffer.completesPot);
+}
+
+function renderBonusBankAction(elements, offer) {
+  if (!offer || !elements.crunchButton) return;
+  const amount = formatCompactNumber(offer.bonusAmount);
+  elements.crunchButton.dataset.action = "bonus-bank-ad";
+  elements.crunchButton.disabled = false;
+  elements.crunchButton.classList.add("crunch-ad-offer");
+  elements.crunchButton.classList.toggle("crunch-ad-finish", offer.completesPot);
+  elements.crunchButton.innerHTML = `
+    <span>${offer.completesPot ? "Watch Ad - Remainder" : "Watch Ad"}</span>
+    <strong>+$${amount}</strong>
+  `;
+  elements.crunchButton.setAttribute(
+    "aria-label",
+    offer.completesPot
+      ? `Watch rewarded ad to add ${amount} dollars and fill this pot`
+      : `Watch rewarded ad to add ${amount} dollars to this pot`
+  );
 }
 
 /* Cards keep the same DOM node as they move between a fixed hand slot and
