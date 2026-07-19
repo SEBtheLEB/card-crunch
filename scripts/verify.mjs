@@ -419,13 +419,21 @@ if (!cutsceneSource.includes("createCrunchScoreSurge")
   || !cutsceneSource.includes("queueMilestoneBeat")
   || !cutsceneSource.includes("spawnScoreMilestoneCoinSpill")
   || !cutsceneSource.includes("spawnCrunchCoinReward")
+  || !cutsceneSource.includes("createRollingBankDisplay")
+  || !cutsceneSource.includes("formatRollingBankNumber")
+  || !cutsceneSource.includes("spawnCollectibleCoinBreak")
+  || !cutsceneSource.includes("crunch-collectible-coin")
   || !cutsceneSource.includes("coinRewards.award")
   || !scoreSurgeSource.includes("buildScoreSurgeMilestones")
   || !css.includes("is-entry-score-surge-centered")
+  || !css.includes("entry-score-surge-skip")
   || !css.includes("crunch-coin-reward-toast")
+  || !css.includes("crunch-coin-collection")
+  || !css.includes("crunch-collectible-coin")
   || !audioSource.includes("score_ramp_tick")
-  || !audioSource.includes("coin_milestone")) {
-  throw new Error("Per-Crunch score surges or persistent coin milestone feedback is missing");
+  || !audioSource.includes("coin_milestone")
+  || !audioSource.includes("coin_collect")) {
+  throw new Error("Exact Crunch Bank rolling, centered surges, or collectible milestone coins are missing");
 }
 if (!cutsceneSource.includes("forceSettleAfter: 620")
   || !cutsceneSource.includes("vacuumRampDuration: 1120")

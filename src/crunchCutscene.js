@@ -1,8 +1,8 @@
-import { formatCompactNumber } from "./format.js?v=90";
-import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=143";
-import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=149";
-import { getPowerCardDetails } from "./arcadeMode.js?v=149";
-import { createScoreSurgePlan } from "./scoreSurge.js?v=143";
+import { formatCompactNumber } from "./format.js?v=150";
+import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=150";
+import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=150";
+import { getPowerCardDetails } from "./arcadeMode.js?v=150";
+import { createScoreSurgePlan } from "./scoreSurge.js?v=150";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -184,9 +184,12 @@ export function createCrunchBankCounter({
     rewardedCashThrough = targetCash;
     if (crossed <= 0) return null;
 
-    const coins = crossed * coinsPerMilestone;
-    const balance = coinRewards.award(coins);
-    return { coins, balance, milestones: crossed };
+    return {
+      coins: crossed * coinsPerMilestone,
+      milestones: crossed,
+      award: coinRewards.award,
+      getBalance: coinRewards.getBalance
+    };
   };
 
   const queueMilestoneBeat = (effect) => {
@@ -227,6 +230,7 @@ export function createCrunchBankCounter({
     counterValueEl = element.querySelector("strong");
   }
 
+  const rollingDisplay = createRollingBankDisplay(counterValueEl);
   let value = 0;
 
   return {
@@ -256,15 +260,16 @@ export function createCrunchBankCounter({
             : Math.round(amount * arrived / Math.max(1, total));
           counterState.value += nextCreditedAmount - creditedAmount;
           creditedAmount = nextCreditedAmount;
-          if (counterValueEl) counterValueEl.textContent = formatCompactNumber(counterState.value);
+          rollingDisplay.setTarget(counterState.value);
           surge.update(creditedAmount);
         }).then(async () => {
           if (creditedAmount < amount) {
             counterState.value += amount - creditedAmount;
             creditedAmount = amount;
-            if (counterValueEl) counterValueEl.textContent = formatCompactNumber(counterState.value);
+            rollingDisplay.setTarget(counterState.value);
             surge.update(creditedAmount);
           }
+          await rollingDisplay.settle(520);
           element.classList.add("bank-bump");
           await sleep(180);
           element.classList.remove("bank-bump");
@@ -331,6 +336,7 @@ export function createCrunchBankCounter({
     },
     async finishToScore(scoreEl, advance = null) {
       await settleBankEffects();
+      rollingDisplay.flush(value);
       finished = true;
       const finalScore = startingValue + value;
       const finalCoinReward = awardCoinsThrough(finalScore, element.getBoundingClientRect());
@@ -357,6 +363,7 @@ export function createCrunchBankCounter({
       }
     },
     remove() {
+      rollingDisplay.destroy();
       if (useHudPanel) {
         restoreHudBank(element, placement);
         if (!finished) {
@@ -2022,6 +2029,17 @@ function createCrunchScoreSurge({
   let milestoneIndex = 0;
   let finished = false;
   const milestoneEffects = [];
+  let stage = null;
+
+  const ensureStage = () => {
+    if (stage) return stage;
+    stage = createScoreSurgeStage(bankEl, valueEl, {
+      ...plan,
+      tier: Math.max(1, plan.tier),
+      name: plan.name || "Coin Milestone"
+    });
+    return stage;
+  };
 
   if (plan.tier > 0 && bankEl) {
     bankEl.classList.add("is-entry-score-surge");
@@ -2035,8 +2053,9 @@ function createCrunchScoreSurge({
         const milestone = plan.milestones[milestoneIndex];
         const milestoneTier = createScoreSurgePlan(milestone).tier;
         if (bankEl) bankEl.dataset.scoreSurgeTier = String(milestoneTier);
+        const activeStage = ensureStage();
         milestoneEffects.push(queueMilestoneBeat(
-          () => playScoreSurgeMilestone(bankEl, valueEl, milestone, milestoneTier, plan.tier)
+          () => playScoreSurgeMilestone(bankEl, valueEl, milestone, milestoneTier, plan.tier, activeStage)
         ));
         milestoneIndex += 1;
       }
@@ -2045,8 +2064,9 @@ function createCrunchScoreSurge({
         bankEl?.getBoundingClientRect?.() ?? null
       );
       if (coinReward) {
+        const activeStage = ensureStage();
         milestoneEffects.push(queueMilestoneBeat(
-          () => playCrunchCoinReward(bankEl, coinReward)
+          () => playCrunchCoinReward(bankEl, coinReward, activeStage)
         ));
       }
     },
@@ -2055,9 +2075,9 @@ function createCrunchScoreSurge({
       finished = true;
       this.update(plan.score);
       await Promise.allSettled(milestoneEffects);
-      if (plan.tier > 0) {
+      if (stage) {
         if (bankEl) bankEl.dataset.scoreSurgeTier = String(plan.tier);
-        await playCrunchScoreSurgePeak(bankEl, valueEl, plan);
+        await playCrunchScoreSurgePeak(bankEl, valueEl, plan, stage);
       }
       bankEl?.classList.remove("is-entry-score-surge");
       if (bankEl) delete bankEl.dataset.scoreSurgeTier;
@@ -2065,19 +2085,115 @@ function createCrunchScoreSurge({
   };
 }
 
-async function playScoreSurgeMilestone(bankEl, valueEl, milestone, tier, paceTier = tier) {
+function createScoreSurgeStage(bankEl, valueEl, plan) {
+  if (!bankEl?.isConnected) return null;
+  const labelEl = bankEl.querySelector(".hud-label");
+  const originalLabel = labelEl?.innerHTML ?? "Crunch Bank";
+  const backdrop = document.createElement("div");
+  backdrop.className = "entry-score-surge-backdrop";
+  backdrop.dataset.tier = String(plan.tier);
+  backdrop.innerHTML = `
+    <div class="entry-score-surge-callout">
+      <strong>0</strong>
+      <span>${plan.name}</span>
+    </div>
+    <div class="entry-score-surge-skip">Tap to skip surge</div>
+  `;
+  document.body.appendChild(backdrop);
+  document.body.classList.add("is-entry-score-surge-active");
+  bankEl.classList.add("is-entry-score-surge", "is-entry-score-surge-peak");
+  bankEl.dataset.scoreSurgeTier = String(plan.tier);
+  if (labelEl) labelEl.textContent = plan.name;
+
+  let skipped = false;
+  let closed = false;
+  const waiters = new Set();
+  const requestSkip = () => {
+    if (skipped) return;
+    skipped = true;
+    backdrop.classList.add("is-skipping");
+    waiters.forEach((finish) => finish());
+    waiters.clear();
+  };
+  const onPointerUp = (event) => {
+    if (event.target?.closest?.(".crunch-collectible-coin")) return;
+    event.preventDefault();
+    event.stopPropagation();
+    requestSkip();
+  };
+  const onSkipAll = () => requestSkip();
+  backdrop.addEventListener("pointerup", onPointerUp);
+  window.addEventListener(CRUNCH_SKIP_EVENT, onSkipAll);
+
+  const entered = nextPaint().then(async () => {
+    if (closed) return;
+    backdrop.classList.add("is-active");
+    bankEl.classList.add("is-entry-score-surge-centered");
+    await sleep(440);
+  });
+
+  return {
+    backdrop,
+    entered,
+    get skipped() {
+      return skipped || isCrunchSkipRequested();
+    },
+    requestSkip,
+    setCallout(value, label = plan.name) {
+      const valueNode = backdrop.querySelector(".entry-score-surge-callout strong");
+      const labelNode = backdrop.querySelector(".entry-score-surge-callout span");
+      if (valueNode) valueNode.textContent = String(value);
+      if (labelNode) labelNode.textContent = label;
+    },
+    wait(ms) {
+      if (skipped || isCrunchSkipRequested()) return Promise.resolve();
+      return new Promise((resolve) => {
+        let complete = false;
+        let timeoutId = 0;
+        const finish = () => {
+          if (complete) return;
+          complete = true;
+          window.clearTimeout(timeoutId);
+          waiters.delete(finish);
+          resolve();
+        };
+        timeoutId = window.setTimeout(finish, ms);
+        waiters.add(finish);
+      });
+    },
+    async close() {
+      if (closed) return;
+      closed = true;
+      backdrop.classList.add("is-leaving");
+      bankEl.classList.remove("is-entry-score-surge-centered");
+      await sleep(skipped ? 90 : 380);
+      if (labelEl) labelEl.innerHTML = originalLabel;
+      bankEl.classList.remove("is-entry-score-surge-peak", "is-entry-score-surge-centered");
+      document.body.classList.remove("is-entry-score-surge-active");
+      backdrop.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener(CRUNCH_SKIP_EVENT, onSkipAll);
+      backdrop.remove();
+      waiters.forEach((finish) => finish());
+      waiters.clear();
+    }
+  };
+}
+
+async function playScoreSurgeMilestone(bankEl, valueEl, milestone, tier, paceTier = tier, stage = null) {
   if (!bankEl?.isConnected) return;
+  await stage?.entered;
+  if (stage?.skipped) return;
   const bankRect = bankEl.getBoundingClientRect();
-  const duration = Math.max(240, 520 - paceTier * 44);
-  const drop = Math.min(76, 28 + tier * 8);
+  const duration = Math.max(440, 700 - paceTier * 35);
   playGameSfx("score_ramp_tick");
+  stage?.setCallout(formatRollingBankNumber(milestone), `Milestone ${formatCompactNumber(milestone)}`);
 
   const marker = document.createElement("strong");
   marker.className = "entry-score-surge-milestone";
   marker.dataset.tier = String(tier);
-  marker.innerHTML = `<span>MILESTONE</span>${formatCompactNumber(milestone)}`;
+  marker.innerHTML = `<span>MILESTONE</span>${formatRollingBankNumber(milestone)}`;
   marker.style.left = `${bankRect.left + bankRect.width / 2}px`;
-  marker.style.top = `${bankRect.bottom + drop + 8}px`;
+  marker.style.top = `${bankRect.bottom + 12}px`;
   document.body.appendChild(marker);
   const markerAnimation = marker.animate?.([
     { opacity: 0, transform: "translate3d(-50%, 10px, 0) scale(.62)" },
@@ -2085,19 +2201,22 @@ async function playScoreSurgeMilestone(bankEl, valueEl, milestone, tier, paceTie
     { opacity: 1, transform: "translate3d(-50%, -2px, 0) scale(1)", offset: .76 },
     { opacity: 0, transform: "translate3d(-50%, -18px, 0) scale(.96)" }
   ], { duration, easing: "steps(7, end)" });
+  const centeredTransform = bankEl.classList.contains("is-entry-score-surge-centered")
+    ? "translate3d(-50%, -50%, 0)"
+    : "translate3d(-50%, 0, 0)";
   const bankAnimation = bankEl.animate?.([
-    { transform: "translate3d(-50%, 0, 0) scale(1)", filter: "brightness(1)" },
+    { transform: `${centeredTransform} scale(1)`, filter: "brightness(1)" },
     {
-      transform: `translate3d(-50%, ${drop}px, 0) scale(${1.035 + tier * .012})`,
+      transform: `${centeredTransform} scale(${1.055 + tier * .014})`,
       filter: `brightness(${1.28 + tier * .1}) drop-shadow(0 0 ${10 + tier * 4}px rgba(255, 205, 65, .78))`,
       offset: .25
     },
     {
-      transform: `translate3d(-50%, ${drop}px, 0) scale(1.02)`,
+      transform: `${centeredTransform} scale(1.025)`,
       filter: "brightness(1.22) drop-shadow(0 0 16px rgba(255, 205, 65, .62))",
       offset: .72
     },
-    { transform: "translate3d(-50%, 0, 0) scale(1)", filter: "brightness(1)" }
+    { transform: `${centeredTransform} scale(1)`, filter: "brightness(1)" }
   ], { duration, easing: "cubic-bezier(.16, 1, .3, 1)" });
   const valueAnimation = valueEl?.animate?.([
     { scale: "1" },
@@ -2106,115 +2225,201 @@ async function playScoreSurgeMilestone(bankEl, valueEl, milestone, tier, paceTie
     { scale: "1" }
   ], { duration, easing: "steps(6, end)" });
 
-  await sleep(Math.round(duration * .28));
+  await (stage?.wait(Math.round(duration * .3)) ?? sleep(Math.round(duration * .3)));
   spawnScoreMilestoneCoinSpill(bankEl.getBoundingClientRect(), tier);
-  await Promise.allSettled([
-    bankAnimation?.finished,
-    valueAnimation?.finished,
-    markerAnimation?.finished
-  ].filter(Boolean));
+  await (stage?.wait(Math.round(duration * .7)) ?? sleep(Math.round(duration * .7)));
+  [bankAnimation, valueAnimation, markerAnimation].forEach((animation) => {
+    try { animation?.finish?.(); } catch {}
+  });
   marker.remove();
 }
 
-async function playCrunchScoreSurgePeak(bankEl, valueEl, plan) {
-  if (!bankEl?.isConnected || plan.tier <= 0) return;
-  const labelEl = bankEl.querySelector(".hud-label");
-  const originalLabel = labelEl?.innerHTML ?? "Crunch Bank";
-  const backdrop = document.createElement("div");
-  backdrop.className = "entry-score-surge-backdrop";
-  backdrop.dataset.tier = String(plan.tier);
-  backdrop.innerHTML = `
-    <div class="entry-score-surge-callout">
-      <strong>+${formatCompactNumber(plan.score)}</strong>
-      <span>${plan.name}</span>
-    </div>
-  `;
-  document.body.appendChild(backdrop);
-  document.body.classList.add("is-entry-score-surge-active");
-  bankEl.classList.add("is-entry-score-surge-peak");
-  if (labelEl) labelEl.textContent = plan.name;
-
+async function playCrunchScoreSurgePeak(bankEl, valueEl, plan, stage) {
+  if (!bankEl?.isConnected || !stage) return;
+  const tier = Math.max(1, plan.tier);
   try {
-    await nextPaint();
-    backdrop.classList.add("is-active");
-    bankEl.classList.add("is-entry-score-surge-centered");
-    playGameSfx(plan.tier >= 4 ? "score_ramp_peak" : "score_total");
-    await sleep(plan.peakDuration);
+    await stage.entered;
+    stage.setCallout(`+${formatRollingBankNumber(plan.score)}`, plan.name || "Coin Milestone");
+    playGameSfx(tier >= 4 ? "score_ramp_peak" : "score_total");
+    await stage.wait(1250 + tier * 130);
     valueEl?.animate?.([
       { scale: "1", filter: "brightness(1)" },
-      { scale: String(1.12 + plan.tier * .025), filter: "brightness(1.8)" },
+      { scale: String(1.12 + tier * .025), filter: "brightness(1.8)" },
       { scale: "1", filter: "brightness(1)" }
     ], { duration: 240, easing: "steps(5, end)" });
-    backdrop.classList.add("is-leaving");
-    bankEl.classList.remove("is-entry-score-surge-centered");
-    await sleep(230);
   } finally {
-    if (labelEl) labelEl.innerHTML = originalLabel;
-    bankEl.classList.remove("is-entry-score-surge-peak", "is-entry-score-surge-centered");
-    document.body.classList.remove("is-entry-score-surge-active");
-    backdrop.remove();
+    await stage.close();
   }
 }
 
-function spawnCrunchCoinReward(bankRect, { coins, balance, milestones }) {
-  if (!bankRect || coins <= 0) return;
+function spawnCrunchCoinReward(bankRect, reward) {
+  const coins = Math.max(0, Math.floor(Number(reward?.coins) || 0));
+  const milestones = Math.max(1, Math.floor(Number(reward?.milestones) || 1));
+  if (!bankRect || coins <= 0) return null;
   const originX = bankRect.left + bankRect.width / 2;
-  const originY = bankRect.top + bankRect.height / 2;
-  const emitter = ensureBankImpactEmitter();
-  if (emitter) {
-    const amount = Math.min(54, 12 + milestones * 7);
-    for (let index = 0; index < amount; index += 1) {
-      const angle = Math.PI * (1.08 + Math.random() * .84);
-      const speed = 135 + Math.random() * 300;
-      emitter.particles.push({
-        kind: "coin",
-        x: originX + (Math.random() - .5) * Math.min(120, bankRect.width * .65),
-        y: originY + 4,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        gravity: 720 + Math.random() * 260,
-        drag: .982,
-        size: 6 + Math.floor(Math.random() * 5),
-        length: 0,
-        vertical: false,
-        color: index % 4 === 0 ? "#fff2a0" : "#ffc53d",
-        edge: "#6d3d05",
-        age: 0,
-        delay: 0,
-        maxAge: 850 + Math.random() * 430
-      });
-    }
-    startBankImpactEmitter(emitter);
-  }
+  const originY = bankRect.bottom - 8;
+  const visibleCoins = Math.min(6, Math.max(2, Math.ceil(coins / 2), milestones * 2));
+  const layer = document.createElement("div");
+  layer.className = "crunch-coin-collection";
+  layer.setAttribute("aria-label", `Collect ${coins} milestone coins`);
+  document.body.appendChild(layer);
 
   const toast = document.createElement("div");
-  toast.className = "crunch-coin-reward-toast";
+  toast.className = "crunch-coin-reward-toast is-collecting";
   toast.style.left = `${originX}px`;
-  toast.style.top = `${bankRect.bottom + 12}px`;
-  toast.innerHTML = `<strong>+${formatCompactNumber(coins)} COINS</strong><span>POUCH ${formatCompactNumber(balance)}</span>`;
+  toast.style.top = `${Math.min(window.innerHeight - 132, bankRect.bottom + 18)}px`;
+  toast.innerHTML = `<strong>+${formatCompactNumber(coins)} COINS</strong><span>TAP COINS TO COLLECT</span>`;
   document.body.appendChild(toast);
-  toast.animate?.([
-    { opacity: 0, transform: "translate3d(-50%, 8px, 0) scale(.72)" },
-    { opacity: 1, transform: "translate3d(-50%, -3px, 0) scale(1.08)", offset: .3 },
-    { opacity: 1, transform: "translate3d(-50%, -8px, 0) scale(1)", offset: .72 },
-    { opacity: 0, transform: "translate3d(-50%, -25px, 0) scale(.94)" }
-  ], { duration: 1050, easing: "steps(8, end)" })?.finished
-    .catch(() => {})
-    .finally(() => toast.remove());
+  let remaining = visibleCoins;
+  let awarded = 0;
+  let balance = Number(reward?.getBalance?.()) || 0;
+  let resolved = false;
+  let resolveDone = () => {};
+  const done = new Promise((resolve) => { resolveDone = resolve; });
+  const coinNodes = [];
+
+  const finish = () => {
+    if (resolved || remaining > 0) return;
+    resolved = true;
+    toast.classList.remove("is-collecting");
+    toast.classList.add("is-collected");
+    toast.innerHTML = `<strong>+${formatCompactNumber(awarded)} COINS</strong><span>POUCH ${formatCompactNumber(balance)}</span>`;
+    resolveDone();
+  };
+
+  const collectCoin = (coinNode, portion) => {
+    if (!coinNode || coinNode.dataset.collected === "true") return;
+    coinNode.dataset.collected = "true";
+    coinNode.disabled = true;
+    const rect = coinNode.getBoundingClientRect();
+    balance = Number(reward?.award?.(portion)) || Number(reward?.getBalance?.()) || balance;
+    awarded += portion;
+    remaining -= 1;
+    playGameSfx("coin_collect");
+    spawnCollectibleCoinBreak(rect, portion);
+    coinNode.classList.add("is-collected");
+    toast.querySelector("strong").textContent = `+${formatCompactNumber(awarded)} / ${formatCompactNumber(coins)} COINS`;
+    window.setTimeout(() => coinNode.remove(), 260);
+    finish();
+  };
+
+  let undistributed = coins;
+  for (let index = 0; index < visibleCoins; index += 1) {
+    const slotsLeft = visibleCoins - index;
+    const portion = index === visibleCoins - 1 ? undistributed : Math.max(1, Math.floor(undistributed / slotsLeft));
+    undistributed -= portion;
+    const column = index % 3;
+    const row = Math.floor(index / 3);
+    const spread = Math.min(124, window.innerWidth * .28);
+    const targetX = Math.max(38, Math.min(window.innerWidth - 38, originX + (column - 1) * spread));
+    const targetY = Math.max(
+      bankRect.bottom + 58,
+      Math.min(window.innerHeight - 96, bankRect.bottom + 86 + row * 74)
+    );
+    const coinNode = document.createElement("button");
+    coinNode.type = "button";
+    coinNode.className = "crunch-collectible-coin";
+    coinNode.style.left = `${targetX}px`;
+    coinNode.style.top = `${targetY}px`;
+    coinNode.style.setProperty("--coin-from-x", `${originX - targetX}px`);
+    coinNode.style.setProperty("--coin-from-y", `${originY - targetY}px`);
+    coinNode.style.setProperty("--coin-delay", `${index * 55}ms`);
+    coinNode.setAttribute("aria-label", `Collect ${portion} coins`);
+    coinNode.innerHTML = `<i aria-hidden="true"></i><small>+${portion}</small>`;
+    coinNode.addEventListener("pointerup", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      collectCoin(coinNode, portion);
+    });
+    layer.appendChild(coinNode);
+    coinNodes.push({ node: coinNode, portion });
+  }
+
+  spawnScoreMilestoneCoinSpill(bankRect, Math.min(6, milestones + 2));
+  return {
+    done,
+    get complete() {
+      return resolved;
+    },
+    async collectAll() {
+      for (const { node, portion } of coinNodes) {
+        if (node.dataset.collected === "true") continue;
+        collectCoin(node, portion);
+        await sleep(48);
+      }
+      finish();
+    },
+    async cleanup() {
+      if (!resolved) await this.collectAll();
+      await sleep(620);
+      layer.remove();
+      toast.remove();
+    }
+  };
 }
 
-async function playCrunchCoinReward(bankEl, reward) {
+async function playCrunchCoinReward(bankEl, reward, stage = null) {
   if (!bankEl?.isConnected || !reward?.coins) return;
+  await stage?.entered;
+  if (stage?.skipped) {
+    reward.award?.(reward.coins);
+    return;
+  }
   playGameSfx("coin_milestone");
   const rect = bankEl.getBoundingClientRect();
-  spawnCrunchCoinReward(rect, reward);
+  stage?.setCallout(`+${formatRollingBankNumber(reward.coins)}`, "Coin Burst");
+  const collection = spawnCrunchCoinReward(rect, reward);
+  if (!collection) return;
+  const centeredTransform = bankEl.classList.contains("is-entry-score-surge-centered")
+    ? "translate3d(-50%, -50%, 0)"
+    : "translate3d(-50%, 0, 0)";
   const animation = bankEl.animate?.([
-    { transform: "translate3d(-50%, 0, 0) scale(1)", filter: "brightness(1)" },
-    { transform: "translate3d(-50%, 54px, 0) scale(1.09)", filter: "brightness(1.75)", offset: .24 },
-    { transform: "translate3d(-50%, 54px, 0) scale(1.04)", filter: "brightness(1.38)", offset: .72 },
-    { transform: "translate3d(-50%, 0, 0) scale(1)", filter: "brightness(1)" }
-  ], { duration: 720, easing: "cubic-bezier(.16, 1, .3, 1)" });
-  await animation?.finished?.catch(() => {});
+    { transform: `${centeredTransform} scale(1)`, filter: "brightness(1)" },
+    { transform: `${centeredTransform} scale(1.12)`, filter: "brightness(1.9)", offset: .24 },
+    { transform: `${centeredTransform} scale(1.045)`, filter: "brightness(1.4)", offset: .74 },
+    { transform: `${centeredTransform} scale(1)`, filter: "brightness(1)" }
+  ], { duration: 980, easing: "cubic-bezier(.16, 1, .3, 1)" });
+  try {
+    await Promise.race([
+      collection.done,
+      stage?.wait(6000) ?? sleep(6000)
+    ]);
+    if (!collection.complete) await collection.collectAll();
+    await (stage?.wait(900) ?? sleep(900));
+  } finally {
+    try { animation?.finish?.(); } catch {}
+    await collection.cleanup();
+  }
+}
+
+function spawnCollectibleCoinBreak(rect, portion = 1) {
+  const emitter = ensureBankImpactEmitter();
+  if (!emitter || !rect) return;
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const amount = Math.min(22, 10 + Math.max(0, portion - 1));
+  for (let index = 0; index < amount; index += 1) {
+    const angle = index / amount * Math.PI * 2 + Math.random() * .32;
+    const speed = 115 + Math.random() * 290;
+    emitter.particles.push({
+      kind: "coin",
+      x: centerX + (Math.random() - .5) * 8,
+      y: centerY + (Math.random() - .5) * 8,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 55,
+      gravity: 780 + Math.random() * 260,
+      drag: .98,
+      size: 3 + Math.floor(Math.random() * 5),
+      length: 0,
+      vertical: false,
+      color: index % 3 === 0 ? "#fff2a0" : "#ffc53d",
+      edge: "#6d3d05",
+      age: 0,
+      delay: 0,
+      maxAge: 720 + Math.random() * 360
+    });
+  }
+  startBankImpactEmitter(emitter);
 }
 
 function spawnScoreMilestoneCoinSpill(bankRect, tier = 1) {
@@ -2465,7 +2670,7 @@ async function countBankTo(valueEl, from, to, advance = null, duration = 520) {
     const done = () => {
       if (finished) return;
       finished = true;
-      valueEl.textContent = formatCompactNumber(to);
+      valueEl.textContent = formatRollingBankNumber(to);
       resolve();
     };
     if (advance) advance.wait(duration).then(done);
@@ -2474,7 +2679,7 @@ async function countBankTo(valueEl, from, to, advance = null, duration = 520) {
       const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
       const eased = 1 - Math.pow(1 - progress, 3);
       const value = Math.round(from + (to - from) * eased);
-      const rendered = formatCompactNumber(value);
+      const rendered = formatRollingBankNumber(value);
       if (rendered !== lastRendered) {
         lastRendered = rendered;
         valueEl.textContent = rendered;
@@ -2487,6 +2692,89 @@ async function countBankTo(valueEl, from, to, advance = null, duration = 520) {
     };
     requestAnimationFrame(tick);
   });
+}
+
+function createRollingBankDisplay(valueEl) {
+  let displayed = 0;
+  let target = 0;
+  let frameId = 0;
+  let lastFrame = 0;
+  const settleWaiters = new Set();
+
+  const render = (value) => {
+    if (!valueEl) return;
+    valueEl.textContent = formatRollingBankNumber(value);
+    valueEl.classList.add("is-bank-number-rolling");
+  };
+
+  const resolveSettled = () => {
+    valueEl?.classList.remove("is-bank-number-rolling");
+    settleWaiters.forEach((resolve) => resolve());
+    settleWaiters.clear();
+  };
+
+  const tick = (now) => {
+    frameId = 0;
+    const deltaMs = lastFrame ? Math.min(34, now - lastFrame) : 16;
+    lastFrame = now;
+    const difference = target - displayed;
+    if (Math.abs(difference) <= 1) {
+      displayed = target;
+      render(displayed);
+      resolveSettled();
+      return;
+    }
+
+    const responsiveness = Math.min(.34, .14 + deltaMs / 150);
+    const minimumStep = Math.abs(difference) > 100000 ? 97 : 7;
+    const step = Math.sign(difference) * Math.max(minimumStep, Math.ceil(Math.abs(difference) * responsiveness));
+    displayed += Math.abs(step) > Math.abs(difference) ? difference : step;
+    render(displayed);
+    frameId = window.requestAnimationFrame(tick);
+  };
+
+  const start = () => {
+    if (!frameId && displayed !== target) frameId = window.requestAnimationFrame(tick);
+  };
+
+  return {
+    setTarget(nextValue) {
+      target = Math.max(0, Math.round(Number(nextValue) || 0));
+      start();
+    },
+    settle(maxWait = 520) {
+      if (displayed === target) return Promise.resolve();
+      return new Promise((resolve) => {
+        let finished = false;
+        const finish = () => {
+          if (finished) return;
+          finished = true;
+          settleWaiters.delete(finish);
+          resolve();
+        };
+        settleWaiters.add(finish);
+        window.setTimeout(finish, maxWait);
+        start();
+      });
+    },
+    flush(nextValue = target) {
+      target = Math.max(0, Math.round(Number(nextValue) || 0));
+      displayed = target;
+      if (frameId) window.cancelAnimationFrame(frameId);
+      frameId = 0;
+      render(displayed);
+      resolveSettled();
+    },
+    destroy() {
+      if (frameId) window.cancelAnimationFrame(frameId);
+      frameId = 0;
+      resolveSettled();
+    }
+  };
+}
+
+function formatRollingBankNumber(value) {
+  return Math.max(0, Math.round(Number(value) || 0)).toLocaleString("en-US");
 }
 
 function waitMaybe(advance, ms) {

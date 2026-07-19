@@ -1,4 +1,4 @@
-import { haptic } from "./haptics.js?v=90";
+import { haptic } from "./haptics.js?v=150";
 
 const AudioContextClass = globalThis.AudioContext ?? globalThis.webkitAudioContext;
 const SETTINGS_KEY = "cardCrunchSettings";
@@ -399,6 +399,16 @@ const EFFECTS = {
     arpeggio([988, 1319, 1568], { duration: 0.11, spacing: 0.034, gain: 0.052, type: "square" });
     tone({ frequency: 1976, endFrequency: 1568, duration: 0.085, delay: 0.07, gain: 0.035, type: "sine" });
   },
+  coin_collect: () => {
+    tone({
+      frequency: 1180 + Math.random() * 180,
+      endFrequency: 860 + Math.random() * 120,
+      duration: 0.07,
+      gain: 0.035,
+      type: "square"
+    });
+    noise({ duration: 0.035, gain: 0.018, highpass: 2200 });
+  },
   score_arrive: () => {
     chord([523, 659, 784], { duration: 0.24, gain: 0.1, type: "triangle", rise: 1.01 });
     noise({ duration: 0.075, gain: 0.045, highpass: 2800 });
@@ -436,6 +446,7 @@ const HAPTIC_BY_SOUND = {
   math_combo: "match",
   score_ramp_peak: "score",
   coin_milestone: "score",
+  coin_collect: "score",
   score_arrive: "score",
   bank: "bank",
   revive: "score",

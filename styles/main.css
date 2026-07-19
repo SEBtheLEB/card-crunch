@@ -9634,11 +9634,11 @@ html[data-card-skin="rainbow"] .cutin-card {
    ========================================================================== */
 
 .score-panel.is-hud-bank-floating.is-entry-score-surge {
-  --entry-surge-top: 17%;
+  --entry-surge-top: 50%;
   --entry-surge-scale: 1.035;
   --entry-surge-height: clamp(90px, 12dvh, 122px);
   --entry-surge-width: min(calc(100vw - 28px - var(--safe-left) - var(--safe-right)), 600px);
-  --entry-surge-move: 285ms;
+  --entry-surge-move: 420ms;
   --entry-surge-glow: 32px;
   border-color: rgba(255, 222, 111, .88);
   box-shadow:
@@ -9655,38 +9655,28 @@ html[data-card-skin="rainbow"] .cutin-card {
 }
 
 .score-panel.is-entry-score-surge[data-score-surge-tier="2"] {
-  --entry-surge-top: 21%;
   --entry-surge-scale: 1.055;
   --entry-surge-height: clamp(98px, 13dvh, 134px);
-  --entry-surge-move: 260ms;
 }
 
 .score-panel.is-entry-score-surge[data-score-surge-tier="3"] {
-  --entry-surge-top: 28%;
   --entry-surge-scale: 1.075;
   --entry-surge-height: clamp(108px, 14dvh, 148px);
-  --entry-surge-move: 235ms;
 }
 
 .score-panel.is-entry-score-surge[data-score-surge-tier="4"] {
-  --entry-surge-top: 35%;
   --entry-surge-scale: 1.1;
   --entry-surge-height: clamp(118px, 16dvh, 164px);
-  --entry-surge-move: 215ms;
 }
 
 .score-panel.is-entry-score-surge[data-score-surge-tier="5"] {
-  --entry-surge-top: 41%;
   --entry-surge-scale: 1.13;
   --entry-surge-height: clamp(128px, 17dvh, 178px);
-  --entry-surge-move: 195ms;
 }
 
 .score-panel.is-entry-score-surge[data-score-surge-tier="6"] {
-  --entry-surge-top: 47%;
   --entry-surge-scale: 1.16;
   --entry-surge-height: clamp(138px, 19dvh, 194px);
-  --entry-surge-move: 175ms;
 }
 
 .score-panel.is-hud-bank-floating.is-entry-score-surge-peak {
@@ -9723,9 +9713,25 @@ html[data-card-skin="rainbow"] .cutin-card {
 
 .score-panel.is-entry-score-surge-centered strong {
   color: #fffbd7;
-  font-size: clamp(2.2rem, 12vw, 5.5rem);
+  max-width: 96%;
+  overflow: hidden;
+  font-size: clamp(1.7rem, 9.4vw, 5rem);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   line-height: .84;
   text-shadow: 3px 3px 0 #704000, 0 0 20px #fff3a4, 0 0 48px rgba(255, 176, 35, .9);
+}
+
+.score-panel.is-crunch-bank strong,
+.cutin-bank-counter strong {
+  max-width: 96%;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.is-bank-number-rolling {
+  animation: exactBankRoll 100ms steps(2, end) infinite alternate;
 }
 
 .entry-score-surge-backdrop {
@@ -9733,7 +9739,8 @@ html[data-card-skin="rainbow"] .cutin-card {
   z-index: 87;
   inset: 0;
   overflow: hidden;
-  pointer-events: none;
+  pointer-events: auto;
+  touch-action: manipulation;
   opacity: 0;
   background:
     radial-gradient(circle at 50% var(--entry-surge-top, 36%), rgba(255, 194, 54, .22), transparent 34%),
@@ -9756,12 +9763,13 @@ html[data-card-skin="rainbow"] .cutin-card {
 
 .entry-score-surge-backdrop.is-active { opacity: 1; }
 .entry-score-surge-backdrop.is-leaving { opacity: 0; }
+.entry-score-surge-backdrop.is-skipping { cursor: progress; }
 
 .entry-score-surge-callout {
   position: absolute;
   z-index: 1;
   left: 50%;
-  top: min(calc(var(--safe-top) + 68dvh), calc(100% - 120px - var(--safe-bottom)));
+  top: min(calc(50% + clamp(105px, 17dvh, 160px)), calc(100% - 128px - var(--safe-bottom)));
   display: grid;
   justify-items: center;
   gap: 4px;
@@ -9774,7 +9782,11 @@ html[data-card-skin="rainbow"] .cutin-card {
 }
 
 .entry-score-surge-callout strong {
-  font-size: clamp(1.8rem, 10vw, 4.7rem);
+  max-width: 96vw;
+  overflow: hidden;
+  font-size: clamp(1.6rem, 8.6vw, 4.5rem);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   line-height: .86;
   text-shadow: 4px 4px 0 #683900, 0 0 18px #fff1a0, 0 0 38px #ff9b27;
 }
@@ -9783,6 +9795,21 @@ html[data-card-skin="rainbow"] .cutin-card {
   color: #ffd65c;
   font-size: clamp(.68rem, 3.2vw, 1.18rem);
   text-shadow: 2px 2px 0 #4c2700, 0 0 12px rgba(255, 197, 61, .8);
+}
+
+.entry-score-surge-skip {
+  position: absolute;
+  z-index: 3;
+  right: max(18px, calc(var(--safe-right) + 12px));
+  bottom: max(20px, calc(var(--safe-bottom) + 14px));
+  color: #fff0a0;
+  font-family: var(--font-pixel);
+  font-size: clamp(.58rem, 2.8vw, .9rem);
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 #422700, 0 0 12px rgba(255, 205, 65, .72);
+  pointer-events: none;
+  animation: surgeSkipPulse 1s steps(2, end) infinite;
 }
 
 .entry-score-surge-milestone {
@@ -9826,6 +9853,16 @@ html[data-card-skin="rainbow"] .cutin-card {
   text-transform: uppercase;
   pointer-events: none;
   white-space: nowrap;
+  transform: translate3d(-50%, 0, 0);
+  transition: opacity 180ms steps(3, end), transform 180ms steps(3, end);
+}
+
+.crunch-coin-reward-toast.is-collecting {
+  animation: coinRewardToastHold 900ms steps(5, end) both;
+}
+
+.crunch-coin-reward-toast.is-collected {
+  transform: translate3d(-50%, -8px, 0) scale(1.08);
 }
 
 .crunch-coin-reward-toast strong {
@@ -9840,6 +9877,82 @@ html[data-card-skin="rainbow"] .cutin-card {
   text-shadow: 2px 2px 0 #241300;
 }
 
+.crunch-coin-collection {
+  position: fixed;
+  z-index: 105;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.crunch-collectible-coin {
+  --coin-size: clamp(52px, 14vw, 68px);
+  position: fixed;
+  width: var(--coin-size);
+  height: var(--coin-size);
+  padding: 0;
+  border: 4px solid #5c3100;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 28%, #fff4a8 0 9%, transparent 10%),
+    radial-gradient(circle at 50% 50%, #ffd760 0 42%, #e89413 43% 66%, #8d4c05 67% 100%);
+  box-shadow:
+    0 0 0 3px #ffec8a,
+    0 6px 0 #4e2800,
+    0 0 22px rgba(255, 197, 61, .92);
+  color: #5d3100;
+  display: grid;
+  place-items: center;
+  transform: translate3d(-50%, -50%, 0);
+  transform-origin: 50% 50%;
+  pointer-events: auto;
+  touch-action: manipulation;
+  cursor: pointer;
+  animation: collectibleCoinBurstIn 460ms steps(8, end) var(--coin-delay, 0ms) both,
+    collectibleCoinIdle 850ms steps(4, end) calc(var(--coin-delay, 0ms) + 460ms) infinite alternate;
+}
+
+.crunch-collectible-coin::before,
+.crunch-collectible-coin::after {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 3px dashed rgba(115, 61, 0, .72);
+  border-radius: 50%;
+}
+
+.crunch-collectible-coin::after {
+  inset: -10px;
+  border: 0;
+  background: linear-gradient(90deg, transparent 38%, rgba(255, 243, 151, .9) 40% 58%, transparent 60%);
+  clip-path: polygon(46% 0, 54% 0, 54% 36%, 100% 46%, 100% 54%, 54% 54%, 54% 100%, 46% 100%, 46% 54%, 0 54%, 0 46%, 46% 46%);
+  animation: collectibleCoinGlint 1.2s steps(6, end) infinite;
+}
+
+.crunch-collectible-coin i {
+  width: 15px;
+  height: 15px;
+  background: #8f4b00;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+.crunch-collectible-coin small {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 10px);
+  transform: translateX(-50%);
+  color: #fff4a4;
+  font-family: var(--font-pixel);
+  font-size: clamp(.5rem, 2.4vw, .72rem);
+  text-shadow: 2px 2px 0 #4e2800, 0 0 9px #ffbd31;
+  white-space: nowrap;
+}
+
+.crunch-collectible-coin.is-collected {
+  pointer-events: none;
+  animation: collectibleCoinBreak 250ms steps(5, end) both;
+}
+
 body.is-entry-score-surge-active .crunch-cutscene-overlay .cutin-stage {
   opacity: .2;
   filter: brightness(.45);
@@ -9848,7 +9961,7 @@ body.is-entry-score-surge-active .crunch-cutscene-overlay .cutin-stage {
 
 @media (max-height: 760px) {
   .entry-score-surge-callout {
-    top: min(calc(var(--safe-top) + 72dvh), calc(100% - 82px - var(--safe-bottom)));
+    top: min(calc(50% + 112px), calc(100% - 94px - var(--safe-bottom)));
   }
 }
 
@@ -9857,4 +9970,57 @@ body.is-entry-score-surge-active .crunch-cutscene-overlay .cutin-stage {
 .reduce-motion .entry-score-surge-backdrop::before {
   transition-duration: .01ms !important;
   animation-duration: .01ms !important;
+}
+
+.reduce-motion .crunch-collectible-coin,
+.reduce-motion .crunch-coin-reward-toast,
+.reduce-motion .is-bank-number-rolling,
+.reduce-motion .entry-score-surge-skip {
+  animation-duration: .01ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+@keyframes exactBankRoll {
+  from { filter: brightness(1); transform: translateY(0) scale(1); }
+  to { filter: brightness(1.24); transform: translateY(-1px) scale(1.018); }
+}
+
+@keyframes surgeSkipPulse {
+  from { opacity: .62; transform: scale(1); }
+  to { opacity: 1; transform: scale(1.035); }
+}
+
+@keyframes coinRewardToastHold {
+  from { opacity: 0; transform: translate3d(-50%, 10px, 0) scale(.72); }
+  28% { opacity: 1; transform: translate3d(-50%, -3px, 0) scale(1.08); }
+  to { opacity: 1; transform: translate3d(-50%, 0, 0) scale(1); }
+}
+
+@keyframes collectibleCoinBurstIn {
+  from {
+    opacity: 0;
+    transform: translate3d(calc(-50% + var(--coin-from-x)), calc(-50% + var(--coin-from-y)), 0) scale(.25) rotate(-28deg);
+  }
+  68% {
+    opacity: 1;
+    transform: translate3d(-50%, -54%, 0) scale(1.14) rotate(6deg);
+  }
+  to { opacity: 1; transform: translate3d(-50%, -50%, 0) scale(1) rotate(0); }
+}
+
+@keyframes collectibleCoinIdle {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.22); }
+}
+
+@keyframes collectibleCoinGlint {
+  from { opacity: 0; transform: rotate(0deg) scale(.7); }
+  40% { opacity: 1; }
+  to { opacity: 0; transform: rotate(90deg) scale(1.25); }
+}
+
+@keyframes collectibleCoinBreak {
+  from { opacity: 1; transform: translate3d(-50%, -50%, 0) scale(1); filter: brightness(1.3); }
+  46% { opacity: 1; transform: translate3d(-50%, -50%, 0) scale(1.24); filter: brightness(2); }
+  to { opacity: 0; transform: translate3d(-50%, -50%, 0) scale(.12); filter: brightness(2.4); }
 }
