@@ -41,6 +41,14 @@ const results = scoringModule.runScoringSelfTests();
 if (!Array.isArray(results) || results.some((result) => result.pass === false)) {
   throw new Error("Scoring self-tests failed");
 }
+const progressionModule = await import(`../src/progression.js?verify=${Date.now()}`);
+const challengePots = progressionModule.createDefaultPots();
+if (challengePots.length !== 6
+  || challengePots.some((pot) => !pot.title || !pot.description || !pot.icon || !pot.difficulty || !pot.gameplayModifier)
+  || challengePots[1].gameplayModifier.suitMatchMultiplier !== 2
+  || challengePots[2].gameplayModifier.turnSeconds !== 8) {
+  throw new Error("Data-driven pot challenge definitions are incomplete");
+}
 
 const { formatCompactNumber } = await import(`../src/format.js?verify=${Date.now()}`);
 const dealTimingModule = await import(`../src/dealTiming.js?verify=${Date.now()}`);
@@ -85,6 +93,9 @@ if (!html.includes("run-scoreboard") || !html.includes("summaryRecoveryTicker"))
 }
 if (!html.includes("tutorialStartButton") || !html.includes("tutorialCoach") || !html.includes("bottom-status")) {
   throw new Error("Live-board tutorial hooks are missing");
+}
+if (!html.includes("Each pot has a unique rule.") || (html.match(/menu-chip-add/g) ?? []).length !== 2) {
+  throw new Error("Pot challenge copy or unified header actions are missing");
 }
 if (html.includes('id="tutorialPage"')) {
   throw new Error("Tutorial must use the real game board, not a separate practice layout");
@@ -312,6 +323,14 @@ if (!gameStateSource.includes("ui.syncResolvedHud(state)")
   || !uiSource.includes("syncHudCountersWithoutMotion")
   || !css.includes(".game-shell.is-round-handoff .timer-fill")) {
   throw new Error("Round dealing must not replay score juice or animate HUD resets");
+}
+if (!uiSource.includes("pot-grid-row")
+  || !uiSource.includes("createPotDetailPanel")
+  || !uiSource.includes("selectingSamePot")
+  || !css.includes(".pot-detail-shell.is-open")
+  || !gameStateSource.includes("gameplayModifier: state.activePot?.gameplayModifier")
+  || !gameStateSource.includes("minimumBankStreak")) {
+  throw new Error("Expandable challenge pots or their gameplay modifiers are missing");
 }
 if (!uiSource.includes("(state.dealHandCount ?? 0) + index") || !cardGestureSource.includes('zone === "table"')) {
   throw new Error("Table cards must deal after all replacement hand cards");

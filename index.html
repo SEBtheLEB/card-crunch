@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/main.css?v=125">
+  <link rel="stylesheet" href="styles/main.css?v=126">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -105,7 +105,8 @@
         <header class="menu-topbar" aria-label="Player stats">
           <button class="menu-chip coin-chip" data-menu-page="shop" type="button" aria-label="Open store. Coin balance 0">
             <span class="chip-icon" aria-hidden="true">&#9670;</span>
-            <strong id="menuCoinsValue">0</strong>
+            <span class="menu-chip-copy"><small>Coins</small><strong id="menuCoinsValue">0</strong></span>
+            <span class="menu-chip-add" aria-hidden="true">+</span>
           </button>
           <button class="menu-chip energy-chip" data-menu-page="shop" type="button" aria-label="Open store. Energy 30 of 30">
             <span class="chip-icon energy-icon" aria-hidden="true">&#9889;</span>
@@ -114,6 +115,7 @@
               <small id="menuEnergyTimer">FULL</small>
             </span>
             <i><b></b></i>
+            <span class="menu-chip-add" aria-hidden="true">+</span>
           </button>
           <div class="menu-topbar-actions">
             <button class="menu-icon-button" data-menu-page="leaderboard" type="button" aria-label="Leaderboard">&#9819;</button>
@@ -303,7 +305,7 @@
           <section class="menu-page" data-page="pots" aria-hidden="true">
             <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
             <h2>Pick a Pot</h2>
-            <p class="menu-page-copy">Fresh runs use 5 Energy. Crunch for run cash, then bank it before you bust.</p>
+            <p class="menu-page-copy pot-page-copy"><strong>Each pot has a unique rule.</strong><span>Pick your challenge and crunch for cash!</span></p>
             <div class="menu-level-map" id="levelMap"></div>
             <button class="ad-button shield-ad-button" id="shieldAdButton" type="button">
               <i aria-hidden="true">&#9654;</i>
@@ -408,6 +410,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-  <script type="module" src="src/main.js?v=125"></script>
+  <script type="module" src="src/main.js?v=126"></script>
   </body>
 </html>

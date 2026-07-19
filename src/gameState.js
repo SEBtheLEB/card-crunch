@@ -1,6 +1,6 @@
 import { drawCards, shuffle, createDeck } from "./deck.js?v=90";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=90";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=90";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=126";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=126";
 import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=124";
 import { ensurePlayableHand } from "./handSafety.js?v=90";
 import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=90";
@@ -48,6 +48,7 @@ export function createGame(ui) {
     target: getTargetForLevel(1),
     pots: loadPots(),
     activePot: null,
+    replayingCompletedPot: false,
     fever: false,
     turnSeconds: 10,
     timerGraceSeconds: 1,
@@ -97,7 +98,7 @@ export function createGame(ui) {
 
   function enterLevel(levelId) {
     const pot = state.pots.find((item) => item.id === levelId);
-    if (!pot || pot.complete || !isPotUnlocked(state.pots, levelId)) return;
+    if (!pot || !isPotUnlocked(state.pots, levelId)) return;
     clearRunSave();
     requestNewRun(pot);
   }
@@ -133,10 +134,12 @@ export function createGame(ui) {
     state.score = 0;
     state.streak = 0;
     state.misses = 0;
-    state.maxMisses = 3;
+    state.maxMisses = Math.max(1, Number(pot?.gameplayModifier?.maxLives ?? 3));
     state.level = pot?.id ?? 0;
     state.activePot = pot ?? null;
+    state.replayingCompletedPot = Boolean(pot?.complete);
     state.target = pot?.target ?? getTargetForLevel(1);
+    state.turnSeconds = Math.max(3, Number(pot?.gameplayModifier?.turnSeconds ?? 10));
     state.fever = false;
     state.bankMultiplier = 1;
     state.bestRunMultiplier = 1;
@@ -154,7 +157,7 @@ export function createGame(ui) {
     state.bonusBankAdUsedForLastDeposit = true;
     state.hintAdUsedThisRun = false;
     state.rewardAdInProgress = false;
-    state.safeBankShieldActive = Boolean(pot) && hasShieldToken();
+    state.safeBankShieldActive = Boolean(pot) && !state.replayingCompletedPot && hasShieldToken();
     state.runStartedAt = Date.now();
     state.timeLeft = state.turnSeconds;
     state.dealHandCount = 4;
@@ -189,9 +192,11 @@ export function createGame(ui) {
     state.streak = 0;
     state.misses = 0;
     state.maxMisses = 3;
+    state.turnSeconds = 10;
     state.level = 0;
     state.target = 0;
     state.activePot = null;
+    state.replayingCompletedPot = false;
     state.fever = false;
     state.bankMultiplier = 1;
     state.bestRunMultiplier = 1;
@@ -304,7 +309,8 @@ export function createGame(ui) {
       selectedCards,
       timeLeft: state.timeLeft,
       streak: state.streak,
-      runMultiplier: state.bankMultiplier
+      runMultiplier: state.bankMultiplier,
+      gameplayModifier: state.activePot?.gameplayModifier
     });
 
     playSfx("crunch_start");
@@ -446,7 +452,8 @@ export function createGame(ui) {
       await bankTutorialCash();
       return;
     }
-    if (state.locked || state.status !== "playing" || !state.activePot || state.score <= 0) return;
+    const minimumBankStreak = Number(state.activePot?.gameplayModifier?.minBankStreak ?? 0);
+    if (state.locked || state.status !== "playing" || !state.activePot || state.score <= 0 || state.streak < minimumBankStreak) return;
     state.locked = true;
     stopTimer();
     ui.hideBonusBankOffer();
@@ -465,7 +472,7 @@ export function createGame(ui) {
     ui.render(state, handlers);
     await sleep(620);
 
-    if (state.activePot.complete) {
+    if (state.activePot.complete && !state.replayingCompletedPot) {
       await clearTarget();
       return;
     }
@@ -474,7 +481,7 @@ export function createGame(ui) {
     state.status = "playing";
     ui.render(state, handlers);
     startTimer();
-    offerBonusBankAd(amount);
+    if (!state.replayingCompletedPot) offerBonusBankAd(amount);
   }
 
   async function bankTutorialCash() {
@@ -649,7 +656,7 @@ export function createGame(ui) {
     }
 
     state.lostUnbankedMoney = state.score;
-    grantRunCoins({ potCleared: Boolean(state.activePot?.complete) });
+    grantRunCoins({ potCleared: Boolean(state.activePot?.complete && !state.replayingCompletedPot) });
     ui.render(state, handlers);
     showRunSummary();
   }
@@ -678,9 +685,10 @@ export function createGame(ui) {
       bestStreak: state.bestRunStreak,
       coinsEarned: state.coinsEarnedThisRun,
       pot: state.activePot,
+      potReplay: state.replayingCompletedPot,
       canRevive:
         !state.reviveAdUsedThisRun &&
-        !state.activePot?.complete &&
+        (!state.activePot?.complete || state.replayingCompletedPot) &&
         !state.rewardAdInProgress &&
         adManager.canShowRewardedAd(),
       canRecover:
@@ -694,7 +702,7 @@ export function createGame(ui) {
   }
 
   async function onReviveAd() {
-    if (state.status !== "runEnded" || state.reviveAdUsedThisRun || state.rewardAdInProgress || state.activePot?.complete) return;
+    if (state.status !== "runEnded" || state.reviveAdUsedThisRun || state.rewardAdInProgress || (state.activePot?.complete && !state.replayingCompletedPot)) return;
     state.rewardAdInProgress = true;
     state.reviveAdUsedThisRun = true;
     showRunSummary();
@@ -751,7 +759,11 @@ export function createGame(ui) {
   function playAgain() {
     if (state.status !== "runEnded" && state.status !== "menu") return;
     finalizeRunLoss();
-    const pot = state.activePot && !state.activePot.complete ? state.activePot : state.pots.find((item) => !item.complete);
+    const pot = state.replayingCompletedPot
+      ? state.activePot
+      : state.activePot && !state.activePot.complete
+        ? state.activePot
+        : state.pots.find((item) => !item.complete);
     if (!pot || !isPotUnlocked(state.pots, pot.id)) {
       returnToMap();
       return;
@@ -971,8 +983,11 @@ export function createGame(ui) {
     state.misses = 0;
     state.level = 0;
     state.activePot = null;
+    state.replayingCompletedPot = false;
     state.target = getTargetForLevel(1);
     state.fever = false;
+    state.turnSeconds = 10;
+    state.maxMisses = 3;
     state.timeLeft = state.turnSeconds;
     state.dealHandCount = 0;
     state.bankMultiplier = 1;

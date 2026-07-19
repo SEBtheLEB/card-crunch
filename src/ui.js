@@ -1,5 +1,5 @@
 import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=90";
-import { isPotUnlocked } from "./progression.js?v=90";
+import { isPotUnlocked } from "./progression.js?v=126";
 import { formatCompactNumber } from "./format.js?v=90";
 import { hasShieldToken } from "./save.js?v=90";
 import { bindInstantAction } from "./input.js?v=90";
@@ -14,6 +14,7 @@ export function createUI() {
   let messageFrame = null;
   let messageGeneration = 0;
   let roundHandoffFrame = null;
+  const potMapState = { selectedId: null, generation: 0 };
   const elements = {
     shell: document.querySelector("#gameShell"),
     tableZone: document.querySelector("#tableZone"),
@@ -190,25 +191,7 @@ export function createUI() {
       elements.mapScreen.setAttribute("aria-hidden", String(!show));
     },
     renderMap(pots, handlers) {
-      elements.levelMap.innerHTML = "";
-      pots.forEach((pot) => {
-        const button = document.createElement("button");
-        const progress = pot.target > 0 ? Math.min(1, pot.progress / pot.target) : 0;
-        const locked = !isPotUnlocked(pots, pot.id);
-        button.className = `map-pot ${pot.complete ? "is-complete" : ""} ${locked ? "is-locked" : ""}`;
-        button.type = "button";
-        button.disabled = locked || pot.complete;
-        button.setAttribute("aria-disabled", String(button.disabled));
-        button.innerHTML = `
-          <span>${locked ? "Locked" : "Pot"} ${pot.id}</span>
-          <strong>${locked ? "LOCK" : pot.complete ? "Full" : formatCompactNumber(Math.max(0, pot.target - pot.progress))}</strong>
-          <small>${locked ? "Clear prior pot" : pot.complete ? "Cleared" : `${Math.round(progress * 100)}% full`}</small>
-          ${!locked && !pot.complete ? "<em>\u26A15 ENERGY</em>" : ""}
-          <i><b style="width: ${progress * 100}%"></b></i>
-        `;
-        bindInstantAction(button, () => handlers.onLevelSelect(pot.id));
-        elements.levelMap.appendChild(button);
-      });
+      renderPotMap(elements, pots, handlers, potMapState);
     },
     showGameOver(show) {
       elements.gameOverScreen.classList.toggle("is-visible", show);
@@ -216,7 +199,7 @@ export function createUI() {
     },
     /* End-of-run summary: pot progress, banked/lost cash, ad options. */
     showRunSummary(summary) {
-      const potComplete = Boolean(summary.pot?.complete);
+      const potComplete = Boolean(summary.pot?.complete && !summary.potReplay);
       elements.runEndEyebrow.textContent = potComplete ? "Run Complete" : "Out of Lives";
       elements.gameOverTitle.textContent = potComplete ? "Pot Filled!" : "Run Over";
       elements.runEndCopy.textContent = getRunEndCopy(summary, potComplete);
@@ -459,6 +442,153 @@ function showMenuPage(elements, pageName = "home") {
   }));
 }
 
+function renderPotMap(elements, pots, handlers, mapState) {
+  mapState.generation += 1;
+  mapState.selectedId = null;
+  elements.levelMap.replaceChildren();
+
+  for (let index = 0; index < pots.length; index += 2) {
+    const row = document.createElement("div");
+    row.className = "pot-grid-row";
+    row.dataset.potRow = String(Math.floor(index / 2));
+
+    pots.slice(index, index + 2).forEach((pot) => {
+      row.appendChild(createPotCard({ pot, pots, handlers, mapState, row, map: elements.levelMap }));
+    });
+    elements.levelMap.appendChild(row);
+  }
+}
+
+function createPotCard({ pot, pots, handlers, mapState, row, map }) {
+  const card = document.createElement("button");
+  const progress = pot.target > 0 ? Math.min(1, pot.progress / pot.target) : 0;
+  const locked = !isPotUnlocked(pots, pot.id);
+  const status = locked ? "Locked" : pot.complete ? "Full" : "Available";
+  const description = locked ? pot.lockedTeaser ?? pot.description : pot.description;
+  const unlockCopy = locked ? `Clear Pot ${pot.id - 1} to unlock` : pot.complete ? "Cleared - replay anytime" : `${Math.round(progress * 100)}% filled`;
+
+  card.className = `map-pot pot-level-card${pot.complete ? " is-complete" : ""}${locked ? " is-locked" : ""}${pot.isNewRule ? " has-new-rule" : ""}`;
+  card.type = "button";
+  card.disabled = locked;
+  card.dataset.potId = String(pot.id);
+  card.dataset.potStatus = status;
+  card.style.setProperty("--pot-accent", pot.accent);
+  card.style.setProperty("--pot-accent-rgb", pot.accentRgb);
+  card.setAttribute("aria-disabled", String(locked));
+  card.setAttribute("aria-expanded", "false");
+  card.setAttribute("aria-label", `Pot ${pot.id}, ${pot.title}. ${description}. ${unlockCopy}.`);
+  card.innerHTML = `
+    ${pot.isNewRule ? '<span class="pot-rule-ribbon">New Rule</span>' : ""}
+    <span class="pot-card-topline"><b>Pot ${pot.id}</b><em>${status}</em></span>
+    <span class="pot-card-icon" aria-hidden="true">${locked ? "&#128274;" : pot.icon}</span>
+    <strong>${locked ? `Next: ${pot.title}` : pot.title}</strong>
+    <small>${description}</small>
+    <span class="pot-card-target"><i>Target</i><b>${formatCompactNumber(pot.target)}</b></span>
+    <span class="pot-card-progress-copy"><i>${formatCompactNumber(pot.progress)}</i><b>${formatCompactNumber(pot.target)}</b></span>
+    <span class="pot-progress-track" aria-hidden="true"><i style="width:${progress * 100}%"></i></span>
+    <span class="pot-unlock-copy">${unlockCopy}</span>
+    <span class="pot-selection-pointer" aria-hidden="true"></span>
+  `;
+
+  if (!locked) {
+    bindInstantAction(card, () => selectPotCard({ pot, card, row, map, handlers, mapState }));
+  }
+  return card;
+}
+
+function selectPotCard({ pot, card, row, map, handlers, mapState }) {
+  const selectingSamePot = mapState.selectedId === pot.id;
+  const generation = ++mapState.generation;
+  const existingPanel = map.querySelector(".pot-detail-shell");
+
+  map.querySelectorAll(".pot-level-card.is-selected").forEach((button) => {
+    button.classList.remove("is-selected");
+    button.setAttribute("aria-expanded", "false");
+    const statusLabel = button.querySelector(".pot-card-topline em");
+    if (statusLabel) statusLabel.textContent = button.dataset.potStatus;
+  });
+
+  if (existingPanel) {
+    existingPanel.classList.remove("is-open");
+    existingPanel.setAttribute("aria-hidden", "true");
+  }
+
+  if (selectingSamePot) {
+    mapState.selectedId = null;
+    window.setTimeout(() => {
+      if (generation === mapState.generation) existingPanel?.remove();
+    }, 260);
+    return;
+  }
+
+  mapState.selectedId = pot.id;
+  card.classList.add("is-selected");
+  card.setAttribute("aria-expanded", "true");
+  const selectedStatus = card.querySelector(".pot-card-topline em");
+  if (selectedStatus) selectedStatus.textContent = "Selected";
+
+  const openPanel = () => {
+    if (generation !== mapState.generation) return;
+    map.querySelectorAll(".pot-detail-shell").forEach((panel) => panel.remove());
+    const panel = createPotDetailPanel(pot, handlers);
+    row.appendChild(panel);
+    window.requestAnimationFrame(() => {
+      panel.classList.add("is-open");
+      window.setTimeout(() => keepPotPanelVisible(panel), 280);
+    });
+  };
+
+  if (existingPanel) window.setTimeout(openPanel, 220);
+  else openPanel();
+}
+
+function createPotDetailPanel(pot, handlers) {
+  const shell = document.createElement("div");
+  const progress = pot.target > 0 ? Math.min(1, pot.progress / pot.target) : 0;
+  const turnSeconds = Number(pot.gameplayModifier?.turnSeconds ?? 10);
+  shell.className = "pot-detail-shell";
+  shell.style.setProperty("--pot-accent", pot.accent);
+  shell.style.setProperty("--pot-accent-rgb", pot.accentRgb);
+  shell.setAttribute("aria-hidden", "false");
+  shell.innerHTML = `
+    <div class="pot-detail-clip">
+      <section class="pot-detail-panel" aria-labelledby="potDetailTitle${pot.id}">
+        <header>
+          <span>Pot ${pot.id}</span>
+          <strong id="potDetailTitle${pot.id}">${pot.title}</strong>
+        </header>
+        <div class="pot-detail-rule">
+          <i aria-hidden="true">${pot.icon}</i>
+          <div><strong>${pot.ruleLabel}</strong><p>${pot.detail}</p></div>
+        </div>
+        <div class="pot-detail-stats">
+          <article><span>Timer</span><strong>${turnSeconds} seconds</strong></article>
+          <article><span>Target</span><strong>${formatCompactNumber(pot.target)}</strong></article>
+          <article><span>Difficulty</span><strong>${pot.difficulty}</strong></article>
+        </div>
+        <div class="pot-detail-progress">
+          <span><b>${pot.complete ? "Full" : "Progress"}</b><strong>${formatCompactNumber(pot.progress)} / ${formatCompactNumber(pot.target)}</strong></span>
+          <i aria-hidden="true"><b style="width:${progress * 100}%"></b></i>
+        </div>
+        <button class="pot-play-button" type="button">${pot.complete ? "Replay" : "Play"}<small>&#9889;${ECONOMY_CONFIG.energyPerRun}</small></button>
+      </section>
+    </div>
+  `;
+  bindInstantAction(shell.querySelector(".pot-play-button"), () => handlers.onLevelSelect(pot.id));
+  return shell;
+}
+
+function keepPotPanelVisible(panel) {
+  if (!panel?.isConnected) return;
+  const rect = panel.getBoundingClientRect();
+  const viewportBottom = window.innerHeight - 16;
+  if (rect.bottom <= viewportBottom && rect.top >= 8) return;
+  panel.scrollIntoView({
+    behavior: document.documentElement.classList.contains("reduce-motion") ? "auto" : "smooth",
+    block: "nearest"
+  });
+}
+
 function renderMenuStats(elements, state) {
   const wallet = economy.getSnapshot();
   const previousWallet = elements._menuWalletCache;
@@ -644,7 +774,9 @@ function renderCrunch(elements, state, handlers) {
   elements.multiPanel.classList.toggle("multi-warm", (state.bankMultiplier ?? 1) >= 2);
   elements.multiPanel.classList.toggle("multi-hot", (state.bankMultiplier ?? 1) >= 4);
 
-  const canBank = playing && (Boolean(state.activePot) || Boolean(state.tutorialBankStep)) && state.score > 0;
+  const minimumBankStreak = Number(state.activePot?.gameplayModifier?.minBankStreak ?? 0);
+  const bankRuleReady = state.streak >= minimumBankStreak;
+  const canBank = playing && (Boolean(state.activePot) || Boolean(state.tutorialBankStep)) && state.score > 0 && bankRuleReady;
   if (cache.canBank !== canBank) {
     cache.canBank = canBank;
     elements.bankButton.disabled = !canBank;
@@ -669,6 +801,13 @@ function renderCrunch(elements, state, handlers) {
       elements.hintAdButton.setAttribute("aria-label", hintLabel);
     }
   }
+  elements.bankButton.classList.toggle("bank-rule-locked", playing && state.score > 0 && !bankRuleReady);
+  elements.bankButton.setAttribute(
+    "aria-label",
+    bankRuleReady
+      ? "Bank run cash into the pot. Resets multiplier."
+      : `Bank unlocks at a ${minimumBankStreak}-Crunch streak.`
+  );
 
   const crunchDisabled = state.locked || state.status !== "playing" || state.tutorialBankStep || !preview.canCrunch;
   if (cache.crunchDisabled !== crunchDisabled) {

@@ -172,11 +172,12 @@ export function createStackEntry(card, match) {
   };
 }
 
-export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, streak, runMultiplier = 1 }) {
+export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, streak, runMultiplier = 1, gameplayModifier = null }) {
   const resolution = resolveSelectedCrunch(baseStack, selectedCards);
   if (!resolution.success) return { success: false, resolution };
 
-  const storedBase = resolution.history.reduce((sum, entry) => sum + entry.basePoints, 0);
+  const awardedPoints = resolution.history.map((entry) => getRuleAdjustedBasePoints(entry, gameplayModifier));
+  const storedBase = awardedPoints.reduce((sum, points) => sum + points, 0);
   const handMultiplier = getSelectionMultiplier(selectedCards.length);
   const speedBonus = getSpeedBonus(timeLeft);
   const streakAfterCrunch = streak + 1;
@@ -184,7 +185,8 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
   const stackTypes = detectStackTypes(resolution.activeStack, resolution.history, selectedCards.length);
   const stackTypeMultiplier = stackTypes.reduce((product, bonus) => product * (bonus.multiplier ?? 1), 1);
   const stackTypeFlat = stackTypes.reduce((sum, bonus) => sum + (bonus.flatBonus ?? 0), 0);
-  const total = Math.round((storedBase * handMultiplier * speedBonus.multiplier * streakMultiplier * stackTypeMultiplier + stackTypeFlat) * runMultiplier);
+  const potRuleMultiplier = getPotRuleMultiplier(gameplayModifier, selectedCards.length);
+  const total = Math.round((storedBase * handMultiplier * speedBonus.multiplier * streakMultiplier * stackTypeMultiplier * potRuleMultiplier + stackTypeFlat) * runMultiplier);
 
   return {
     success: true,
@@ -195,12 +197,13 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
     streakAfterCrunch,
     streakMultiplier,
     stackTypes,
+    potRuleMultiplier,
     total,
     cutscene: {
-      entries: resolution.history.map((entry) => ({
+      entries: resolution.history.map((entry, index) => ({
         card: entry.card,
         matchType: entry.matchType,
-        points: entry.basePoints,
+        points: awardedPoints[index],
         matchedCards: entry.matchedCards,
         equation: entry.equation,
         label: entry.cutinLabel ?? entry.label,
@@ -217,10 +220,28 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
       speedBonus,
       streakMultiplier,
       stackTypes,
+      potRuleMultiplier,
+      potRuleLabel: gameplayModifier?.scoreLabel,
       runMultiplier,
       total
     })
   };
+}
+
+function getRuleAdjustedBasePoints(entry, gameplayModifier) {
+  const suitMultiplier = entry.matchType === MATCH_TYPES.SUIT
+    ? Number(gameplayModifier?.suitMatchMultiplier ?? 1)
+    : 1;
+  return Math.round(entry.basePoints * Math.max(1, suitMultiplier));
+}
+
+function getPotRuleMultiplier(gameplayModifier, selectedCount) {
+  let multiplier = Math.max(1, Number(gameplayModifier?.scoreMultiplier ?? 1));
+  const minimumSelection = Number(gameplayModifier?.minSelectionForMultiplier ?? Infinity);
+  if (selectedCount >= minimumSelection) {
+    multiplier *= Math.max(1, Number(gameplayModifier?.selectionScoreMultiplier ?? 1));
+  }
+  return multiplier;
 }
 
 export function getSelectionMultiplier(count) {
@@ -269,13 +290,29 @@ export function runScoringSelfTests() {
   const success = calculateCrunchScore({ baseStack: base, selectedCards: [card(8, "hearts"), card("K", "spades", 13)], timeLeft: 7, streak: 0 });
   const fail = calculateCrunchScore({ baseStack: base, selectedCards: [card(8, "hearts"), card("Q", "clubs", 12)], timeLeft: 7, streak: 0 });
   const one = calculateCrunchScore({ baseStack: base, selectedCards: [card("K", "diamonds", 13)], timeLeft: 3, streak: 0 });
+  const suitSurge = calculateCrunchScore({
+    baseStack: base,
+    selectedCards: [card("K", "diamonds", 13)],
+    timeLeft: 3,
+    streak: 0,
+    gameplayModifier: { suitMatchMultiplier: 2 }
+  });
+  const fullHandFever = calculateCrunchScore({
+    baseStack: base,
+    selectedCards: [card(8, "hearts"), card("K", "spades", 13), card(2, "clubs")],
+    timeLeft: 3,
+    streak: 0,
+    gameplayModifier: { minSelectionForMultiplier: 3, selectionScoreMultiplier: 2, scoreLabel: "HAND FEVER" }
+  });
 
   const cases = [
     { name: "success sequence", pass: success.success && success.resolution.history.length === 2 },
     { name: "fail sequence", pass: !fail.success && fail.resolution.failedIndex === 1 },
     { name: "one card crunch", pass: one.success && one.handMultiplier === 1 },
     { name: "two card multiplier", pass: success.handMultiplier === 2 },
-    { name: "speed bonus", pass: success.speedBonus.multiplier === 2 }
+    { name: "speed bonus", pass: success.speedBonus.multiplier === 2 },
+    { name: "suit surge modifier", pass: suitSurge.success && suitSurge.storedBase === 200 },
+    { name: "full hand fever modifier", pass: fullHandFever.success && fullHandFever.potRuleMultiplier === 2 }
   ];
 
   return cases.map((test) => ({ ...test, result: test.name.includes("fail") ? fail : success }));
@@ -312,12 +349,13 @@ function getStackPairs(cards) {
   return pairs;
 }
 
-function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, runMultiplier = 1, total }) {
+function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, potRuleMultiplier = 1, potRuleLabel = "POT RULE", runMultiplier = 1, total }) {
   const steps = [{ label: "STORED", value: `+${formatCompactNumber(storedBase)}`, tone: "total", kind: "base" }];
   if (handMultiplier > 1) steps.push({ label: "HAND", value: `x${handMultiplier}`, tone: "double", kind: "multiplier" });
   if (speedBonus.multiplier > 1) steps.push({ label: speedBonus.label, value: `x${formatMultiplier(speedBonus.multiplier)}`, tone: "speed", kind: "multiplier" });
   if (streakMultiplier > 1) steps.push({ label: "STREAK", value: `x${streakMultiplier}`, tone: streakMultiplier >= 10 ? "fever" : "streak", kind: "multiplier" });
   stackTypes.forEach((bonus) => steps.push({ label: bonus.label, value: bonus.value, tone: bonus.tone, kind: bonus.multiplier ? "multiplier" : "bonus" }));
+  if (potRuleMultiplier > 1) steps.push({ label: potRuleLabel, value: `x${formatMultiplier(potRuleMultiplier)}`, tone: "fever", kind: "multiplier" });
   if (runMultiplier > 1) steps.push({ label: "RUN MULTI", value: `x${formatMultiplier(runMultiplier)}`, tone: "fever", kind: "multiplier" });
   steps.push({ label: "TOTAL", value: `+${formatCompactNumber(total)}`, tone: "total", kind: "total" });
   return steps;
