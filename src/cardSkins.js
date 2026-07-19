@@ -99,9 +99,44 @@ export function applyCardSkinPresentation(element, card) {
   element.classList.add(`${SKIN_CLASS_PREFIX}${skinId}`);
   element.dataset.equippedSkin = skinId;
   const assetUrl = getCardSkinAssetUrl(card, skinId);
-  if (assetUrl) element.style.setProperty("--card-art-image", `url("${assetUrl}")`);
-  else element.style.removeProperty("--card-art-image");
+  if (assetUrl) {
+    element.style.setProperty("--card-art-image", `url("${assetUrl}")`);
+    mountCardSkinArt(element, assetUrl);
+  } else {
+    element.style.removeProperty("--card-art-image");
+    element.classList.remove("card-art-ready");
+    element.querySelector(":scope > .card-skin-art")?.remove();
+  }
   return skinId;
+}
+
+/* A real image node is more reliable than using a CSS custom property as the
+   only renderer. The built-in rank/suit face stays underneath until the PNG
+   has decoded, so a slow mobile connection can never produce a blank card. */
+function mountCardSkinArt(element, assetUrl) {
+  let image = element.querySelector(":scope > .card-skin-art");
+  if (!image) {
+    image = document.createElement("img");
+    image.className = "card-skin-art";
+    image.alt = "";
+    image.decoding = "async";
+    image.draggable = false;
+    element.prepend(image);
+  }
+
+  const markReady = () => element.classList.add("card-art-ready");
+  const showFallback = () => {
+    element.classList.remove("card-art-ready");
+    image.remove();
+  };
+  image.onload = markReady;
+  image.onerror = showFallback;
+
+  if (image.src !== assetUrl) {
+    element.classList.remove("card-art-ready");
+    image.src = assetUrl;
+  }
+  if (image.complete && image.naturalWidth > 0) markReady();
 }
 
 export function preloadCardSkinAssets(skinId) {

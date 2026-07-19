@@ -50,7 +50,14 @@ if (pinkArcadeManifest.setId !== "pink_arcade"
   || pinkArcadeManifest.filtering !== "nearest") {
   throw new Error("Pink Arcade deck manifest is incomplete or not configured for pixel rendering");
 }
-await Promise.all(pinkArcadeManifest.cards.map((card) => access(resolve(root, "assets/card-sets/pink_arcade", card.image))));
+await Promise.all(pinkArcadeManifest.cards.map(async (card) => {
+  const imagePath = resolve(root, "assets/card-sets/pink_arcade", card.image);
+  await access(imagePath);
+  const bytes = await readFile(imagePath);
+  if (bytes.length < 8 || bytes.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") {
+    throw new Error(`Pink Arcade card is not a valid PNG: ${card.image}`);
+  }
+}));
 const scoringModule = await import(`../src/scoring.js?verify=${Date.now()}`);
 const results = scoringModule.runScoringSelfTests();
 if (!Array.isArray(results) || results.some((result) => result.pass === false)) {
@@ -215,9 +222,12 @@ if (!cardCollectionSource.includes("buildCollectiblePool")
   || !cardCollectionUiSource.includes("buyOrEquipPinkArcadeDeck")
   || !uiSource.includes("getCardSkinClass")
   || !cutsceneSource.includes("getCardSkinClass")
+  || !cutsceneSource.includes('class="card-skin-art"')
   || !cardSkinSource.includes("getCardSkinAssetUrl")
+  || !cardSkinSource.includes("mountCardSkinArt")
   || !cardGestureSource.includes("is-pink-arcade")
   || !css.includes(".card.card-skin-pink_arcade")
+  || !css.includes(".card-skin-art")
   || !collectionCss.includes(".pack-opening-overlay")
   || !collectionCss.includes(".collection-card-matrix")) {
   throw new Error("Duplicate-protected packs, per-card equips, or collection visuals are incomplete");

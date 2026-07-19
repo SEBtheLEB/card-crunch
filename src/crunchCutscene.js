@@ -1,7 +1,7 @@
 import { formatCompactNumber } from "./format.js?v=90";
 import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=143";
-import { getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=147";
-import { getPowerCardDetails } from "./arcadeMode.js?v=147";
+import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=148";
+import { getPowerCardDetails } from "./arcadeMode.js?v=148";
 import { createScoreSurgePlan } from "./scoreSurge.js?v=143";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
@@ -1133,6 +1133,7 @@ function createCutinCardMarkup(card, extraClass = "") {
   if (!card) return "";
   const skinClass = getCardSkinClass(card);
   const skinStyle = getCardSkinStyle(card);
+  const skinAssetUrl = getCardSkinAssetUrl(card);
   const power = getPowerCardDetails(card);
   const powerClass = card.powerType ? `power-card power-card-${card.powerType}` : "";
   const content = power && card.powerType !== "charged"
@@ -1150,6 +1151,7 @@ function createCutinCardMarkup(card, extraClass = "") {
     `;
   return `
     <div class="cutin-card card-${card.color} card-${card.suit} ${skinClass} ${powerClass} ${extraClass}" data-cutin-card-id="${card.id}" data-card-rank="${card.rank}" data-card-suit="${card.suit}"${card.powerType ? ` data-power-type="${card.powerType}"` : ""} data-equipped-skin="${skinClass.replace("card-skin-", "")}"${skinStyle ? ` style="${skinStyle}"` : ""}>
+      ${skinAssetUrl ? `<img class="card-skin-art" src="${skinAssetUrl}" alt="" decoding="async" draggable="false">` : ""}
       ${content}
     </div>
   `;
