@@ -415,7 +415,9 @@ if (!fullHandPreludeSource.includes("playInteractiveCardCrunch")
   throw new Error("Full Hand must highlight, hand off the live cards, complete three hits, and vacuum into the bank");
 }
 if (!cutsceneSource.includes("createCrunchScoreSurge")
-  || !cutsceneSource.includes("showScoreSurgeMilestone")
+  || !cutsceneSource.includes("playScoreSurgeMilestone")
+  || !cutsceneSource.includes("queueMilestoneBeat")
+  || !cutsceneSource.includes("spawnScoreMilestoneCoinSpill")
   || !cutsceneSource.includes("spawnCrunchCoinReward")
   || !cutsceneSource.includes("coinRewards.award")
   || !scoreSurgeSource.includes("buildScoreSurgeMilestones")
@@ -424,6 +426,11 @@ if (!cutsceneSource.includes("createCrunchScoreSurge")
   || !audioSource.includes("score_ramp_tick")
   || !audioSource.includes("coin_milestone")) {
   throw new Error("Per-Crunch score surges or persistent coin milestone feedback is missing");
+}
+if (!cutsceneSource.includes("forceSettleAfter: 620")
+  || !cutsceneSource.includes("vacuumRampDuration: 1120")
+  || !css.includes("clamp(168px, 24dvh, 290px)")) {
+  throw new Error("Crunch staging or accelerated vacuum timing regressed");
 }
 if (!uiSource.includes("renderBonusBankAction")
   || !uiSource.includes('dataset.action === "bonus-bank-ad"')

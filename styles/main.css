@@ -9612,20 +9612,20 @@ html[data-card-skin="rainbow"] .cutin-card {
    it, closer to the visual center, and continues growing downward. */
 .cutin-match-stage,
 .cutin-math-stage {
-  top: calc(var(--safe-top) + clamp(142px, 18.5dvh, 188px));
+  top: calc(var(--safe-top) + clamp(168px, 24dvh, 290px));
 }
 
 @media (max-height: 760px) {
   .cutin-match-stage,
   .cutin-math-stage {
-    top: calc(var(--safe-top) + clamp(128px, 18dvh, 142px));
+    top: calc(var(--safe-top) + clamp(142px, 22dvh, 174px));
   }
 }
 
 @media (min-height: 900px) {
   .cutin-match-stage,
   .cutin-math-stage {
-    top: calc(var(--safe-top) + clamp(170px, 19.5dvh, 214px));
+    top: calc(var(--safe-top) + clamp(220px, 25dvh, 310px));
   }
 }
 
@@ -9791,10 +9791,19 @@ html[data-card-skin="rainbow"] .cutin-card {
   color: #fff4a4;
   font-family: var(--font-pixel);
   font-size: clamp(.78rem, 4.2vw, 1.48rem);
+  display: grid;
+  justify-items: center;
+  gap: 4px;
   line-height: 1;
   text-shadow: 2px 2px 0 #5e3200, 0 0 13px #ffc53d;
   pointer-events: none;
   white-space: nowrap;
+}
+
+.entry-score-surge-milestone span {
+  color: #7ee8ff;
+  font-size: .48em;
+  text-shadow: 2px 2px 0 #07334c, 0 0 10px rgba(87, 220, 255, .74);
 }
 
 .entry-score-surge-milestone[data-tier="4"],

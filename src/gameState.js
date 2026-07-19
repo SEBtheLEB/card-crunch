@@ -1,5 +1,5 @@
 import { drawCards, shuffle, createDeck } from "./deck.js?v=90";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=148";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=149";
 import {
   ARCADE_CONFIG,
   ARCADE_MODE,
@@ -9,9 +9,9 @@ import {
   isArcadeMode,
   isPowerCard,
   resolveArcadeCrunch
-} from "./arcadeMode.js?v=148";
+} from "./arcadeMode.js?v=149";
 import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=126";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=148";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=149";
 import { ensurePlayableHand } from "./handSafety.js?v=90";
 import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=90";
 import { formatCompactNumber } from "./format.js?v=90";
@@ -26,7 +26,7 @@ import {
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=148";
+} from "./animations.js?v=149";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;

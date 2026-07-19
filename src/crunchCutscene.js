@@ -1,7 +1,7 @@
 import { formatCompactNumber } from "./format.js?v=90";
 import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=143";
-import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=148";
-import { getPowerCardDetails } from "./arcadeMode.js?v=148";
+import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=149";
+import { getPowerCardDetails } from "./arcadeMode.js?v=149";
 import { createScoreSurgePlan } from "./scoreSurge.js?v=143";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
@@ -33,16 +33,17 @@ const SHARD_PHYSICS_CONFIG = {
   angularDrag: .948,
   wallBounce: .42,
   wallFriction: .78,
-  settleAfter: 520,
-  forceSettleAfter: 1100,
-  hoverBeforeVacuum: 300,
-  vacuumStagger: 880,
+  settleAfter: 260,
+  forceSettleAfter: 620,
+  hoverBeforeVacuum: 90,
+  vacuumStagger: 660,
+  vacuumRampDuration: 1120,
   vacuumBaseForce: 430,
   vacuumRampForce: 2250,
   vacuumSpring: 1.2,
   vacuumMaxSpeed: 1380,
   intakeRadius: 24,
-  maxDuration: 5200,
+  maxDuration: 4300,
   impactCrumbs: 5
 };
 const CRUNCH_DEBRIS_CONFIG = {
@@ -151,6 +152,7 @@ export function createCrunchBankCounter({
   const pendingBankEffects = new Set();
   let rewardedCashThrough = Math.max(0, Number(startingValue) || 0);
   let surgePeakQueue = Promise.resolve();
+  let milestoneBeatQueue = Promise.resolve();
 
   const trackBankEffect = (effect) => {
     pendingBankEffects.add(effect);
@@ -172,7 +174,7 @@ export function createCrunchBankCounter({
     const coinsPerMilestone = Math.max(0, Math.floor(Number(coinRewards?.coinsPerMilestone) || 0));
     if (!coinRewards?.award || coinsPerMilestone <= 0 || targetCash <= rewardedCashThrough) {
       rewardedCashThrough = targetCash;
-      return;
+      return null;
     }
 
     const crossed = Math.max(
@@ -180,12 +182,17 @@ export function createCrunchBankCounter({
       Math.floor(targetCash / milestone) - Math.floor(rewardedCashThrough / milestone)
     );
     rewardedCashThrough = targetCash;
-    if (crossed <= 0) return;
+    if (crossed <= 0) return null;
 
     const coins = crossed * coinsPerMilestone;
     const balance = coinRewards.award(coins);
-    playGameSfx("coin_milestone");
-    spawnCrunchCoinReward(bankRect, { coins, balance, milestones: crossed });
+    return { coins, balance, milestones: crossed };
+  };
+
+  const queueMilestoneBeat = (effect) => {
+    const queued = milestoneBeatQueue.then(effect);
+    milestoneBeatQueue = queued.catch(() => {});
+    return queued;
   };
 
   const queueSurgePeak = (surge) => {
@@ -236,7 +243,8 @@ export function createCrunchBankCounter({
         valueEl: counterValueEl,
         amount,
         cashBefore: startingValue + previous,
-        onCashProgress: awardCoinsThrough
+        onCashProgress: awardCoinsThrough,
+        queueMilestoneBeat
       });
       if (cardElements.length) {
         playGameSfx("score_step");
@@ -292,7 +300,8 @@ export function createCrunchBankCounter({
         valueEl: counterValueEl,
         amount: Math.max(0, value - previous),
         cashBefore: startingValue + previous,
-        onCashProgress: awardCoinsThrough
+        onCashProgress: awardCoinsThrough,
+        queueMilestoneBeat
       });
       surge.update(Math.max(0, value - previous));
       await queueSurgePeak(surge);
@@ -311,7 +320,8 @@ export function createCrunchBankCounter({
         valueEl: counterValueEl,
         amount: Math.max(0, value - previous),
         cashBefore: startingValue + previous,
-        onCashProgress: awardCoinsThrough
+        onCashProgress: awardCoinsThrough,
+        queueMilestoneBeat
       });
       surge.update(Math.max(0, value - previous));
       await queueSurgePeak(surge);
@@ -323,7 +333,10 @@ export function createCrunchBankCounter({
       await settleBankEffects();
       finished = true;
       const finalScore = startingValue + value;
-      awardCoinsThrough(finalScore, element.getBoundingClientRect());
+      const finalCoinReward = awardCoinsThrough(finalScore, element.getBoundingClientRect());
+      if (finalCoinReward) {
+        await queueMilestoneBeat(() => playCrunchCoinReward(element, finalCoinReward));
+      }
       element.classList.add("bank-final-flash");
       await waitMaybe(advance, 260);
       if (useHudPanel) {
@@ -1628,7 +1641,7 @@ function stepPreparedShardPhysics(prepared, now) {
   prepared.lastPhysicsFrame = now;
   const elapsed = now - prepared.physicsStartedAt;
   const vacuumElapsed = prepared.vacuumRequested ? now - prepared.vacuumStartAt : -1;
-  const vacuumRamp = Math.max(0, Math.min(1, vacuumElapsed / 1550));
+  const vacuumRamp = Math.max(0, Math.min(1, vacuumElapsed / SHARD_PHYSICS_CONFIG.vacuumRampDuration));
   let remaining = 0;
 
   if (vacuumElapsed >= 0 && !prepared.vacuumSoundStarted) {
@@ -1992,16 +2005,23 @@ function getPixelShardPolygon(column, row, variant, columns = CARD_SHARD_CONFIG.
 function getCardFeedDuration(cardCount) {
   return Math.min(
     SHARD_PHYSICS_CONFIG.maxDuration,
-    SHARD_PHYSICS_CONFIG.forceSettleAfter + SHARD_PHYSICS_CONFIG.vacuumStagger + 1150 + cardCount * 70
+    SHARD_PHYSICS_CONFIG.forceSettleAfter + SHARD_PHYSICS_CONFIG.vacuumStagger + 980 + cardCount * 55
   );
 }
 
-function createCrunchScoreSurge({ bankEl, valueEl, amount, cashBefore, onCashProgress }) {
+function createCrunchScoreSurge({
+  bankEl,
+  valueEl,
+  amount,
+  cashBefore,
+  onCashProgress,
+  queueMilestoneBeat = (effect) => effect()
+}) {
   const plan = createScoreSurgePlan(amount);
-  const bankRect = bankEl?.getBoundingClientRect?.() ?? null;
   let credited = 0;
   let milestoneIndex = 0;
   let finished = false;
+  const milestoneEffects = [];
 
   if (plan.tier > 0 && bankEl) {
     bankEl.classList.add("is-entry-score-surge");
@@ -2015,15 +2035,26 @@ function createCrunchScoreSurge({ bankEl, valueEl, amount, cashBefore, onCashPro
         const milestone = plan.milestones[milestoneIndex];
         const milestoneTier = createScoreSurgePlan(milestone).tier;
         if (bankEl) bankEl.dataset.scoreSurgeTier = String(milestoneTier);
-        showScoreSurgeMilestone(bankEl, valueEl, bankRect, milestone, milestoneTier);
+        milestoneEffects.push(queueMilestoneBeat(
+          () => playScoreSurgeMilestone(bankEl, valueEl, milestone, milestoneTier, plan.tier)
+        ));
         milestoneIndex += 1;
       }
-      onCashProgress?.(cashBefore + credited, bankRect);
+      const coinReward = onCashProgress?.(
+        cashBefore + credited,
+        bankEl?.getBoundingClientRect?.() ?? null
+      );
+      if (coinReward) {
+        milestoneEffects.push(queueMilestoneBeat(
+          () => playCrunchCoinReward(bankEl, coinReward)
+        ));
+      }
     },
     async finish() {
       if (finished) return;
       finished = true;
       this.update(plan.score);
+      await Promise.allSettled(milestoneEffects);
       if (plan.tier > 0) {
         if (bankEl) bankEl.dataset.scoreSurgeTier = String(plan.tier);
         await playCrunchScoreSurgePeak(bankEl, valueEl, plan);
@@ -2034,35 +2065,55 @@ function createCrunchScoreSurge({ bankEl, valueEl, amount, cashBefore, onCashPro
   };
 }
 
-function showScoreSurgeMilestone(bankEl, valueEl, bankRect, milestone, tier) {
-  if (!bankEl || !bankRect) return;
+async function playScoreSurgeMilestone(bankEl, valueEl, milestone, tier, paceTier = tier) {
+  if (!bankEl?.isConnected) return;
+  const bankRect = bankEl.getBoundingClientRect();
+  const duration = Math.max(240, 520 - paceTier * 44);
+  const drop = Math.min(76, 28 + tier * 8);
   playGameSfx("score_ramp_tick");
 
   const marker = document.createElement("strong");
   marker.className = "entry-score-surge-milestone";
   marker.dataset.tier = String(tier);
-  marker.textContent = formatCompactNumber(milestone);
+  marker.innerHTML = `<span>MILESTONE</span>${formatCompactNumber(milestone)}`;
   marker.style.left = `${bankRect.left + bankRect.width / 2}px`;
-  marker.style.top = `${bankRect.bottom + 8}px`;
+  marker.style.top = `${bankRect.bottom + drop + 8}px`;
   document.body.appendChild(marker);
-  marker.animate?.([
+  const markerAnimation = marker.animate?.([
     { opacity: 0, transform: "translate3d(-50%, 10px, 0) scale(.62)" },
-    { opacity: 1, transform: "translate3d(-50%, -2px, 0) scale(1.16)", offset: .38 },
-    { opacity: 0, transform: "translate3d(-50%, -26px, 0) scale(.96)" }
-  ], { duration: Math.max(260, 470 - tier * 24), easing: "steps(6, end)" })?.finished
-    .catch(() => {})
-    .finally(() => marker.remove());
-
-  bankEl.animate?.([
-    { filter: "brightness(1)" },
-    { filter: `brightness(${1.25 + tier * .12}) drop-shadow(0 0 ${8 + tier * 3}px rgba(255, 205, 65, .72))` },
-    { filter: "brightness(1)" }
-  ], { duration: Math.max(150, 250 - tier * 12), easing: "steps(4, end)" });
-  valueEl?.animate?.([
+    { opacity: 1, transform: "translate3d(-50%, -2px, 0) scale(1.18)", offset: .28 },
+    { opacity: 1, transform: "translate3d(-50%, -2px, 0) scale(1)", offset: .76 },
+    { opacity: 0, transform: "translate3d(-50%, -18px, 0) scale(.96)" }
+  ], { duration, easing: "steps(7, end)" });
+  const bankAnimation = bankEl.animate?.([
+    { transform: "translate3d(-50%, 0, 0) scale(1)", filter: "brightness(1)" },
+    {
+      transform: `translate3d(-50%, ${drop}px, 0) scale(${1.035 + tier * .012})`,
+      filter: `brightness(${1.28 + tier * .1}) drop-shadow(0 0 ${10 + tier * 4}px rgba(255, 205, 65, .78))`,
+      offset: .25
+    },
+    {
+      transform: `translate3d(-50%, ${drop}px, 0) scale(1.02)`,
+      filter: "brightness(1.22) drop-shadow(0 0 16px rgba(255, 205, 65, .62))",
+      offset: .72
+    },
+    { transform: "translate3d(-50%, 0, 0) scale(1)", filter: "brightness(1)" }
+  ], { duration, easing: "cubic-bezier(.16, 1, .3, 1)" });
+  const valueAnimation = valueEl?.animate?.([
     { scale: "1" },
-    { scale: String(1.08 + tier * .018) },
+    { scale: String(1.12 + tier * .024), offset: .3 },
+    { scale: String(1.06 + tier * .01), offset: .72 },
     { scale: "1" }
-  ], { duration: 210, easing: "steps(4, end)" });
+  ], { duration, easing: "steps(6, end)" });
+
+  await sleep(Math.round(duration * .28));
+  spawnScoreMilestoneCoinSpill(bankEl.getBoundingClientRect(), tier);
+  await Promise.allSettled([
+    bankAnimation?.finished,
+    valueAnimation?.finished,
+    markerAnimation?.finished
+  ].filter(Boolean));
+  marker.remove();
 }
 
 async function playCrunchScoreSurgePeak(bankEl, valueEl, plan) {
@@ -2150,6 +2201,50 @@ function spawnCrunchCoinReward(bankRect, { coins, balance, milestones }) {
   ], { duration: 1050, easing: "steps(8, end)" })?.finished
     .catch(() => {})
     .finally(() => toast.remove());
+}
+
+async function playCrunchCoinReward(bankEl, reward) {
+  if (!bankEl?.isConnected || !reward?.coins) return;
+  playGameSfx("coin_milestone");
+  const rect = bankEl.getBoundingClientRect();
+  spawnCrunchCoinReward(rect, reward);
+  const animation = bankEl.animate?.([
+    { transform: "translate3d(-50%, 0, 0) scale(1)", filter: "brightness(1)" },
+    { transform: "translate3d(-50%, 54px, 0) scale(1.09)", filter: "brightness(1.75)", offset: .24 },
+    { transform: "translate3d(-50%, 54px, 0) scale(1.04)", filter: "brightness(1.38)", offset: .72 },
+    { transform: "translate3d(-50%, 0, 0) scale(1)", filter: "brightness(1)" }
+  ], { duration: 720, easing: "cubic-bezier(.16, 1, .3, 1)" });
+  await animation?.finished?.catch(() => {});
+}
+
+function spawnScoreMilestoneCoinSpill(bankRect, tier = 1) {
+  if (!bankRect) return;
+  const emitter = ensureBankImpactEmitter();
+  if (!emitter) return;
+  const originX = bankRect.left + bankRect.width / 2;
+  const originY = bankRect.bottom - 8;
+  const amount = Math.min(28, 8 + tier * 3);
+  for (let index = 0; index < amount; index += 1) {
+    const direction = index % 2 === 0 ? -1 : 1;
+    emitter.particles.push({
+      kind: "coin",
+      x: originX + (Math.random() - .5) * Math.min(160, bankRect.width * .72),
+      y: originY + Math.random() * 6,
+      vx: direction * (45 + Math.random() * 190),
+      vy: 45 + Math.random() * 170,
+      gravity: 690 + Math.random() * 240,
+      drag: .982,
+      size: 5 + Math.floor(Math.random() * 4),
+      length: 0,
+      vertical: false,
+      color: index % 3 === 0 ? "#fff3a8" : "#ffc53d",
+      edge: "#6d3d05",
+      age: 0,
+      delay: Math.random() * 75,
+      maxAge: 760 + Math.random() * 360
+    });
+  }
+  startBankImpactEmitter(emitter);
 }
 
 function getCrossedScoreMilestone(from, to) {

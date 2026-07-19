@@ -1,6 +1,6 @@
-import { createGame } from "./gameState.js?v=148";
-import { createUI } from "./ui.js?v=148";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=148";
+import { createGame } from "./gameState.js?v=149";
+import { createUI } from "./ui.js?v=149";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=149";
 import { adManager } from "./ads.js?v=90";
 import { grantShieldToken, hasShieldToken } from "./save.js?v=90";
 import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=143";
@@ -10,8 +10,8 @@ import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=90";
 import { installFullscreenControls } from "./fullscreen.js?v=90";
 import { bindThemePicker, initializeTheme } from "./themes.js?v=90";
 import { initializeCardCollection } from "./cardCollection.js?v=145";
-import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=148";
-import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=148";
+import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=149";
+import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=149";
 import { initializeTutorial } from "./tutorial.js?v=136";
 
 initializeTheme();
