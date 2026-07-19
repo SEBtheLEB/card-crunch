@@ -1,10 +1,12 @@
 export const DEAL_TIMING = Object.freeze({
-  leadInMs: 70,
-  flightMs: 330,
-  gapMs: 18,
-  landingMs: 180,
+  leadInMs: 35,
+  flightMs: 260,
+  gapMs: 14,
+  landingMs: 140,
+  settleBufferMs: 34,
   reducedFlightMs: 80,
-  reducedLandingMs: 20
+  reducedLandingMs: 20,
+  reducedSettleBufferMs: 0
 });
 
 export function getDealStartDelay(sequenceIndex, reducedMotion = false) {
@@ -23,5 +25,6 @@ export function getRoundDealDuration(handCardCount, tableCardCount = 2, reducedM
 
   const flightMs = reducedMotion ? DEAL_TIMING.reducedFlightMs : DEAL_TIMING.flightMs;
   const landingMs = reducedMotion ? DEAL_TIMING.reducedLandingMs : DEAL_TIMING.landingMs;
-  return getDealStartDelay(totalCards - 1, reducedMotion) + flightMs + landingMs;
+  const settleBufferMs = reducedMotion ? DEAL_TIMING.reducedSettleBufferMs : DEAL_TIMING.settleBufferMs;
+  return getDealStartDelay(totalCards - 1, reducedMotion) + flightMs + landingMs + settleBufferMs;
 }

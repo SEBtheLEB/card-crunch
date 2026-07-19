@@ -9,7 +9,7 @@ import { adManager } from "./ads.js?v=90";
 import { submitBestScore } from "./playGames.js?v=90";
 import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=90";
 import { purchaseManager } from "./purchases.js?v=90";
-import { getRoundDealDuration } from "./dealTiming.js?v=117";
+import { getRoundDealDuration } from "./dealTiming.js?v=122";
 import {
   animateBust,
   animateSelectionResolve,

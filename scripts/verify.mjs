@@ -60,6 +60,9 @@ if (secondDealStart - firstDealStart < dealTimingModule.DEAL_TIMING.flightMs) {
 if (dealTimingModule.getRoundDealDuration(2, 2) <= dealTimingModule.getRoundDealDuration(0, 2)) {
   throw new Error("Round deal duration does not include replacement hand cards");
 }
+if (dealTimingModule.getRoundDealDuration(4, 2) >= 2000) {
+  throw new Error("A full six-card deal must finish in under two seconds");
+}
 
 const html = await readFile(resolve(root, "index.html"), "utf8");
 if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButton")) {
@@ -273,6 +276,18 @@ if (!cardGestureSource.includes("export function animateCardDealIn") || !uiSourc
 }
 if (!cardGestureSource.includes('motion: "deal"') || !cardGestureSource.includes("getDealStartDelay") || !uiSource.includes('motion: shiftsWithinHand ? "hand-shift"')) {
   throw new Error("Paced card deal or synchronized survivor shift is missing");
+}
+const handSignatureSource = uiSource.slice(
+  uiSource.indexOf("function getHandSignature(state)"),
+  uiSource.indexOf("function getRunEndCopy") > uiSource.indexOf("function getHandSignature(state)")
+    ? uiSource.indexOf("function getRunEndCopy")
+    : uiSource.length
+);
+if (!uiSource.includes("syncHandInteractionState(elements, state)")
+  || handSignatureSource.includes("state.locked")
+  || !cardGestureSource.includes('event.animationName !== "cardDealLand"')
+  || !css.includes("var(--deal-landing-ms, 140ms)")) {
+  throw new Error("Deal completion must unlock cards without rebuilding or blinking the hand");
 }
 if (!dealTimingSource.includes("getRoundDealDuration") || !gameStateSource.includes("dealToken !== state.timerToken") || !gameStateSource.includes("finishHandDeal(4)")) {
   throw new Error("The turn timer must wait for the hand deal to finish");

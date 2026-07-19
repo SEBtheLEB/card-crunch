@@ -877,7 +877,7 @@ button.is-pressing:not(:disabled) {
 }
 
 .card.card-deal-landed {
-  animation: cardDealLand 280ms cubic-bezier(.16, 1.32, .3, 1) both;
+  animation: cardDealLand var(--deal-landing-ms, 140ms) cubic-bezier(.16, 1.2, .3, 1) both;
 }
 
 @keyframes cardDealLand {

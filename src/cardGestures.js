@@ -1,4 +1,4 @@
-import { DEAL_TIMING, getDealStartDelay } from "./dealTiming.js?v=117";
+import { DEAL_TIMING, getDealStartDelay } from "./dealTiming.js?v=122";
 import { playGameSfx } from "./audio.js?v=120";
 
 const TAP_SLOP = 12;
@@ -225,11 +225,24 @@ export function animateCardDealIn(card, dealOrder = 0, { zone = "hand" } = {}) {
     if (!animation) return;
     animation.finished.catch(() => {}).finally(() => {
       if (!card.isConnected) return;
+      const landingMs = reducedMotion ? DEAL_TIMING.reducedLandingMs : DEAL_TIMING.landingMs;
+      const settleBufferMs = reducedMotion ? DEAL_TIMING.reducedSettleBufferMs : DEAL_TIMING.settleBufferMs;
+      card.style.setProperty("--deal-landing-ms", `${landingMs}ms`);
       card.classList.add("card-deal-landed");
-      window.setTimeout(
-        () => card.classList.remove("card-deal-landed"),
-        reducedMotion ? DEAL_TIMING.reducedLandingMs : DEAL_TIMING.landingMs
-      );
+
+      let fallbackTimer = 0;
+      const clearLanding = () => {
+        window.clearTimeout(fallbackTimer);
+        card.removeEventListener("animationend", onLandingEnd);
+        card.classList.remove("card-deal-landed");
+        card.style.removeProperty("--deal-landing-ms");
+      };
+      const onLandingEnd = (event) => {
+        if (event.target !== card || event.animationName !== "cardDealLand") return;
+        clearLanding();
+      };
+      card.addEventListener("animationend", onLandingEnd);
+      fallbackTimer = window.setTimeout(clearLanding, landingMs + settleBufferMs);
     });
   };
 

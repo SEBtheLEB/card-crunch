@@ -4,7 +4,7 @@ import { formatCompactNumber } from "./format.js?v=90";
 import { hasShieldToken } from "./save.js?v=90";
 import { bindInstantAction } from "./input.js?v=90";
 import { ECONOMY_CONFIG, economy } from "./economy.js?v=90";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=120";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=122";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -119,6 +119,7 @@ export function createUI() {
         renderHand(elements, state, handlers);
         renderCache.hand = handSignature;
       }
+      syncHandInteractionState(elements, state);
       elements.shell.classList.toggle("is-locked", state.locked);
     },
     setMessage(message, tone = "neutral", duration = 1600) {
@@ -628,7 +629,7 @@ function renderCrunch(elements, state, handlers) {
 function renderHand(elements, state, handlers) {
   const zone = elements.handZone;
   const tray = elements.selectedCardTray;
-  const disabled = state.locked || state.status !== "playing" || state.tutorialBankStep;
+  const disabled = Boolean(state.locked || state.status !== "playing" || state.tutorialBankStep);
   const previousCards = new Map();
   const existingButtons = [
     ...zone.querySelectorAll("[data-hand-index]"),
@@ -756,6 +757,18 @@ function renderHand(elements, state, handlers) {
   });
 }
 
+/* Unlocking a turn only changes interactivity. Keeping that out of the hand
+   signature avoids reprocessing every dealt card on the final landing frame. */
+function syncHandInteractionState(elements, state) {
+  const disabled = Boolean(state.locked || state.status !== "playing" || state.tutorialBankStep);
+  elements.handZone.querySelectorAll("[data-hand-index]").forEach((card) => {
+    if (card.disabled !== disabled) card.disabled = disabled;
+  });
+  elements.selectedCardTray.querySelectorAll("[data-hand-index]").forEach((card) => {
+    if (card.disabled !== disabled) card.disabled = disabled;
+  });
+}
+
 function getRunEndCopy(summary, potComplete) {
   if (potComplete) return "That pot is full. Your banked cash is safe, and the next pot is ready.";
   if (summary.canRevive) return "Watch an ad to revive with 1 life and keep this risky run alive.";
@@ -805,8 +818,6 @@ function getHandSignature(state) {
     state.hand.map((card) => card.id).join("|"),
     state.selectedHandIndexes.join("|"),
     state.tutorialExpectedIndexes?.join("|") ?? "",
-    state.tutorialBankStep ? "bank-step" : "card-step",
-    state.locked ? "locked" : "open",
-    state.status
+    state.tutorialBankStep ? "bank-step" : "card-step"
   ].join("::");
 }
