@@ -1,7 +1,17 @@
 import { drawCards, shuffle, createDeck } from "./deck.js?v=90";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=144";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=147";
+import {
+  ARCADE_CONFIG,
+  ARCADE_MODE,
+  POWER_CARD_TYPES,
+  drawArcadeCard,
+  getArcadeStackMultiplier,
+  isArcadeMode,
+  isPowerCard,
+  resolveArcadeCrunch
+} from "./arcadeMode.js?v=147";
 import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=126";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=145";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=147";
 import { ensurePlayableHand } from "./handSafety.js?v=90";
 import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=90";
 import { formatCompactNumber } from "./format.js?v=90";
@@ -16,7 +26,7 @@ import {
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=143";
+} from "./animations.js?v=147";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -38,6 +48,10 @@ export function createGame(ui) {
     baseStackCount: 2,
     hand: [],
     selectedHandIndexes: [],
+    gameMode: "menu",
+    arcadePlayedCards: [],
+    arcadeCardsCrunchedThisRun: 0,
+    arcadePowerCardsUsedThisRun: 0,
     score: 0, // Run Money: temporary, unbanked, at risk
     bestScore: Number(localStorage.getItem("cardCrunchBestScore") ?? 0),
     streak: 0,
@@ -104,17 +118,18 @@ export function createGame(ui) {
     requestNewRun(pot);
   }
 
-  function requestNewRun(pot = null) {
-    start(pot);
+  function requestNewRun(pot = null, gameMode = pot ? "pot" : "endless") {
+    start(pot, { gameMode });
     return true;
   }
 
-  function start(pot = state.pots.find((item) => !item.complete) ?? state.pots[0]) {
+  function start(pot = state.pots.find((item) => !item.complete) ?? state.pots[0], { gameMode = pot ? "pot" : "endless" } = {}) {
     stopTimer();
     ui.hideBonusBankOffer();
     tutorialSession?.hooks?.onExit?.();
     tutorialSession = null;
     state.isTutorial = false;
+    state.gameMode = gameMode;
     state.tutorialBankStep = false;
     state.tutorialExpectedIndexes = [];
     state.tutorialGuideStackByStep = [];
@@ -124,15 +139,22 @@ export function createGame(ui) {
     state.hand = drawCards(state, 4);
     ensurePlayableHand(state);
     state.selectedHandIndexes = [];
+    state.arcadePlayedCards = [];
+    state.arcadeCardsCrunchedThisRun = 0;
+    state.arcadePowerCardsUsedThisRun = 0;
     state.score = 0;
     state.streak = 0;
     state.misses = 0;
-    state.maxMisses = Math.max(1, Number(pot?.gameplayModifier?.maxLives ?? 3));
+    state.maxMisses = gameMode === ARCADE_MODE
+      ? ARCADE_CONFIG.maxLives
+      : Math.max(1, Number(pot?.gameplayModifier?.maxLives ?? 3));
     state.level = pot?.id ?? 0;
     state.activePot = pot ?? null;
     state.replayingCompletedPot = Boolean(pot?.complete);
     state.target = pot?.target ?? getTargetForLevel(1);
-    state.turnSeconds = Math.max(3, Number(pot?.gameplayModifier?.turnSeconds ?? 10));
+    state.turnSeconds = gameMode === ARCADE_MODE
+      ? ARCADE_CONFIG.turnSeconds
+      : Math.max(3, Number(pot?.gameplayModifier?.turnSeconds ?? 10));
     state.fever = false;
     state.bankMultiplier = 1;
     state.bestRunMultiplier = 1;
@@ -167,8 +189,12 @@ export function createGame(ui) {
   }
 
   function startEndless() {
+    startEndlessArcade();
+  }
+
+  function startEndlessArcade() {
     clearRunSave();
-    requestNewRun(null);
+    requestNewRun(null, ARCADE_MODE);
   }
 
   function startTutorial(lessons, hooks = {}) {
@@ -201,6 +227,8 @@ export function createGame(ui) {
     state.safeBankShieldActive = false;
     state.timeLeft = state.turnSeconds;
     state.isTutorial = true;
+    state.gameMode = "tutorial";
+    state.arcadePlayedCards = [];
     state.locked = false;
     state.status = "playing";
 
@@ -280,6 +308,10 @@ export function createGame(ui) {
 
   function onCardSelect(handIndex) {
     if (state.locked || state.status !== "playing" || state.tutorialBankStep) return;
+    if (isArcadeMode(state)) {
+      playArcadeCard(handIndex);
+      return;
+    }
     ui.hideBonusBankOffer();
     playSfx(state.selectedHandIndexes.includes(handIndex) ? "card_deselect" : "card_select");
     if (state.selectedHandIndexes.includes(handIndex)) {
@@ -290,8 +322,38 @@ export function createGame(ui) {
     ui.render(state, handlers);
   }
 
+  function playArcadeCard(handIndex) {
+    const card = state.hand[handIndex];
+    if (!card) return;
+    const cardElement = ui.getHandCardElement(handIndex);
+    const cardRect = cardElement?.getBoundingClientRect?.();
+    ui.hideBonusBankOffer();
+    playSfx("card_select");
+
+    state.hand[handIndex] = drawArcadeCard(state, { fromRight: true });
+    if (isPowerCard(card)) state.arcadePowerCardsUsedThisRun += 1;
+
+    if (card.powerType === POWER_CARD_TYPES.TIME) {
+      stopTimer();
+      state.timeLeft = Math.min(ARCADE_CONFIG.maxTimeSeconds, state.timeLeft + ARCADE_CONFIG.timeCardSeconds);
+      playSfx("timer_warning");
+      ui.setMessage(`TIME CARD +${ARCADE_CONFIG.timeCardSeconds}s`, "good", 1100);
+      if (cardRect) {
+        spawnSparkBurst(cardRect.left + cardRect.width / 2, cardRect.top + cardRect.height / 2, 16, "fever");
+      }
+      ui.render(state, handlers);
+      startTimer();
+      return;
+    }
+
+    state.arcadePlayedCards.push(card);
+    ui.render(state, handlers);
+  }
+
   async function onCrunch() {
-    if (state.locked || state.status !== "playing" || state.selectedHandIndexes.length === 0) return;
+    const arcadeRun = isArcadeMode(state);
+    const selectedCount = arcadeRun ? state.arcadePlayedCards.length : state.selectedHandIndexes.length;
+    if (state.locked || state.status !== "playing" || selectedCount === 0) return;
     state.locked = true;
     state.status = "crunching";
     stopTimer();
@@ -300,14 +362,23 @@ export function createGame(ui) {
     resetCrunchSkipRequest();
     ui.render(state, handlers);
 
-    const selectedCards = state.selectedHandIndexes.map((index) => state.hand[index]);
+    const selectedCards = arcadeRun
+      ? [...state.arcadePlayedCards]
+      : state.selectedHandIndexes.map((index) => state.hand[index]);
+    const selectedCardElements = arcadeRun
+      ? ui.getArcadePlayedCardElements()
+      : state.selectedHandIndexes.map((index) => ui.getHandCardElement(index));
     const crunch = calculateCrunchScore({
       baseStack: state.stack,
       selectedCards,
       timeLeft: state.timeLeft,
       streak: state.streak,
       runMultiplier: state.bankMultiplier,
-      gameplayModifier: state.activePot?.gameplayModifier
+      gameplayModifier: state.activePot?.gameplayModifier,
+      resolutionOverride: arcadeRun ? resolveArcadeCrunch(state.stack, selectedCards) : null,
+      selectionMultiplierOverride: arcadeRun ? getArcadeStackMultiplier(selectedCards.length) : null,
+      selectionLabel: arcadeRun ? "ARCADE STACK" : "HAND",
+      enableFullHand: !arcadeRun
     });
 
     playSfx("crunch_start");
@@ -319,7 +390,7 @@ export function createGame(ui) {
 
     if (!crunch.success) {
       await animateSelectionResolve({
-        selectedHandCards: state.selectedHandIndexes.map((index) => ui.getHandCardElement(index)),
+        selectedHandCards: selectedCardElements,
         baseStackCards: ui.getAllStackCardElements(),
         resolution: crunch.resolution,
         fail: true,
@@ -335,7 +406,7 @@ export function createGame(ui) {
         failedCard: crunch.resolution.failedCard,
         activeStack: crunch.resolution.activeStack
       });
-      await bust("BUST!", crunch.resolution.failedIndex);
+      await bust("BUST!", crunch.resolution.failedIndex, selectedCardElements);
       return;
     }
 
@@ -353,7 +424,7 @@ export function createGame(ui) {
     });
     try {
       await animateSelectionResolve({
-        selectedHandCards: state.selectedHandIndexes.map((index) => ui.getHandCardElement(index)),
+        selectedHandCards: selectedCardElements,
         baseStackCards: ui.getAllStackCardElements(),
         resolution: crunch.resolution,
         fail: false,
@@ -399,6 +470,7 @@ export function createGame(ui) {
     state.fever = state.streak >= 15;
     if (enteringFever) playSfx("fever_start");
     raiseBankMultiplier(selectedCards.length);
+    if (arcadeRun) state.arcadeCardsCrunchedThisRun += selectedCards.length;
     ui.syncResolvedHud(state);
     discardSelectedCards();
 
@@ -595,7 +667,7 @@ export function createGame(ui) {
     await bust("TIME BUST!");
   }
 
-  async function bust(message, failedSelectionIndex = -1) {
+  async function bust(message, failedSelectionIndex = -1, resolvedCardElements = null) {
     state.locked = true;
     state.status = "busted";
     stopTimer();
@@ -605,12 +677,15 @@ export function createGame(ui) {
     state.misses += 1;
     state.streak = 0;
     state.fever = false;
+    if (isArcadeMode(state)) state.bankMultiplier = 1;
     ui.setMessage(message, "bad");
     ui.render(state, handlers);
     await animateBust({
       boardEl: ui.elements.shell,
       stackCards: ui.getAllStackCardElements(),
-      handCard: failedSelectionIndex >= 0 ? ui.getHandCardElement(state.selectedHandIndexes[failedSelectionIndex]) : null,
+      handCard: failedSelectionIndex >= 0
+        ? resolvedCardElements?.[failedSelectionIndex] ?? ui.getHandCardElement(state.selectedHandIndexes[failedSelectionIndex])
+        : null,
       protectedBust: false
     });
     discardSelectedCards();
@@ -673,7 +748,7 @@ export function createGame(ui) {
       consumeShieldToken();
     }
 
-    state.lostUnbankedMoney = state.score;
+    state.lostUnbankedMoney = isArcadeMode(state) ? 0 : state.score;
     grantRunCoins({ potCleared: Boolean(state.activePot?.complete && !state.replayingCompletedPot) });
     ui.render(state, handlers);
     showRunSummary();
@@ -704,6 +779,10 @@ export function createGame(ui) {
 
   function showRunSummary() {
     ui.showRunSummary({
+      mode: state.gameMode,
+      finalScore: state.score,
+      cardsCrunched: state.arcadeCardsCrunchedThisRun,
+      powerCardsUsed: state.arcadePowerCardsUsedThisRun,
       banked: state.bankedThisRun,
       lost: state.lostUnbankedMoney,
       shieldSaved: state.shieldSaved,
@@ -714,6 +793,7 @@ export function createGame(ui) {
       pot: state.activePot,
       potReplay: state.replayingCompletedPot,
       canRevive:
+        !isArcadeMode(state) &&
         !state.reviveAdUsedThisRun &&
         (!state.activePot?.complete || state.replayingCompletedPot) &&
         !state.rewardAdInProgress &&
@@ -785,7 +865,12 @@ export function createGame(ui) {
 
   function playAgain() {
     if (state.status !== "runEnded" && state.status !== "menu") return;
+    const replayArcade = isArcadeMode(state);
     finalizeRunLoss();
+    if (replayArcade) {
+      startEndlessArcade();
+      return;
+    }
     const pot = state.replayingCompletedPot
       ? state.activePot
       : state.activePot && !state.activePot.complete
@@ -803,6 +888,7 @@ export function createGame(ui) {
       exitTutorial();
       return;
     }
+    const returnHome = isArcadeMode(state);
     finalizeRunLoss();
     stopTimer();
     ui.hideBonusBankOffer();
@@ -815,6 +901,7 @@ export function createGame(ui) {
     ui.showGameOver(false);
     ui.showStart(true);
     ui.showMap(false);
+    if (returnHome) ui.showMenuPage("home");
   }
 
   async function onCoinAd() {
@@ -874,6 +961,7 @@ export function createGame(ui) {
       return;
     }
     if (state.status !== "playing") return;
+    const returnHome = isArcadeMode(state);
     stopTimer();
     ui.hideBonusBankOffer();
     ui.clearMessage();
@@ -883,13 +971,27 @@ export function createGame(ui) {
     ui.renderMap(state.pots, handlers);
     ui.renderMenuStats(state);
     ui.showStart(true);
-    ui.showMenuPage("pots");
+    ui.showMenuPage(returnHome ? "home" : "pots");
     ui.showMap(false);
   }
 
   function startNewRound() {
     stopTimer();
     ui.clearMessage();
+    if (isArcadeMode(state)) {
+      state.stack.forEach((card) => state.discard.push(card));
+      state.stack = drawCards(state, state.baseStackCount);
+      state.arcadePlayedCards = [];
+      state.selectedHandIndexes = [];
+      state.timeLeft = state.turnSeconds;
+      state.status = "playing";
+      state.dealHandCount = 0;
+      state.locked = true;
+      ui.beginRoundHandoff(state);
+      ui.render(state, handlers);
+      finishHandDeal(0);
+      return;
+    }
     const hasReplacementSlots = state.hand.some((card) => !card);
     const replacementCount = state.hand.filter((card) => !card).length;
     state.stack.forEach((card) => state.discard.push(card));
@@ -956,6 +1058,10 @@ export function createGame(ui) {
     state.stack = [];
     state.hand = [];
     state.selectedHandIndexes = [];
+    state.gameMode = "menu";
+    state.arcadePlayedCards = [];
+    state.arcadeCardsCrunchedThisRun = 0;
+    state.arcadePowerCardsUsedThisRun = 0;
     state.score = 0;
     state.streak = 0;
     state.misses = 0;
@@ -992,6 +1098,14 @@ export function createGame(ui) {
   }
 
   function discardSelectedCards() {
+    if (isArcadeMode(state)) {
+      state.arcadePlayedCards.forEach((card) => {
+        if (card && !isPowerCard(card)) state.discard.push(card);
+      });
+      state.arcadePlayedCards = [];
+      state.selectedHandIndexes = [];
+      return;
+    }
     const selected = new Set(state.selectedHandIndexes);
     const survivingCards = state.hand.filter((card, index) => {
       if (selected.has(index)) {
@@ -1046,6 +1160,7 @@ export function createGame(ui) {
     state,
     start,
     startEndless,
+    startEndlessArcade,
     startTutorial,
     showMap,
     enterLevel,
@@ -1066,11 +1181,12 @@ export function createGame(ui) {
 }
 
 export function getCrunchPreview(state) {
-  const selectedCount = state.selectedHandIndexes.length;
+  const arcadeRun = isArcadeMode(state);
+  const selectedCount = arcadeRun ? state.arcadePlayedCards.length : state.selectedHandIndexes.length;
   return {
     canCrunch: selectedCount > 0,
     selectedCount,
-    selectionMultiplier: getSelectionMultiplier(selectedCount)
+    selectionMultiplier: arcadeRun ? getArcadeStackMultiplier(selectedCount) : getSelectionMultiplier(selectedCount)
   };
 }
 
@@ -1108,9 +1224,18 @@ function createCutsceneEntry(entry) {
     card: entry.card,
     matchType: entry.matchType,
     points: entry.basePoints,
+    displayPoints: entry.basePoints,
+    bankPoints: entry.basePoints * Math.max(1, Number(entry.powerMultiplier) || 1),
     matchedCards: entry.matchedCards,
     equation: entry.equation,
     label: entry.cutinLabel ?? entry.label,
+    powerType: entry.powerType ?? null,
+    powerMultiplier: entry.powerMultiplier ?? 1,
+    resolvedCard: entry.resolvedCard ?? null,
+    resolvedLabel: entry.resolvedLabel ?? null,
+    inlineBonuses: entry.powerMultiplier > 1
+      ? [{ label: entry.powerLabel ?? "POWER CARD", value: `x${entry.powerMultiplier}`, tone: "power", kind: "entry-multiplier", multiplier: entry.powerMultiplier }]
+      : [],
     isDouble,
     multiplier: isDouble ? 2 : 1
   };

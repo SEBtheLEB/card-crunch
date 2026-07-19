@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/main.css?v=145">
+  <link rel="stylesheet" href="styles/main.css?v=147">
   <link rel="stylesheet" href="styles/collection.css?v=143">
   </head>
   <body>
@@ -33,8 +33,8 @@
 
       <section class="target-strip" aria-label="Level target">
         <div class="target-summary">
-          <span>Pot <strong id="levelValue">1</strong></span>
-          <span>Left <strong id="targetValue">1,000,000</strong></span>
+          <span><b id="levelLabel">Pot</b> <strong id="levelValue">1</strong></span>
+          <span><b id="targetLabel">Left</b> <strong id="targetValue">1,000,000</strong></span>
         </div>
         <div class="target-track">
           <div class="target-fill" id="targetFill"></div>
@@ -144,6 +144,11 @@
             <div class="play-button-wrap">
               <button class="play-button" id="startButton" type="button"><span>PLAY</span></button>
             </div>
+            <button class="endless-arcade-button" id="endlessArcadeButton" type="button">
+              <span aria-hidden="true">&#9889;</span>
+              <strong>ENDLESS ARCADE</strong>
+              <small>10 seconds &bull; instant refills &bull; rare power cards</small>
+            </button>
             <p class="play-subcopy">Shuffle up &amp; deal</p>
 
             <section class="menu-tile-grid" aria-label="More modes">
@@ -354,12 +359,12 @@
         </div>
         <div class="run-scoreboard">
           <div class="summary-primary-readout" id="summaryLostRow">
-            <span>Run cash lost</span>
+            <span id="summaryLostLabel">Run cash lost</span>
             <strong class="sum-bad" id="summaryLost">$0</strong>
           </div>
           <div class="summary-bank-rail" aria-label="Run earnings">
             <article>
-              <span>Banked</span>
+              <span id="summaryBankedLabel">Banked</span>
               <strong class="sum-good" id="summaryBanked">$0</strong>
             </article>
             <article class="summary-coins-row">
@@ -419,6 +424,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-  <script type="module" src="src/main.js?v=145"></script>
+  <script type="module" src="src/main.js?v=147"></script>
   </body>
 </html>

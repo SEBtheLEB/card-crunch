@@ -1,6 +1,7 @@
 import { formatCompactNumber } from "./format.js?v=90";
 import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=143";
-import { getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=145";
+import { getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=147";
+import { getPowerCardDetails } from "./arcadeMode.js?v=147";
 import { createScoreSurgePlan } from "./scoreSurge.js?v=143";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
@@ -1132,11 +1133,24 @@ function createCutinCardMarkup(card, extraClass = "") {
   if (!card) return "";
   const skinClass = getCardSkinClass(card);
   const skinStyle = getCardSkinStyle(card);
-  return `
-    <div class="cutin-card card-${card.color} card-${card.suit} ${skinClass} ${extraClass}" data-cutin-card-id="${card.id}" data-card-rank="${card.rank}" data-card-suit="${card.suit}" data-equipped-skin="${skinClass.replace("card-skin-", "")}"${skinStyle ? ` style="${skinStyle}"` : ""}>
+  const power = getPowerCardDetails(card);
+  const powerClass = card.powerType ? `power-card power-card-${card.powerType}` : "";
+  const content = power && card.powerType !== "charged"
+    ? `
+      <span class="power-card-kicker">POWER</span>
+      <span class="power-card-core">${power.icon}</span>
+      <strong class="power-card-name">${power.shortName}</strong>
+      <small class="power-card-tooltip">${power.tooltip}</small>
+    `
+    : `
       <span class="cutin-corner">${card.rank}${card.suitSymbol}</span>
       <strong>${card.rank}</strong>
       <span class="cutin-suit">${card.suitSymbol}</span>
+      ${power ? `<span class="power-card-kicker">CHARGED</span><small class="power-card-tooltip">SCORE x2</small>` : ""}
+    `;
+  return `
+    <div class="cutin-card card-${card.color} card-${card.suit} ${skinClass} ${powerClass} ${extraClass}" data-cutin-card-id="${card.id}" data-card-rank="${card.rank}" data-card-suit="${card.suit}"${card.powerType ? ` data-power-type="${card.powerType}"` : ""} data-equipped-skin="${skinClass.replace("card-skin-", "")}"${skinStyle ? ` style="${skinStyle}"` : ""}>
+      ${content}
     </div>
   `;
 }

@@ -189,21 +189,37 @@ export function createStackEntry(card, match) {
   };
 }
 
-export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, streak, runMultiplier = 1, gameplayModifier = null }) {
-  const resolution = resolveSelectedCrunch(baseStack, selectedCards);
+export function calculateCrunchScore({
+  baseStack,
+  selectedCards,
+  timeLeft,
+  streak,
+  runMultiplier = 1,
+  gameplayModifier = null,
+  resolutionOverride = null,
+  selectionMultiplierOverride = null,
+  selectionLabel = "HAND",
+  enableFullHand = true
+}) {
+  const resolution = resolutionOverride ?? resolveSelectedCrunch(baseStack, selectedCards);
   if (!resolution.success) return { success: false, resolution };
 
   const presentationEntries = buildCrunchPresentationEntries(resolution.history);
   const displayPoints = presentationEntries.map((entry) => getRuleAdjustedDisplayPoints(entry, gameplayModifier));
   const awardedPoints = presentationEntries.map((entry, index) => (
-    displayPoints[index] * getEntryMatchTierMultiplier(entry) * getCompoundMatchMultiplier(entry)
+    displayPoints[index]
+      * getEntryMatchTierMultiplier(entry)
+      * getCompoundMatchMultiplier(entry)
+      * getEntryPowerMultiplier(entry)
   ));
   const storedBase = awardedPoints.reduce((sum, points) => sum + points, 0);
-  const handMultiplier = getSelectionMultiplier(selectedCards.length);
+  const handMultiplier = Number.isFinite(selectionMultiplierOverride)
+    ? Math.max(1, selectionMultiplierOverride)
+    : getSelectionMultiplier(selectedCards.length);
   const speedBonus = getSpeedBonus(timeLeft);
   const streakAfterCrunch = streak + 1;
   const streakMultiplier = getStreakMultiplier(streakAfterCrunch);
-  const stackTypes = detectStackTypes(resolution.activeStack, resolution.history, selectedCards.length);
+  const stackTypes = detectStackTypes(resolution.activeStack, resolution.history, selectedCards.length, { enableFullHand });
   const stackTypeMultiplier = stackTypes.reduce((product, bonus) => product * (bonus.multiplier ?? 1), 1);
   const stackTypeFlat = stackTypes.reduce((sum, bonus) => sum + (bonus.flatBonus ?? 0), 0);
   const potRuleMultiplier = getPotRuleMultiplier(gameplayModifier, selectedCards.length);
@@ -217,15 +233,17 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
     potRuleMultiplier,
     potRuleLabel: gameplayModifier?.scoreLabel,
     runMultiplier,
+    selectionLabel,
     total
   });
-  const fullHandSteps = selectedCards.length === 4
-    ? breakdown.filter((step) => step.label === "HAND" || step.label === "PERFECT HAND")
+  const isFullHand = enableFullHand && selectedCards.length === 4;
+  const fullHandSteps = isFullHand
+    ? breakdown.filter((step) => step.label === selectionLabel || step.label === "PERFECT HAND")
     : [];
-  const perfectHandMultiplier = selectedCards.length === 4
+  const perfectHandMultiplier = isFullHand
     ? stackTypes.find((bonus) => bonus.label === "PERFECT HAND")?.multiplier ?? 1
     : 1;
-  const fullHandMultiplier = selectedCards.length === 4
+  const fullHandMultiplier = isFullHand
     ? handMultiplier * perfectHandMultiplier
     : 1;
   const fullScoreMultiplier = handMultiplier
@@ -235,7 +253,7 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
     * potRuleMultiplier
     * runMultiplier;
   const entryScoreMultiplier = fullScoreMultiplier / fullHandMultiplier;
-  const entryAwardTotal = selectedCards.length === 4
+  const entryAwardTotal = isFullHand
     ? Math.min(total, Math.max(0, Math.round(storedBase * entryScoreMultiplier + stackTypeFlat * runMultiplier)))
     : total;
   const fullHandBankPoints = Math.max(0, total - entryAwardTotal);
@@ -274,17 +292,22 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
         isDouble: entry.matchedCards.length > 1 && (entry.matchType === MATCH_TYPES.RANK || entry.matchType === MATCH_TYPES.SUIT),
         multiplier: entry.matchedCards.length > 1 && (entry.matchType === MATCH_TYPES.RANK || entry.matchType === MATCH_TYPES.SUIT) ? 2 : 1,
         matchCount: entry.matchCount,
+        powerType: entry.powerType ?? null,
+        powerMultiplier: entry.powerMultiplier ?? 1,
+        resolvedCard: entry.resolvedCard ?? null,
+        resolvedLabel: entry.resolvedLabel ?? null,
         inlineBonuses: [
           ...createMatchTierBonus(entry),
           ...createCompoundMatchBonus(entry),
+          ...createPowerCardBonus(entry),
           ...inlineMultipliers,
           ...(index === presentationEntries.length - 1 ? inlineFlatBonuses : [])
         ]
       })),
       total,
       selectedCount: selectedCards.length,
-      tier: selectedCards.length === 4 ? "full" : selectedCards.length >= 3 ? "big" : "normal",
-      fullHand: selectedCards.length === 4
+      tier: isFullHand || selectedCards.length >= 6 ? "full" : selectedCards.length >= 3 ? "big" : "normal",
+      fullHand: isFullHand
         ? {
             label: "FULL HAND!",
             subtitle: "ALL 4 CARDS LOCKED",
@@ -321,15 +344,33 @@ function getMatchTierMultiplier(matchCount = 2) {
 }
 
 function getEntryMatchTierMultiplier(entry) {
+  if (entry.powerType === "wild") return 1;
   if (entry.matchType !== MATCH_TYPES.RANK && entry.matchType !== MATCH_TYPES.SUIT) return 1;
   return getMatchTierMultiplier(entry.matchCount);
 }
 
 function getCompoundMatchMultiplier(entry) {
+  if (entry.powerType === "wild") return 1;
   if (entry.matchType !== MATCH_TYPES.RANK || entry.matchCount !== 2) return 1;
   return entry.compoundMatch?.type === "rank-suit"
     ? Math.max(1, Number(entry.compoundMatch.multiplier) || 1)
     : 1;
+}
+
+function getEntryPowerMultiplier(entry) {
+  return Math.max(1, Number(entry.powerMultiplier) || 1);
+}
+
+function createPowerCardBonus(entry) {
+  const multiplier = getEntryPowerMultiplier(entry);
+  if (multiplier <= 1) return [];
+  return [{
+    label: entry.powerLabel ?? "POWER CARD",
+    value: `x${formatMultiplier(multiplier)}`,
+    tone: "power",
+    kind: "entry-multiplier",
+    multiplier
+  }];
 }
 
 function createCompoundMatchBonus(entry) {
@@ -384,6 +425,7 @@ function buildCrunchPresentationEntries(history) {
 }
 
 function getGrowingMatchKey(entry) {
+  if (entry.powerType) return null;
   if (entry.matchType === MATCH_TYPES.SUIT) return `suit:${entry.card.suit}`;
   if (entry.matchType === MATCH_TYPES.RANK) return `rank:${entry.card.value}`;
   return null;
@@ -421,14 +463,15 @@ export function getStreakMultiplier(streak) {
   return 1;
 }
 
-export function detectStackTypes(stackCards, history, selectedCount) {
+export function detectStackTypes(stackCards, history, selectedCount, { enableFullHand = true } = {}) {
   const bonuses = [];
   const suitCounts = countBy(stackCards, "suit");
   const rankCounts = countBy(stackCards, "value");
   const maxSuit = Math.max(0, ...Object.values(suitCounts));
   const maxRank = Math.max(0, ...Object.values(rankCounts));
-  const mathCards = history.filter((entry) => entry.matchType === MATCH_TYPES.ADD || entry.matchType === MATCH_TYPES.SUBTRACT).length;
-  const suitCards = history.filter((entry) => entry.matchType === MATCH_TYPES.SUIT).length;
+  const normalHistory = history.filter((entry) => !entry.powerType);
+  const mathCards = normalHistory.filter((entry) => entry.matchType === MATCH_TYPES.ADD || entry.matchType === MATCH_TYPES.SUBTRACT).length;
+  const suitCards = normalHistory.filter((entry) => entry.matchType === MATCH_TYPES.SUIT).length;
   const strongestRankMatch = Math.max(0, ...history
     .filter((entry) => entry.matchType === MATCH_TYPES.RANK)
     .map((entry) => entry.matchedCards.length + 1));
@@ -438,7 +481,7 @@ export function detectStackTypes(stackCards, history, selectedCount) {
   if (mathCards >= STACK_TYPE_CONFIG.chainCrunch.minMathLinks) bonuses.push({ label: "CHAIN CRUNCH", value: "x3", multiplier: STACK_TYPE_CONFIG.chainCrunch.multiplier, tone: "math" });
   if (mathCards >= STACK_TYPE_CONFIG.mathFeast.minMathCards) bonuses.push({ label: "MATH FEAST", value: "x2", multiplier: STACK_TYPE_CONFIG.mathFeast.multiplier, tone: "math" });
   if (suitCards >= STACK_TYPE_CONFIG.suitStorm.minSuitCards) bonuses.push({ label: "SUIT STORM", value: "x1.5", multiplier: STACK_TYPE_CONFIG.suitStorm.multiplier, tone: "suit" });
-  if (selectedCount >= STACK_TYPE_CONFIG.perfectHand.minSelectedCards) bonuses.push({ label: "PERFECT HAND", value: `x${STACK_TYPE_CONFIG.perfectHand.multiplier}`, multiplier: STACK_TYPE_CONFIG.perfectHand.multiplier, tone: "double" });
+  if (enableFullHand && selectedCount === STACK_TYPE_CONFIG.perfectHand.minSelectedCards) bonuses.push({ label: "PERFECT HAND", value: `x${STACK_TYPE_CONFIG.perfectHand.multiplier}`, multiplier: STACK_TYPE_CONFIG.perfectHand.multiplier, tone: "double" });
   if (selectedCount >= STACK_TYPE_CONFIG.greedCrunch.minSelectedCards) bonuses.push({ label: "GREED CRUNCH", value: "+500", flatBonus: STACK_TYPE_CONFIG.greedCrunch.flatBonus, tone: "fever" });
 
   return bonuses;
@@ -582,9 +625,9 @@ function getStackPairs(cards) {
   return pairs;
 }
 
-function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, potRuleMultiplier = 1, potRuleLabel = "POT RULE", runMultiplier = 1, total }) {
+function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, potRuleMultiplier = 1, potRuleLabel = "POT RULE", runMultiplier = 1, selectionLabel = "HAND", total }) {
   const steps = [{ label: "STORED", value: `+${formatCompactNumber(storedBase)}`, tone: "total", kind: "base" }];
-  if (handMultiplier > 1) steps.push({ label: "HAND", value: `x${handMultiplier}`, tone: "double", kind: "multiplier", multiplier: handMultiplier });
+  if (handMultiplier > 1) steps.push({ label: selectionLabel, value: `x${formatMultiplier(handMultiplier)}`, tone: "double", kind: "multiplier", multiplier: handMultiplier });
   if (speedBonus.multiplier > 1) steps.push({ label: speedBonus.label, value: `x${formatMultiplier(speedBonus.multiplier)}`, tone: "speed", kind: "multiplier", multiplier: speedBonus.multiplier });
   if (streakMultiplier > 1) steps.push({ label: "STREAK", value: `x${streakMultiplier}`, tone: streakMultiplier >= 10 ? "fever" : "streak", kind: "multiplier", multiplier: streakMultiplier });
   stackTypes.forEach((bonus) => steps.push({

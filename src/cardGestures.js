@@ -193,10 +193,9 @@ export function animateCardTransfer(card, fromRect, toRect, {
   return animation;
 }
 
-/* Replacement cards are dealt from off-screen left into the newly opened
-   hand slots. The same lightweight trail used for staging cards keeps the
-   motion visually connected to the rest of the game. */
-export function animateCardDealIn(card, dealOrder = 0, { zone = "hand" } = {}) {
+/* Cards normally enter from the dealer on the left. Endless Arcade uses the
+   right edge for instant replacement deals so the stream reads clearly. */
+export function animateCardDealIn(card, dealOrder = 0, { zone = "hand", fromSide = "left" } = {}) {
   if (!card) return;
   const reducedMotion = document.documentElement.classList.contains("reduce-motion");
   const normalizedOrder = Math.max(0, dealOrder);
@@ -208,7 +207,9 @@ export function animateCardDealIn(card, dealOrder = 0, { zone = "hand" } = {}) {
     const toRect = card.getBoundingClientRect();
     const laneOffset = normalizedOrder * 18;
     const fromRect = {
-      left: -toRect.width - 30 - laneOffset,
+      left: fromSide === "right"
+        ? window.innerWidth + 30 + laneOffset
+        : -toRect.width - 30 - laneOffset,
       top: zone === "table"
         ? toRect.top - Math.min(54, toRect.height * .28) + laneOffset * .12
         : toRect.top + Math.min(46, toRect.height * .24) + laneOffset * .22,

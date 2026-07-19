@@ -9,6 +9,7 @@ const required = [
   "src/haptics.js",
   "src/input.js",
   "src/cardGestures.js",
+  "src/arcadeMode.js",
   "src/dealTiming.js",
   "src/playGames.js",
   "src/fullscreen.js",
@@ -54,6 +55,11 @@ const scoringModule = await import(`../src/scoring.js?verify=${Date.now()}`);
 const results = scoringModule.runScoringSelfTests();
 if (!Array.isArray(results) || results.some((result) => result.pass === false)) {
   throw new Error("Scoring self-tests failed");
+}
+const arcadeModeModule = await import(`../src/arcadeMode.js?verify=${Date.now()}`);
+const arcadeResults = arcadeModeModule.runArcadeModeSelfTests();
+if (!Array.isArray(arcadeResults) || arcadeResults.some((result) => result.pass === false)) {
+  throw new Error("Endless Arcade and power-card self-tests failed");
 }
 const progressionModule = await import(`../src/progression.js?verify=${Date.now()}`);
 const challengePots = progressionModule.createDefaultPots();
@@ -124,6 +130,9 @@ if (!html.includes("run-scoreboard") || !html.includes("summaryRecoveryTicker"))
 if (!html.includes("tutorialStartButton") || !html.includes("tutorialCoach") || !html.includes("bottom-status")) {
   throw new Error("Live-board tutorial hooks are missing");
 }
+if (!html.includes('id="endlessArcadeButton"') || !html.includes("ENDLESS ARCADE")) {
+  throw new Error("Endless Arcade menu action is missing");
+}
 if (!html.includes("Each pot has a unique rule.") || (html.match(/menu-chip-add/g) ?? []).length !== 1) {
   throw new Error("Pot challenge copy or unified header actions are missing");
 }
@@ -187,6 +196,7 @@ const tutorialSource = await readFile(resolve(root, "src/tutorial.js"), "utf8");
 const audioSource = await readFile(resolve(root, "src/audio.js"), "utf8");
 const scoringSource = await readFile(resolve(root, "src/scoring.js"), "utf8");
 const scoreSurgeSource = await readFile(resolve(root, "src/scoreSurge.js"), "utf8");
+const arcadeModeSource = await readFile(resolve(root, "src/arcadeMode.js"), "utf8");
 if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createPixelShardClip") || !css.includes("cutin-card-shard")) {
   throw new Error("Crunch Bank card-shard animation hooks are missing");
 }
@@ -219,6 +229,15 @@ if (!animationsSource.includes("const RESOLVE_HIGHLIGHT_DURATION_MS = 700")
   || !animationsSource.includes("await advance.wait(RESOLVE_HIGHLIGHT_DURATION_MS)")
   || animationsSource.includes("waitForTap(RESOLVE_HIGHLIGHT")) {
   throw new Error("Resolved-card highlights must auto-advance after 700ms while remaining skippable");
+}
+if (!arcadeModeSource.includes("POWER_CARD_TYPES")
+  || !arcadeModeSource.includes("resolveArcadeCrunch")
+  || !gameStateSource.includes("drawArcadeCard")
+  || !uiSource.includes("renderArcadeHand")
+  || !uiSource.includes('card.setAttribute("aria-disabled", String(disabled))')
+  || !cardGestureSource.includes('fromSide === "right"')
+  || !css.includes(".power-card-charged")) {
+  throw new Error("Endless Arcade powers, right-side refills, or visuals are incomplete");
 }
 if (!cutsceneSource.includes("showPreparedCardAssembly") || !cutsceneSource.includes("is-precut-piece") || !css.includes("precutCardHitThree")) {
   throw new Error("Preassembled shard damage states are missing");
@@ -511,4 +530,4 @@ if (!fullscreenSource.includes("requestFullscreen") || !fullscreenSource.include
   throw new Error("Fullscreen API hooks are missing");
 }
 
-console.log(`Verified ${results.length} scoring cases, unlimited play, economy rewards, arcade run summary, round message cleanup, selectable themes and card skins, fullscreen controls, release UI hooks, and card-shard VFX.`);
+console.log(`Verified ${results.length} scoring cases, ${arcadeResults.length} Endless Arcade and power-card cases, unlimited play, economy rewards, arcade run summary, round message cleanup, selectable themes and card skins, fullscreen controls, release UI hooks, and card-shard VFX.`);

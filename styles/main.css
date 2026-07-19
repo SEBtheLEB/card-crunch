@@ -5073,6 +5073,218 @@ h2 {
   animation: none;
 }
 
+/* ==========================================================================
+   Endless Arcade
+   ========================================================================== */
+
+.endless-arcade-button {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "icon title" "icon copy";
+  column-gap: 12px;
+  align-items: center;
+  width: min(92%, 520px);
+  min-height: 58px;
+  margin: 3px auto 0;
+  padding: 9px 16px;
+  border: 2px solid #178bc0;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .17), transparent 42%),
+    linear-gradient(135deg, #172c57, #0a1738 58%, #29175a);
+  box-shadow: 0 6px 0 #050b1c, 0 0 24px rgba(64, 197, 255, .3), inset 0 0 0 2px rgba(119, 220, 255, .12);
+  color: #f8f3d6;
+  text-align: left;
+  transform-origin: center;
+  transition: transform .08s ease, filter .08s ease, box-shadow .08s ease;
+}
+
+.endless-arcade-button > span {
+  grid-area: icon;
+  color: #72e4ff;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 7vw, 2.2rem);
+  text-shadow: 0 0 14px rgba(83, 220, 255, .9);
+}
+
+.endless-arcade-button strong {
+  grid-area: title;
+  color: #fff4ad;
+  font-family: var(--font-display);
+  font-size: clamp(.8rem, 3.4vw, 1.12rem);
+  line-height: 1.1;
+  text-shadow: 0 2px 0 #030918;
+}
+
+.endless-arcade-button small {
+  grid-area: copy;
+  color: #a8d9ef;
+  font-size: clamp(.56rem, 2.3vw, .72rem);
+  line-height: 1.2;
+}
+
+.endless-arcade-button:active {
+  transform: scale(.965) translateY(3px);
+  filter: brightness(1.2);
+  box-shadow: 0 2px 0 #050b1c, 0 0 30px rgba(91, 224, 255, .56);
+}
+
+.game-shell.arcade-mode .target-strip {
+  border-color: rgba(73, 207, 255, .46);
+  background: linear-gradient(160deg, rgba(58, 160, 210, .12), transparent 40%), rgba(10, 24, 48, .9);
+}
+
+.game-shell.arcade-mode .target-fill {
+  background: linear-gradient(90deg, #42d6ff, #916cff 58%, #ffca4b);
+  box-shadow: 0 0 15px rgba(76, 198, 255, .62);
+}
+
+.game-shell.arcade-mode .selected-card-tray {
+  justify-content: center;
+  gap: 0;
+  padding-inline: 8px;
+}
+
+.game-shell.arcade-mode .selected-card-tray .arcade-staged-card {
+  width: var(--arcade-card-width, 62px);
+  min-width: var(--arcade-card-width, 62px);
+  margin-right: -14px;
+  transform: translate3d(var(--gesture-x), var(--gesture-y), 0) rotate(var(--stage-rotate, 0deg));
+  filter: drop-shadow(0 0 8px rgba(83, 211, 255, .42)) drop-shadow(0 8px 5px rgba(0, 0, 0, .64));
+  pointer-events: none;
+}
+
+.game-shell.arcade-mode .selected-card-tray .arcade-staged-card:last-child {
+  margin-right: 0;
+}
+
+.game-shell.arcade-mode .bank-button.arcade-stack-meter {
+  border-color: rgba(74, 195, 255, .35);
+  background: linear-gradient(180deg, rgba(63, 162, 216, .14), transparent 46%), linear-gradient(180deg, #1b2943, #10182d);
+  color: #9bdfff;
+  box-shadow: 0 6px 0 rgba(4, 6, 16, .95), 0 0 18px rgba(67, 196, 255, .18);
+}
+
+.game-shell.arcade-mode .bank-button.arcade-stack-meter strong {
+  color: #fff1a3;
+}
+
+.summary-primary-readout.is-arcade-final strong.sum-arcade {
+  color: var(--gold-hot);
+  text-shadow: 0 0 22px rgba(255, 197, 61, .62);
+}
+
+/* Power cards remain readable in every equipped deck. Charged cards retain
+   their normal rank/suit art; the other three use a compact arcade face. */
+.card.power-card,
+.cutin-card.power-card {
+  isolation: isolate;
+  border-color: #48d4ff;
+  background:
+    radial-gradient(circle at 50% 34%, rgba(255, 238, 136, .2), transparent 32%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, .045) 0 3px, transparent 3px 8px),
+    linear-gradient(155deg, #202d66, #11172f 58%, #371859);
+  box-shadow: 0 8px 0 #070b1c, 0 0 22px rgba(69, 208, 255, .48), inset 0 0 0 3px rgba(255, 255, 255, .12);
+  color: #fff5b3;
+}
+
+.card.power-card::before,
+.cutin-card.power-card::before {
+  border-color: rgba(91, 225, 255, .72);
+  box-shadow: inset 0 0 14px rgba(95, 194, 255, .2);
+}
+
+.power-card-kicker {
+  position: absolute;
+  top: 7%;
+  left: 50%;
+  z-index: 4;
+  color: #77e9ff;
+  font-family: var(--font-display);
+  font-size: clamp(.38rem, 1.65vw, .58rem);
+  line-height: 1;
+  letter-spacing: .08em;
+  transform: translateX(-50%);
+  text-shadow: 0 0 8px rgba(83, 221, 255, .8);
+  white-space: nowrap;
+}
+
+.power-card-core {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  width: 45%;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 2px solid rgba(255, 239, 150, .72);
+  border-radius: 50%;
+  background: rgba(4, 8, 27, .72);
+  color: #fff1a0;
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 5.8vw, 2.5rem);
+  text-shadow: 0 0 12px rgba(255, 216, 80, .86);
+}
+
+.power-card-name {
+  position: absolute;
+  right: 5%;
+  bottom: 21%;
+  left: 5%;
+  z-index: 4;
+  color: #fff5b3;
+  font-family: var(--font-display);
+  font-size: clamp(.42rem, 2vw, .72rem);
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 2px 0 #080b20;
+}
+
+.power-card-tooltip {
+  position: absolute;
+  right: 6%;
+  bottom: 7%;
+  left: 6%;
+  z-index: 4;
+  color: #bceeff;
+  font-size: clamp(.36rem, 1.55vw, .54rem);
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.card.power-card-charged,
+.cutin-card.power-card-charged {
+  border-color: #ffe35d;
+  background: var(--card-art-image, none), linear-gradient(150deg, var(--card-face), #f8eecd 55%, var(--card-face-warm));
+  box-shadow: 0 8px 0 #080819, 0 0 12px #50dfff, 0 0 24px rgba(255, 222, 73, .72), inset 0 0 0 3px rgba(255, 255, 255, .45);
+  color: var(--ink);
+  animation: chargedCardPulse .72s steps(2, end) infinite alternate;
+}
+
+.power-card-wild { --power-accent: #ffdd59; }
+.power-card-echo { --power-accent: #b78cff; }
+.power-card-time { --power-accent: #68eaff; }
+
+.cutin-bonus-power {
+  color: #7ce7ff;
+  text-shadow: 0 0 16px rgba(81, 215, 255, .9);
+}
+
+@keyframes chargedCardPulse {
+  from { filter: brightness(1) drop-shadow(0 0 5px rgba(73, 218, 255, .65)); }
+  to { filter: brightness(1.14) drop-shadow(0 0 13px rgba(255, 224, 82, .92)); }
+}
+
+@media (max-height: 760px) {
+  .endless-arcade-button {
+    min-height: 50px;
+    padding-block: 7px;
+  }
+}
+
 .menu-ambient i {
   display: none;
 }

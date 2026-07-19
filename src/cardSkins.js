@@ -59,6 +59,7 @@ export function syncCardSkinFromCollection() {
 }
 
 export function getEquippedCardSkin(card) {
+  if (card?.powerType && card.powerType !== "charged") return "classic";
   const resolved = resolveCollectedCardSkin(card);
   return CARD_SKINS[resolved] ? resolved : "classic";
 }
@@ -147,7 +148,11 @@ export function installRainbowCardTrail() {
 
 function refreshRenderedCardSkins() {
   document.querySelectorAll(".card[data-card-rank][data-card-suit], .cutin-card[data-card-rank][data-card-suit]").forEach((card) => {
-    applyCardSkinPresentation(card, { rank: card.dataset.cardRank, suit: card.dataset.cardSuit });
+    applyCardSkinPresentation(card, {
+      rank: card.dataset.cardRank,
+      suit: card.dataset.cardSuit,
+      powerType: card.dataset.powerType || null
+    });
   });
 }
 

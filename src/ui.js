@@ -1,11 +1,12 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=145";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=147";
+import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=147";
 import { isPotUnlocked } from "./progression.js?v=126";
 import { formatCompactNumber } from "./format.js?v=90";
 import { hasShieldToken } from "./save.js?v=90";
 import { bindInstantAction } from "./input.js?v=90";
 import { ECONOMY_CONFIG, economy } from "./economy.js?v=145";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=145";
-import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=145";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=147";
+import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=147";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -28,7 +29,9 @@ export function createUI() {
     timerRing: document.querySelector("#timerRing"),
     timerShell: document.querySelector("#timerShell"),
     levelValue: document.querySelector("#levelValue"),
+    levelLabel: document.querySelector("#levelLabel"),
     targetValue: document.querySelector("#targetValue"),
+    targetLabel: document.querySelector("#targetLabel"),
     targetFill: document.querySelector("#targetFill"),
     targetStrip: document.querySelector(".target-strip"),
     crunchButton: document.querySelector("#crunchButton"),
@@ -49,8 +52,10 @@ export function createUI() {
     gameOverTitle: document.querySelector("#gameOverTitle"),
     runEndCopy: document.querySelector("#runEndCopy"),
     summaryBanked: document.querySelector("#summaryBanked"),
+    summaryBankedLabel: document.querySelector("#summaryBankedLabel"),
     summaryCoins: document.querySelector("#summaryCoins"),
     summaryLost: document.querySelector("#summaryLost"),
+    summaryLostLabel: document.querySelector("#summaryLostLabel"),
     summaryLostRow: document.querySelector("#summaryLostRow"),
     summaryShield: document.querySelector("#summaryShield"),
     summaryShieldRow: document.querySelector("#summaryShieldRow"),
@@ -67,6 +72,7 @@ export function createUI() {
     restartButton: document.querySelector("#restartButton"),
     returnToPotsButton: document.querySelector("#returnToPotsButton"),
     startButton: document.querySelector("#startButton"),
+    endlessArcadeButton: document.querySelector("#endlessArcadeButton"),
     hamburgerButton: document.querySelector("#hamburgerButton"),
     shieldAdButton: document.querySelector("#shieldAdButton"),
     menuCoinsValue: document.querySelector("#menuCoinsValue"),
@@ -95,6 +101,7 @@ export function createUI() {
     elements,
     render(state, handlers) {
       elements.shell.classList.toggle("tutorial-mode", Boolean(state.isTutorial));
+      elements.shell.classList.toggle("arcade-mode", isArcadeMode(state));
       renderHud(elements, state);
       const stackSignature = getStackSignature(state);
       if (renderCache.stack !== stackSignature) {
@@ -104,7 +111,8 @@ export function createUI() {
       renderCrunch(elements, state, handlers);
       const handSignature = getHandSignature(state);
       if (renderCache.hand !== handSignature) {
-        renderHand(elements, state, handlers);
+        if (isArcadeMode(state)) renderArcadeHand(elements, state, handlers);
+        else renderHand(elements, state, handlers);
         renderCache.hand = handSignature;
       }
       syncTutorialGuidance(elements, state);
@@ -186,12 +194,18 @@ export function createUI() {
     },
     /* End-of-run summary: pot progress, banked/lost cash, ad options. */
     showRunSummary(summary) {
+      const arcadeRun = summary.mode === ARCADE_MODE;
       const potComplete = Boolean(summary.pot?.complete && !summary.potReplay);
-      elements.runEndEyebrow.textContent = potComplete ? "Run Complete" : "Out of Lives";
-      elements.gameOverTitle.textContent = potComplete ? "Pot Filled!" : "Run Over";
+      elements.runEndEyebrow.textContent = arcadeRun ? "Endless Arcade" : potComplete ? "Run Complete" : "Out of Lives";
+      elements.gameOverTitle.textContent = arcadeRun ? "Game Over" : potComplete ? "Pot Filled!" : "Run Over";
       elements.runEndCopy.textContent = getRunEndCopy(summary, potComplete);
 
-      elements.summaryLostRow.hidden = summary.lost <= 0;
+      elements.summaryLostRow.hidden = !arcadeRun && summary.lost <= 0;
+      elements.summaryLostRow.classList.toggle("is-arcade-final", arcadeRun);
+      elements.summaryLost.classList.toggle("sum-bad", !arcadeRun);
+      elements.summaryLost.classList.toggle("sum-arcade", arcadeRun);
+      elements.summaryLostLabel.textContent = arcadeRun ? "Final Arcade Score" : "Run cash lost";
+      elements.summaryBankedLabel.textContent = arcadeRun ? "Cards Crunched" : "Banked";
       elements.summaryShieldRow.hidden = summary.shieldSaved <= 0;
       elements.summaryRecoveredRow.hidden = summary.recovered <= 0;
       elements.summaryRecoveryTicker.hidden = summary.shieldSaved <= 0 && summary.recovered <= 0;
@@ -211,10 +225,21 @@ export function createUI() {
       elements.reviveAdButton.hidden = !summary.canRevive;
       elements.recoverAdButton.hidden = !summary.canRecover;
       elements.restartButton.hidden = potComplete;
+      elements.returnToPotsButton.textContent = arcadeRun ? "Main Menu" : "Return to Pots";
 
       this.showGameOver(true);
-      animateSummaryNumber(elements.summaryLost, summary.lost, (value) => `-$${formatCompactNumber(value)}`, { delay: 70, tone: "red" });
-      animateSummaryNumber(elements.summaryBanked, summary.banked, (value) => `$${formatCompactNumber(value)}`, { delay: 150, tone: "green" });
+      animateSummaryNumber(
+        elements.summaryLost,
+        arcadeRun ? summary.finalScore : summary.lost,
+        (value) => arcadeRun ? formatCompactNumber(value) : `-$${formatCompactNumber(value)}`,
+        { delay: 70, tone: arcadeRun ? "gold" : "red" }
+      );
+      animateSummaryNumber(
+        elements.summaryBanked,
+        arcadeRun ? summary.cardsCrunched : summary.banked,
+        (value) => arcadeRun ? formatCompactNumber(value) : `$${formatCompactNumber(value)}`,
+        { delay: 150, tone: arcadeRun ? "blue" : "green" }
+      );
       animateSummaryNumber(elements.summaryCoins, summary.coinsEarned ?? 0, (value) => `+${formatCompactNumber(value)}`, { delay: 220, tone: "gold" });
       animateSummaryNumber(elements.summaryShield, summary.shieldSaved, (value) => `+$${formatCompactNumber(value)}`, { delay: 290, tone: "green" });
       animateSummaryNumber(elements.summaryRecovered, summary.recovered, (value) => `+$${formatCompactNumber(value)}`, { delay: 330, tone: "green" });
@@ -294,6 +319,10 @@ export function createUI() {
       return elements.selectedCardTray.querySelector(`[data-hand-index="${index}"]`)
         ?? elements.handZone.querySelector(`[data-hand-index="${index}"]`);
     },
+    getArcadePlayedCardElements() {
+      return [...elements.selectedCardTray.querySelectorAll("[data-arcade-staged-index]")]
+        .sort((a, b) => Number(a.dataset.arcadeStagedIndex) - Number(b.dataset.arcadeStagedIndex));
+    },
     getAllStackCardElements() {
       return [...elements.tableZone.querySelectorAll("[data-stack-card]")];
     }
@@ -308,23 +337,36 @@ function renderHud(elements, state) {
   const cache = elements._hudCache ?? (elements._hudCache = {});
   const previousCounters = elements._counterCache ?? null;
   const isEndless = !state.activePot && state.level === 0;
+  const arcadeRun = isArcadeMode(state);
   const potProgress = state.activePot
     ? {
         progress: Math.min(1, state.activePot.progress / state.activePot.target),
         remaining: Math.max(0, state.activePot.target - state.activePot.progress)
       }
-    : { progress: 0, remaining: isEndless ? "Endless" : 0 };
+    : {
+        progress: arcadeRun ? Math.min(1, state.arcadePlayedCards.length / 8) : 0,
+        remaining: isEndless ? "Endless" : 0
+      };
 
   setText(elements.scoreValue, formatCompactNumber(state.score), cache, "score");
-  setText(elements.scoreLabel, state.isTutorial ? "Practice Cash \u00b7 Unbanked" : "Run Cash \u00b7 Unbanked", cache, "scoreLabel");
+  setText(
+    elements.scoreLabel,
+    state.isTutorial ? "Practice Cash \u00b7 Unbanked" : arcadeRun ? "Endless Arcade Score" : "Run Cash \u00b7 Unbanked",
+    cache,
+    "scoreLabel"
+  );
   setText(elements.streakValue, String(state.streak ?? 0), cache, "streak");
   setText(elements.timerValue, String(Math.ceil(state.timeLeft)), cache, "timer");
   const livesLeft = Math.max(0, (state.maxMisses ?? 3) - (state.misses ?? 0));
   setText(elements.missValue, "\u2665".repeat(livesLeft) + "\u2661".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft)), cache, "lives");
-  setText(elements.levelValue, isEndless ? "\u221e" : String(state.level ?? 1), cache, "level");
+  setText(elements.levelLabel, arcadeRun ? "Mode" : "Pot", cache, "levelLabel");
+  setText(elements.targetLabel, arcadeRun ? "Stack" : "Left", cache, "targetLabel");
+  setText(elements.levelValue, arcadeRun ? "Arcade" : isEndless ? "\u221e" : String(state.level ?? 1), cache, "level");
   setText(
     elements.targetValue,
-    typeof potProgress.remaining === "number" ? formatCompactNumber(potProgress.remaining) : potProgress.remaining,
+    arcadeRun
+      ? `${state.arcadePlayedCards.length} ${state.arcadePlayedCards.length === 1 ? "card" : "cards"}`
+      : typeof potProgress.remaining === "number" ? formatCompactNumber(potProgress.remaining) : potProgress.remaining,
     cache,
     "target"
   );
@@ -694,6 +736,7 @@ function renderCrunch(elements, state, handlers) {
   const cache = elements._crunchCache ?? (elements._crunchCache = {});
   const preview = getCrunchPreview(state);
   const playing = !state.locked && state.status === "playing";
+  const arcadeRun = isArcadeMode(state);
 
   // The handlers object is created once per game, so bind exactly once
   // instead of re-assigning listeners on every 100ms render tick.
@@ -715,16 +758,24 @@ function renderCrunch(elements, state, handlers) {
 
   const minimumBankStreak = Number(state.activePot?.gameplayModifier?.minBankStreak ?? 0);
   const bankRuleReady = state.streak >= minimumBankStreak;
-  const canBank = playing && (Boolean(state.activePot) || Boolean(state.tutorialBankStep)) && state.score > 0 && bankRuleReady;
+  const canBank = !arcadeRun && playing && (Boolean(state.activePot) || Boolean(state.tutorialBankStep)) && state.score > 0 && bankRuleReady;
   if (cache.canBank !== canBank) {
     cache.canBank = canBank;
     elements.bankButton.disabled = !canBank;
     elements.bankButton.classList.toggle("bank-ready", canBank);
   }
-  setText(elements.bankAmountValue, `$${formatCompactNumber(state.score ?? 0)}`, cache, "bankAmount");
+  const bankLabel = elements.bankButton.querySelector(":scope > span");
+  setText(bankLabel, arcadeRun ? "Stacked" : "Bank", cache, "bankLabel");
+  setText(
+    elements.bankAmountValue,
+    arcadeRun ? `${preview.selectedCount} ${preview.selectedCount === 1 ? "card" : "cards"}` : `$${formatCompactNumber(state.score ?? 0)}`,
+    cache,
+    "bankAmount"
+  );
+  elements.bankButton.classList.toggle("arcade-stack-meter", arcadeRun);
 
   if (elements.hintAdButton) {
-    const hintHidden = !state.isTutorial && (state.hintAdUsedThisRun || state.status === "menu");
+    const hintHidden = arcadeRun || (!state.isTutorial && (state.hintAdUsedThisRun || state.status === "menu"));
     const hintDisabled = !playing || (!state.isTutorial && state.hintAdUsedThisRun);
     if (cache.hintHidden !== hintHidden) {
       cache.hintHidden = hintHidden;
@@ -743,13 +794,15 @@ function renderCrunch(elements, state, handlers) {
   elements.bankButton.classList.toggle("bank-rule-locked", playing && state.score > 0 && !bankRuleReady);
   elements.bankButton.setAttribute(
     "aria-label",
-    bankRuleReady
+    arcadeRun
+      ? `${preview.selectedCount} cards currently staged in Endless Arcade.`
+      : bankRuleReady
       ? "Bank run cash into the pot. Resets multiplier."
       : `Bank unlocks at a ${minimumBankStreak}-Crunch streak.`
   );
 
   const bonusBankOffer = elements._bonusBankOffer;
-  const showBonusBankOffer = playing && !state.tutorialBankStep && !preview.canCrunch && Boolean(bonusBankOffer);
+  const showBonusBankOffer = !arcadeRun && playing && !state.tutorialBankStep && !preview.canCrunch && Boolean(bonusBankOffer);
   const crunchDisabled = state.locked
     || state.status !== "playing"
     || state.tutorialBankStep
@@ -795,6 +848,139 @@ function renderBonusBankAction(elements, offer) {
       ? `Watch rewarded ad to add ${amount} dollars and fill this pot`
       : `Watch rewarded ad to add ${amount} dollars to this pot`
   );
+}
+
+/* Endless Arcade keeps a permanent four-card hand while played cards build
+   a separate queue. Reusing each tapped card's node gives the play its FLIP
+   flight, while only the fresh replacement is dealt in from the right. */
+function renderArcadeHand(elements, state, handlers) {
+  const zone = elements.handZone;
+  const tray = elements.selectedCardTray;
+  const handDisabled = Boolean(state.locked || state.status !== "playing");
+  const existingButtons = [...zone.querySelectorAll(".card[data-card-id]"), ...tray.querySelectorAll(".card[data-card-id]")];
+  const previousCards = new Map();
+
+  existingButtons.forEach((button) => {
+    previousCards.set(button.dataset.cardId, {
+      button,
+      rect: button.getBoundingClientRect(),
+      zone: button.closest(".selected-card-tray") ? "tray" : "hand",
+      index: Number(button.dataset.handIndex ?? button.dataset.arcadeStagedIndex)
+    });
+  });
+
+  for (let index = 0; index < 4; index += 1) {
+    if (zone.querySelector(`[data-hand-slot="${index}"]`)) continue;
+    const slot = document.createElement("div");
+    slot.className = "hand-card-slot";
+    slot.dataset.handSlot = String(index);
+    slot.setAttribute("role", "presentation");
+    zone.appendChild(slot);
+  }
+
+  const cardsById = new Map([...state.hand, ...state.arcadePlayedCards].filter(Boolean).map((card) => [card.id, card]));
+  existingButtons.forEach((button) => {
+    if (!cardsById.has(button.dataset.cardId)) button.remove();
+  });
+
+  const rendered = [];
+  let dealOrder = 0;
+  const getButton = (card) => {
+    const previous = previousCards.get(card.id);
+    if (previous?.button) return { button: previous.button, previous, isNew: false };
+    const button = createCard(card, { isButton: true });
+    button.dataset.cardId = card.id;
+    button.classList.add("card-deal-pending");
+    bindCardGesture(button, () => {
+      const handIndex = Number(button.dataset.handIndex);
+      if (Number.isInteger(handIndex)) handlers.onCardSelect(handIndex);
+    });
+    return { button, previous: null, isNew: true };
+  };
+
+  state.arcadePlayedCards.forEach((card, index) => {
+    const record = getButton(card);
+    const { button, previous } = record;
+    delete button.dataset.handIndex;
+    button.dataset.arcadeStagedIndex = String(index);
+    button.classList.add("is-hand-selected", "is-staged-card", "arcade-staged-card");
+    button.classList.toggle("arcade-power-card", isPowerCard(card));
+    button.disabled = true;
+    button.setAttribute("aria-disabled", "true");
+    button.setAttribute("aria-label", `${getCardAccessibleName(card)}, staged ${index + 1} for Endless Arcade Crunch.`);
+    button.style.removeProperty("--fan-rotate");
+    button.style.setProperty("--stage-rotate", `${getArcadeStageRotation(index)}deg`);
+    button.style.setProperty("--arcade-stage-index", String(index));
+    tray.appendChild(button);
+    rendered.push({ card, button, previous, isNew: record.isNew, destination: "tray", index });
+  });
+
+  state.hand.forEach((card, index) => {
+    if (!card) return;
+    const record = getButton(card);
+    const { button, previous } = record;
+    button.dataset.handIndex = String(index);
+    delete button.dataset.arcadeStagedIndex;
+    button.classList.remove("is-hand-selected", "is-staged-card", "arcade-staged-card");
+    button.classList.toggle("arcade-power-card", isPowerCard(card));
+    button.disabled = handDisabled;
+    button.setAttribute("aria-disabled", String(handDisabled));
+    button.setAttribute("aria-label", `${getCardAccessibleName(card)}. Tap or flick up to play it into the Arcade stack.`);
+    button.style.setProperty("--fan-rotate", `${[-8, -3, 3, 8][index] ?? 0}deg`);
+    button.style.removeProperty("--stage-rotate");
+    button.style.removeProperty("--arcade-stage-index");
+    const slot = zone.querySelector(`[data-hand-slot="${index}"]`);
+    slot.appendChild(button);
+    slot.classList.add("is-occupied");
+    slot.classList.remove("is-staged");
+    rendered.push({ card, button, previous, isNew: record.isNew, destination: "hand", index, dealOrder: dealOrder++ });
+  });
+
+  const stagedCount = state.arcadePlayedCards.length;
+  tray.classList.toggle("has-cards", stagedCount > 0);
+  tray.dataset.count = String(stagedCount);
+  tray.style.setProperty("--arcade-staged-count", String(stagedCount));
+  const trayWidth = Math.min(520, Math.max(300, window.innerWidth - 34));
+  const stagedWidth = stagedCount > 0
+    ? Math.max(34, Math.min(68, (trayWidth + Math.max(0, stagedCount - 1) * 14) / stagedCount))
+    : 68;
+  tray.style.setProperty("--arcade-card-width", `${stagedWidth}px`);
+  tray.setAttribute("aria-label", stagedCount ? `${stagedCount} cards committed to this Arcade Crunch` : "No Arcade cards played yet");
+  elements.tableZone.classList.toggle("has-staged-cards", stagedCount > 0);
+
+  rendered.forEach(({ card, button, previous, isNew, destination, index, dealOrder: order }) => {
+    if (isNew) {
+      animateCardDealIn(button, order ?? 0, {
+        zone: destination === "tray" ? "table" : "hand",
+        fromSide: card.dealFromRight ? "right" : "left"
+      });
+      card.dealFromRight = false;
+      return;
+    }
+    const moved = previous.zone !== destination || previous.index !== index;
+    if (!moved) return;
+    const toRect = button.getBoundingClientRect();
+    button.classList.add("card-layout-moving");
+    animateCardTransfer(button, previous.rect, toRect, {
+      withTrail: previous.zone !== destination,
+      motion: previous.zone === "hand" && destination === "hand" ? "hand-shift" : "standard"
+    });
+    requestAnimationFrame(() => button.classList.remove("card-layout-moving"));
+  });
+}
+
+function getArcadeStageRotation(index) {
+  const pattern = [-5, 3, -2, 5, -4, 2, -1, 4];
+  return pattern[index % pattern.length];
+}
+
+function getCardAccessibleName(card) {
+  const power = getPowerCardDetails(card);
+  if (power) {
+    if (card.powerType === "charged") return `${power.name}, ${card.rank} of ${card.suit}. ${power.tooltip}`;
+    return `${power.name}. ${power.tooltip}`;
+  }
+  return `${card.rank} of ${card.suit}`;
 }
 
 /* Cards keep the same DOM node as they move between a fixed hand slot and
@@ -937,9 +1123,15 @@ function syncHandInteractionState(elements, state) {
   const disabled = Boolean(state.locked || state.status !== "playing" || state.tutorialBankStep);
   elements.handZone.querySelectorAll("[data-hand-index]").forEach((card) => {
     if (card.disabled !== disabled) card.disabled = disabled;
+    card.setAttribute("aria-disabled", String(disabled));
   });
   elements.selectedCardTray.querySelectorAll("[data-hand-index]").forEach((card) => {
     if (card.disabled !== disabled) card.disabled = disabled;
+    card.setAttribute("aria-disabled", String(disabled));
+  });
+  elements.selectedCardTray.querySelectorAll("[data-arcade-staged-index]").forEach((card) => {
+    if (!card.disabled) card.disabled = true;
+    card.setAttribute("aria-disabled", "true");
   });
 }
 
@@ -963,6 +1155,10 @@ function syncTutorialGuidance(elements, state) {
 }
 
 function getRunEndCopy(summary, potComplete) {
+  if (summary.mode === ARCADE_MODE) {
+    const powerCopy = summary.powerCardsUsed > 0 ? ` ${summary.powerCardsUsed} power cards joined the run.` : "";
+    return `${summary.cardsCrunched} cards crunched before all three hearts were lost.${powerCopy}`;
+  }
   if (potComplete) return "That pot is full. Your banked cash is safe, and the next pot is ready.";
   if (summary.canRevive) return "Watch an ad to revive with 1 life and keep this risky run alive.";
   if (summary.canRecover) return "Watch an ad to recover half of your lost cash into this pot.";
@@ -973,12 +1169,15 @@ function getRunEndCopy(summary, potComplete) {
 function createCard(card, options = {}) {
   const element = document.createElement(options.isButton ? "button" : "div");
   const skinClass = getCardSkinClass(card);
-  element.className = `card card-${card.color} card-${card.suit} ${skinClass}`;
+  const powerDetails = getPowerCardDetails(card);
+  const powerClass = card.powerType ? `power-card power-card-${card.powerType}` : "";
+  element.className = `card card-${card.color} card-${card.suit} ${skinClass} ${powerClass}`;
   element.type = options.isButton ? "button" : undefined;
   element.dataset.cardRank = card.rank;
   element.dataset.cardSuit = card.suit;
+  if (card.powerType) element.dataset.powerType = card.powerType;
   element.dataset.equippedSkin = skinClass.replace("card-skin-", "");
-  element.setAttribute("aria-label", `${card.rank} of ${card.suit}`);
+  element.setAttribute("aria-label", getCardAccessibleName(card));
 
   if (Number.isInteger(options.handIndex)) {
     element.dataset.handIndex = String(options.handIndex);
@@ -988,20 +1187,30 @@ function createCard(card, options = {}) {
     element.dataset.stackCard = String(options.stackIndex);
   }
 
-  element.innerHTML = `
-    <span class="card-corner card-corner-top">
-      <span>${card.rank}</span>
-      <span>${card.suitSymbol}</span>
-    </span>
-    <span class="card-center">
-      <span class="card-rank">${card.rank}</span>
-      <span class="card-pips" aria-hidden="true"><span class="hero-pip">${card.suitSymbol}</span></span>
-    </span>
-    <span class="card-corner card-corner-bottom">
-      <span>${card.rank}</span>
-      <span>${card.suitSymbol}</span>
-    </span>
-  `;
+  if (powerDetails && card.powerType !== "charged") {
+    element.innerHTML = `
+      <span class="power-card-kicker">POWER</span>
+      <span class="power-card-core" aria-hidden="true">${powerDetails.icon}</span>
+      <strong class="power-card-name">${powerDetails.shortName}</strong>
+      <small class="power-card-tooltip">${powerDetails.tooltip}</small>
+    `;
+  } else {
+    element.innerHTML = `
+      <span class="card-corner card-corner-top">
+        <span>${card.rank}</span>
+        <span>${card.suitSymbol}</span>
+      </span>
+      <span class="card-center">
+        <span class="card-rank">${card.rank}</span>
+        <span class="card-pips" aria-hidden="true"><span class="hero-pip">${card.suitSymbol}</span></span>
+      </span>
+      <span class="card-corner card-corner-bottom">
+        <span>${card.rank}</span>
+        <span>${card.suitSymbol}</span>
+      </span>
+      ${powerDetails ? `<span class="power-card-kicker">CHARGED</span><small class="power-card-tooltip">SCORE x2</small>` : ""}
+    `;
+  }
 
   applyCardSkinPresentation(element, card);
 
@@ -1014,8 +1223,10 @@ function getStackSignature(state) {
 
 function getHandSignature(state) {
   return [
+    state.gameMode ?? "pot",
     state.hand.map((card) => card.id).join("|"),
     state.selectedHandIndexes.join("|"),
+    state.arcadePlayedCards?.map((card) => card.id).join("|") ?? "",
     state.tutorialExpectedIndexes?.join("|") ?? "",
     state.tutorialBankStep ? "bank-step" : "card-step"
   ].join("::");
