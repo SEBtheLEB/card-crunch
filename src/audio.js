@@ -338,6 +338,15 @@ const EFFECTS = {
     tone({ frequency: 390, endFrequency: 520, duration: .045, gain: .045, type: "triangle" });
     noise({ duration: .026, gain: .022, highpass: 1800 });
   },
+  pack_buy: () => arpeggio([330, 440, 554], { duration: .11, spacing: .045, gain: .065, type: "triangle" }),
+  pack_open: () => {
+    tone({ frequency: 148, endFrequency: 74, duration: .22, gain: .11, type: "square" });
+    noise({ duration: .18, gain: .075, highpass: 960 });
+  },
+  card_unlock: () => {
+    arpeggio([523, 659, 784, 1047, 1319], { duration: .2, spacing: .055, gain: .085, type: "triangle" });
+    noise({ duration: .07, gain: .035, highpass: 3000 });
+  },
   valid_add: () => arpeggio([440, 660], { gain: 0.065 }),
   invalid_card: () => {
     tone({ frequency: 150, endFrequency: 75, duration: 0.18, gain: 0.12, type: "sawtooth" });
@@ -411,6 +420,9 @@ const EFFECTS = {
 const HAPTIC_BY_SOUND = {
   card_select: "select",
   card_deselect: "deselect",
+  pack_buy: "select",
+  pack_open: "crunch",
+  card_unlock: "score",
   crunch_start: "crunch",
   crunch_hit_1: "select",
   crunch_hit_2: "match",

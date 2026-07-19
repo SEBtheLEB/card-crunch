@@ -16,7 +16,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/main.css?v=139">
+  <link rel="stylesheet" href="styles/main.css?v=141">
+  <link rel="stylesheet" href="styles/collection.css?v=141">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -147,7 +148,7 @@
 
             <section class="menu-tile-grid" aria-label="More modes">
               <button data-menu-page="shop" type="button"><span aria-hidden="true">&#9670;</span><strong>Store</strong><small>Coins &amp; boosts</small></button>
-              <button data-menu-page="themes" type="button"><span aria-hidden="true">&spades;</span><strong>Themes</strong><small>Deck styles</small></button>
+              <button data-menu-page="themes" type="button"><span aria-hidden="true">&spades;</span><strong>Collection</strong><small>Cards &amp; tables</small></button>
               <button class="tutorial-menu-tile" id="tutorialStartButton" type="button"><span aria-hidden="true">?</span><strong>Tutorial</strong><small>Learn every Crunch</small></button>
             </section>
           </section>
@@ -175,6 +176,12 @@
             </div>
             <p class="store-status" id="storeStatus" aria-live="polite">Earn coins from runs and spend them on useful boosts.</p>
             <div class="store-grid">
+              <button class="store-item mystery-pack-store-item" id="buyMysteryPackButton" type="button">
+                <i aria-hidden="true">?</i>
+                <strong>Mystery Card Pack</strong>
+                <span id="mysteryPackPrice">125 Coins</span>
+                <small>208 new cards remain</small>
+              </button>
               <button class="store-item shield-store-item" id="buyShieldButton" type="button">
                 <i aria-hidden="true">&#9829;</i>
                 <strong>Bank Shield</strong>
@@ -197,10 +204,10 @@
             <section class="skin-store-section" aria-labelledby="skinStoreTitle">
               <div class="skin-store-heading">
                 <div>
-                  <span>Deck Locker</span>
-                  <h3 id="skinStoreTitle">Card Skins</h3>
+                  <span>Testing Lab</span>
+                  <h3 id="skinStoreTitle">Full Deck Preview</h3>
                 </div>
-                <strong>All unlocked</strong>
+                <strong>No unlock needed</strong>
               </div>
               <div class="card-skin-picker" id="cardSkinPicker" role="group" aria-label="Card skins">
                 <button class="skin-option is-skin-selected" data-card-skin-id="classic" type="button" aria-pressed="true">
@@ -229,14 +236,23 @@
                   <em>Equip</em>
                 </button>
               </div>
-              <p class="skin-store-status" id="skinStoreStatus" aria-live="polite">Classic deck equipped.</p>
+              <p class="skin-store-status" id="skinStoreStatus" aria-live="polite">Classic full deck active for testing.</p>
             </section>
           </section>
 
           <section class="menu-page" data-page="themes" aria-labelledby="themesTitle">
             <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
-            <h2 id="themesTitle">Themes</h2>
-            <p class="theme-page-copy">Choose a table and deck. Your theme is saved instantly.</p>
+            <h2 id="themesTitle">Card Collection</h2>
+            <p class="theme-page-copy">Open a deck pack to see its 52 cards. Owned cards stay bright; missing cards stay sealed.</p>
+            <section class="card-collection-layout" aria-label="Collected card skins">
+              <div class="collection-deck-list" id="collectionDeckList" aria-label="Card skin decks"></div>
+              <div class="collection-detail" id="collectionDetail"></div>
+            </section>
+            <p class="collection-status" id="collectionStatus" aria-live="polite">Open packs to build a deck, or equip a full deck for testing.</p>
+            <div class="theme-section-heading">
+              <span>Casino Room</span>
+              <h3>Table Themes</h3>
+            </div>
             <div class="theme-picker" id="themePicker" role="group" aria-label="Card Crunch themes">
               <button class="theme-option is-theme-selected" data-theme-id="midnight-gold" type="button" aria-pressed="true">
                 <span class="theme-preview theme-preview-midnight" aria-hidden="true">
@@ -366,7 +382,25 @@
       </div>
     </section>
 
+    <section class="pack-opening-overlay" id="packOpeningOverlay" aria-labelledby="packOpeningTitle" aria-hidden="true" hidden>
+      <div class="pack-opening-stage">
+        <p class="pack-opening-eyebrow" id="packOpeningPrompt">Tap the pack to reveal one new card</p>
+        <div class="mystery-pack-shell" id="mysteryPackShell" aria-hidden="true">
+          <i class="pack-seal">?</i>
+          <span>Mystery</span>
+          <strong>Card Pack</strong>
+          <small>1 guaranteed new card</small>
+        </div>
+        <div class="pack-reward" id="packReward" hidden></div>
+        <button class="pack-open-button" id="openPackButton" type="button">OPEN PACK</button>
+        <div class="pack-reward-actions">
+          <button class="pack-equip-button" id="equipPackRewardButton" type="button" hidden>EQUIP CARD</button>
+          <button class="pack-collect-button" id="collectPackRewardButton" type="button" hidden>ADD TO COLLECTION</button>
+        </div>
+      </div>
+    </section>
+
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-  <script type="module" src="src/main.js?v=139"></script>
+  <script type="module" src="src/main.js?v=141"></script>
   </body>
 </html>

@@ -1,5 +1,6 @@
 import { formatCompactNumber } from "./format.js?v=90";
-import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=134";
+import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=141";
+import { getCardSkinClass } from "./cardSkins.js?v=141";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -1059,8 +1060,9 @@ function playTapBounce(overlay) {
 
 function createCutinCardMarkup(card, extraClass = "") {
   if (!card) return "";
+  const skinClass = getCardSkinClass(card);
   return `
-    <div class="cutin-card card-${card.color} card-${card.suit} ${extraClass}" data-cutin-card-id="${card.id}">
+    <div class="cutin-card card-${card.color} card-${card.suit} ${skinClass} ${extraClass}" data-cutin-card-id="${card.id}" data-card-rank="${card.rank}" data-card-suit="${card.suit}" data-equipped-skin="${skinClass.replace("card-skin-", "")}">
       <span class="cutin-corner">${card.rank}${card.suitSymbol}</span>
       <strong>${card.rank}</strong>
       <span class="cutin-suit">${card.suitSymbol}</span>

@@ -14,6 +14,8 @@ const required = [
   "src/fullscreen.js",
   "src/themes.js",
   "src/cardSkins.js",
+  "src/cardCollection.js",
+  "src/cardCollectionUI.js",
   "src/tutorial.js",
   "src/economy.js",
   "src/purchases.js",
@@ -23,6 +25,7 @@ const required = [
   "assets/sfx/deal-hand-3.mp3",
   "assets/sfx/deal-hand-4.mp3",
   "styles/main.css",
+  "styles/collection.css",
   "capacitor.config.json"
 ];
 
@@ -97,6 +100,9 @@ if ((html.match(/data-theme-id=/g) ?? []).length !== 3 || !html.includes("gold-t
 if ((html.match(/data-card-skin-id=/g) ?? []).length !== 5 || !html.includes("skin-preview-rainbow")) {
   throw new Error("Selectable card skin controls are missing");
 }
+if (!html.includes("buyMysteryPackButton") || !html.includes("packOpeningOverlay") || !html.includes("collectionDeckList") || !html.includes("collectionDetail")) {
+  throw new Error("Mystery pack or 52-card collection UI hooks are missing");
+}
 if (!html.includes("run-scoreboard") || !html.includes("summaryRecoveryTicker")) {
   throw new Error("Arcade run summary structure is missing");
 }
@@ -119,17 +125,28 @@ if (lowReward.total <= 0 || highReward.total <= lowReward.total) {
 if ("energyPerRun" in economyModule.ECONOMY_CONFIG || "calculateRegeneratedEnergy" in economyModule) {
   throw new Error("Energy gating still exists in the economy module");
 }
+if (economyModule.ECONOMY_CONFIG.mysteryCardPackCost <= 0) {
+  throw new Error("Mystery packs need a positive coin price");
+}
+const cardCollectionModule = await import(`../src/cardCollection.js?verify=${Date.now()}`);
+const collectionResults = cardCollectionModule.runCardCollectionSelfTests();
+if (!Array.isArray(collectionResults) || collectionResults.some((result) => result.pass === false)) {
+  throw new Error("Card collection self-tests failed");
+}
 
-const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardGestureSource, dealTimingSource, gameStateSource, uiSource, css] = await Promise.all([
+const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollectionSource, cardCollectionUiSource, cardGestureSource, dealTimingSource, gameStateSource, uiSource, css, collectionCss] = await Promise.all([
   readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
   readFile(resolve(root, "src/animations.js"), "utf8"),
   readFile(resolve(root, "src/themes.js"), "utf8"),
   readFile(resolve(root, "src/cardSkins.js"), "utf8"),
+  readFile(resolve(root, "src/cardCollection.js"), "utf8"),
+  readFile(resolve(root, "src/cardCollectionUI.js"), "utf8"),
   readFile(resolve(root, "src/cardGestures.js"), "utf8"),
   readFile(resolve(root, "src/dealTiming.js"), "utf8"),
   readFile(resolve(root, "src/gameState.js"), "utf8"),
   readFile(resolve(root, "src/ui.js"), "utf8"),
-  readFile(resolve(root, "styles/main.css"), "utf8")
+  readFile(resolve(root, "styles/main.css"), "utf8"),
+  readFile(resolve(root, "styles/collection.css"), "utf8")
 ]);
 const mainSource = await readFile(resolve(root, "src/main.js"), "utf8");
 const tutorialSource = await readFile(resolve(root, "src/tutorial.js"), "utf8");
@@ -145,6 +162,15 @@ if (!cutsceneSource.includes("startPreparedShardPhysics")
   || !cutsceneSource.includes("registerShardBankImpact")
   || !css.includes("cutin-card-shard.is-physics-active")) {
   throw new Error("Physics-driven Crunch Bank shard sequencing is missing");
+}
+if (!cardCollectionSource.includes("buildCollectiblePool")
+  || !cardCollectionSource.includes("equipCollectedCard")
+  || !cardCollectionUiSource.includes("createPendingPackReward")
+  || !uiSource.includes("getCardSkinClass")
+  || !cutsceneSource.includes("getCardSkinClass")
+  || !collectionCss.includes(".pack-opening-overlay")
+  || !collectionCss.includes(".collection-card-matrix")) {
+  throw new Error("Duplicate-protected packs, per-card equips, or collection visuals are incomplete");
 }
 if (!cutsceneSource.includes("is-consumed-after-shatter") || !css.includes(".cutin-live-card.is-consumed-after-shatter")) {
   throw new Error("Consumed cut-in cards can reappear after the vacuum finishes");

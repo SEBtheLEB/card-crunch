@@ -3,8 +3,9 @@ import { isPotUnlocked } from "./progression.js?v=126";
 import { formatCompactNumber } from "./format.js?v=90";
 import { hasShieldToken } from "./save.js?v=90";
 import { bindInstantAction } from "./input.js?v=90";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=137";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=134";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=141";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=141";
+import { getCardSkinClass } from "./cardSkins.js?v=141";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -971,8 +972,12 @@ function getRunEndCopy(summary, potComplete) {
 
 function createCard(card, options = {}) {
   const element = document.createElement(options.isButton ? "button" : "div");
-  element.className = `card card-${card.color} card-${card.suit}`;
+  const skinClass = getCardSkinClass(card);
+  element.className = `card card-${card.color} card-${card.suit} ${skinClass}`;
   element.type = options.isButton ? "button" : undefined;
+  element.dataset.cardRank = card.rank;
+  element.dataset.cardSuit = card.suit;
+  element.dataset.equippedSkin = skinClass.replace("card-skin-", "");
   element.setAttribute("aria-label", `${card.rank} of ${card.suit}`);
 
   if (Number.isInteger(options.handIndex)) {

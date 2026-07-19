@@ -1,0 +1,212 @@
+/* Mystery packs, collection book, and exact-card skin overrides. */
+.mystery-pack-store-item {
+  grid-column: 1 / -1;
+  min-height: 126px;
+  grid-template-columns: 74px minmax(0, 1fr);
+  grid-template-rows: repeat(3, auto);
+  align-items: center;
+  border-color: #76511a;
+  background: linear-gradient(105deg, rgba(255, 240, 157, .14), transparent 34%), repeating-linear-gradient(135deg, rgba(255, 213, 79, .08) 0 5px, transparent 5px 10px), linear-gradient(180deg, #3c2b58, #1b1834 66%, #0d1021);
+  box-shadow: inset 0 0 0 2px #d49a32, 5px 6px 0 rgba(2, 4, 11, .78), 0 0 19px rgba(255, 195, 67, .2);
+}
+
+.mystery-pack-store-item > i {
+  grid-row: 1 / -1;
+  display: grid;
+  width: 60px;
+  height: 80px;
+  place-items: center;
+  border: 3px solid #251508;
+  clip-path: var(--pixel-card-silhouette);
+  background: linear-gradient(145deg, #ffe07b, #d88921 62%, #71340e);
+  box-shadow: inset 0 0 0 3px #fff0a7, 5px 6px 0 #090711, 0 0 14px rgba(255, 205, 70, .35);
+  color: #2b1932;
+  font-family: var(--font-pixel);
+  font-size: 1.5rem;
+  font-style: normal;
+  transform: rotate(-4deg);
+}
+
+.mystery-pack-store-item.has-waiting-pack { animation: mysteryPackStorePulse 1s steps(4) infinite; }
+.mystery-pack-store-item.cannot-afford:not(.has-waiting-pack) { filter: saturate(.66); }
+.skin-store-heading > strong { max-width: 132px; line-height: 1.35; text-align: right; white-space: normal; }
+
+.theme-section-heading {
+  display: grid;
+  gap: 5px;
+  margin: 18px 0 10px;
+  padding-top: 14px;
+  border-top: 3px solid rgba(111, 158, 188, .24);
+}
+
+.theme-section-heading span,
+.theme-section-heading h3,
+.collection-detail-heading span,
+.collection-detail-heading h3,
+.collection-detail-heading > strong,
+.collection-status,
+.collection-deck-pack strong,
+.collection-deck-pack small,
+.collection-full-deck-button { font-family: var(--font-pixel); text-transform: uppercase; }
+.theme-section-heading span, .collection-detail-heading span { color: #77d9ff; font-size: clamp(.4rem, 1.6vw, .52rem); }
+.theme-section-heading h3, .collection-detail-heading h3 { margin: 0; color: #fff0b4; font-size: clamp(.72rem, 3vw, 1rem); line-height: 1.3; }
+
+.card-collection-layout {
+  display: grid;
+  grid-template-columns: clamp(82px, 24vw, 112px) minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  margin-top: 12px;
+}
+.collection-deck-list { display: grid; gap: 8px; }
+
+.collection-deck-pack {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 112px;
+  place-items: center;
+  gap: 5px;
+  padding: 8px 5px;
+  overflow: hidden;
+  border: 3px solid #07101d;
+  clip-path: var(--pixel-panel-silhouette);
+  background: #102039;
+  box-shadow: inset 0 0 0 2px #304c67, 4px 4px 0 rgba(2, 5, 10, .8);
+  color: #fff1bd;
+  text-align: center;
+}
+.collection-deck-pack.is-selected { border-color: #8b5b0b; box-shadow: inset 0 0 0 2px #ffe078, 4px 4px 0 rgba(2, 5, 10, .8), 0 0 15px rgba(255, 202, 69, .28); filter: brightness(1.12); }
+.collection-deck-pack:active { transform: scale(.96); }
+.collection-pack-art {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 57px;
+  place-items: center;
+  border: 3px solid #080b15;
+  clip-path: var(--pixel-card-silhouette);
+  background: linear-gradient(145deg, #f5d069, #a65f1a 66%, #53240b);
+  box-shadow: inset 0 0 0 2px #fff0a8, 3px 4px 0 rgba(0, 0, 0, .55);
+}
+.collection-pack-art::before, .collection-pack-art::after { content: ""; position: absolute; width: 31px; height: 43px; border: 2px solid rgba(8, 10, 19, .62); background: rgba(255, 255, 255, .16); }
+.collection-pack-art::before { transform: translate(-5px, 1px) rotate(-7deg); }
+.collection-pack-art::after { transform: translate(5px, 1px) rotate(7deg); }
+.collection-pack-art i { position: relative; z-index: 2; color: #25142e; font-size: 1.15rem; font-style: normal; }
+.collection-deck-pack.skin-dark .collection-pack-art { background: linear-gradient(145deg, #6f8aa3, #24364b 58%, #080f1d); }
+.collection-deck-pack.skin-dark .collection-pack-art i { color: #e9f3fb; }
+.collection-deck-pack.skin-pink .collection-pack-art { background: linear-gradient(145deg, #fff0f7, #f58dbc 60%, #8f245a); }
+.collection-deck-pack.skin-pink .collection-pack-art i { color: #b9165d; }
+.collection-deck-pack.skin-gold .collection-pack-art { background: linear-gradient(145deg, #fff5ad, #e7a92c 60%, #7a3d05); }
+.collection-deck-pack.skin-rainbow .collection-pack-art { background: conic-gradient(#ff5b8f, #ffd653, #65e690, #5ecbff, #b67cff, #ff5b8f); }
+.collection-deck-pack strong { max-width: 100%; overflow-wrap: anywhere; font-size: clamp(.35rem, 1.45vw, .47rem); line-height: 1.35; }
+.collection-deck-pack small { color: #84dcff; font-size: clamp(.34rem, 1.35vw, .44rem); }
+
+.collection-detail {
+  min-width: 0;
+  padding: 10px;
+  border: 3px solid #08101c;
+  clip-path: var(--pixel-panel-silhouette);
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .018) 0 1px, transparent 1px 4px), linear-gradient(180deg, #172d46, #0b182a);
+  box-shadow: inset 0 0 0 2px #355572, 5px 5px 0 rgba(1, 4, 9, .72);
+}
+.collection-detail-heading { display: flex; align-items: end; justify-content: space-between; gap: 8px; }
+.collection-detail-heading > div { display: grid; gap: 4px; min-width: 0; }
+.collection-detail-heading > strong { color: #ffe174; font-size: clamp(.48rem, 2vw, .66rem); white-space: nowrap; }
+.collection-progress-track { height: 9px; margin-top: 9px; overflow: hidden; border: 2px solid #050b13; background: #060e18; }
+.collection-progress-track i { display: block; width: var(--collection-progress); height: 100%; background: repeating-linear-gradient(90deg, #ffbc35 0 7px, #ffe989 7px 12px); box-shadow: 0 0 9px #ffca4a; }
+.collection-detail > p { margin: 8px 0; color: #bdcbd6; font-size: clamp(.56rem, 2.15vw, .68rem); font-weight: 900; line-height: 1.3; }
+.collection-full-deck-button { width: 100%; min-height: 38px; margin-bottom: 9px; border: 2px solid #704708; background: linear-gradient(180deg, #ffd963, #b66b13); box-shadow: inset 0 0 0 2px #ffefa8, 0 4px 0 #512807; color: #211205; font-size: clamp(.36rem, 1.45vw, .48rem); line-height: 1.35; }
+.collection-full-deck-button.is-active { border-color: #2c6d48; background: linear-gradient(180deg, #8df2b2, #2b9b5d); box-shadow: inset 0 0 0 2px #d9ffe5, 0 4px 0 #164c30, 0 0 12px rgba(90, 238, 150, .3); }
+
+.collection-card-matrix { display: grid; gap: 6px; max-width: 100%; overflow-x: auto; padding: 3px 2px 7px; scrollbar-color: #bc7c1d #07101a; }
+.collection-suit-row { display: grid; width: max-content; min-width: 100%; grid-template-columns: 24px auto; align-items: center; gap: 5px; }
+.collection-suit-label { color: #f5d16d; font-size: 1rem; text-align: center; }
+.collection-card-row { display: grid; grid-template-columns: repeat(13, 32px); gap: 4px; }
+.collection-card-slot { position: relative; display: grid; width: 32px; height: 44px; place-items: center; padding: 2px; border: 2px solid #111827; clip-path: var(--pixel-card-silhouette); background: #e9dec1; box-shadow: 2px 3px 0 rgba(0, 0, 0, .48); color: #1a2231; }
+.collection-card-slot span { align-self: end; font-family: var(--font-pixel); font-size: .43rem; }
+.collection-card-slot i { align-self: start; font-size: .7rem; font-style: normal; line-height: 1; }
+.collection-card-slot.card-red { color: #d5294e; }
+.collection-card-slot.is-locked { border-color: #1a2737; background: repeating-linear-gradient(135deg, #263447 0 4px, #1a2637 4px 8px); box-shadow: none; color: #748396; filter: grayscale(1); opacity: .55; }
+.collection-card-slot.is-owned:active { transform: scale(.9); }
+.collection-card-slot.is-equipped { box-shadow: 0 0 0 2px #ffe171, 0 0 12px #ffcb4b; }
+.collection-card-slot > b { position: absolute; right: 1px; bottom: 1px; display: grid; width: 11px; height: 11px; place-items: center; background: #32d47b; color: #07130d; font-family: var(--font-pixel); font-size: .28rem; }
+.collection-status { min-height: 2.6em; margin: 9px 0 0; color: #ffe17b; font-size: clamp(.38rem, 1.45vw, .49rem); line-height: 1.4; text-align: center; }
+
+/* A collected skin can target one exact rank/suit without changing the deck. */
+:is(.card, .cutin-card, .pack-reward-card).card-skin-dark { border-color: #647b91; background: repeating-conic-gradient(from 45deg, rgba(151, 205, 235, .035) 0 25%, transparent 0 50%) 0 0 / 8px 8px, linear-gradient(150deg, #2a384d, #151f30 58%, #090f1b); box-shadow: 0 6px 0 #03060b, 4px 9px 0 rgba(0, 0, 0, .35), inset 0 0 0 2px #40566c, 0 0 13px rgba(90, 190, 235, .12); }
+:is(.card, .cutin-card, .pack-reward-card).card-skin-dark.card-black :is(.card-rank, .card-pips, .card-corner, strong, .cutin-suit, .cutin-corner) { color: #e4eef5; }
+:is(.card, .cutin-card, .pack-reward-card).card-skin-dark.card-red :is(.card-rank, .card-pips, .card-corner, strong, .cutin-suit, .cutin-corner) { color: #ff6d88; }
+:is(.card, .cutin-card, .pack-reward-card).card-skin-pink { border-color: #9d2f68; background: radial-gradient(circle at 75% 16%, rgba(255, 255, 255, .58) 0 3px, transparent 4px), repeating-conic-gradient(from 45deg, rgba(173, 34, 100, .035) 0 25%, transparent 0 50%) 0 0 / 8px 8px, linear-gradient(150deg, #fff4f8, #ffd3e5 58%, #ee9fc3); box-shadow: 0 6px 0 #4d1232, 4px 9px 0 rgba(0, 0, 0, .28), inset 0 0 0 3px #ffeaf2, 0 0 15px rgba(255, 101, 174, .2); }
+:is(.card, .cutin-card, .pack-reward-card).card-skin-pink.card-black :is(.card-rank, .card-pips, .card-corner, strong, .cutin-suit, .cutin-corner) { color: #5b285d; }
+:is(.card, .cutin-card, .pack-reward-card).card-skin-pink.card-red :is(.card-rank, .card-pips, .card-corner, strong, .cutin-suit, .cutin-corner) { color: #d51f66; }
+:is(.card, .cutin-card, .pack-reward-card).card-skin-gold { border-color: #704104; background: linear-gradient(112deg, transparent 0 38%, rgba(255, 255, 227, .62) 43%, transparent 48%), repeating-conic-gradient(from 45deg, rgba(121, 72, 4, .05) 0 25%, transparent 0 50%) 0 0 / 8px 8px, linear-gradient(150deg, #fff7bc, #efc95c 56%, #bd7914); box-shadow: 0 6px 0 #452701, 4px 9px 0 rgba(0, 0, 0, .3), inset 0 0 0 3px #fff0a0, 0 0 17px rgba(255, 202, 62, .28); }
+:is(.card, .cutin-card, .pack-reward-card).card-skin-gold.card-black :is(.card-rank, .card-pips, .card-corner, strong, .cutin-suit, .cutin-corner) { color: #37280c; }
+:is(.card, .cutin-card, .pack-reward-card).card-skin-gold.card-red :is(.card-rank, .card-pips, .card-corner, strong, .cutin-suit, .cutin-corner) { color: #b31d3b; }
+:is(.card, .cutin-card, .pack-reward-card).card-skin-rainbow { border: 4px solid transparent; background: repeating-conic-gradient(from 45deg, rgba(69, 58, 110, .035) 0 25%, transparent 0 50%) 0 0 / 8px 8px padding-box, linear-gradient(150deg, #fffbea, #e9f3ff 58%, #f2dfff) padding-box, conic-gradient(from .12turn, #ff4f81, #ffbd3e, #62e88c, #57c8ff, #b47cff, #ff4f81) border-box; box-shadow: 0 6px 0 #171124, 4px 9px 0 rgba(0, 0, 0, .3), inset 0 0 0 2px rgba(255, 255, 255, .72), -5px 0 13px rgba(255, 79, 129, .2), 5px 0 13px rgba(87, 200, 255, .2); }
+:is(.card, .cutin-card, .pack-reward-card).card-skin-rainbow::after { background: linear-gradient(110deg, transparent 0 30%, rgba(255, 91, 147, .24) 35%, rgba(255, 222, 86, .22) 40%, rgba(88, 222, 164, .22) 45%, rgba(81, 199, 255, .22) 50%, rgba(183, 112, 255, .24) 55%, transparent 62%) -100% 0 / 230% 100%; animation: rainbowFoilShift 1.35s steps(10) infinite; }
+.collection-card-slot.card-skin-dark { border-color: #647b91; background: linear-gradient(145deg, #2a384d, #090f1b); color: #e4eef5; }
+.collection-card-slot.card-skin-pink { border-color: #9d2f68; background: linear-gradient(145deg, #fff4f8, #ee9fc3); color: #b51d62; }
+.collection-card-slot.card-skin-gold { border-color: #704104; background: linear-gradient(145deg, #fff7bc, #bd7914); color: #37280c; }
+.collection-card-slot.card-skin-rainbow { border-color: #9b65e8; background: linear-gradient(145deg, #fffbea, #e9f3ff 55%, #f2dfff); color: #55368b; }
+
+.pack-opening-overlay {
+  position: fixed;
+  z-index: 12000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 38%, rgba(255, 200, 68, .18), transparent 38%), rgba(3, 8, 17, .92);
+  backdrop-filter: blur(5px);
+}
+.pack-opening-overlay[hidden] { display: none; }
+.pack-opening-stage { position: relative; z-index: 2; display: grid; width: min(100%, 430px); max-height: 100%; place-items: center; gap: 16px; text-align: center; }
+.pack-opening-eyebrow { min-height: 1.4em; margin: 0; color: #ffe481; font-family: var(--font-pixel); font-size: clamp(.52rem, 2.4vw, .72rem); line-height: 1.45; text-transform: uppercase; text-shadow: 0 0 12px rgba(255, 202, 70, .48); }
+.mystery-pack-shell { position: relative; display: grid; width: clamp(180px, 54vw, 236px); aspect-ratio: .72; place-items: center; align-content: center; gap: 10px; border: 7px solid #170d20; clip-path: var(--pixel-card-silhouette); background: linear-gradient(115deg, transparent 0 32%, rgba(255, 250, 184, .55) 38%, transparent 45%), repeating-linear-gradient(135deg, rgba(73, 26, 88, .16) 0 8px, transparent 8px 16px), linear-gradient(155deg, #ffe477, #d88a25 58%, #6f2f13); box-shadow: inset 0 0 0 4px #fff0a8, inset 0 0 0 8px #9d5718, 10px 13px 0 #07040d, 0 0 32px rgba(255, 198, 51, .44); color: #291531; transform: rotate(-2deg); }
+.mystery-pack-shell::before, .mystery-pack-shell::after { content: ""; position: absolute; left: 7%; width: 86%; height: 12px; background: repeating-linear-gradient(90deg, #311438 0 10px, #f5b840 10px 20px); }
+.mystery-pack-shell::before { top: 7%; } .mystery-pack-shell::after { bottom: 7%; }
+.pack-seal { display: grid; width: 72px; height: 72px; place-items: center; border: 6px solid #5f2a16; border-radius: 50%; background: #2e1939; box-shadow: inset 0 0 0 4px #f8bf48, 0 0 19px rgba(255, 218, 87, .5); color: #fff2a6; font-family: var(--font-pixel); font-size: 1.8rem; font-style: normal; }
+.mystery-pack-shell span, .mystery-pack-shell strong, .mystery-pack-shell small { font-family: var(--font-pixel); text-transform: uppercase; }
+.mystery-pack-shell span { font-size: .58rem; } .mystery-pack-shell strong { font-size: clamp(.72rem, 3.5vw, 1rem); } .mystery-pack-shell small { max-width: 82%; font-size: .42rem; line-height: 1.4; }
+.pack-opening-overlay.is-opening .mystery-pack-shell { animation: packCrackOpen .52s steps(7) both; }
+.pack-reward { display: grid; place-items: center; gap: 14px; animation: packRewardReveal .46s steps(6) both; }
+.pack-reward-card { position: relative; display: grid; width: clamp(150px, 43vw, 194px); aspect-ratio: .69; place-items: center; border: 5px solid #101522; clip-path: var(--pixel-card-silhouette); }
+.pack-reward-card > span { position: absolute; top: 12px; left: 12px; font-family: var(--font-pixel); font-size: .7rem; }
+.pack-reward-card > strong { font-family: var(--font-pixel); font-size: clamp(2.2rem, 13vw, 4rem); }
+.pack-reward-card > i { font-size: clamp(2.2rem, 12vw, 3.8rem); font-style: normal; }
+.pack-reward-card.card-red { color: #d7284c; } .pack-reward-card.card-black { color: #152036; }
+.pack-reward-copy span, .pack-reward-copy h2, .pack-reward-copy p { font-family: var(--font-pixel); text-transform: uppercase; }
+.pack-reward-copy span { color: #77dcff; font-size: .56rem; }
+.pack-reward-copy h2 { margin: 7px 0; color: #ffe17c; font-size: clamp(.72rem, 3vw, 1rem); line-height: 1.35; }
+.pack-reward-copy p { margin: 0; color: #c1cddd; font-size: .45rem; }
+.pack-open-button, .pack-equip-button, .pack-collect-button { width: min(100%, 330px); min-height: 56px; border: 4px solid #2a1706; clip-path: var(--pixel-panel-silhouette); background: linear-gradient(180deg, #ffe276, #dc8e1e 63%, #8d470b); box-shadow: inset 0 0 0 3px #fff3ae, 0 7px 0 #492305, 0 0 18px rgba(255, 195, 54, .34); color: #231306; font-family: var(--font-pixel); font-size: clamp(.62rem, 2.8vw, .82rem); }
+.pack-open-button:active, .pack-equip-button:active, .pack-collect-button:active { transform: scale(.95); }
+.pack-reward-actions { display: grid; width: min(100%, 350px); gap: 10px; }
+.pack-equip-button { background: linear-gradient(180deg, #90f1b0, #31a963 64%, #17633a); box-shadow: inset 0 0 0 3px #d8ffe4, 0 7px 0 #0e4026; }
+.pack-collect-button { min-height: 46px; border-color: #172638; background: linear-gradient(180deg, #516984, #253c57); box-shadow: inset 0 0 0 2px #7994ae, 0 6px 0 #091321; color: #f7f1d9; }
+.pack-reveal-spark { position: fixed; z-index: 1; left: 50%; top: 42%; width: 8px; height: 8px; background: #ffe774; box-shadow: 0 0 10px #ffb52e; pointer-events: none; animation: packSparkBurst .82s steps(8) var(--pack-delay) both; }
+.pack-opening-overlay.is-collecting .pack-reward { animation: packRewardCollect .25s steps(4) both; }
+
+@keyframes mysteryPackStorePulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.24); } }
+@keyframes packCrackOpen { 0% { transform: rotate(-2deg) scale(1); filter: brightness(1); } 25% { transform: rotate(3deg) scale(1.04); } 50% { transform: rotate(-4deg) scale(.98); filter: brightness(1.25); } 75% { transform: rotate(2deg) scale(1.08); } 100% { transform: scale(.25, 1.3); opacity: 0; filter: brightness(2); } }
+@keyframes packRewardReveal { 0% { transform: scale(.48) translateY(50px); opacity: 0; filter: brightness(2.3); } 70% { transform: scale(1.1) translateY(-6px); opacity: 1; } 100% { transform: scale(1); filter: brightness(1); } }
+@keyframes packRewardCollect { to { transform: scale(.55) translateY(-90px); opacity: 0; } }
+@keyframes packSparkBurst { from { transform: translate(-50%, -50%) scale(.2); opacity: 1; } to { transform: translate(calc(-50% + var(--pack-x)), calc(-50% + var(--pack-y))) rotate(180deg) scale(.2); opacity: 0; } }
+
+@media (max-width: 390px) {
+  .card-collection-layout { grid-template-columns: 78px minmax(0, 1fr); gap: 7px; }
+  .collection-deck-pack { min-height: 102px; padding-inline: 3px; }
+  .collection-pack-art { width: 39px; height: 51px; }
+  .collection-detail { padding: 8px; }
+  .collection-card-row { grid-template-columns: repeat(13, 30px); }
+  .collection-card-slot { width: 30px; height: 41px; }
+  .mystery-pack-store-item { grid-template-columns: 66px minmax(0, 1fr); }
+  .mystery-pack-store-item > i { width: 54px; height: 72px; }
+}
+
+.reduce-motion .mystery-pack-store-item.has-waiting-pack,
+.reduce-motion .pack-opening-overlay.is-opening .mystery-pack-shell,
+.reduce-motion .pack-reward,
+.reduce-motion :is(.card, .cutin-card).card-skin-rainbow::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }

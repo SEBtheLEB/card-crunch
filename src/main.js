@@ -1,18 +1,21 @@
-import { createGame } from "./gameState.js?v=139";
-import { createUI } from "./ui.js?v=137";
+import { createGame } from "./gameState.js?v=141";
+import { createUI } from "./ui.js?v=141";
 import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=139";
 import { adManager } from "./ads.js?v=90";
 import { grantShieldToken, hasShieldToken } from "./save.js?v=90";
-import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=134";
+import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=141";
 import { haptic } from "./haptics.js?v=90";
 import { bindInstantAction } from "./input.js?v=90";
 import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=90";
 import { installFullscreenControls } from "./fullscreen.js?v=90";
 import { bindThemePicker, initializeTheme } from "./themes.js?v=90";
-import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=90";
+import { initializeCardCollection } from "./cardCollection.js?v=141";
+import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=141";
+import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=141";
 import { initializeTutorial } from "./tutorial.js?v=136";
 
 initializeTheme();
+initializeCardCollection();
 initializeCardSkin();
 const ui = createUI();
 const game = createGame(ui);
@@ -54,6 +57,7 @@ game.showMap();
 bindMenuNavigation();
 bindThemePicker(bindInstantAction);
 bindCardSkinPicker(bindInstantAction);
+initializeCardCollectionUI(bindInstantAction);
 installRainbowCardTrail();
 loadSettings();
 game.refreshEconomy();
@@ -144,6 +148,7 @@ function bindMenuNavigation() {
       "cardCrunchAdStats",
       "cardCrunchTheme",
       "cardCrunchCardSkin",
+      "cardCrunchCardCollectionV1",
       "cardCrunchTotalCrunches"
     ].forEach((key) => localStorage.removeItem(key));
     window.location.reload();
