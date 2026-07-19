@@ -1839,6 +1839,8 @@ button.is-pressing:not(:disabled) {
 }
 
 .cutin-full-hand-stage {
+  position: relative;
+  z-index: 1;
   gap: clamp(8px, 1.55dvh, 13px);
   max-width: min(96vw, 620px);
   text-align: center;
@@ -1926,6 +1928,30 @@ button.is-pressing:not(:disabled) {
 
 .cutin-full-hand-stage.is-full-hand-reacting .cutin-full-hand-title {
   animation: fullHandTitleCharge .58s steps(5, end) both;
+}
+
+.cutin-full-hand-stage.is-full-hand-ready .full-hand-card {
+  filter: brightness(1.08) drop-shadow(0 0 10px rgba(255, 197, 61, .42));
+}
+
+.is-full-hand-prelude .cutin-crunch-prompt {
+  color: #fff7c7;
+  font-size: clamp(.82rem, 3.7vw, 1.2rem);
+  text-shadow: 3px 3px 0 #5a3100, 0 0 16px var(--gold-glow);
+}
+
+.is-full-hand-prelude::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 48%, rgba(255, 247, 186, .76), rgba(255, 174, 35, .18) 34%, transparent 67%);
+}
+
+.is-full-hand-prelude.is-full-hand-impact::after {
+  animation: fullHandScreenImpact .34s steps(5, end) both;
 }
 
 .cutin-bank-counter {
@@ -2182,6 +2208,152 @@ button.is-pressing:not(:disabled) {
 
 .score-panel.is-hud-bank-floating.bank-final-flash {
   animation: hudBankFlash .34s ease both;
+}
+
+.major-score-ramp-backdrop {
+  position: fixed;
+  z-index: 86;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 197, 61, .2), transparent 32%),
+    rgba(2, 5, 13, .82);
+  transition: opacity .22s ease;
+}
+
+.major-score-ramp-backdrop::before {
+  content: "";
+  position: absolute;
+  inset: -38%;
+  opacity: .42;
+  background: repeating-conic-gradient(
+    from 0deg at 50% 50%,
+    transparent 0 9deg,
+    rgba(255, 210, 91, .18) 10deg 12deg,
+    transparent 13deg 27deg
+  );
+  animation: majorScoreLightSpin 4s linear infinite;
+}
+
+.major-score-ramp-backdrop.is-active {
+  opacity: 1;
+}
+
+.major-score-ramp-backdrop.is-peak::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 244, 184, .82);
+  animation: majorScoreScreenFlash .48s steps(5, end) both;
+}
+
+.major-score-ramp-backdrop.is-leaving {
+  opacity: 0;
+}
+
+.major-score-ramp-callout {
+  position: absolute;
+  z-index: 2;
+  top: calc(50% + clamp(88px, 14dvh, 128px));
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: min(92vw, 620px);
+  translate: -50% 0;
+  opacity: 0;
+  font-family: var(--font-pixel);
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.major-score-ramp-backdrop.is-active .major-score-ramp-callout {
+  opacity: 1;
+  animation: majorScoreCalloutIn .36s steps(5, end) .24s both;
+}
+
+.major-score-ramp-callout span {
+  color: white;
+  font-size: clamp(1.7rem, 9vw, 4.4rem);
+  line-height: .85;
+  text-shadow: 4px 4px 0 #6b3900, 0 0 18px #fff4bd, 0 0 42px var(--gold-glow);
+}
+
+.major-score-ramp-callout strong {
+  color: var(--gold-hot);
+  font-size: clamp(.74rem, 3.5vw, 1.3rem);
+  font-weight: 400;
+  text-shadow: 2px 2px 0 #422200, 0 0 14px var(--gold-glow);
+}
+
+.major-score-ramp-particles {
+  position: fixed;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.score-panel.is-hud-bank-floating.is-major-score-ramp {
+  z-index: 92;
+  transition:
+    top var(--major-bank-move, 360ms) cubic-bezier(.16, 1, .3, 1),
+    width var(--major-bank-move, 360ms) cubic-bezier(.16, 1, .3, 1),
+    height var(--major-bank-move, 360ms) cubic-bezier(.16, 1, .3, 1),
+    transform var(--major-bank-move, 360ms) cubic-bezier(.16, 1, .3, 1),
+    border-color .18s ease,
+    box-shadow .18s ease;
+}
+
+.score-panel.is-hud-bank-floating.is-major-score-ramp-active {
+  top: 50%;
+  width: min(calc(100vw - 24px - var(--safe-left) - var(--safe-right)), 680px);
+  height: clamp(126px, 18dvh, 188px);
+  transform: translate3d(-50%, -50%, 0) scale(1.04);
+  border-color: #ffe98a;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(255, 229, 138, .3), transparent 58%),
+    linear-gradient(180deg, rgba(31, 37, 67, .98), rgba(11, 14, 34, .99));
+  box-shadow:
+    0 0 0 3px rgba(117, 67, 9, .7),
+    0 0 36px rgba(255, 197, 61, .72),
+    0 0 90px rgba(255, 138, 42, .3),
+    inset 0 0 32px rgba(255, 229, 138, .14);
+}
+
+.score-panel.is-hud-bank-floating.is-major-score-ramp-active .hud-label {
+  font-size: clamp(.74rem, 3.5vw, 1.2rem);
+  color: #fff3a9;
+}
+
+.score-panel.is-hud-bank-floating.is-major-score-ramp-active strong {
+  font-size: clamp(2.45rem, 13vw, 6rem);
+  line-height: .8;
+  color: white;
+  text-shadow: 4px 4px 0 #6b3900, 0 0 18px #fff4bd, 0 0 45px var(--gold-glow);
+}
+
+.score-panel.is-hud-bank-floating.is-major-score-ramp-active.is-major-score-ramp-tick {
+  border-color: #fff8c9;
+  box-shadow:
+    0 0 0 3px rgba(117, 67, 9, .7),
+    0 0 50px rgba(255, 229, 138, .86),
+    0 0 110px rgba(255, 138, 42, .4),
+    inset 0 0 38px rgba(255, 244, 189, .22);
+}
+
+.score-panel.is-hud-bank-floating.is-major-score-ramp-peak {
+  animation: majorScoreBankPeak .6s steps(6, end) both;
+}
+
+.score-panel.is-hud-bank-floating.is-major-score-ramp-returning {
+  top: var(--bank-top);
+  width: min(var(--bank-width), calc(100vw - 24px - var(--safe-left) - var(--safe-right)));
+  height: var(--bank-height);
+  transform: translate3d(-50%, 0, 0) scale(1);
 }
 
 body.is-crunch-focus-active .game-shell > :not(.hud) {
@@ -4010,6 +4182,39 @@ h2 {
   68% { transform: scale(.98); filter: brightness(1.22); }
 }
 
+@keyframes fullHandScreenImpact {
+  0%, 100% { opacity: 0; }
+  28% { opacity: .82; }
+  52% { opacity: .15; }
+  76% { opacity: .54; }
+}
+
+@keyframes majorScoreLightSpin {
+  to { transform: rotate(1turn); }
+}
+
+@keyframes majorScoreScreenFlash {
+  0% { opacity: 0; }
+  26% { opacity: .94; }
+  48% { opacity: .18; }
+  68% { opacity: .7; }
+  100% { opacity: 0; }
+}
+
+@keyframes majorScoreCalloutIn {
+  from { opacity: 0; transform: translateY(12px) scale(.72); }
+  70% { opacity: 1; transform: translateY(-3px) scale(1.1); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes majorScoreBankPeak {
+  0%, 100% { transform: translate3d(-50%, -50%, 0) scale(1.04); }
+  18% { transform: translate3d(-50%, -50%, 0) scale(1.14); filter: brightness(1.7); }
+  36% { transform: translate3d(-50%, -50%, 0) scale(1.02); filter: brightness(1.15); }
+  58% { transform: translate3d(-50%, -50%, 0) scale(1.11); filter: brightness(1.55); }
+  78% { transform: translate3d(-50%, -50%, 0) scale(1.04); filter: brightness(1.22); }
+}
+
 .cutin-card.cutin-shared-target {
   animation: none !important;
   rotate: none !important;
@@ -4173,6 +4378,10 @@ h2 {
 .reduce-motion .cutin-inline-bonus,
 .reduce-motion .cutin-full-hand-stage.is-full-hand-reacting .full-hand-card,
 .reduce-motion .cutin-full-hand-stage.is-full-hand-reacting .cutin-full-hand-title,
+.reduce-motion .is-full-hand-prelude.is-full-hand-impact,
+.reduce-motion .major-score-ramp-backdrop::before,
+.reduce-motion .major-score-ramp-callout,
+.reduce-motion .score-panel.is-hud-bank-floating.is-major-score-ramp-peak,
 .reduce-motion .cutin-crunch-prompt {
   animation-duration: 80ms !important;
 }

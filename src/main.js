@@ -1,9 +1,9 @@
-import { createGame } from "./gameState.js?v=128";
+import { createGame } from "./gameState.js?v=129";
 import { createUI } from "./ui.js?v=126";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=128";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=129";
 import { adManager } from "./ads.js?v=90";
 import { grantShieldToken, hasShieldToken } from "./save.js?v=90";
-import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=120";
+import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=129";
 import { haptic } from "./haptics.js?v=90";
 import { bindInstantAction } from "./input.js?v=90";
 import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=90";

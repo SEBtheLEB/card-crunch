@@ -1,5 +1,5 @@
 import { formatCompactNumber } from "./format.js?v=90";
-import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=120";
+import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=129";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -35,6 +35,16 @@ const CRUNCH_DEBRIS_CONFIG = {
   particlesPerHit: [0, 12, 20, 40],
   gravity: 1480,
   maxLifetime: 2200
+};
+const MAJOR_SCORE_RAMP_CONFIG = {
+  minimumMilestone: 100000,
+  moveDuration: 360,
+  countDuration: 1680,
+  peakDuration: 620,
+  returnDuration: 420,
+  tickCount: 8,
+  maxParticles: 150,
+  devicePixelRatioCap: 1.25
 };
 const tapBounceTimers = new WeakMap();
 const preparedShardSets = new WeakMap();
@@ -213,6 +223,22 @@ export function createCrunchBankCounter({ panelEl = null, labelEl = null, valueE
     async finishToScore(scoreEl, advance = null) {
       await settleBankEffects();
       finished = true;
+      const finalScore = startingValue + value;
+      const scoreMilestone = getCrossedScoreMilestone(startingValue, finalScore);
+      if (useHudPanel && scoreMilestone) {
+        await playMajorScoreRamp({
+          bankEl: element,
+          valueEl: counterValueEl,
+          labelEl: element.querySelector(".hud-label"),
+          from: startingValue,
+          to: finalScore,
+          milestone: scoreMilestone
+        });
+        if (sourceLabelEl) sourceLabelEl.innerHTML = originalLabel;
+        if (sourceValueEl) sourceValueEl.textContent = formatCompactNumber(finalScore);
+        restoreHudBank(element, placement);
+        return;
+      }
       element.classList.add("bank-final-flash");
       await waitMaybe(advance, 260);
       if (useHudPanel) {
@@ -260,7 +286,18 @@ function restoreHudBank(element, placement = {}) {
     placement.parent.insertBefore(element, placement.nextSibling);
   }
 
-  element.classList.remove("is-crunch-bank", "is-hud-bank-floating", "bank-final-flash", "bank-bump", "score-bump");
+  element.classList.remove(
+    "is-crunch-bank",
+    "is-hud-bank-floating",
+    "bank-final-flash",
+    "bank-bump",
+    "score-bump",
+    "is-major-score-ramp",
+    "is-major-score-ramp-active",
+    "is-major-score-ramp-tick",
+    "is-major-score-ramp-peak",
+    "is-major-score-ramp-returning"
+  );
   element.style.removeProperty("--bank-top");
   element.style.removeProperty("--bank-width");
   element.style.removeProperty("--bank-height");
@@ -365,13 +402,10 @@ export async function playFullHandPrelude({ cards = [], fullHand = null } = {}) 
 
   try {
     const stage = overlay.querySelector(".cutin-full-hand-stage");
-    const cutinCards = [...overlay.querySelectorAll(".full-hand-card")];
+    const crunchPrompt = createInteractiveCrunchPrompt(overlay);
     playGameSfx("score_total");
-    await advance.wait(180);
-    stage?.classList.add("is-full-hand-reacting");
-    spawnCrunchDamageBurst(overlay, cutinCards, 3);
-    playGameSfx("crunch_hit_3");
-    await advance.wait(720);
+    stage?.classList.add("is-full-hand-ready");
+    await playInteractiveCardCrunch(overlay, advance, crunchPrompt, null, { fullHand: true });
     overlay.classList.add("is-leaving");
     await waitMaybe(advance, CUTSCENE_CONFIG.fadeOutDuration);
   } finally {
@@ -475,7 +509,7 @@ function createInteractiveCrunchPrompt(overlay) {
   return prompt;
 }
 
-async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null) {
+async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null, { fullHand = false } = {}) {
   const stage = overlay.querySelector(".cutin-stage");
   const cards = getActiveCutinCards(overlay);
   if (!stage || !cards.length || isCrunchSkipRequested()) return;
@@ -494,6 +528,14 @@ async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null
       card.dataset.crunchDamage = String(hit);
     });
     if (prepared) showPreparedCardAssembly(prepared, hit);
+    if (fullHand) {
+      stage.classList.remove("is-full-hand-reacting");
+      void stage.offsetWidth;
+      stage.classList.add("is-full-hand-reacting");
+      overlay.classList.remove("is-full-hand-impact");
+      void overlay.offsetWidth;
+      overlay.classList.add("is-full-hand-impact");
+    }
     playGameSfx(`crunch_hit_${hit}`);
     spawnCrunchDamageBurst(overlay, cards, hit);
     prompt.textContent = hit < CUTSCENE_CONFIG.interactiveCrunchHits
@@ -518,7 +560,7 @@ function spawnCrunchDamageBurst(overlay, cards, hit) {
     ? Math.min(5, CRUNCH_DEBRIS_CONFIG.particlesPerHit[hit] ?? 5)
     : CRUNCH_DEBRIS_CONFIG.particlesPerHit[hit] ?? 12;
   const desiredPerCard = fullHandBurst && !reduceMotion
-    ? Math.round(baseDesiredPerCard * 1.35)
+    ? Math.round(baseDesiredPerCard * 1.75)
     : baseDesiredPerCard;
   const available = Math.max(0, CRUNCH_DEBRIS_CONFIG.maxParticles - emitter.particles.length);
   const perCard = Math.min(desiredPerCard, Math.floor(available / activeCards.length));
@@ -1443,6 +1485,198 @@ function getCardFeedDuration(cardCount, grid = CARD_SHARD_CONFIG) {
     + Math.max(0, cardCount - 1) * CARD_SHARD_CONFIG.cardDelayStep
     + finalTravelDuration
     + 90;
+}
+
+function getCrossedScoreMilestone(from, to) {
+  const start = Math.max(0, Number(from) || 0);
+  const end = Math.max(0, Number(to) || 0);
+  if (end < MAJOR_SCORE_RAMP_CONFIG.minimumMilestone || end <= start) return null;
+
+  const startMagnitude = Math.floor(Math.log10(Math.max(1, start)));
+  const endMagnitude = Math.floor(Math.log10(Math.max(1, end)));
+  if (endMagnitude <= startMagnitude) return null;
+
+  const milestone = 10 ** endMagnitude;
+  return milestone >= MAJOR_SCORE_RAMP_CONFIG.minimumMilestone ? milestone : null;
+}
+
+async function playMajorScoreRamp({ bankEl, valueEl, labelEl, from, to, milestone }) {
+  if (!bankEl || !valueEl) return;
+
+  const originalLabel = labelEl?.innerHTML ?? "Score";
+  const backdrop = document.createElement("div");
+  backdrop.className = "major-score-ramp-backdrop";
+  backdrop.setAttribute("aria-hidden", "true");
+  backdrop.innerHTML = `
+    <div class="major-score-ramp-callout">
+      <span>${formatCompactNumber(milestone)}</span>
+      <strong>Score Break!</strong>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  document.body.classList.add("is-major-score-ramp-active");
+  bankEl.classList.add("is-major-score-ramp");
+  playGameSfx("score_total");
+
+  try {
+    await nextPaint();
+    backdrop.classList.add("is-active");
+    bankEl.classList.add("is-major-score-ramp-active");
+    await sleep(MAJOR_SCORE_RAMP_CONFIG.moveDuration);
+
+    if (labelEl) labelEl.textContent = "Score Surge";
+    valueEl.textContent = formatCompactNumber(from);
+    const particleRun = playMajorScoreRampParticles(backdrop, bankEl, MAJOR_SCORE_RAMP_CONFIG.countDuration + MAJOR_SCORE_RAMP_CONFIG.peakDuration);
+    await countMajorScoreRamp(valueEl, bankEl, from, to, MAJOR_SCORE_RAMP_CONFIG.countDuration);
+
+    bankEl.classList.add("is-major-score-ramp-peak");
+    backdrop.classList.add("is-peak");
+    playGameSfx("score_ramp_peak");
+    await sleep(MAJOR_SCORE_RAMP_CONFIG.peakDuration);
+
+    if (labelEl) labelEl.innerHTML = originalLabel;
+    bankEl.classList.remove("is-major-score-ramp-active", "is-major-score-ramp-tick", "is-major-score-ramp-peak");
+    bankEl.classList.add("is-major-score-ramp-returning");
+    backdrop.classList.add("is-leaving");
+    await sleep(MAJOR_SCORE_RAMP_CONFIG.returnDuration);
+    await particleRun;
+  } finally {
+    valueEl.textContent = formatCompactNumber(to);
+    if (labelEl) labelEl.innerHTML = originalLabel;
+    bankEl.classList.remove(
+      "is-major-score-ramp",
+      "is-major-score-ramp-active",
+      "is-major-score-ramp-peak",
+      "is-major-score-ramp-returning"
+    );
+    document.body.classList.remove("is-major-score-ramp-active");
+    backdrop.remove();
+  }
+}
+
+function countMajorScoreRamp(valueEl, bankEl, from, to, duration) {
+  const startedAt = performance.now();
+  let lastTick = -1;
+  let lastRendered = "";
+
+  return new Promise((resolve) => {
+    const tick = (now) => {
+      const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
+      const eased = progress < .7
+        ? .72 * Math.pow(progress / .7, 1.72)
+        : .72 + .28 * (1 - Math.pow(1 - (progress - .7) / .3, 3));
+      const value = Math.round(from + (to - from) * eased);
+      const rendered = formatCompactNumber(value);
+      if (rendered !== lastRendered) {
+        lastRendered = rendered;
+        valueEl.textContent = rendered;
+      }
+
+      const scoreTick = Math.min(
+        MAJOR_SCORE_RAMP_CONFIG.tickCount - 1,
+        Math.floor(progress * MAJOR_SCORE_RAMP_CONFIG.tickCount)
+      );
+      if (scoreTick > lastTick) {
+        lastTick = scoreTick;
+        playGameSfx("score_ramp_tick");
+        valueEl.animate?.([
+          { scale: "1", filter: "brightness(1)" },
+          { scale: "1.18", filter: "brightness(1.8) drop-shadow(0 0 15px #ffc53d)" },
+          { scale: "1", filter: "brightness(1)" }
+        ], { duration: 190, easing: "steps(4, end)" });
+        bankEl.classList.toggle("is-major-score-ramp-tick", scoreTick % 2 === 0);
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        valueEl.textContent = formatCompactNumber(to);
+        resolve();
+      }
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+function playMajorScoreRampParticles(backdrop, bankEl, duration) {
+  const canvas = document.createElement("canvas");
+  canvas.className = "major-score-ramp-particles";
+  backdrop.appendChild(canvas);
+  const context = canvas.getContext("2d", { alpha: true, desynchronized: true });
+  if (!context) {
+    canvas.remove();
+    return Promise.resolve();
+  }
+
+  const dpr = Math.min(window.devicePixelRatio || 1, MAJOR_SCORE_RAMP_CONFIG.devicePixelRatioCap);
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(height * dpr);
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  context.setTransform(dpr, 0, 0, dpr, 0, 0);
+  context.imageSmoothingEnabled = false;
+
+  const bankRect = bankEl.getBoundingClientRect();
+  const originX = bankRect.left + bankRect.width / 2;
+  const originY = bankRect.top + bankRect.height / 2;
+  let seed = (Math.round(originX * 37) ^ Math.round(originY * 71) ^ Math.round(duration)) >>> 0;
+  const random = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  const particles = Array.from({ length: MAJOR_SCORE_RAMP_CONFIG.maxParticles }, (_, index) => {
+    const angle = random() * Math.PI * 2;
+    const speed = 80 + random() * 360;
+    return {
+      x: originX,
+      y: originY,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 85,
+      size: 2 + Math.floor(random() * 5),
+      delay: (index % 18) * 54 + random() * 180,
+      life: 620 + random() * 850,
+      color: index % 5 === 0 ? "#fff8bd" : index % 3 === 0 ? "#ff8a2a" : "#ffc53d"
+    };
+  });
+  const startedAt = performance.now();
+  let previousAt = startedAt;
+
+  return new Promise((resolve) => {
+    const draw = (now) => {
+      const elapsed = now - startedAt;
+      const delta = Math.min(34, now - previousAt) / 1000;
+      previousAt = now;
+      context.clearRect(0, 0, width, height);
+
+      particles.forEach((particle) => {
+        const age = elapsed - particle.delay;
+        if (age < 0 || age > particle.life) return;
+        particle.vy += 165 * delta;
+        particle.x += particle.vx * delta;
+        particle.y += particle.vy * delta;
+        particle.vx *= .988;
+        particle.vy *= .992;
+        const alpha = Math.max(0, 1 - age / particle.life);
+        context.globalAlpha = alpha;
+        context.fillStyle = particle.color;
+        context.fillRect(Math.round(particle.x), Math.round(particle.y), particle.size, particle.size + (particle.vy < 0 ? 3 : 0));
+      });
+      context.globalAlpha = 1;
+
+      if (elapsed < duration) requestAnimationFrame(draw);
+      else {
+        canvas.remove();
+        resolve();
+      }
+    };
+    requestAnimationFrame(draw);
+  });
+}
+
+function nextPaint() {
+  return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
 async function flyValueToBank(sourceEl, bankEl, value, advance = null) {

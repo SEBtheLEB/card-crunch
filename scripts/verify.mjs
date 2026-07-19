@@ -227,7 +227,7 @@ if (sharedHandoffSource.includes('classList.remove("cutin-shared-source-hidden")
   || !css.includes(".cutin-shared-source-hidden {\n  opacity: 0 !important;")) {
   throw new Error("Consumed hand and table cards must stay absent behind the Crunch cutscene");
 }
-if (!animationsSource.includes('from "./crunchCutscene.js?v=128"') || !gameStateSource.includes('from "./crunchCutscene.js?v=128"')) {
+if (!animationsSource.includes('from "./crunchCutscene.js?v=129"') || !gameStateSource.includes('from "./crunchCutscene.js?v=129"')) {
   throw new Error("Crunch skip and handoff state must use one shared module instance");
 }
 if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("--shard-burst-x") || !css.includes("cutin-fracture-map") || !css.includes("--shard-rest-x") || !css.includes("cutin-card-shard.is-vacuuming")) {
@@ -267,6 +267,21 @@ if (!scoringSource.includes("buildCrunchPresentationEntries") || !animationsSour
 }
 if (!cutsceneSource.includes("playFullHandPrelude") || !cutsceneSource.includes("is-full-hand-prelude") || !css.includes("cutin-full-hand-stage")) {
   throw new Error("The full-hand opening reaction is missing");
+}
+const fullHandPreludeSource = cutsceneSource.slice(
+  cutsceneSource.indexOf("export async function playFullHandPrelude"),
+  cutsceneSource.indexOf("export async function playBustCutin")
+);
+if (!fullHandPreludeSource.includes("playInteractiveCardCrunch") || !fullHandPreludeSource.includes("fullHand: true")) {
+  throw new Error("Full Hand must wait for the complete three-hit Crunch interaction");
+}
+if (!cutsceneSource.includes("getCrossedScoreMilestone")
+  || !cutsceneSource.includes("playMajorScoreRamp")
+  || !cutsceneSource.includes("countMajorScoreRamp")
+  || !css.includes("is-major-score-ramp-active")
+  || !audioSource.includes("score_ramp_tick")
+  || !audioSource.includes("score_ramp_peak")) {
+  throw new Error("Major score magnitude celebration is missing");
 }
 if (!mainSource.includes("activePressTargets") || mainSource.includes('classList.add("tap-pop")')) {
   throw new Error("Stable press feedback regression guards are missing");

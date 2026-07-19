@@ -393,6 +393,15 @@ const EFFECTS = {
   },
   score_step: () => tone({ frequency: 720, endFrequency: 850, duration: 0.07, gain: 0.055, type: "triangle" }),
   score_total: () => arpeggio([523, 659, 784, 1047], { duration: 0.2, spacing: 0.045, gain: 0.09 }),
+  score_ramp_tick: () => {
+    tone({ frequency: 740, endFrequency: 980, duration: 0.1, gain: 0.065, type: "triangle" });
+    tone({ frequency: 1480, endFrequency: 1760, duration: 0.075, delay: 0.025, gain: 0.028, type: "sine" });
+  },
+  score_ramp_peak: () => {
+    arpeggio([523, 659, 784, 1047, 1319, 1568], { duration: 0.24, spacing: 0.055, gain: 0.095, type: "triangle" });
+    chord([262, 523, 1047], { duration: 0.42, gain: 0.085, type: "square", rise: 1.02 });
+    noise({ duration: 0.12, gain: 0.055, highpass: 2600 });
+  },
   score_arrive: () => {
     chord([523, 659, 784], { duration: 0.24, gain: 0.1, type: "triangle", rise: 1.01 });
     noise({ duration: 0.075, gain: 0.045, highpass: 2800 });
@@ -425,6 +434,7 @@ const HAPTIC_BY_SOUND = {
   card_resolve: "match",
   double_match: "match",
   math_combo: "match",
+  score_ramp_peak: "score",
   score_arrive: "score",
   bank: "bank",
   revive: "score",
