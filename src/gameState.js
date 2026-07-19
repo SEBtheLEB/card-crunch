@@ -1,5 +1,5 @@
 import { drawCards, shuffle, createDeck } from "./deck.js?v=90";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=139";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=144";
 import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=126";
 import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=143";
 import { ensurePlayableHand } from "./handSafety.js?v=90";

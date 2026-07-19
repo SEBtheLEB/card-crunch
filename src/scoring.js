@@ -31,7 +31,6 @@ export const SELECTION_MULTIPLIERS = {
 
 export const STACK_TYPE_CONFIG = {
   flushCrunch: { minCardsSameSuit: 4, multiplier: 2 },
-  pairCrunch: { flatBonus: 1000 },
   tripleRank: { multiplier: 2 },
   chainCrunch: { minMathLinks: 2, multiplier: 3 },
   mathFeast: { minMathCards: 3, multiplier: 2 },
@@ -87,6 +86,7 @@ export function evaluateStackAdd(stackCards, selectedCard) {
 
   if (rankMatches.length > 0) {
     const label = getNumberMatchLabel(rankMatches.length + 1);
+    const rankSuitMatches = rankMatches.filter((index) => stackCards[index].suit === selectedCard.suit);
     return createMatch({
       type: MATCH_TYPES.RANK,
       label,
@@ -99,7 +99,15 @@ export function evaluateStackAdd(stackCards, selectedCard) {
         right: selectedCard.rank,
         result: selectedCard.rank
       },
-      cutinLabel: label
+      cutinLabel: label,
+      compoundMatch: rankSuitMatches.length > 0
+        ? {
+            type: "rank-suit",
+            label: "NUMBER + SUIT",
+            multiplier: 2,
+            matchedIndexes: rankSuitMatches
+          }
+        : null
     });
   }
 
@@ -176,7 +184,8 @@ export function createStackEntry(card, match) {
     matchedIndexes: match.matchedIndexes,
     label: match.label,
     equation: match.equation,
-    cutinLabel: match.cutinLabel
+    cutinLabel: match.cutinLabel,
+    compoundMatch: match.compoundMatch ?? null
   };
 }
 
@@ -186,7 +195,9 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
 
   const presentationEntries = buildCrunchPresentationEntries(resolution.history);
   const displayPoints = presentationEntries.map((entry) => getRuleAdjustedDisplayPoints(entry, gameplayModifier));
-  const awardedPoints = presentationEntries.map((entry, index) => displayPoints[index] * getEntryMatchTierMultiplier(entry));
+  const awardedPoints = presentationEntries.map((entry, index) => (
+    displayPoints[index] * getEntryMatchTierMultiplier(entry) * getCompoundMatchMultiplier(entry)
+  ));
   const storedBase = awardedPoints.reduce((sum, points) => sum + points, 0);
   const handMultiplier = getSelectionMultiplier(selectedCards.length);
   const speedBonus = getSpeedBonus(timeLeft);
@@ -265,6 +276,7 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
         matchCount: entry.matchCount,
         inlineBonuses: [
           ...createMatchTierBonus(entry),
+          ...createCompoundMatchBonus(entry),
           ...inlineMultipliers,
           ...(index === presentationEntries.length - 1 ? inlineFlatBonuses : [])
         ]
@@ -311,6 +323,25 @@ function getMatchTierMultiplier(matchCount = 2) {
 function getEntryMatchTierMultiplier(entry) {
   if (entry.matchType !== MATCH_TYPES.RANK && entry.matchType !== MATCH_TYPES.SUIT) return 1;
   return getMatchTierMultiplier(entry.matchCount);
+}
+
+function getCompoundMatchMultiplier(entry) {
+  if (entry.matchType !== MATCH_TYPES.RANK || entry.matchCount !== 2) return 1;
+  return entry.compoundMatch?.type === "rank-suit"
+    ? Math.max(1, Number(entry.compoundMatch.multiplier) || 1)
+    : 1;
+}
+
+function createCompoundMatchBonus(entry) {
+  const multiplier = getCompoundMatchMultiplier(entry);
+  if (multiplier <= 1) return [];
+  return [{
+    label: entry.compoundMatch.label,
+    value: `x${multiplier}`,
+    tone: "double",
+    kind: "entry-multiplier",
+    multiplier
+  }];
 }
 
 function createMatchTierBonus(entry) {
@@ -403,7 +434,6 @@ export function detectStackTypes(stackCards, history, selectedCount) {
     .map((entry) => entry.matchedCards.length + 1));
 
   if (maxSuit >= STACK_TYPE_CONFIG.flushCrunch.minCardsSameSuit) bonuses.push({ label: "FLUSH CRUNCH", value: "x2", multiplier: STACK_TYPE_CONFIG.flushCrunch.multiplier, tone: "suit" });
-  if (maxRank >= 2 && strongestRankMatch < 3) bonuses.push({ label: "PAIR BONUS", value: "+1000", flatBonus: STACK_TYPE_CONFIG.pairCrunch.flatBonus, tone: "rank" });
   if (maxRank >= 3 && strongestRankMatch < 3) bonuses.push({ label: "TRIPLE RANK", value: "x2", multiplier: STACK_TYPE_CONFIG.tripleRank.multiplier, tone: "rank" });
   if (mathCards >= STACK_TYPE_CONFIG.chainCrunch.minMathLinks) bonuses.push({ label: "CHAIN CRUNCH", value: "x3", multiplier: STACK_TYPE_CONFIG.chainCrunch.multiplier, tone: "math" });
   if (mathCards >= STACK_TYPE_CONFIG.mathFeast.minMathCards) bonuses.push({ label: "MATH FEAST", value: "x2", multiplier: STACK_TYPE_CONFIG.mathFeast.multiplier, tone: "math" });
@@ -446,6 +476,18 @@ export function runScoringSelfTests() {
     timeLeft: 3,
     streak: 0
   });
+  const plainNumberMatch = calculateCrunchScore({
+    baseStack: [card(7, "clubs"), card(2, "diamonds")],
+    selectedCards: [card(7, "hearts")],
+    timeLeft: 3,
+    streak: 0
+  });
+  const numberAndSuitMatch = calculateCrunchScore({
+    baseStack: [card(7, "hearts"), card(2, "clubs")],
+    selectedCards: [card(7, "hearts")],
+    timeLeft: 3,
+    streak: 0
+  });
   const perfectHand = calculateCrunchScore({
     baseStack: base,
     selectedCards: [card(8, "hearts"), card("K", "clubs", 13), card(2, "clubs"), card(10, "diamonds")],
@@ -461,6 +503,21 @@ export function runScoringSelfTests() {
     { name: "speed bonus", pass: success.speedBonus.multiplier === 2 },
     { name: "math base ignores match tiers", pass: success.cutscene.entries[0].points === SCORE_CONFIG.math },
     { name: "suit surge modifier", pass: suitSurge.success && suitSurge.storedBase === 200 },
+    {
+      name: "plain number match has no duplicate pair bonus",
+      pass: plainNumberMatch.success
+        && plainNumberMatch.storedBase === SCORE_CONFIG.rank
+        && plainNumberMatch.total === SCORE_CONFIG.rank
+        && !plainNumberMatch.stackTypes.some((bonus) => bonus.label === "PAIR BONUS")
+        && !plainNumberMatch.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "NUMBER + SUIT")
+    },
+    {
+      name: "same number and suit earns one compound bonus",
+      pass: numberAndSuitMatch.success
+        && numberAndSuitMatch.storedBase === SCORE_CONFIG.rank * 2
+        && numberAndSuitMatch.total === SCORE_CONFIG.rank * 2
+        && numberAndSuitMatch.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "NUMBER + SUIT" && bonus.value === "x2")
+    },
     { name: "full hand fever modifier", pass: fullHandFever.success && fullHandFever.potRuleMultiplier === 2 },
     { name: "cutscene awards equal total", pass: success.cutscene.entries.reduce((sum, entry) => sum + entry.bankPoints, 0) === success.total },
     { name: "full cutscene awards equal total", pass: fullHandFever.cutscene.entries.reduce((sum, entry) => sum + entry.bankPoints, 0) === fullHandFever.total },
@@ -494,8 +551,8 @@ export function runScoringSelfTests() {
   return cases.map((test) => ({ ...test, result: test.name.includes("fail") ? fail : success }));
 }
 
-function createMatch({ type, label, basePoints, matchedIndexes, matchedCards, equation, cutinLabel }) {
-  return { valid: true, type, label, basePoints, matchedIndexes, matchedCards, equation, cutinLabel };
+function createMatch({ type, label, basePoints, matchedIndexes, matchedCards, equation, cutinLabel, compoundMatch = null }) {
+  return { valid: true, type, label, basePoints, matchedIndexes, matchedCards, equation, cutinLabel, compoundMatch };
 }
 
 function getNumberMatchLabel(matchCount) {

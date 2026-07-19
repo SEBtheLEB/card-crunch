@@ -1,4 +1,4 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=143";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=144";
 import { isPotUnlocked } from "./progression.js?v=126";
 import { formatCompactNumber } from "./format.js?v=90";
 import { hasShieldToken } from "./save.js?v=90";

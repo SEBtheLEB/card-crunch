@@ -1,6 +1,6 @@
-import { createGame } from "./gameState.js?v=143";
-import { createUI } from "./ui.js?v=143";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=139";
+import { createGame } from "./gameState.js?v=144";
+import { createUI } from "./ui.js?v=144";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=144";
 import { adManager } from "./ads.js?v=90";
 import { grantShieldToken, hasShieldToken } from "./save.js?v=90";
 import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=143";
