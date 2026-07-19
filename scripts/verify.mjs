@@ -22,6 +22,8 @@ const required = [
   "assets/sfx/deal-hand-2.mp3",
   "assets/sfx/deal-hand-3.mp3",
   "assets/sfx/deal-hand-4.mp3",
+  "assets/backgrounds/pixel-casino-menu.jpg",
+  "assets/backgrounds/pixel-casino-table.jpg",
   "styles/main.css",
   "capacitor.config.json"
 ];
@@ -33,6 +35,11 @@ if ((await stat(resolve(root, "assets/sfx/playing-card.mp3"))).size <= 0) {
 for (let index = 1; index <= 4; index += 1) {
   if ((await stat(resolve(root, `assets/sfx/deal-hand-${index}.mp3`))).size <= 0) {
     throw new Error(`Deal sample ${index} is empty`);
+  }
+}
+for (const background of ["pixel-casino-menu.jpg", "pixel-casino-table.jpg"]) {
+  if ((await stat(resolve(root, `assets/backgrounds/${background}`))).size < 100_000) {
+    throw new Error(`Casino background ${background} is missing or unexpectedly small`);
   }
 }
 
@@ -73,6 +80,10 @@ if (dealTimingModule.getRoundDealDuration(4, 2) >= 2000) {
 }
 
 const html = await readFile(resolve(root, "index.html"), "utf8");
+const backgroundStyles = await readFile(resolve(root, "styles/main.css"), "utf8");
+if (!backgroundStyles.includes("pixel-casino-menu.jpg") || !backgroundStyles.includes("pixel-casino-table.jpg")) {
+  throw new Error("Casino room backgrounds are not connected to the UI");
+}
 if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButton")) {
   throw new Error("Release UI hooks are missing");
 }

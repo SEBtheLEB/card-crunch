@@ -18,13 +18,9 @@
   --bg-0: #04050d;
   --bg-1: #0a0f24;
   --bg-2: #121a3a;
-  --casino-table-bg:
-    radial-gradient(90% 62% at 50% 40%, transparent 0 62%, rgba(255, 216, 138, .07) 63.5%, transparent 66%),
-    radial-gradient(110% 55% at 50% -12%, rgba(255, 197, 61, .14), transparent 55%),
-    repeating-linear-gradient(52deg, rgba(255, 255, 255, .014) 0 2px, transparent 2px 5px),
-    repeating-linear-gradient(-52deg, rgba(0, 0, 0, .05) 0 1px, transparent 1px 5px),
-    radial-gradient(95% 72% at 50% 36%, rgba(26, 108, 66, .82) 0%, rgba(15, 66, 42, .55) 48%, rgba(8, 32, 24, .25) 70%, transparent 84%),
-    linear-gradient(180deg, #0d1a2e 0%, #081120 52%, #04050d 100%);
+  --casino-table-bg: linear-gradient(180deg, #091427, #063124 36%, #03130f);
+  --menu-casino-art: url("../assets/backgrounds/pixel-casino-menu.jpg");
+  --game-casino-art: url("../assets/backgrounds/pixel-casino-table.jpg");
 
   /* Glass panels */
   --glass: rgba(16, 22, 48, .58);
@@ -92,27 +88,25 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   Ambient background: slow-breathing aurora + vignette
+   The casino room is authored as pixel art. Screens provide their own scene;
+   the body only supplies quiet gutters on wide displays.
    -------------------------------------------------------------------------- */
 
 body {
   position: fixed;
   inset: 0;
   min-height: 100dvh;
-  background: var(--casino-table-bg);
+  background: #02060d;
 }
 
 body::before {
   content: "";
   position: fixed;
-  inset: -20%;
+  inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(38% 30% at 30% 30%, rgba(255, 216, 120, .12), transparent 70%),
-    radial-gradient(34% 28% at 72% 24%, rgba(46, 204, 128, .1), transparent 70%),
-    radial-gradient(30% 26% at 55% 70%, rgba(255, 197, 61, .08), transparent 70%);
-  animation: auroraDrift 16s ease-in-out infinite alternate;
-  will-change: transform;
+    linear-gradient(90deg, rgba(0, 0, 0, .68), transparent 26% 74%, rgba(0, 0, 0, .68)),
+    radial-gradient(90% 92% at 50% 42%, transparent 48%, rgba(0, 0, 0, .38) 100%);
 }
 
 body::after {
@@ -120,9 +114,7 @@ body::after {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background:
-    radial-gradient(140% 110% at 50% 42%, transparent 40%, rgba(2, 3, 9, .55) 88%),
-    repeating-radial-gradient(circle at 50% 40%, rgba(255, 255, 255, .016) 0 1px, transparent 1px 8px);
+  background: radial-gradient(140% 110% at 50% 42%, transparent 46%, rgba(1, 3, 8, .48) 100%);
 }
 
 /* Low-cost pixel/scanline pass. It sits above every screen, including
@@ -132,12 +124,9 @@ body::after {
   z-index: 2147483000;
   inset: 0;
   pointer-events: none;
-  opacity: .34;
-  background:
-    repeating-linear-gradient(0deg, rgba(1, 5, 10, .22) 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(90deg, rgba(255, 248, 210, .06) 0 1px, transparent 1px 4px),
-    repeating-conic-gradient(from 45deg, rgba(255, 255, 255, .04) 0 25%, rgba(0, 0, 0, .06) 0 50%) 0 0 / 6px 6px;
-  mix-blend-mode: overlay;
+  opacity: .16;
+  background: repeating-linear-gradient(0deg, rgba(1, 5, 10, .17) 0 1px, transparent 1px 4px);
+  mix-blend-mode: soft-light;
   image-rendering: pixelated;
   contain: strict;
 }
@@ -145,7 +134,7 @@ body::after {
 /* Keep the pixel character without compositing a blend layer over dozens of
    moving card fragments during Crunch. */
 body.is-crunch-focus-active .pixel-screen-filter {
-  opacity: .2;
+  opacity: .1;
   mix-blend-mode: normal;
   background: repeating-linear-gradient(0deg, rgba(1, 5, 10, .18) 0 1px, transparent 1px 4px);
 }
@@ -197,10 +186,17 @@ button.is-pressing:not(:disabled) {
   min-height: 100dvh;
   margin: 0 auto;
   padding: calc(12px + var(--safe-top)) calc(14px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(14px + var(--safe-left));
-  background: var(--casino-table-bg);
+  background-color: #063124;
+  background-image:
+    linear-gradient(180deg, rgba(1, 5, 13, .18) 0%, transparent 24% 76%, rgba(1, 5, 9, .2) 100%),
+    var(--game-casino-art);
+  background-position: center;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 216, 138, .06),
-    0 0 42px rgba(0, 0, 0, .3);
+    inset 0 0 0 2px rgba(185, 129, 55, .26),
+    inset 0 0 72px rgba(0, 0, 0, .2),
+    0 0 48px rgba(0, 0, 0, .72);
   isolation: isolate;
 }
 
@@ -2484,8 +2480,7 @@ h2 {
    MAIN MENU — redesigned
    ========================================================================== */
 
-/* Poker-table felt: lit green center falling off to the app's midnight
-   edges, with a faint gold oval marking the table rim. */
+/* The menu is a separate casino alcove overlooking the same felt table. */
 .main-menu-screen {
   display: none;
   align-items: stretch;
@@ -2493,7 +2488,13 @@ h2 {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right)) calc(20px + var(--safe-bottom)) calc(16px + var(--safe-left));
-  background: var(--casino-table-bg);
+  background-color: #02060d;
+  background-image:
+    linear-gradient(180deg, rgba(1, 4, 11, .08), rgba(1, 5, 9, .18)),
+    var(--menu-casino-art);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -2503,12 +2504,18 @@ h2 {
   place-items: start center;
 }
 
-/* Floating suit ambience */
+/* Preserve the portrait room composition on wider displays instead of
+   enlarging it until the ceiling and table rail are cropped away. */
+@media (min-aspect-ratio: 3 / 4) {
+  .main-menu-screen {
+    background-size: 100% 100%, auto 100dvh;
+  }
+}
+
+/* The backdrop already carries the room detail; duplicate floating suits
+   made the home screen visually noisy and cost a compositing layer. */
 .menu-ambient {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
+  display: none;
 }
 
 .menu-ambient i {
@@ -2534,8 +2541,10 @@ h2 {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(60% 36% at 50% 18%, rgba(255, 229, 138, .1), transparent 72%);
-  animation: spotlightBreathe 4.5s ease-in-out infinite alternate;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, .3), transparent 16% 84%, rgba(0, 0, 0, .3)),
+    radial-gradient(46% 30% at 50% 20%, rgba(255, 220, 127, .08), transparent 76%);
+  animation: none;
 }
 
 .menu-shell {
@@ -5052,32 +5061,15 @@ h2 {
   image-rendering: pixelated;
 }
 
-.game-shell {
-  background:
-    repeating-conic-gradient(from 45deg, rgba(255, 255, 255, .018) 0 25%, rgba(0, 0, 0, .024) 0 50%) 0 0 / 10px 10px,
-    var(--casino-table-bg);
-}
-
-.main-menu-screen {
-  background:
-    linear-gradient(90deg, transparent 0 48%, rgba(255, 218, 115, .055) 48% 52%, transparent 52%) 0 0 / 48px 48px,
-    linear-gradient(0deg, transparent 0 48%, rgba(0, 0, 0, .065) 48% 52%, transparent 52%) 0 0 / 48px 48px,
-    repeating-conic-gradient(from 45deg, rgba(255, 255, 255, .018) 0 25%, rgba(0, 0, 0, .03) 0 50%) 0 0 / 8px 8px,
-    var(--casino-table-bg);
-}
-
 .menu-spotlight {
   background:
-    radial-gradient(42% 28% at 50% 25%, rgba(255, 224, 129, .16) 0 64%, transparent 66%),
-    radial-gradient(64% 46% at 50% 42%, rgba(27, 139, 85, .15), transparent 72%);
+    linear-gradient(90deg, rgba(0, 0, 0, .3), transparent 16% 84%, rgba(0, 0, 0, .3)),
+    radial-gradient(46% 30% at 50% 20%, rgba(255, 224, 129, .08), transparent 76%);
   animation: none;
 }
 
 .menu-ambient i {
-  opacity: .16;
-  filter: none;
-  font-family: var(--font-pixel);
-  animation-timing-function: steps(4, end);
+  display: none;
 }
 
 .hud-panel,

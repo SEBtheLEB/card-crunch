@@ -1,4 +1,4 @@
-const CACHE_NAME = "card-crunch-v130";
+const CACHE_NAME = "card-crunch-v131";
 const ASSETS = [
   "./",
   "./index.html",
@@ -32,6 +32,8 @@ const ASSETS = [
   "./assets/icons/icon-192.svg",
   "./assets/icons/icon-512.svg",
   "./assets/fonts/press-start-2p.ttf",
+  "./assets/backgrounds/pixel-casino-menu.jpg",
+  "./assets/backgrounds/pixel-casino-table.jpg",
   "./assets/sfx/playing-card.mp3",
   "./assets/sfx/deal-hand-1.mp3",
   "./assets/sfx/deal-hand-2.mp3",
