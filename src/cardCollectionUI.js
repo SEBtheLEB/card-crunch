@@ -1,5 +1,5 @@
 import { playGameSfx } from "./audio.js?v=143";
-import { economy, ECONOMY_CONFIG } from "./economy.js?v=141";
+import { economy, ECONOMY_CONFIG } from "./economy.js?v=145";
 import {
   CARD_RANKS,
   CARD_SUITS,
@@ -11,11 +11,13 @@ import {
   equipCollectedCard,
   getCardCollectionSnapshot,
   getCollectionProgress,
+  isFullDeckSkinOwned,
   isCardSkinOwned,
   parseCardKey,
-  subscribeToCardCollection
-} from "./cardCollection.js?v=141";
-import { applyCardSkin, CARD_SKINS, syncCardSkinFromCollection } from "./cardSkins.js?v=141";
+  subscribeToCardCollection,
+  unlockFullDeckSkin
+} from "./cardCollection.js?v=145";
+import { applyCardSkin, CARD_SKINS, preloadCardSkinAssets, syncCardSkinFromCollection } from "./cardSkins.js?v=145";
 
 const SUIT_SYMBOLS = Object.freeze({ hearts: "\u2665", diamonds: "\u2666", clubs: "\u2663", spades: "\u2660" });
 const SKIN_ICONS = Object.freeze({ dark: "\u263E", pink: "\u2665", gold: "\u2605", rainbow: "\u25C6" });
@@ -28,6 +30,8 @@ export function initializeCardCollectionUI(bindAction) {
   elements = {
     buyPackButton: document.querySelector("#buyMysteryPackButton"),
     buyPackPrice: document.querySelector("#mysteryPackPrice"),
+    buyPinkArcadeDeckButton: document.querySelector("#buyPinkArcadeDeckButton"),
+    pinkArcadeDeckPrice: document.querySelector("#pinkArcadeDeckPrice"),
     storeStatus: document.querySelector("#storeStatus"),
     collectionDeckList: document.querySelector("#collectionDeckList"),
     collectionDetail: document.querySelector("#collectionDetail"),
@@ -42,6 +46,7 @@ export function initializeCardCollectionUI(bindAction) {
   };
 
   bindAction(elements.buyPackButton, buyOrResumePack);
+  bindAction(elements.buyPinkArcadeDeckButton, buyOrEquipPinkArcadeDeck);
   bindAction(elements.openButton, revealPendingPack);
   bindAction(elements.collectButton, () => claimAndClosePack(false));
   bindAction(elements.equipButton, () => claimAndClosePack(true));
@@ -85,6 +90,29 @@ function buyOrResumePack() {
   }
   playGameSfx("pack_buy");
   showPackOverlay();
+}
+
+function buyOrEquipPinkArcadeDeck() {
+  const skinId = "pink_arcade";
+  const alreadyOwned = isFullDeckSkinOwned(skinId);
+  if (!alreadyOwned && !economy.spendCoins(ECONOMY_CONFIG.pinkArcadeDeckCost)) {
+    const missing = Math.max(0, ECONOMY_CONFIG.pinkArcadeDeckCost - economy.getSnapshot().coins);
+    setStoreStatus(`You need ${missing.toLocaleString()} more coins for the Pink Arcade deck.`);
+    playGameSfx("invalid_card");
+    return;
+  }
+
+  if (!alreadyOwned && !unlockFullDeckSkin(skinId)) {
+    economy.addCoins(ECONOMY_CONFIG.pinkArcadeDeckCost);
+    setStoreStatus("Pink Arcade could not be unlocked. Your coins were returned.");
+    return;
+  }
+
+  applyCardSkin(skinId);
+  preloadCardSkinAssets(skinId);
+  renderPackStoreState();
+  setStoreStatus(alreadyOwned ? "Pink Arcade deck equipped." : "Pink Arcade unlocked and equipped. Neon trail online!");
+  playGameSfx(alreadyOwned ? "card_select" : "card_unlock");
 }
 
 function showPackOverlay() {
@@ -195,6 +223,30 @@ function renderPackStoreState() {
   elements.buyPackPrice.textContent = pending ? "OPEN WAITING PACK" : `${ECONOMY_CONFIG.mysteryCardPackCost} Coins`;
   const small = elements.buyPackButton.querySelector("small");
   if (small) small.textContent = remaining ? `${remaining} new cards remain` : "Collection complete";
+  renderPinkArcadeDeckStoreState(collection, wallet);
+}
+
+function renderPinkArcadeDeckStoreState(collection = getCardCollectionSnapshot(), wallet = economy.getSnapshot()) {
+  if (!elements?.buyPinkArcadeDeckButton) return;
+  const owned = collection.purchasedFullDeckSkins.includes("pink_arcade");
+  const equipped = collection.fullDeckSkin === "pink_arcade";
+  elements.buyPinkArcadeDeckButton.classList.toggle("is-owned", owned);
+  elements.buyPinkArcadeDeckButton.classList.toggle("is-equipped", equipped);
+  elements.buyPinkArcadeDeckButton.classList.toggle("cannot-afford", !owned && wallet.coins < ECONOMY_CONFIG.pinkArcadeDeckCost);
+  elements.buyPinkArcadeDeckButton.setAttribute("aria-label", equipped
+    ? "Pink Arcade deck equipped"
+    : owned
+      ? "Equip Pink Arcade deck"
+      : `Buy Pink Arcade deck for ${ECONOMY_CONFIG.pinkArcadeDeckCost} coins`);
+  if (elements.pinkArcadeDeckPrice) {
+    elements.pinkArcadeDeckPrice.textContent = equipped
+      ? "EQUIPPED"
+      : owned
+        ? "EQUIP DECK"
+        : `${ECONOMY_CONFIG.pinkArcadeDeckCost.toLocaleString()} Coins`;
+  }
+  const detail = elements.buyPinkArcadeDeckButton.querySelector("small");
+  if (detail) detail.textContent = owned ? "52 cards + custom neon trail" : "Complete 52-card pixel deck";
 }
 
 function renderCardCollection() {

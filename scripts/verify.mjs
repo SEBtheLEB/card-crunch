@@ -25,6 +25,9 @@ const required = [
   "assets/sfx/deal-hand-2.mp3",
   "assets/sfx/deal-hand-3.mp3",
   "assets/sfx/deal-hand-4.mp3",
+  "assets/card-sets/pink_arcade/card-set.json",
+  "assets/card-sets/pink_arcade/backs/default_back.png",
+  "assets/card-sets/pink_arcade/previews/full-deck-preview.png",
   "styles/main.css",
   "styles/collection.css",
   "capacitor.config.json"
@@ -39,6 +42,14 @@ for (let index = 1; index <= 4; index += 1) {
     throw new Error(`Deal sample ${index} is empty`);
   }
 }
+const pinkArcadeManifest = JSON.parse(await readFile(resolve(root, "assets/card-sets/pink_arcade/card-set.json"), "utf8"));
+if (pinkArcadeManifest.setId !== "pink_arcade"
+  || pinkArcadeManifest.cards?.length !== 52
+  || new Set(pinkArcadeManifest.cards.map((card) => card.id)).size !== 52
+  || pinkArcadeManifest.filtering !== "nearest") {
+  throw new Error("Pink Arcade deck manifest is incomplete or not configured for pixel rendering");
+}
+await Promise.all(pinkArcadeManifest.cards.map((card) => access(resolve(root, "assets/card-sets/pink_arcade", card.image))));
 const scoringModule = await import(`../src/scoring.js?verify=${Date.now()}`);
 const results = scoringModule.runScoringSelfTests();
 if (!Array.isArray(results) || results.some((result) => result.pass === false)) {
@@ -98,7 +109,10 @@ if (/energy|recharge/i.test(html)) {
 if ((html.match(/data-theme-id=/g) ?? []).length !== 3 || !html.includes("gold-table") || !html.includes("knight-deck")) {
   throw new Error("Selectable theme controls are missing");
 }
-if ((html.match(/data-card-skin-id=/g) ?? []).length !== 5 || !html.includes("skin-preview-rainbow")) {
+if ((html.match(/data-card-skin-id=/g) ?? []).length !== 6
+  || !html.includes("skin-preview-rainbow")
+  || !html.includes("buyPinkArcadeDeckButton")
+  || !html.includes("skin-preview-pink-arcade")) {
   throw new Error("Selectable card skin controls are missing");
 }
 if (!html.includes("buyMysteryPackButton") || !html.includes("packOpeningOverlay") || !html.includes("collectionDeckList") || !html.includes("collectionDetail")) {
@@ -126,8 +140,8 @@ if (lowReward.total <= 0 || highReward.total <= lowReward.total) {
 if ("energyPerRun" in economyModule.ECONOMY_CONFIG || "calculateRegeneratedEnergy" in economyModule) {
   throw new Error("Energy gating still exists in the economy module");
 }
-if (economyModule.ECONOMY_CONFIG.mysteryCardPackCost <= 0) {
-  throw new Error("Mystery packs need a positive coin price");
+if (economyModule.ECONOMY_CONFIG.mysteryCardPackCost <= 0 || economyModule.ECONOMY_CONFIG.pinkArcadeDeckCost <= 0) {
+  throw new Error("Mystery packs and premium decks need positive coin prices");
 }
 const milestoneReward = economyModule.calculateCrunchMilestoneCoinReward({ fromCash: 90_000, toCash: 310_000 });
 if (milestoneReward.milestones !== 3 || milestoneReward.coins !== 30) {
@@ -146,6 +160,12 @@ const cardCollectionModule = await import(`../src/cardCollection.js?verify=${Dat
 const collectionResults = cardCollectionModule.runCardCollectionSelfTests();
 if (!Array.isArray(collectionResults) || collectionResults.some((result) => result.pass === false)) {
   throw new Error("Card collection self-tests failed");
+}
+const cardSkinModule = await import(`../src/cardSkins.js?verify=${Date.now()}`);
+if (!cardSkinModule.getCardSkinAssetUrl({ rank: "A", suit: "hearts" }, "pink_arcade").endsWith("/cards/hearts/ace_hearts.png")
+  || !cardSkinModule.getCardSkinAssetUrl({ rank: "10", suit: "diamonds" }, "pink_arcade").endsWith("/cards/diamonds/10_diamonds.png")
+  || !cardSkinModule.getCardSkinAssetUrl({ rank: "K", suit: "spades" }, "pink_arcade").endsWith("/cards/spades/king_spades.png")) {
+  throw new Error("Pink Arcade rank and suit asset mapping is incorrect");
 }
 
 const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollectionSource, cardCollectionUiSource, cardGestureSource, dealTimingSource, gameStateSource, uiSource, css, collectionCss] = await Promise.all([
@@ -180,9 +200,14 @@ if (!cutsceneSource.includes("startPreparedShardPhysics")
 }
 if (!cardCollectionSource.includes("buildCollectiblePool")
   || !cardCollectionSource.includes("equipCollectedCard")
+  || !cardCollectionSource.includes("unlockFullDeckSkin")
   || !cardCollectionUiSource.includes("createPendingPackReward")
+  || !cardCollectionUiSource.includes("buyOrEquipPinkArcadeDeck")
   || !uiSource.includes("getCardSkinClass")
   || !cutsceneSource.includes("getCardSkinClass")
+  || !cardSkinSource.includes("getCardSkinAssetUrl")
+  || !cardGestureSource.includes("is-pink-arcade")
+  || !css.includes(".card.card-skin-pink_arcade")
   || !collectionCss.includes(".pack-opening-overlay")
   || !collectionCss.includes(".collection-card-matrix")) {
   throw new Error("Duplicate-protected packs, per-card equips, or collection visuals are incomplete");

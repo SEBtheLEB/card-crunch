@@ -3,7 +3,7 @@ import {
   hideCrunchSkipText,
   isCrunchSkipRequested,
   showCrunchSkipText
-} from "./crunchCutscene.js?v=143";
+} from "./crunchCutscene.js?v=145";
 import { playGameSfx } from "./audio.js?v=143";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

@@ -921,6 +921,17 @@ button.is-pressing:not(:disabled) {
 .card-flight-trail.card-clubs { --flight-color: rgba(74, 224, 144, .82); }
 .card-flight-trail.card-black { --flight-color: rgba(122, 201, 255, .8); }
 
+.card-flight-trail.is-pink-arcade {
+  --flight-color: #ff4fa9;
+  border-width: 0;
+  background:
+    linear-gradient(90deg, transparent 0 8%, #57e5ff 8% 18%, transparent 18% 28%, #fff1a6 28% 39%, transparent 39% 53%, #ff3d9d 53% 86%, transparent 86%),
+    repeating-linear-gradient(0deg, rgba(255, 92, 181, .5) 0 3px, transparent 3px 7px);
+  box-shadow: none;
+  filter: hue-rotate(var(--flight-pink-hue, 0deg)) drop-shadow(0 0 7px #ff4fa9);
+  opacity: .74;
+}
+
 @keyframes cardFlightTrailFade {
   0% { opacity: 0; transform: scale(calc(var(--flight-scale, 1) * .84)); }
   18% { opacity: .7; }
@@ -6448,6 +6459,58 @@ button.menu-chip:active {
   box-shadow: inset 0 0 0 2px #c68a2b, 4px 4px 0 rgba(2, 5, 10, .78), 0 0 16px rgba(255, 197, 61, .2);
 }
 
+.pink-arcade-store-item {
+  grid-column: 1 / -1;
+  min-height: 124px;
+  background:
+    linear-gradient(90deg, transparent 0 12%, rgba(87, 229, 255, .14) 12% 14%, transparent 14% 86%, rgba(255, 241, 166, .13) 86% 88%, transparent 88%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .035) 0 3px, transparent 3px 7px),
+    linear-gradient(135deg, #451338, #7f174f 54%, #251736);
+  box-shadow: inset 0 0 0 2px #ff6fbd, 4px 4px 0 rgba(2, 5, 10, .78), 0 0 18px rgba(255, 55, 153, .26);
+}
+
+.pink-arcade-store-item.is-owned {
+  box-shadow: inset 0 0 0 2px #ffe993, 4px 4px 0 rgba(2, 5, 10, .78), 0 0 20px rgba(255, 84, 174, .38);
+}
+
+.pink-arcade-store-item.is-equipped {
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 241, 166, .13) 0 5px, transparent 5px 11px),
+    linear-gradient(135deg, #6e174a, #b2216e 54%, #38224d);
+}
+
+.pink-arcade-store-art {
+  position: relative;
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+}
+
+.pink-arcade-store-art img {
+  width: 42px;
+  height: 58px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 8px rgba(255, 98, 188, .78));
+  transform: rotate(-5deg);
+}
+
+.pink-arcade-store-art i {
+  position: absolute;
+  right: -8px;
+  bottom: -2px;
+  min-width: 25px;
+  padding: 4px 3px;
+  border: 2px solid #fff0a1;
+  background: #8f1556;
+  color: #fff8ce;
+  font-family: var(--font-pixel);
+  font-size: .42rem;
+  font-style: normal;
+  line-height: 1;
+}
+
 .summary-coins-row {
   border-color: rgba(255, 217, 92, .6) !important;
   background: rgba(75, 48, 5, .76) !important;
@@ -7005,6 +7068,11 @@ html[data-theme="knight-deck"] .cutin-title {
   color: #ffe786;
 }
 
+.skin-option.is-skin-locked:not(.is-skin-selected) {
+  border-color: #4c1c40;
+  box-shadow: inset 0 0 0 2px #812958, 4px 4px 0 rgba(2, 5, 10, .78);
+}
+
 .skin-option-rainbow {
   grid-column: 1 / -1;
   min-height: 150px;
@@ -7017,6 +7085,44 @@ html[data-theme="knight-deck"] .cutin-title {
   grid-row: 1 / -1;
   height: 126px;
 }
+
+.skin-option-pink-arcade {
+  grid-column: 1 / -1;
+  min-height: 156px;
+  grid-template-columns: minmax(132px, 1.1fr) minmax(0, .9fr);
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  background: linear-gradient(135deg, #39152f, #6e1a4c 58%, #151a32);
+}
+
+.skin-option-pink-arcade .skin-preview {
+  grid-row: 1 / -1;
+  height: 128px;
+  background: #210b23;
+}
+
+.skin-preview-pink-arcade img {
+  position: absolute;
+  z-index: 2;
+  width: 98%;
+  height: 98%;
+  object-fit: cover;
+  object-position: left center;
+  image-rendering: pixelated;
+}
+
+.pink-arcade-preview-streak {
+  position: absolute;
+  z-index: 3;
+  right: 2%;
+  width: 46%;
+  height: 5px;
+  background: #ff4fa9;
+  box-shadow: 0 0 8px #ff4fa9;
+}
+
+.pink-arcade-preview-streak.streak-one { top: 32%; }
+.pink-arcade-preview-streak.streak-two { top: 64%; width: 32%; background: #57e5ff; box-shadow: 0 0 8px #57e5ff; }
 
 .skin-preview {
   position: relative;
@@ -7290,6 +7396,65 @@ html[data-card-skin="rainbow"] .selected-card-tray .card {
 
 html[data-card-skin="rainbow"] .cutin-card {
   box-shadow: 0 7px 0 #100b1b, 5px 10px 0 rgba(0, 0, 0, .28), -8px 0 20px rgba(255, 79, 129, .34), 8px 0 20px rgba(87, 200, 255, .34), 0 0 24px rgba(255, 208, 76, .25);
+}
+
+.card.card-skin-pink_arcade,
+.cutin-card.card-skin-pink_arcade {
+  border-color: transparent;
+  background: var(--card-art-image) center / 100% 100% no-repeat;
+  box-shadow: 0 7px 0 #21071b, 4px 10px 0 rgba(0, 0, 0, .34), 0 0 14px rgba(255, 57, 157, .2);
+  image-rendering: pixelated;
+}
+
+.card.card-skin-pink_arcade::before,
+.cutin-card.card-skin-pink_arcade::before {
+  content: none;
+}
+
+.card.card-skin-pink_arcade::after,
+.cutin-card.card-skin-pink_arcade::after {
+  inset: 5% 6%;
+  background: linear-gradient(108deg, transparent 0 35%, rgba(255, 255, 255, .32) 44%, transparent 53%) -120% 0 / 230% 100%;
+  opacity: .42;
+  mix-blend-mode: screen;
+  animation: pinkArcadeCardShine 2.4s steps(12) infinite;
+}
+
+.card.card-skin-pink_arcade .card-corner,
+.card.card-skin-pink_arcade .card-center,
+.cutin-card.card-skin-pink_arcade .cutin-corner,
+.cutin-card.card-skin-pink_arcade > strong,
+.cutin-card.card-skin-pink_arcade .cutin-suit {
+  visibility: hidden;
+}
+
+.selected-card-tray .card.card-skin-pink_arcade,
+.card.card-skin-pink_arcade.is-hand-selected,
+.cutin-card.card-skin-pink_arcade {
+  filter: drop-shadow(-5px 0 7px rgba(255, 60, 165, .54)) drop-shadow(5px 0 7px rgba(87, 229, 255, .42)) brightness(1.08);
+}
+
+.pink-arcade-card-trail {
+  position: fixed;
+  z-index: 9997;
+  display: block;
+  border: 3px solid currentColor;
+  clip-path: var(--pixel-card-silhouette);
+  box-shadow: 0 0 10px currentColor, inset 0 0 8px currentColor;
+  opacity: .64;
+  pointer-events: none;
+  transform-origin: center;
+  animation: pinkArcadeTapTrail .38s steps(6) var(--trail-delay, 0ms) both;
+}
+
+@keyframes pinkArcadeCardShine {
+  from { background-position: -120% 0; }
+  45%, 100% { background-position: 135% 0; }
+}
+
+@keyframes pinkArcadeTapTrail {
+  0% { opacity: .62; transform: translate3d(0, 0, 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(var(--trail-x), var(--trail-y), 0) scale(.9); }
 }
 
 .rainbow-card-trail {

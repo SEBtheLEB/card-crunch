@@ -1,4 +1,15 @@
-const CACHE_NAME = "card-crunch-v144";
+const CACHE_NAME = "card-crunch-v145";
+const PINK_ARCADE_SUITS = ["hearts", "diamonds", "clubs", "spades"];
+const PINK_ARCADE_RANKS = ["ace", "02", "03", "04", "05", "06", "07", "08", "09", "10", "jack", "queen", "king"];
+const PINK_ARCADE_ASSETS = [
+  "./assets/card-sets/pink_arcade/card-set.json",
+  "./assets/card-sets/pink_arcade/backs/default_back.png",
+  "./assets/card-sets/pink_arcade/previews/card-back-preview.png",
+  "./assets/card-sets/pink_arcade/previews/full-deck-preview.png",
+  "./assets/card-sets/pink_arcade/atlas/cards-atlas.png",
+  "./assets/card-sets/pink_arcade/atlas/cards-atlas.json",
+  ...PINK_ARCADE_SUITS.flatMap((suit) => PINK_ARCADE_RANKS.map((rank) => `./assets/card-sets/pink_arcade/cards/${suit}/${rank}_${suit}.png`))
+];
 const ASSETS = [
   "./",
   "./index.html",
@@ -40,7 +51,8 @@ const ASSETS = [
   "./assets/sfx/deal-hand-1.mp3",
   "./assets/sfx/deal-hand-2.mp3",
   "./assets/sfx/deal-hand-3.mp3",
-  "./assets/sfx/deal-hand-4.mp3"
+  "./assets/sfx/deal-hand-4.mp3",
+  ...PINK_ARCADE_ASSETS
 ];
 
 self.addEventListener("install", (event) => {

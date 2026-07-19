@@ -252,19 +252,21 @@ export function animateCardDealIn(card, dealOrder = 0, { zone = "hand" } = {}) {
 function spawnCardFlightTrail(card, fromRect, toRect, { duration = 360, arcHeight = 12 } = {}) {
   const fragment = document.createDocumentFragment();
   const toneClass = [...card.classList].find((name) => name === "card-red" || name === "card-black" || name === "card-clubs") ?? "card-black";
-  const echoes = 4;
+  const pinkArcade = card.classList.contains("card-skin-pink_arcade") || card.dataset.equippedSkin === "pink_arcade";
+  const echoes = pinkArcade ? 6 : 4;
 
   for (let index = 0; index < echoes; index += 1) {
     const progress = (index + 1) / (echoes + 1);
     const echo = document.createElement("i");
-    echo.className = `card-flight-trail ${toneClass}`;
+    echo.className = `card-flight-trail ${toneClass}${pinkArcade ? " is-pink-arcade" : ""}`;
     echo.style.left = `${fromRect.left + (toRect.left - fromRect.left) * progress}px`;
     echo.style.top = `${fromRect.top + (toRect.top - fromRect.top) * progress - Math.sin(progress * Math.PI) * arcHeight}px`;
     echo.style.width = `${fromRect.width + (toRect.width - fromRect.width) * progress}px`;
     echo.style.height = `${fromRect.height + (toRect.height - fromRect.height) * progress}px`;
-    echo.style.setProperty("--flight-delay", `${index * 18}ms`);
+    echo.style.setProperty("--flight-delay", `${index * (pinkArcade ? 12 : 18)}ms`);
     echo.style.setProperty("--flight-duration", `${duration}ms`);
     echo.style.setProperty("--flight-scale", `${.86 + progress * .18}`);
+    if (pinkArcade) echo.style.setProperty("--flight-pink-hue", `${index * 26}deg`);
     echo.addEventListener("animationend", () => echo.remove(), { once: true });
     fragment.appendChild(echo);
   }

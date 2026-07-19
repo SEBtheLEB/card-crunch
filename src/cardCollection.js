@@ -3,6 +3,7 @@ export const CARD_COLLECTION_STORAGE_KEY = "cardCrunchCardCollectionV1";
 export const CARD_RANKS = Object.freeze(["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]);
 export const CARD_SUITS = Object.freeze(["hearts", "diamonds", "clubs", "spades"]);
 export const COLLECTIBLE_SKIN_IDS = Object.freeze(["dark", "pink", "gold", "rainbow"]);
+export const PREMIUM_FULL_DECK_SKIN_IDS = Object.freeze(["pink_arcade"]);
 
 const SUIT_SYMBOLS = Object.freeze({
   hearts: "\u2665",
@@ -11,7 +12,7 @@ const SUIT_SYMBOLS = Object.freeze({
   spades: "\u2660"
 });
 
-const VALID_FULL_DECK_SKINS = new Set(["classic", ...COLLECTIBLE_SKIN_IDS, "custom"]);
+const VALID_FULL_DECK_SKINS = new Set(["classic", ...COLLECTIBLE_SKIN_IDS, ...PREMIUM_FULL_DECK_SKIN_IDS, "custom"]);
 let collectionState = null;
 const listeners = new Set();
 
@@ -27,6 +28,7 @@ export function getCardCollectionSnapshot() {
     owned: Object.fromEntries(COLLECTIBLE_SKIN_IDS.map((skinId) => [skinId, [...state.owned[skinId]]])),
     equippedByCard: { ...state.equippedByCard },
     fullDeckSkin: state.fullDeckSkin,
+    purchasedFullDeckSkins: [...state.purchasedFullDeckSkins],
     pendingReward: state.pendingReward ? { ...state.pendingReward } : null
   };
 }
@@ -77,10 +79,27 @@ export function getEquippedCardSkin(card) {
 export function setFullDeckSkin(skinId) {
   const state = ensureCollection();
   const resolved = VALID_FULL_DECK_SKINS.has(skinId) ? skinId : "classic";
+  if (PREMIUM_FULL_DECK_SKIN_IDS.includes(resolved) && !state.purchasedFullDeckSkins.includes(resolved)) {
+    return state.fullDeckSkin;
+  }
   if (state.fullDeckSkin === resolved) return resolved;
   state.fullDeckSkin = resolved;
   commitCollection("full-deck");
   return resolved;
+}
+
+export function isFullDeckSkinOwned(skinId) {
+  if (skinId === "classic" || skinId === "custom" || COLLECTIBLE_SKIN_IDS.includes(skinId)) return true;
+  return PREMIUM_FULL_DECK_SKIN_IDS.includes(skinId) && ensureCollection().purchasedFullDeckSkins.includes(skinId);
+}
+
+export function unlockFullDeckSkin(skinId) {
+  const state = ensureCollection();
+  if (!PREMIUM_FULL_DECK_SKIN_IDS.includes(skinId)) return false;
+  if (state.purchasedFullDeckSkins.includes(skinId)) return true;
+  state.purchasedFullDeckSkins.push(skinId);
+  commitCollection("premium-deck-unlocked");
+  return true;
 }
 
 export function equipCollectedCard(skinId, cardKey) {
@@ -167,11 +186,21 @@ function loadCollection() {
 
 function normalizeCollection(saved) {
   const legacySkin = readLegacyFullDeckSkin();
+  const purchasedFullDeckSkins = [...new Set(
+    (Array.isArray(saved?.purchasedFullDeckSkins) ? saved.purchasedFullDeckSkins : [])
+      .filter((skinId) => PREMIUM_FULL_DECK_SKIN_IDS.includes(skinId))
+  )];
+  const requestedFullDeckSkin = VALID_FULL_DECK_SKINS.has(saved?.fullDeckSkin) ? saved.fullDeckSkin : legacySkin;
+  const fullDeckSkin = PREMIUM_FULL_DECK_SKIN_IDS.includes(requestedFullDeckSkin)
+    && !purchasedFullDeckSkins.includes(requestedFullDeckSkin)
+    ? "classic"
+    : requestedFullDeckSkin;
   const state = {
-    version: 1,
+    version: 2,
     owned: Object.fromEntries(COLLECTIBLE_SKIN_IDS.map((skinId) => [skinId, []])),
     equippedByCard: {},
-    fullDeckSkin: VALID_FULL_DECK_SKINS.has(saved?.fullDeckSkin) ? saved.fullDeckSkin : legacySkin,
+    fullDeckSkin,
+    purchasedFullDeckSkins,
     pendingReward: null
   };
 

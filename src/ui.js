@@ -1,11 +1,11 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=144";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=145";
 import { isPotUnlocked } from "./progression.js?v=126";
 import { formatCompactNumber } from "./format.js?v=90";
 import { hasShieldToken } from "./save.js?v=90";
 import { bindInstantAction } from "./input.js?v=90";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=141";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=143";
-import { getCardSkinClass } from "./cardSkins.js?v=141";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=145";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=145";
+import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=145";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -1002,6 +1002,8 @@ function createCard(card, options = {}) {
       <span>${card.suitSymbol}</span>
     </span>
   `;
+
+  applyCardSkinPresentation(element, card);
 
   return element;
 }

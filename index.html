@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/main.css?v=143">
+  <link rel="stylesheet" href="styles/main.css?v=145">
   <link rel="stylesheet" href="styles/collection.css?v=143">
   </head>
   <body>
@@ -182,6 +182,15 @@
                 <span id="mysteryPackPrice">125 Coins</span>
                 <small>208 new cards remain</small>
               </button>
+              <button class="store-item pink-arcade-store-item" id="buyPinkArcadeDeckButton" type="button">
+                <span class="pink-arcade-store-art" aria-hidden="true">
+                  <img src="assets/card-sets/pink_arcade/previews/card-back-preview.png" alt="">
+                  <i>52</i>
+                </span>
+                <strong>Pink Arcade Deck</strong>
+                <span id="pinkArcadeDeckPrice">1,500 Coins</span>
+                <small>Complete 52-card pixel deck</small>
+              </button>
               <button class="store-item shield-store-item" id="buyShieldButton" type="button">
                 <i aria-hidden="true">&#9829;</i>
                 <strong>Bank Shield</strong>
@@ -204,10 +213,10 @@
             <section class="skin-store-section" aria-labelledby="skinStoreTitle">
               <div class="skin-store-heading">
                 <div>
-                  <span>Testing Lab</span>
-                  <h3 id="skinStoreTitle">Full Deck Preview</h3>
+                  <span>Deck Locker</span>
+                  <h3 id="skinStoreTitle">Equip a Full Deck</h3>
                 </div>
-                <strong>No unlock needed</strong>
+                <strong>Owned Decks</strong>
               </div>
               <div class="card-skin-picker" id="cardSkinPicker" role="group" aria-label="Card skins">
                 <button class="skin-option is-skin-selected" data-card-skin-id="classic" type="button" aria-pressed="true">
@@ -235,8 +244,17 @@
                   <span><strong>Rainbow Rush</strong><small>Animated smear trail</small></span>
                   <em>Equip</em>
                 </button>
+                <button class="skin-option skin-option-pink-arcade" data-card-skin-id="pink_arcade" type="button" aria-pressed="false">
+                  <span class="skin-preview skin-preview-pink-arcade" aria-hidden="true">
+                    <img src="assets/card-sets/pink_arcade/previews/full-deck-preview.png" alt="">
+                    <i class="pink-arcade-preview-streak streak-one"></i>
+                    <i class="pink-arcade-preview-streak streak-two"></i>
+                  </span>
+                  <span><strong>Pink Arcade</strong><small>52 supplied pixel cards + neon trail</small></span>
+                  <em>Buy to Equip</em>
+                </button>
               </div>
-              <p class="skin-store-status" id="skinStoreStatus" aria-live="polite">Classic full deck active for testing.</p>
+              <p class="skin-store-status" id="skinStoreStatus" aria-live="polite">Classic full deck equipped.</p>
             </section>
           </section>
 
@@ -401,6 +419,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-  <script type="module" src="src/main.js?v=144"></script>
+  <script type="module" src="src/main.js?v=145"></script>
   </body>
 </html>

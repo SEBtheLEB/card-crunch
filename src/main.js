@@ -1,5 +1,5 @@
-import { createGame } from "./gameState.js?v=144";
-import { createUI } from "./ui.js?v=144";
+import { createGame } from "./gameState.js?v=145";
+import { createUI } from "./ui.js?v=145";
 import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=144";
 import { adManager } from "./ads.js?v=90";
 import { grantShieldToken, hasShieldToken } from "./save.js?v=90";
@@ -9,9 +9,9 @@ import { bindInstantAction } from "./input.js?v=90";
 import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=90";
 import { installFullscreenControls } from "./fullscreen.js?v=90";
 import { bindThemePicker, initializeTheme } from "./themes.js?v=90";
-import { initializeCardCollection } from "./cardCollection.js?v=141";
-import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=143";
-import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=141";
+import { initializeCardCollection } from "./cardCollection.js?v=145";
+import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=145";
+import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=145";
 import { initializeTutorial } from "./tutorial.js?v=136";
 
 initializeTheme();

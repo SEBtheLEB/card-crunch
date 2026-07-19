@@ -1,13 +1,13 @@
 import { drawCards, shuffle, createDeck } from "./deck.js?v=90";
 import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=144";
 import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=126";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=143";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=145";
 import { ensurePlayableHand } from "./handSafety.js?v=90";
 import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=90";
 import { formatCompactNumber } from "./format.js?v=90";
 import { adManager } from "./ads.js?v=90";
 import { submitBestScore } from "./playGames.js?v=90";
-import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=141";
+import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=145";
 import { purchaseManager } from "./purchases.js?v=90";
 import { getRoundDealDuration } from "./dealTiming.js?v=122";
 import {

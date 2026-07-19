@@ -4,6 +4,7 @@ export const ECONOMY_CONFIG = Object.freeze({
   crunchCashMilestone: 100000,
   coinsPerCrunchMilestone: 10,
   mysteryCardPackCost: 125,
+  pinkArcadeDeckCost: 1500,
   shieldCoinCost: 500,
   coinPackAmount: 1500,
   coinPackProductId: "card_crunch_coin_pack_1500"
