@@ -174,8 +174,8 @@ const selectionResolveSource = animationsSource.slice(
   animationsSource.indexOf("export async function animateSelectionResolve"),
   animationsSource.indexOf("function applyResolveSpotlight")
 );
-if (!selectionResolveSource.includes("RESOLVE_HANDOFF_DELAY") || selectionResolveSource.includes("popStoredLabel")) {
-  throw new Error("Crunch highlights must hand directly into the cut-in without a transient label");
+if (!selectionResolveSource.includes("waitForTap(RESOLVE_HIGHLIGHT_TAP_GUARD)") || selectionResolveSource.includes("popStoredLabel")) {
+  throw new Error("Crunch highlights must wait for a deliberate tap before entering the cut-in");
 }
 if (!cutsceneSource.includes("is-shared-handoff") || !css.includes("cutsceneBackdropIn")) {
   throw new Error("Blink-free shared-card cut-in backdrop is missing");

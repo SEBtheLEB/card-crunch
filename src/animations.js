@@ -7,12 +7,12 @@ import {
 import { playGameSfx } from "./audio.js?v=116";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const RESOLVE_HANDOFF_DELAY = 220;
+const RESOLVE_HIGHLIGHT_TAP_GUARD = 180;
 
 function createSequenceAdvanceController() {
   const waiters = new Set();
   const finishAllWaiters = () => {
-    [...waiters].forEach((finish) => finish());
+    [...waiters].forEach((finish) => finish(true));
   };
   const onAdvance = (event) => {
     if (event.target?.closest?.(".crunch-skip-text")) return;
@@ -27,6 +27,28 @@ function createSequenceAdvanceController() {
   window.addEventListener(CRUNCH_SKIP_EVENT, onSkipAll);
 
   return {
+    waitForTap(minMs = 0) {
+      if (isCrunchSkipRequested()) return Promise.resolve();
+      return new Promise((resolve) => {
+        let finished = false;
+        let canAdvance = minMs <= 0;
+        const finish = () => {
+          if (finished || !canAdvance) return;
+          finished = true;
+          window.clearTimeout(guardId);
+          waiters.delete(tapToAdvance);
+          resolve();
+        };
+        const tapToAdvance = (force = false) => {
+          if (force) canAdvance = true;
+          finish();
+        };
+        const guardId = window.setTimeout(() => {
+          canAdvance = true;
+        }, minMs);
+        waiters.add(tapToAdvance);
+      });
+    },
     wait(ms) {
       if (isCrunchSkipRequested()) return Promise.resolve();
       return new Promise((resolve) => {
@@ -180,7 +202,7 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
       burstAround(handCard, 14, particleType);
       matchedCards.forEach((card) => burstAround(card, 14, particleType));
       if (entry.matchType === "add" || entry.matchType === "subtract") drawComboStreak(handCard, matchedCards);
-      await advance.wait(RESOLVE_HANDOFF_DELAY);
+      await advance.waitForTap(RESOLVE_HIGHLIGHT_TAP_GUARD);
       await onEntryResolved?.(entry, i, {
         sourceCards: [
           ...entry.matchedCards.map((card, index) => ({ card, element: matchedCards[index] })),
