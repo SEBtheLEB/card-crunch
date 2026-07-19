@@ -3779,7 +3779,10 @@ h2 {
 /* Shared-card handoff: the glowing table/hand cards become the cut-in cards
    instead of being replaced by a second visual set. */
 .cutin-shared-source-hidden {
+  opacity: 0 !important;
   visibility: hidden !important;
+  filter: none !important;
+  pointer-events: none !important;
 }
 
 .cutin-card.cutin-shared-target {

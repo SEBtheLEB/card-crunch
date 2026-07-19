@@ -1,7 +1,7 @@
 import { drawCards, shuffle, createDeck } from "./deck.js?v=90";
 import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=90";
 import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=90";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=120";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, resetCrunchSkipRequest } from "./crunchCutscene.js?v=124";
 import { ensurePlayableHand } from "./handSafety.js?v=90";
 import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=90";
 import { formatCompactNumber } from "./format.js?v=90";
@@ -16,7 +16,7 @@ import {
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=123";
+} from "./animations.js?v=124";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -416,6 +416,7 @@ export function createGame(ui) {
       baseStackCards: ui.getAllStackCardElements(),
       resolution: crunch.resolution,
       fail: true,
+      retainConsumedSources: false,
       onEntryResolved: async (entry, _index, transition) => {
         await playCrunchEntryExplanation({
           entry: createCutsceneEntry(entry),

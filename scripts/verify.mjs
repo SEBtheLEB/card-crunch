@@ -209,7 +209,13 @@ if (!sharedHandoffSource.includes("await waitForPaint()")
   || !css.includes("is-shared-handoff.is-handoff-ready::after")) {
   throw new Error("Shared cards must be painted before their live sources are hidden");
 }
-if (!animationsSource.includes('from "./crunchCutscene.js?v=120"') || !gameStateSource.includes('from "./crunchCutscene.js?v=120"')) {
+if (sharedHandoffSource.includes('classList.remove("cutin-shared-source-hidden")')
+  || !sharedHandoffSource.includes("target.remove()")
+  || !selectionResolveSource.includes('[handCard, ...matchedCards].forEach')
+  || !css.includes(".cutin-shared-source-hidden {\n  opacity: 0 !important;")) {
+  throw new Error("Consumed hand and table cards must stay absent behind the Crunch cutscene");
+}
+if (!animationsSource.includes('from "./crunchCutscene.js?v=124"') || !gameStateSource.includes('from "./crunchCutscene.js?v=124"')) {
   throw new Error("Crunch skip and handoff state must use one shared module instance");
 }
 if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("--shard-burst-x") || !css.includes("cutin-fracture-map") || !css.includes("--shard-rest-x") || !css.includes("cutin-card-shard.is-vacuuming")) {

@@ -303,10 +303,10 @@ export async function playCrunchEntryExplanation({ entry, tier = "normal", bank 
   }
   const advance = createAdvanceController(overlay);
   document.body.appendChild(overlay);
-  let restoreSharedCards = () => {};
+  let cleanupSharedHandoff = () => {};
 
   try {
-    restoreSharedCards = await playEntryCutin(overlay, entry, tier, advance, sourceCards, bank?.element ?? null);
+    cleanupSharedHandoff = await playEntryCutin(overlay, entry, tier, advance, sourceCards, bank?.element ?? null);
     if (bank) {
       const cards = getActiveCutinCards(overlay);
       await bank.add(entry.points, overlay.querySelector(".cutin-points"), advance, cards);
@@ -314,7 +314,7 @@ export async function playCrunchEntryExplanation({ entry, tier = "normal", bank 
     overlay.classList.add("is-leaving");
     await waitMaybe(advance, CUTSCENE_CONFIG.fadeOutDuration);
   } finally {
-    restoreSharedCards();
+    cleanupSharedHandoff();
     advance.destroy();
     overlay.remove();
   }
@@ -380,10 +380,10 @@ async function playEntryCutin(overlay, entry, tier, advance, sourceCards = [], b
     ? createMathCutinMarkup({ entry, matched, operator, equation, tier })
     : createMatchCutinMarkup({ entry, matched, operator, equation, tier });
   const crunchPrompt = createInteractiveCrunchPrompt(overlay);
-  const restoreSharedCards = await transitionSourceCardsIntoCutin(overlay, sourceCards, advance);
+  const cleanupSharedHandoff = await transitionSourceCardsIntoCutin(overlay, sourceCards, advance);
   playGameSfx(getEntrySound(entry));
   await playInteractiveCardCrunch(overlay, advance, crunchPrompt, bankEl);
-  return restoreSharedCards;
+  return cleanupSharedHandoff;
 }
 
 function getActiveCutinCards(overlay) {
@@ -839,7 +839,6 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
   }
 
   const targets = [...overlay.querySelectorAll(".cutin-card[data-cutin-card-id]")];
-  const hiddenSources = [];
   const transfers = [];
 
   sources.forEach(({ card, element, rect }, index) => {
@@ -919,7 +918,6 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
   activateSharedHandoff(overlay);
   const animations = transfers.map(({ target, flight, element, delay, duration, frames }) => {
     element.classList.add("cutin-shared-source-hidden");
-    hiddenSources.push(element);
     const animation = flight.animate([
       ...frames
     ], {
@@ -948,10 +946,9 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
     animations.forEach(({ animation, target, flight }) => {
       animation.cancel();
       discardPreparedCardShards(flight);
-      target.classList.remove("cutin-shared-target-hidden", "cutin-shared-target-arriving", "cutin-shared-target", "cutin-layout-proxy");
+      target.remove();
       flight.remove();
     });
-    hiddenSources.forEach((element) => element.classList.remove("cutin-shared-source-hidden"));
   };
 }
 

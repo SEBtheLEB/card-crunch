@@ -3,7 +3,7 @@ import {
   hideCrunchSkipText,
   isCrunchSkipRequested,
   showCrunchSkipText
-} from "./crunchCutscene.js?v=120";
+} from "./crunchCutscene.js?v=124";
 import { playGameSfx } from "./audio.js?v=120";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -182,7 +182,14 @@ export async function animateStackAdd({ handCard, matchedCards, matchedSlots, ma
   matchedSlots.forEach((slot) => slot.classList.remove("case-match-glow", "slot-matched"));
 }
 
-export async function animateSelectionResolve({ selectedHandCards, baseStackCards, resolution, fail, onEntryResolved }) {
+export async function animateSelectionResolve({
+  selectedHandCards,
+  baseStackCards,
+  resolution,
+  fail,
+  onEntryResolved,
+  retainConsumedSources = true
+}) {
   const activeVisualCards = [...baseStackCards];
   const limit = fail ? resolution.failedIndex : selectedHandCards.length;
   const advance = createSequenceAdvanceController();
@@ -194,6 +201,7 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
       const handCard = selectedHandCards[i];
       const entry = resolution.history[i];
       const matchedCards = entry.matchedIndexes.map((index) => activeVisualCards[index]).filter(Boolean);
+      [handCard, ...matchedCards].forEach((card) => card?.classList.remove("cutin-shared-source-hidden"));
       playSfx("card_resolve");
       const particleType = entry.matchType === "suit" ? "suit" : entry.matchType === "rank" ? "rank" : "math";
       handCard?.classList.add("card-selected", "resolve-selected-card", "is-vibrating");
@@ -219,6 +227,7 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
 
     if (fail) {
       const failedCard = selectedHandCards[resolution.failedIndex];
+      failedCard?.classList.remove("cutin-shared-source-hidden");
       failedCard?.classList.add("resolve-selected-card", "is-invalid");
       clearSpotlight = applyResolveSpotlight([failedCard]);
       burstAround(failedCard, 20, "red");
@@ -229,6 +238,9 @@ export async function animateSelectionResolve({ selectedHandCards, baseStackCard
     }
   } finally {
     clearSpotlight();
+    if (!retainConsumedSources) {
+      [...selectedHandCards, ...baseStackCards].forEach((card) => card?.classList.remove("cutin-shared-source-hidden"));
+    }
     advance.destroy();
     hideCrunchSkipText();
   }
