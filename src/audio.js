@@ -395,6 +395,10 @@ const EFFECTS = {
     chord([262, 523, 1047], { duration: 0.42, gain: 0.085, type: "square", rise: 1.02 });
     noise({ duration: 0.12, gain: 0.055, highpass: 2600 });
   },
+  coin_milestone: () => {
+    arpeggio([988, 1319, 1568], { duration: 0.11, spacing: 0.034, gain: 0.052, type: "square" });
+    tone({ frequency: 1976, endFrequency: 1568, duration: 0.085, delay: 0.07, gain: 0.035, type: "sine" });
+  },
   score_arrive: () => {
     chord([523, 659, 784], { duration: 0.24, gain: 0.1, type: "triangle", rise: 1.01 });
     noise({ duration: 0.075, gain: 0.045, highpass: 2800 });
@@ -431,6 +435,7 @@ const HAPTIC_BY_SOUND = {
   double_match: "match",
   math_combo: "match",
   score_ramp_peak: "score",
+  coin_milestone: "score",
   score_arrive: "score",
   bank: "bank",
   revive: "score",

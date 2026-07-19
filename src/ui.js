@@ -1,10 +1,10 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=90";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=143";
 import { isPotUnlocked } from "./progression.js?v=126";
 import { formatCompactNumber } from "./format.js?v=90";
 import { hasShieldToken } from "./save.js?v=90";
 import { bindInstantAction } from "./input.js?v=90";
 import { ECONOMY_CONFIG, economy } from "./economy.js?v=141";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=141";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=143";
 import { getCardSkinClass } from "./cardSkins.js?v=141";
 
 export function createUI() {

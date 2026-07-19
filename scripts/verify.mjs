@@ -18,6 +18,7 @@ const required = [
   "src/cardCollectionUI.js",
   "src/tutorial.js",
   "src/economy.js",
+  "src/scoreSurge.js",
   "src/purchases.js",
   "assets/sfx/playing-card.mp3",
   "assets/sfx/deal-hand-1.mp3",
@@ -128,6 +129,19 @@ if ("energyPerRun" in economyModule.ECONOMY_CONFIG || "calculateRegeneratedEnerg
 if (economyModule.ECONOMY_CONFIG.mysteryCardPackCost <= 0) {
   throw new Error("Mystery packs need a positive coin price");
 }
+const milestoneReward = economyModule.calculateCrunchMilestoneCoinReward({ fromCash: 90_000, toCash: 310_000 });
+if (milestoneReward.milestones !== 3 || milestoneReward.coins !== 30) {
+  throw new Error("Crunch cash milestones must award persistent coins exactly once per 100K crossed");
+}
+const scoreSurgeModule = await import(`../src/scoreSurge.js?verify=${Date.now()}`);
+const millionSurge = scoreSurgeModule.createScoreSurgePlan(1_000_000);
+if (scoreSurgeModule.getScoreSurgeTier(9_999).tier !== 0
+  || scoreSurgeModule.getScoreSurgeTier(10_000).tier !== 1
+  || millionSurge.tier !== 6
+  || ![10_000, 20_000, 30_000, 50_000, 80_000, 120_000, 1_000_000]
+    .every((milestone) => millionSurge.milestones.includes(milestone))) {
+  throw new Error("Value-driven Crunch surge tiers or milestone ramp are incomplete");
+}
 const cardCollectionModule = await import(`../src/cardCollection.js?verify=${Date.now()}`);
 const collectionResults = cardCollectionModule.runCardCollectionSelfTests();
 if (!Array.isArray(collectionResults) || collectionResults.some((result) => result.pass === false)) {
@@ -152,6 +166,7 @@ const mainSource = await readFile(resolve(root, "src/main.js"), "utf8");
 const tutorialSource = await readFile(resolve(root, "src/tutorial.js"), "utf8");
 const audioSource = await readFile(resolve(root, "src/audio.js"), "utf8");
 const scoringSource = await readFile(resolve(root, "src/scoring.js"), "utf8");
+const scoreSurgeSource = await readFile(resolve(root, "src/scoreSurge.js"), "utf8");
 if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createPixelShardClip") || !css.includes("cutin-card-shard")) {
   throw new Error("Crunch Bank card-shard animation hooks are missing");
 }
@@ -345,13 +360,16 @@ if (!fullHandPreludeSource.includes("playInteractiveCardCrunch")
   || !selectionResolveSource.includes("onFullHandResolved")) {
   throw new Error("Full Hand must highlight, hand off the live cards, complete three hits, and vacuum into the bank");
 }
-if (!cutsceneSource.includes("getCrossedScoreMilestone")
-  || !cutsceneSource.includes("playMajorScoreRamp")
-  || !cutsceneSource.includes("countMajorScoreRamp")
-  || !css.includes("is-major-score-ramp-active")
+if (!cutsceneSource.includes("createCrunchScoreSurge")
+  || !cutsceneSource.includes("showScoreSurgeMilestone")
+  || !cutsceneSource.includes("spawnCrunchCoinReward")
+  || !cutsceneSource.includes("coinRewards.award")
+  || !scoreSurgeSource.includes("buildScoreSurgeMilestones")
+  || !css.includes("is-entry-score-surge-centered")
+  || !css.includes("crunch-coin-reward-toast")
   || !audioSource.includes("score_ramp_tick")
-  || !audioSource.includes("score_ramp_peak")) {
-  throw new Error("Major score magnitude celebration is missing");
+  || !audioSource.includes("coin_milestone")) {
+  throw new Error("Per-Crunch score surges or persistent coin milestone feedback is missing");
 }
 if (!uiSource.includes("renderBonusBankAction")
   || !uiSource.includes('dataset.action === "bonus-bank-ad"')

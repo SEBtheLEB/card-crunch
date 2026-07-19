@@ -1,4 +1,4 @@
-import { playGameSfx } from "./audio.js?v=141";
+import { playGameSfx } from "./audio.js?v=143";
 import { economy, ECONOMY_CONFIG } from "./economy.js?v=141";
 import {
   CARD_RANKS,
