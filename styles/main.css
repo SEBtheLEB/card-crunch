@@ -9215,3 +9215,28 @@ html[data-card-skin="rainbow"] .cutin-card {
 .reduce-motion .score-panel.bank-modifier-pulse {
   animation-duration: .01ms !important;
 }
+
+/* ===========================================================================
+   Build 142: lower, centered Crunch composition
+   ========================================================================== */
+
+/* The bank remains a top HUD anchor. The explanation stage starts well below
+   it, closer to the visual center, and continues growing downward. */
+.cutin-match-stage,
+.cutin-math-stage {
+  top: calc(var(--safe-top) + clamp(142px, 18.5dvh, 188px));
+}
+
+@media (max-height: 760px) {
+  .cutin-match-stage,
+  .cutin-math-stage {
+    top: calc(var(--safe-top) + clamp(128px, 18dvh, 142px));
+  }
+}
+
+@media (min-height: 900px) {
+  .cutin-match-stage,
+  .cutin-math-stage {
+    top: calc(var(--safe-top) + clamp(170px, 19.5dvh, 214px));
+  }
+}
