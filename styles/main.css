@@ -880,6 +880,23 @@ button.is-pressing:not(:disabled) {
   animation: cardDealLand var(--deal-landing-ms, 140ms) cubic-bezier(.16, 1.2, .3, 1) both;
 }
 
+/* Round changes are a card-deal transition, not another HUD event. Keep the
+   counters and progress bars visually locked until the final card settles. */
+.game-shell.is-round-handoff .score-panel,
+.game-shell.is-round-handoff .score-panel strong,
+.game-shell.is-round-handoff #streakValue,
+.game-shell.is-round-handoff #missValue,
+.game-shell.is-round-handoff .timer-strip,
+.game-shell.is-round-handoff .target-strip {
+  animation: none !important;
+  transition: none !important;
+}
+
+.game-shell.is-round-handoff .timer-fill,
+.game-shell.is-round-handoff .target-fill {
+  transition: none !important;
+}
+
 @keyframes cardDealLand {
   0% { scale: 1; filter: brightness(1.12) drop-shadow(0 0 14px rgba(255, 218, 112, .7)); }
   46% { scale: 1.045 .97; filter: brightness(1.18) drop-shadow(0 0 18px rgba(255, 218, 112, .82)); }

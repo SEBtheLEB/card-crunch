@@ -1,5 +1,5 @@
-import { createGame } from "./gameState.js?v=124";
-import { createUI } from "./ui.js?v=122";
+import { createGame } from "./gameState.js?v=125";
+import { createUI } from "./ui.js?v=125";
 import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=90";
 import { adManager } from "./ads.js?v=90";
 import { grantShieldToken, hasShieldToken } from "./save.js?v=90";

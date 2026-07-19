@@ -305,6 +305,14 @@ if (!uiSource.includes("syncHandInteractionState(elements, state)")
 if (!dealTimingSource.includes("getRoundDealDuration") || !gameStateSource.includes("dealToken !== state.timerToken") || !gameStateSource.includes("finishHandDeal(4)")) {
   throw new Error("The turn timer must wait for the hand deal to finish");
 }
+if (!gameStateSource.includes("ui.syncResolvedHud(state)")
+  || !gameStateSource.includes("ui.beginRoundHandoff(state)")
+  || !gameStateSource.includes("ui.finishRoundHandoff()")
+  || gameStateSource.includes("ui.elements.scoreValue.textContent")
+  || !uiSource.includes("syncHudCountersWithoutMotion")
+  || !css.includes(".game-shell.is-round-handoff .timer-fill")) {
+  throw new Error("Round dealing must not replay score juice or animate HUD resets");
+}
 if (!uiSource.includes("(state.dealHandCount ?? 0) + index") || !cardGestureSource.includes('zone === "table"')) {
   throw new Error("Table cards must deal after all replacement hand cards");
 }

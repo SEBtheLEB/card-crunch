@@ -380,8 +380,7 @@ export function createGame(ui) {
     state.fever = state.streak >= 15;
     if (enteringFever) playSfx("fever_start");
     raiseBankMultiplier(selectedCards.length);
-    ui.elements.scoreValue.textContent = formatCompactNumber(state.score);
-    ui.elements.streakValue.textContent = String(state.streak);
+    ui.syncResolvedHud(state);
     discardSelectedCards();
 
     if (state.isTutorial) {
@@ -911,6 +910,7 @@ export function createGame(ui) {
     state.status = "playing";
     state.dealHandCount = replacementCount;
     state.locked = true;
+    ui.beginRoundHandoff(state);
     ui.render(state, handlers);
     finishHandDeal(replacementCount);
   }
@@ -924,6 +924,7 @@ export function createGame(ui) {
       state.dealHandCount = 0;
       state.locked = false;
       ui.render(state, handlers);
+      ui.finishRoundHandoff();
       startTimer();
     }, dealDuration);
   }

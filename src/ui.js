@@ -13,6 +13,7 @@ export function createUI() {
   let messageTimer = null;
   let messageFrame = null;
   let messageGeneration = 0;
+  let roundHandoffFrame = null;
   const elements = {
     shell: document.querySelector("#gameShell"),
     tableZone: document.querySelector("#tableZone"),
@@ -121,6 +122,26 @@ export function createUI() {
       }
       syncHandInteractionState(elements, state);
       elements.shell.classList.toggle("is-locked", state.locked);
+    },
+    syncResolvedHud(state) {
+      syncHudCountersWithoutMotion(elements, state);
+    },
+    beginRoundHandoff(state) {
+      if (roundHandoffFrame) {
+        window.cancelAnimationFrame(roundHandoffFrame);
+        roundHandoffFrame = null;
+      }
+      syncHudCountersWithoutMotion(elements, state);
+      elements.shell.classList.add("is-round-handoff");
+    },
+    finishRoundHandoff() {
+      if (roundHandoffFrame) window.cancelAnimationFrame(roundHandoffFrame);
+      roundHandoffFrame = window.requestAnimationFrame(() => {
+        roundHandoffFrame = window.requestAnimationFrame(() => {
+          elements.shell.classList.remove("is-round-handoff");
+          roundHandoffFrame = null;
+        });
+      });
     },
     setMessage(message, tone = "neutral", duration = 1600) {
       const generation = ++messageGeneration;
@@ -381,6 +402,43 @@ function renderHud(elements, state) {
     streak: state.streak,
     misses: state.misses
   };
+}
+
+const COUNTER_MOTION_CLASSES = [
+  "counter-juice",
+  "counter-juice-gold",
+  "counter-juice-red",
+  "counter-juice-blue",
+  "counter-juice-green",
+  "counter-juice-fever",
+  "score-bump"
+];
+
+/* The cutscene already performs the score impact. Commit its final HUD values
+   and caches together so the following deal cannot replay that same impact. */
+function syncHudCountersWithoutMotion(elements, state) {
+  const cache = elements._hudCache ?? (elements._hudCache = {});
+  const score = formatCompactNumber(state.score ?? 0);
+  const streak = String(state.streak ?? 0);
+  const livesLeft = Math.max(0, (state.maxMisses ?? 3) - (state.misses ?? 0));
+  const lives = "\u2665".repeat(livesLeft) + "\u2661".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft));
+
+  elements.scoreValue.textContent = score;
+  elements.streakValue.textContent = streak;
+  elements.missValue.textContent = lives;
+  cache.score = score;
+  cache.streak = streak;
+  cache.lives = lives;
+  elements._counterCache = {
+    score: state.score ?? 0,
+    streak: state.streak ?? 0,
+    misses: state.misses ?? 0
+  };
+
+  [elements.scoreValue, elements.streakValue, elements.missValue].forEach((element) => {
+    element.classList.remove(...COUNTER_MOTION_CLASSES);
+  });
+  elements.scorePanel.classList.remove("score-bump", "bank-bump", "bank-final-flash", "is-bank-source-covered");
 }
 
 function setText(element, value, cache, key) {
