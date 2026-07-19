@@ -226,7 +226,7 @@ if (sharedHandoffSource.includes('classList.remove("cutin-shared-source-hidden")
   || !css.includes(".cutin-shared-source-hidden {\n  opacity: 0 !important;")) {
   throw new Error("Consumed hand and table cards must stay absent behind the Crunch cutscene");
 }
-if (!animationsSource.includes('from "./crunchCutscene.js?v=124"') || !gameStateSource.includes('from "./crunchCutscene.js?v=124"')) {
+if (!animationsSource.includes('from "./crunchCutscene.js?v=127"') || !gameStateSource.includes('from "./crunchCutscene.js?v=127"')) {
   throw new Error("Crunch skip and handoff state must use one shared module instance");
 }
 if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("--shard-burst-x") || !css.includes("cutin-fracture-map") || !css.includes("--shard-rest-x") || !css.includes("cutin-card-shard.is-vacuuming")) {
@@ -258,8 +258,8 @@ if (!cardSkinSource.includes("cardCrunchCardSkin") || !cardSkinSource.includes("
 if (!cardGestureSource.includes("bindCardGesture") || !cardGestureSource.includes("spawnCardFlightTrail") || !uiSource.includes("selectedCardTray")) {
   throw new Error("Tap/flick staging controls or card flight trails are missing");
 }
-if (!cutsceneSource.includes("is-bonus-screen") || !cutsceneSource.includes("fastForwarded")) {
-  throw new Error("One-tap Bonus Crunch fast-forward is missing");
+if (!cutsceneSource.includes("playInlineCrunchBonuses") || !cutsceneSource.includes("entry.bankPoints") || !css.includes("cutin-inline-bonuses")) {
+  throw new Error("Crunch multipliers are not integrated into each card cut-in");
 }
 if (!mainSource.includes("activePressTargets") || mainSource.includes('classList.add("tap-pop")')) {
   throw new Error("Stable press feedback regression guards are missing");

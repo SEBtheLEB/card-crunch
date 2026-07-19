@@ -1767,6 +1767,77 @@ button.is-pressing:not(:disabled) {
   animation: cutinPointsPop .28s cubic-bezier(.16, 1.45, .3, 1) .58s both;
 }
 
+.cutin-inline-bonuses {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: min(94vw, 620px);
+  gap: clamp(7px, 2.2vw, 14px);
+  min-height: clamp(24px, 5.2vw, 38px);
+  text-align: center;
+}
+
+.cutin-inline-bonus {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  color: #fff4bd;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  text-shadow: 0 0 15px rgba(255, 197, 61, .64), 0 3px 0 rgba(4, 5, 13, .92);
+  animation: cutinInlineBonusSlam .3s cubic-bezier(.16, 1.45, .3, 1) both;
+}
+
+.cutin-inline-bonus:nth-child(2) { animation-delay: .05s; }
+.cutin-inline-bonus:nth-child(3) { animation-delay: .1s; }
+.cutin-inline-bonus:nth-child(4) { animation-delay: .15s; }
+.cutin-inline-bonus:nth-child(n + 5) { animation-delay: .2s; }
+
+.cutin-inline-bonus em {
+  font-size: clamp(.66rem, 2.8vw, 1rem);
+  font-style: normal;
+  line-height: 1;
+}
+
+.cutin-inline-bonus strong {
+  color: var(--gold-hot);
+  font-size: clamp(.94rem, 4.2vw, 1.55rem);
+  font-weight: 400;
+  line-height: .9;
+}
+
+.cutin-inline-bonus.cutin-bonus-rank strong,
+.cutin-inline-bonus.cutin-bonus-double strong {
+  color: #fff0a2;
+}
+
+.cutin-inline-bonus.cutin-bonus-math strong {
+  color: #d7adff;
+}
+
+.cutin-inline-bonus.cutin-bonus-speed strong {
+  color: #8fe9ff;
+}
+
+.cutin-stage.is-bonus-reacting .cutin-card,
+.cutin-stage.is-bonus-reacting .cutin-live-card {
+  animation: cutinBonusCardReact .36s steps(4, end) both;
+}
+
+.cutin-stage.is-multi-match-reacting .cutin-match-row {
+  animation: cutinMultiMatchWiggle .38s steps(6, end) both;
+}
+
+.cutin-stage.is-multi-match-reacting .cutin-equation {
+  animation: cutinMultiEquationGlow .42s steps(4, end) both;
+}
+
+.cutin-points.is-multiplied {
+  color: #fff8bd;
+  animation: cutinMultipliedPoints .38s cubic-bezier(.16, 1.45, .3, 1) both;
+  text-shadow: 0 0 12px #fff4bd, 0 0 25px var(--gold-glow), 0 4px 0 rgba(4, 5, 13, .9);
+}
+
 .cutin-bank-counter {
   position: fixed;
   z-index: 74;
@@ -3802,6 +3873,38 @@ h2 {
   pointer-events: none !important;
 }
 
+@keyframes cutinInlineBonusSlam {
+  from { opacity: 0; transform: translateY(7px) scale(.78); }
+  70% { opacity: 1; transform: translateY(-2px) scale(1.1); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes cutinBonusCardReact {
+  0%, 100% { translate: 0 0; filter: brightness(1); }
+  25% { translate: 0 -3px; filter: brightness(1.35) drop-shadow(0 0 13px var(--gold-glow)); }
+  50% { translate: -2px 0; filter: brightness(1.16) drop-shadow(0 0 19px var(--gold-glow)); }
+  75% { translate: 2px -1px; filter: brightness(1.38) drop-shadow(0 0 15px var(--gold-glow)); }
+}
+
+@keyframes cutinMultiMatchWiggle {
+  0%, 100% { translate: 0 0; }
+  20% { translate: -4px 0; }
+  40% { translate: 4px -2px; }
+  60% { translate: -3px 1px; }
+  80% { translate: 3px -1px; }
+}
+
+@keyframes cutinMultiEquationGlow {
+  0%, 100% { transform: scale(1); color: #fff4bd; }
+  50% { transform: scale(1.16); color: white; filter: drop-shadow(0 0 13px var(--gold-glow)); }
+}
+
+@keyframes cutinMultipliedPoints {
+  from { opacity: .5; transform: scale(.72); }
+  65% { opacity: 1; transform: scale(1.3); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 .cutin-card.cutin-shared-target {
   animation: none !important;
   rotate: none !important;
@@ -3957,6 +4060,12 @@ h2 {
 
 .reduce-motion .crunch-cutscene-overlay[data-crunch-hit] .cutin-live-card,
 .reduce-motion .cutin-stage[data-crunch-hit] .cutin-card:not(.dim):not(.cutin-layout-proxy),
+.reduce-motion .cutin-stage.is-bonus-reacting .cutin-card,
+.reduce-motion .cutin-stage.is-bonus-reacting .cutin-live-card,
+.reduce-motion .cutin-stage.is-multi-match-reacting .cutin-match-row,
+.reduce-motion .cutin-stage.is-multi-match-reacting .cutin-equation,
+.reduce-motion .cutin-points.is-multiplied,
+.reduce-motion .cutin-inline-bonus,
 .reduce-motion .cutin-crunch-prompt {
   animation-duration: 80ms !important;
 }
@@ -5316,6 +5425,9 @@ h2 {
 .cutin-equation,
 .cutin-subtitle,
 .cutin-points,
+.cutin-inline-bonus,
+.cutin-inline-bonus em,
+.cutin-inline-bonus strong,
 .cutin-bank-counter span,
 .cutin-bank-counter strong,
 .cutin-bank-fly,

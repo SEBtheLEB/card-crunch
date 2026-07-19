@@ -187,6 +187,29 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
   const stackTypeFlat = stackTypes.reduce((sum, bonus) => sum + (bonus.flatBonus ?? 0), 0);
   const potRuleMultiplier = getPotRuleMultiplier(gameplayModifier, selectedCards.length);
   const total = Math.round((storedBase * handMultiplier * speedBonus.multiplier * streakMultiplier * stackTypeMultiplier * potRuleMultiplier + stackTypeFlat) * runMultiplier);
+  const breakdown = buildCrunchBreakdown({
+    storedBase,
+    handMultiplier,
+    speedBonus,
+    streakMultiplier,
+    stackTypes,
+    potRuleMultiplier,
+    potRuleLabel: gameplayModifier?.scoreLabel,
+    runMultiplier,
+    total
+  });
+  const entryAwards = allocateCutsceneAwards({
+    awardedPoints,
+    total,
+    multiplier: handMultiplier
+      * speedBonus.multiplier
+      * streakMultiplier
+      * stackTypeMultiplier
+      * potRuleMultiplier
+      * runMultiplier
+  });
+  const inlineMultipliers = breakdown.filter((step) => step.kind === "multiplier");
+  const inlineFlatBonuses = breakdown.filter((step) => step.kind === "bonus");
 
   return {
     success: true,
@@ -204,28 +227,34 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
         card: entry.card,
         matchType: entry.matchType,
         points: awardedPoints[index],
+        bankPoints: entryAwards[index],
         matchedCards: entry.matchedCards,
         equation: entry.equation,
         label: entry.cutinLabel ?? entry.label,
         isDouble: entry.matchedCards.length > 1 && (entry.matchType === MATCH_TYPES.RANK || entry.matchType === MATCH_TYPES.SUIT),
-        multiplier: entry.matchedCards.length > 1 && (entry.matchType === MATCH_TYPES.RANK || entry.matchType === MATCH_TYPES.SUIT) ? 2 : 1
+        multiplier: entry.matchedCards.length > 1 && (entry.matchType === MATCH_TYPES.RANK || entry.matchType === MATCH_TYPES.SUIT) ? 2 : 1,
+        matchCount: entry.matchedCards.length + 1,
+        inlineBonuses: [
+          ...inlineMultipliers,
+          ...(index === resolution.history.length - 1 ? inlineFlatBonuses : [])
+        ]
       })),
       total,
       selectedCount: selectedCards.length,
       tier: selectedCards.length === 4 ? "full" : selectedCards.length >= 3 ? "big" : "normal"
     },
-    breakdown: buildCrunchBreakdown({
-      storedBase,
-      handMultiplier,
-      speedBonus,
-      streakMultiplier,
-      stackTypes,
-      potRuleMultiplier,
-      potRuleLabel: gameplayModifier?.scoreLabel,
-      runMultiplier,
-      total
-    })
+    breakdown
   };
+}
+
+function allocateCutsceneAwards({ awardedPoints, total, multiplier }) {
+  let assigned = 0;
+  return awardedPoints.map((points, index) => {
+    if (index === awardedPoints.length - 1) return Math.max(0, total - assigned);
+    const award = Math.min(Math.max(0, total - assigned), Math.max(0, Math.round(points * multiplier)));
+    assigned += award;
+    return award;
+  });
 }
 
 function getRuleAdjustedBasePoints(entry, gameplayModifier) {
@@ -304,6 +333,12 @@ export function runScoringSelfTests() {
     streak: 0,
     gameplayModifier: { minSelectionForMultiplier: 3, selectionScoreMultiplier: 2, scoreLabel: "HAND FEVER" }
   });
+  const tripleRank = calculateCrunchScore({
+    baseStack: [card(5, "hearts"), card(5, "spades")],
+    selectedCards: [card(5, "clubs")],
+    timeLeft: 3,
+    streak: 0
+  });
 
   const cases = [
     { name: "success sequence", pass: success.success && success.resolution.history.length === 2 },
@@ -312,7 +347,17 @@ export function runScoringSelfTests() {
     { name: "two card multiplier", pass: success.handMultiplier === 2 },
     { name: "speed bonus", pass: success.speedBonus.multiplier === 2 },
     { name: "suit surge modifier", pass: suitSurge.success && suitSurge.storedBase === 200 },
-    { name: "full hand fever modifier", pass: fullHandFever.success && fullHandFever.potRuleMultiplier === 2 }
+    { name: "full hand fever modifier", pass: fullHandFever.success && fullHandFever.potRuleMultiplier === 2 },
+    { name: "cutscene awards equal total", pass: success.cutscene.entries.reduce((sum, entry) => sum + entry.bankPoints, 0) === success.total },
+    { name: "full cutscene awards equal total", pass: fullHandFever.cutscene.entries.reduce((sum, entry) => sum + entry.bankPoints, 0) === fullHandFever.total },
+    { name: "cutscene bonuses are inline", pass: success.cutscene.entries.every((entry) => Array.isArray(entry.inlineBonuses)) },
+    {
+      name: "triple rank reacts inline",
+      pass: tripleRank.cutscene.entries[0].matchCount === 3
+        && tripleRank.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "TRIPLE RANK")
+        && tripleRank.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "PAIR BONUS")
+        && tripleRank.cutscene.entries[0].bankPoints === tripleRank.total
+    }
   ];
 
   return cases.map((test) => ({ ...test, result: test.name.includes("fail") ? fail : success }));

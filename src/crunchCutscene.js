@@ -12,7 +12,6 @@ const CUTSCENE_CONFIG = {
   minFinalFlyDelay: 520,
   minFinalCloseDelay: 620,
   minBustAdvanceDelay: 620,
-  autoBonusStepDuration: 620,
   sharedCardDuration: 680,
   sharedCardStagger: 58,
   interactiveCrunchHits: 3,
@@ -309,7 +308,7 @@ export async function playCrunchEntryExplanation({ entry, tier = "normal", bank 
     cleanupSharedHandoff = await playEntryCutin(overlay, entry, tier, advance, sourceCards, bank?.element ?? null);
     if (bank) {
       const cards = getActiveCutinCards(overlay);
-      await bank.add(entry.points, overlay.querySelector(".cutin-points"), advance, cards);
+      await bank.add(entry.bankPoints ?? entry.points, overlay.querySelector(".cutin-points"), advance, cards);
     }
     overlay.classList.add("is-leaving");
     await waitMaybe(advance, CUTSCENE_CONFIG.fadeOutDuration);
@@ -320,21 +319,21 @@ export async function playCrunchEntryExplanation({ entry, tier = "normal", bank 
   }
 }
 
-export async function playCrunchTotalExplanation({ total, scoreEl, tier = "normal", breakdown = [], bank = null }) {
+export async function playCrunchTotalExplanation({ total, scoreEl, tier = "normal", bank = null }) {
+  if (bank) {
+    if (bank.value !== total) await bank.rampTo(total);
+    await bank.finishToScore(scoreEl);
+    playGameSfx("score_arrive");
+    return;
+  }
+
   const overlay = createOverlay(tier);
   const advance = createAdvanceController(overlay);
   document.body.appendChild(overlay);
-
   try {
-    if (bank) {
-      await playCrunchBonusSteps(overlay, breakdown, total, tier, advance, bank);
-      if (bank.value !== total) await bank.rampTo(total, advance);
-      await bank.finishToScore(scoreEl, advance);
-    } else {
-      await playFinalTotal(overlay, total, scoreEl, tier, advance);
-    }
+    await playFinalTotal(overlay, total, scoreEl, tier, advance);
     overlay.classList.add("is-leaving");
-    await (advance.fastForwarded ? sleep(CUTSCENE_CONFIG.fadeOutDuration) : waitMaybe(advance, CUTSCENE_CONFIG.fadeOutDuration));
+    await waitMaybe(advance, CUTSCENE_CONFIG.fadeOutDuration);
   } finally {
     advance.destroy();
     overlay.remove();
@@ -382,8 +381,43 @@ async function playEntryCutin(overlay, entry, tier, advance, sourceCards = [], b
   const crunchPrompt = createInteractiveCrunchPrompt(overlay);
   const cleanupSharedHandoff = await transitionSourceCardsIntoCutin(overlay, sourceCards, advance);
   playGameSfx(getEntrySound(entry));
+  await playInlineCrunchBonuses(overlay, entry, advance);
   await playInteractiveCardCrunch(overlay, advance, crunchPrompt, bankEl);
   return cleanupSharedHandoff;
+}
+
+async function playInlineCrunchBonuses(overlay, entry, advance) {
+  const bonuses = entry.inlineBonuses ?? [];
+  const bankPoints = entry.bankPoints ?? entry.points;
+  if (!bonuses.length && bankPoints === entry.points) return;
+
+  const stage = overlay.querySelector(".cutin-stage");
+  const points = overlay.querySelector(".cutin-points");
+  if (!stage || !points) return;
+
+  const reaction = document.createElement("div");
+  reaction.className = "cutin-inline-bonuses";
+  reaction.innerHTML = bonuses.map((bonus) => `
+    <span class="cutin-inline-bonus cutin-bonus-${bonus.tone ?? "total"}">
+      <em>${bonus.label}</em>
+      <strong>${bonus.value}</strong>
+    </span>
+  `).join("");
+  points.insertAdjacentElement("beforebegin", reaction);
+
+  const isMultiMatch = (entry.matchType === "rank" || entry.matchType === "suit")
+    && (entry.matchCount ?? 0) >= 3;
+  stage.classList.add("is-bonus-reacting");
+  if (isMultiMatch) stage.classList.add("is-multi-match-reacting");
+  playGameSfx(isMultiMatch ? "double_match" : "score_step");
+  await advance.wait(360);
+
+  points.textContent = `+${formatCompactNumber(bankPoints)}`;
+  points.classList.add("is-multiplied");
+  stage.classList.add("is-award-ready");
+  playGameSfx("score_total");
+  await advance.wait(420);
+  stage.classList.remove("is-bonus-reacting", "is-multi-match-reacting");
 }
 
 function getActiveCutinCards(overlay) {
@@ -695,29 +729,6 @@ async function playFinalTotal(overlay, total, scoreEl, tier, advance, bank = nul
   playGameSfx("score_arrive");
 }
 
-async function playCrunchBonusSteps(overlay, breakdown, total, tier, advance, bank) {
-  const steps = breakdown.filter((step) => step.kind !== "base" && step.kind !== "total");
-  if (!steps.length) return;
-
-  overlay.innerHTML = `
-    <div class="cutin-bonus-page ${tier === "full" ? "cutin-full" : ""}">
-      <span>Bonus Crunch</span>
-      <div class="cutin-bonus-row">
-        ${steps.map((step) => `
-          <div class="cutin-bonus-chip cutin-bonus-${step.tone ?? "total"}">
-            <em>${step.label}</em>
-            <strong>${step.value}</strong>
-          </div>
-        `).join("")}
-      </div>
-    </div>
-  `;
-  overlay.classList.add("is-bonus-screen");
-  playGameSfx("score_step");
-  await waitMaybe(advance, CUTSCENE_CONFIG.autoBonusStepDuration);
-  await bank.rampTo(total, advance);
-}
-
 function createOverlay(tier, { deferFocus = false } = {}) {
   const overlay = document.createElement("section");
   overlay.className = `crunch-cutscene-overlay cutscene-${tier}`;
@@ -730,19 +741,12 @@ function createOverlay(tier, { deferFocus = false } = {}) {
 
 function createAdvanceController(overlay) {
   const waiters = new Set();
-  let fastForwarded = false;
   const finishAllWaiters = () => {
     [...waiters].forEach((finish) => finish());
   };
   const onAdvance = (event) => {
     if (event.target?.closest?.(".crunch-skip-text")) return;
     event.preventDefault();
-    if (overlay.classList.contains("is-bonus-screen")) {
-      fastForwarded = true;
-      overlay.classList.add("is-leaving");
-      finishAllWaiters();
-      return;
-    }
     playTapBounce(overlay);
     const [next] = waiters;
     if (next) next();
@@ -753,11 +757,8 @@ function createAdvanceController(overlay) {
   window.addEventListener(CRUNCH_SKIP_EVENT, onSkipAll);
 
   return {
-    get fastForwarded() {
-      return fastForwarded;
-    },
     waitForTap(minMs = 0) {
-      if (isCrunchSkipRequested() || fastForwarded) return Promise.resolve();
+      if (isCrunchSkipRequested()) return Promise.resolve();
       return new Promise((resolve) => {
         let finished = false;
         let canAdvance = minMs <= 0;
@@ -782,7 +783,7 @@ function createAdvanceController(overlay) {
       });
     },
     wait(ms) {
-      if (isCrunchSkipRequested() || fastForwarded) return Promise.resolve();
+      if (isCrunchSkipRequested()) return Promise.resolve();
       return new Promise((resolve) => {
         let finished = false;
         const finish = () => {
