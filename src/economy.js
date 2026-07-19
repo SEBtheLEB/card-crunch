@@ -1,17 +1,23 @@
 export const ECONOMY_CONFIG = Object.freeze({
-  energyMax: 30,
-  energyPerRun: 5,
-  energyRegenMs: 12 * 60 * 1000,
-  energyAdReward: 5,
-  energyAdsPerDay: 4,
-  energyCoinRefill: 5,
-  energyCoinCost: 75,
   coinAdReward: 125,
   coinAdsPerDay: 3,
+  crunchCashMilestone: 100000,
+  coinsPerCrunchMilestone: 10,
   shieldCoinCost: 500,
   coinPackAmount: 1500,
   coinPackProductId: "card_crunch_coin_pack_1500"
 });
+
+export function calculateCrunchMilestoneCoinReward({ fromCash = 0, toCash = 0 } = {}) {
+  const step = ECONOMY_CONFIG.crunchCashMilestone;
+  const start = Math.max(0, Number(fromCash) || 0);
+  const end = Math.max(start, Number(toCash) || 0);
+  const milestones = Math.max(0, Math.floor(end / step) - Math.floor(start / step));
+  return {
+    milestones,
+    coins: milestones * ECONOMY_CONFIG.coinsPerCrunchMilestone
+  };
+}
 
 const ECONOMY_KEY = "cardCrunchEconomyV1";
 const LEGACY_COINS_KEY = "cardCrunchCoins";
@@ -26,32 +32,11 @@ export function calculateRunCoinReward({ grossCash = 0, bestStreak = 0, potClear
   return { total, scoreCoins, streakCoins, clearBonus };
 }
 
-export function calculateRegeneratedEnergy({ energy, updatedAt, now = Date.now() }) {
-  const safeEnergy = clampInteger(energy, 0, ECONOMY_CONFIG.energyMax);
-  const safeUpdatedAt = Math.min(now, Math.max(0, Number(updatedAt) || now));
-  if (safeEnergy >= ECONOMY_CONFIG.energyMax) {
-    return { energy: ECONOMY_CONFIG.energyMax, updatedAt: now, gained: 0 };
-  }
-
-  const elapsed = Math.max(0, now - safeUpdatedAt);
-  const gained = Math.floor(elapsed / ECONOMY_CONFIG.energyRegenMs);
-  if (gained <= 0) return { energy: safeEnergy, updatedAt: safeUpdatedAt, gained: 0 };
-
-  const nextEnergy = Math.min(ECONOMY_CONFIG.energyMax, safeEnergy + gained);
-  const nextUpdatedAt = nextEnergy >= ECONOMY_CONFIG.energyMax
-    ? now
-    : safeUpdatedAt + gained * ECONOMY_CONFIG.energyRegenMs;
-  return { energy: nextEnergy, updatedAt: nextUpdatedAt, gained: nextEnergy - safeEnergy };
-}
-
 function createDefaultState(now = Date.now()) {
   return {
-    version: 1,
+    version: 2,
     coins: readLegacyCoins(),
-    energy: ECONOMY_CONFIG.energyMax,
-    energyUpdatedAt: now,
     dailyKey: getDailyKey(now),
-    energyAdsWatched: 0,
     coinAdsWatched: 0
   };
 }
@@ -60,7 +45,7 @@ function loadState() {
   const now = Date.now();
   try {
     const saved = JSON.parse(localStorage.getItem(ECONOMY_KEY) ?? "null");
-    if (!saved || saved.version !== 1) return createDefaultState(now);
+    if (!saved || typeof saved !== "object") return createDefaultState(now);
     return normalizeState(saved, now);
   } catch {
     return createDefaultState(now);
@@ -69,18 +54,12 @@ function loadState() {
 
 function normalizeState(saved, now) {
   const state = {
-    version: 1,
+    version: 2,
     coins: Math.max(readLegacyCoins(), clampInteger(saved.coins, 0, Number.MAX_SAFE_INTEGER)),
-    energy: clampInteger(saved.energy, 0, ECONOMY_CONFIG.energyMax),
-    energyUpdatedAt: Math.min(now, Math.max(0, Number(saved.energyUpdatedAt) || now)),
     dailyKey: typeof saved.dailyKey === "string" ? saved.dailyKey : getDailyKey(now),
-    energyAdsWatched: clampInteger(saved.energyAdsWatched, 0, ECONOMY_CONFIG.energyAdsPerDay),
     coinAdsWatched: clampInteger(saved.coinAdsWatched, 0, ECONOMY_CONFIG.coinAdsPerDay)
   };
   resetDailyCounters(state, now);
-  const regenerated = calculateRegeneratedEnergy({ energy: state.energy, updatedAt: state.energyUpdatedAt, now });
-  state.energy = regenerated.energy;
-  state.energyUpdatedAt = regenerated.updatedAt;
   return state;
 }
 
@@ -91,25 +70,6 @@ export const economy = {
   getSnapshot(now = Date.now()) {
     sync(now);
     return createSnapshot(now);
-  },
-
-  spendRunEnergy(now = Date.now()) {
-    sync(now);
-    if (state.energy < ECONOMY_CONFIG.energyPerRun) return false;
-    const wasFull = state.energy >= ECONOMY_CONFIG.energyMax;
-    state.energy -= ECONOMY_CONFIG.energyPerRun;
-    if (wasFull) state.energyUpdatedAt = now;
-    commit();
-    return true;
-  },
-
-  addEnergy(amount, now = Date.now()) {
-    sync(now);
-    const before = state.energy;
-    state.energy = Math.min(ECONOMY_CONFIG.energyMax, state.energy + Math.max(0, Math.floor(amount)));
-    if (state.energy >= ECONOMY_CONFIG.energyMax) state.energyUpdatedAt = now;
-    if (state.energy !== before) commit();
-    return state.energy - before;
   },
 
   addCoins(amount) {
@@ -126,36 +86,6 @@ export const economy = {
     state.coins -= safeAmount;
     commit();
     return true;
-  },
-
-  buyEnergyRefill(now = Date.now()) {
-    sync(now);
-    if (!hasEnergyRefillRoom(ECONOMY_CONFIG.energyCoinRefill)
-      || state.coins < ECONOMY_CONFIG.energyCoinCost) return false;
-    state.coins -= ECONOMY_CONFIG.energyCoinCost;
-    const wasEmpty = state.energy <= 0;
-    state.energy = Math.min(ECONOMY_CONFIG.energyMax, state.energy + ECONOMY_CONFIG.energyCoinRefill);
-    if (wasEmpty && state.energy < ECONOMY_CONFIG.energyMax) state.energyUpdatedAt = now;
-    if (state.energy >= ECONOMY_CONFIG.energyMax) state.energyUpdatedAt = now;
-    commit();
-    return true;
-  },
-
-  canClaimEnergyAd(now = Date.now()) {
-    sync(now);
-    return hasEnergyRefillRoom(ECONOMY_CONFIG.energyAdReward)
-      && state.energyAdsWatched < ECONOMY_CONFIG.energyAdsPerDay;
-  },
-
-  claimEnergyAd(now = Date.now()) {
-    sync(now);
-    if (!this.canClaimEnergyAd(now)) return 0;
-    state.energyAdsWatched += 1;
-    const before = state.energy;
-    state.energy = Math.min(ECONOMY_CONFIG.energyMax, state.energy + ECONOMY_CONFIG.energyAdReward);
-    if (state.energy >= ECONOMY_CONFIG.energyMax) state.energyUpdatedAt = now;
-    commit();
-    return state.energy - before;
   },
 
   canClaimCoinAd(now = Date.now()) {
@@ -185,40 +115,18 @@ export const economy = {
 };
 
 function sync(now = Date.now()) {
-  const before = `${state.energy}|${state.energyUpdatedAt}|${state.dailyKey}|${state.energyAdsWatched}|${state.coinAdsWatched}`;
+  const before = `${state.dailyKey}|${state.coinAdsWatched}`;
   resetDailyCounters(state, now);
-  const regenerated = calculateRegeneratedEnergy({ energy: state.energy, updatedAt: state.energyUpdatedAt, now });
-  state.energy = regenerated.energy;
-  state.energyUpdatedAt = regenerated.updatedAt;
-  const after = `${state.energy}|${state.energyUpdatedAt}|${state.dailyKey}|${state.energyAdsWatched}|${state.coinAdsWatched}`;
+  const after = `${state.dailyKey}|${state.coinAdsWatched}`;
   if (before !== after) commit();
 }
 
-function createSnapshot(now = Date.now()) {
-  const missingEnergy = Math.max(0, ECONOMY_CONFIG.energyMax - state.energy);
-  const elapsed = Math.max(0, now - state.energyUpdatedAt);
-  const nextEnergyInMs = missingEnergy > 0
-    ? Math.max(0, ECONOMY_CONFIG.energyRegenMs - (elapsed % ECONOMY_CONFIG.energyRegenMs))
-    : 0;
+function createSnapshot() {
   return {
     coins: state.coins,
-    energy: state.energy,
-    energyMax: ECONOMY_CONFIG.energyMax,
-    energyPerRun: ECONOMY_CONFIG.energyPerRun,
-    energyProgress: state.energy / ECONOMY_CONFIG.energyMax,
-    nextEnergyInMs,
-    energyAdsRemaining: Math.max(0, ECONOMY_CONFIG.energyAdsPerDay - state.energyAdsWatched),
     coinAdsRemaining: Math.max(0, ECONOMY_CONFIG.coinAdsPerDay - state.coinAdsWatched),
-    canBuyEnergy: hasEnergyRefillRoom(ECONOMY_CONFIG.energyCoinRefill)
-      && state.coins >= ECONOMY_CONFIG.energyCoinCost,
-    canWatchEnergyAd: hasEnergyRefillRoom(ECONOMY_CONFIG.energyAdReward)
-      && state.energyAdsWatched < ECONOMY_CONFIG.energyAdsPerDay,
     canWatchCoinAd: state.coinAdsWatched < ECONOMY_CONFIG.coinAdsPerDay
   };
-}
-
-function hasEnergyRefillRoom(amount) {
-  return state.energy <= ECONOMY_CONFIG.energyMax - amount;
 }
 
 function commit() {
@@ -236,7 +144,6 @@ function resetDailyCounters(target, now) {
   const key = getDailyKey(now);
   if (target.dailyKey === key) return;
   target.dailyKey = key;
-  target.energyAdsWatched = 0;
   target.coinAdsWatched = 0;
 }
 

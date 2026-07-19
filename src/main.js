@@ -1,16 +1,16 @@
-import { createGame } from "./gameState.js?v=133";
-import { createUI } from "./ui.js?v=130";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=132";
+import { createGame } from "./gameState.js?v=139";
+import { createUI } from "./ui.js?v=137";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=139";
 import { adManager } from "./ads.js?v=90";
 import { grantShieldToken, hasShieldToken } from "./save.js?v=90";
-import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=129";
+import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=134";
 import { haptic } from "./haptics.js?v=90";
 import { bindInstantAction } from "./input.js?v=90";
 import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=90";
 import { installFullscreenControls } from "./fullscreen.js?v=90";
 import { bindThemePicker, initializeTheme } from "./themes.js?v=90";
 import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=90";
-import { initializeTutorial } from "./tutorial.js?v=93";
+import { initializeTutorial } from "./tutorial.js?v=136";
 
 initializeTheme();
 initializeCardSkin();
@@ -31,14 +31,9 @@ bindInstantAction(ui.elements.returnToPotsButton, game.returnToMap);
 bindInstantAction(ui.elements.reviveAdButton, game.onReviveAd);
 bindInstantAction(ui.elements.recoverAdButton, game.onRecoverAd);
 bindInstantAction(ui.elements.hintAdButton, game.onHintAd);
-bindInstantAction(ui.elements.buyEnergyButton, game.buyEnergyWithCoins);
-bindInstantAction(ui.elements.watchEnergyAdButton, game.onEnergyAd);
 bindInstantAction(ui.elements.buyShieldButton, game.buyShieldWithCoins);
 bindInstantAction(ui.elements.watchCoinAdButton, game.onCoinAd);
 bindInstantAction(ui.elements.buyCoinPackButton, game.buyCoinPack);
-bindInstantAction(ui.elements.energyGateAdButton, game.onEnergyAd);
-bindInstantAction(ui.elements.energyGateCoinButton, game.buyEnergyWithCoins);
-bindInstantAction(ui.elements.energyGateCloseButton, game.closeEnergyGate);
 bindInstantAction(ui.elements.playLeaderboardButton, async () => {
   const opened = await showPlayLeaderboard();
   if (!opened) ui.elements.playLeaderboardStatus.textContent = "Google Play Games connects in the Android release build.";
@@ -62,7 +57,6 @@ bindCardSkinPicker(bindInstantAction);
 installRainbowCardTrail();
 loadSettings();
 game.refreshEconomy();
-window.setInterval(game.refreshEconomy, 1000);
 window.addEventListener("focus", game.refreshEconomy);
 
 document.addEventListener(

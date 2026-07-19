@@ -22,8 +22,6 @@ const required = [
   "assets/sfx/deal-hand-2.mp3",
   "assets/sfx/deal-hand-3.mp3",
   "assets/sfx/deal-hand-4.mp3",
-  "assets/backgrounds/pixel-casino-menu.jpg",
-  "assets/backgrounds/pixel-casino-table.jpg",
   "styles/main.css",
   "capacitor.config.json"
 ];
@@ -37,12 +35,6 @@ for (let index = 1; index <= 4; index += 1) {
     throw new Error(`Deal sample ${index} is empty`);
   }
 }
-for (const background of ["pixel-casino-menu.jpg", "pixel-casino-table.jpg"]) {
-  if ((await stat(resolve(root, `assets/backgrounds/${background}`))).size < 100_000) {
-    throw new Error(`Casino background ${background} is missing or unexpectedly small`);
-  }
-}
-
 const scoringModule = await import(`../src/scoring.js?verify=${Date.now()}`);
 const results = scoringModule.runScoringSelfTests();
 if (!Array.isArray(results) || results.some((result) => result.pass === false)) {
@@ -81,8 +73,11 @@ if (dealTimingModule.getRoundDealDuration(4, 2) >= 2000) {
 
 const html = await readFile(resolve(root, "index.html"), "utf8");
 const backgroundStyles = await readFile(resolve(root, "styles/main.css"), "utf8");
-if (!backgroundStyles.includes("pixel-casino-menu.jpg") || !backgroundStyles.includes("pixel-casino-table.jpg")) {
-  throw new Error("Casino room backgrounds are not connected to the UI");
+if (!backgroundStyles.includes("--casino-table-bg:")
+  || !backgroundStyles.includes("repeating-linear-gradient(52deg")
+  || backgroundStyles.includes("pixel-casino-menu.jpg")
+  || backgroundStyles.includes("pixel-casino-table.jpg")) {
+  throw new Error("The lightweight top-down felt table background is not connected to the UI");
 }
 if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButton")) {
   throw new Error("Release UI hooks are missing");
@@ -90,8 +85,11 @@ if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButt
 if ((html.match(/data-fullscreen-toggle/g) ?? []).length !== 2) {
   throw new Error("Menu and gameplay fullscreen controls are missing");
 }
-if (!html.includes("summaryCoins") || !html.includes("energyGateScreen") || !html.includes("buyEnergyButton")) {
+if (!html.includes("summaryCoins") || !html.includes("storeCoinsValue") || !html.includes("buyShieldButton")) {
   throw new Error("Economy UI hooks are missing");
+}
+if (/energy|recharge/i.test(html)) {
+  throw new Error("Energy gating must not appear in the unlimited-play UI");
 }
 if ((html.match(/data-theme-id=/g) ?? []).length !== 3 || !html.includes("gold-table") || !html.includes("knight-deck")) {
   throw new Error("Selectable theme controls are missing");
@@ -105,7 +103,7 @@ if (!html.includes("run-scoreboard") || !html.includes("summaryRecoveryTicker"))
 if (!html.includes("tutorialStartButton") || !html.includes("tutorialCoach") || !html.includes("bottom-status")) {
   throw new Error("Live-board tutorial hooks are missing");
 }
-if (!html.includes("Each pot has a unique rule.") || (html.match(/menu-chip-add/g) ?? []).length !== 2) {
+if (!html.includes("Each pot has a unique rule.") || (html.match(/menu-chip-add/g) ?? []).length !== 1) {
   throw new Error("Pot challenge copy or unified header actions are missing");
 }
 if (html.includes('id="tutorialPage"')) {
@@ -118,13 +116,8 @@ const highReward = economyModule.calculateRunCoinReward({ grossCash: 1_000_000, 
 if (lowReward.total <= 0 || highReward.total <= lowReward.total) {
   throw new Error("Run coin rewards do not scale with performance");
 }
-const regen = economyModule.calculateRegeneratedEnergy({
-  energy: 10,
-  updatedAt: 1_000,
-  now: 1_000 + economyModule.ECONOMY_CONFIG.energyRegenMs * 2
-});
-if (regen.energy !== 12 || economyModule.ECONOMY_CONFIG.energyPerRun !== 5 || economyModule.ECONOMY_CONFIG.energyMax !== 30) {
-  throw new Error("Energy regeneration or run cost is incorrect");
+if ("energyPerRun" in economyModule.ECONOMY_CONFIG || "calculateRegeneratedEnergy" in economyModule) {
+  throw new Error("Energy gating still exists in the economy module");
 }
 
 const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardGestureSource, dealTimingSource, gameStateSource, uiSource, css] = await Promise.all([
@@ -145,8 +138,13 @@ const scoringSource = await readFile(resolve(root, "src/scoring.js"), "utf8");
 if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createPixelShardClip") || !css.includes("cutin-card-shard")) {
   throw new Error("Crunch Bank card-shard animation hooks are missing");
 }
-if (!cutsceneSource.includes("createShardImpactSchedule") || !cutsceneSource.includes("schedulePreparedShardImpacts") || !cutsceneSource.includes("rowReleaseDelays") || !css.includes("cutinCardShardVacuum")) {
-  throw new Error("Crunch Bank vacuum sequencing or shard contact hooks are missing");
+if (!cutsceneSource.includes("startPreparedShardPhysics")
+  || !cutsceneSource.includes("updateScatteredShard")
+  || !cutsceneSource.includes("updateVacuumShard")
+  || !cutsceneSource.includes("resolveShardWallCollisions")
+  || !cutsceneSource.includes("registerShardBankImpact")
+  || !css.includes("cutin-card-shard.is-physics-active")) {
+  throw new Error("Physics-driven Crunch Bank shard sequencing is missing");
 }
 if (!cutsceneSource.includes("is-consumed-after-shatter") || !css.includes(".cutin-live-card.is-consumed-after-shatter")) {
   throw new Error("Consumed cut-in cards can reappear after the vacuum finishes");
@@ -169,7 +167,7 @@ if (!cutsceneSource.includes("getShardGrid") || !cutsceneSource.includes("const 
   throw new Error("Adaptive multi-card shard preparation is missing");
 }
 const shardContactSource = cutsceneSource.slice(
-  cutsceneSource.indexOf("function createShardImpactSchedule"),
+  cutsceneSource.indexOf("function stepPreparedShardPhysics"),
   cutsceneSource.indexOf("function createPixelShardClip")
 );
 if (shardContactSource.includes("getBoundingClientRect")) {
@@ -182,10 +180,13 @@ const shardFeedSource = cutsceneSource.slice(
   cutsceneSource.indexOf("async function feedCutinCardsToBank"),
   cutsceneSource.indexOf("function discardPreparedCardShards")
 );
-if (!shardFeedSource.includes("await sleep(prepared.totalDuration)") || shardFeedSource.includes("waitMaybe(advance")) {
+if (!shardFeedSource.includes("await prepared.physicsPromise") || shardFeedSource.includes("waitMaybe(advance")) {
   throw new Error("Card shard vacuum timing must stay independent from tap-to-advance speedups");
 }
-if (!cutsceneSource.includes("pendingBankEffects") || !cutsceneSource.includes("settleBankEffects") || !cutsceneSource.includes("countBankBy")) {
+if (!cutsceneSource.includes("pendingBankEffects")
+  || !cutsceneSource.includes("settleBankEffects")
+  || !cutsceneSource.includes("nextCreditedAmount")
+  || !cutsceneSource.includes("prepared.onImpact?.({ arrived")) {
   throw new Error("Detached Crunch Bank effects must be tracked through the final score merge");
 }
 if (!cutsceneSource.includes("activeBankFeeds") || !cutsceneSource.includes("beginBankFeed") || !cutsceneSource.includes("endBankFeed")) {
@@ -204,8 +205,10 @@ if (!preparedAssemblySource.includes("hit >= CUTSCENE_CONFIG.interactiveCrunchHi
 if (!cutsceneSource.includes('classList.toggle("is-shattered-piece"') || !css.includes(".cutin-card-shard.is-shattered-piece::before") || !css.includes("box-shadow: none !important")) {
   throw new Error("Vacuuming shards must not inherit card frames or decorative overlays");
 }
-if (!cutsceneSource.includes('setProperty("--shard-origin"') || !css.includes("transform-origin: var(--shard-origin") || /cutinCardShardVacuum[\s\S]{0,500}\b18%/.test(css)) {
-  throw new Error("Shard scatter and vacuum animations must share one pivot without a dead hold");
+if (!cutsceneSource.includes('setProperty("--shard-origin"')
+  || !css.includes("transform-origin: var(--shard-origin")
+  || css.includes("@keyframes cutinCardShardVacuum")) {
+  throw new Error("Shard physics must share one pivot without the legacy spline animation");
 }
 if (!cutsceneSource.includes("transitionSourceCardsIntoCutin") || !cutsceneSource.includes("data-cutin-card-id") || !css.includes("cutin-shared-card-flight")) {
   throw new Error("Shared card-to-cutin transitions are missing");
@@ -238,10 +241,17 @@ if (sharedHandoffSource.includes('classList.remove("cutin-shared-source-hidden")
   || !css.includes(".cutin-shared-source-hidden {\n  opacity: 0 !important;")) {
   throw new Error("Consumed hand and table cards must stay absent behind the Crunch cutscene");
 }
-if (!animationsSource.includes('from "./crunchCutscene.js?v=133"') || !gameStateSource.includes('from "./crunchCutscene.js?v=133"')) {
+const animationsCutsceneVersion = animationsSource.match(/from "\.\/crunchCutscene\.js\?v=(\d+)"/)?.[1];
+const gameStateCutsceneVersion = gameStateSource.match(/from "\.\/crunchCutscene\.js\?v=(\d+)"/)?.[1];
+if (!animationsCutsceneVersion || animationsCutsceneVersion !== gameStateCutsceneVersion) {
   throw new Error("Crunch skip and handoff state must use one shared module instance");
 }
-if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("--shard-burst-x") || !css.includes("cutin-fracture-map") || !css.includes("--shard-rest-x") || !css.includes("cutin-card-shard.is-vacuuming")) {
+if (!cutsceneSource.includes("playInteractiveCardCrunch")
+  || !cutsceneSource.includes("prepareCutinCardShards")
+  || !cutsceneSource.includes("explosionMinSpeed")
+  || !cutsceneSource.includes("vacuumRampForce")
+  || !css.includes("cutin-fracture-map")
+  || !css.includes("cutin-card-shard.is-physics-active")) {
   throw new Error("Three-hit interactive Crunch damage sequence is missing");
 }
 if (!cutsceneSource.includes("assignCrunchShakeVectors")
@@ -250,7 +260,11 @@ if (!cutsceneSource.includes("assignCrunchShakeVectors")
   || !css.includes("--crunch-shake-r-c")) {
   throw new Error("Crunch hits must assign bounded, varied per-card shake vectors");
 }
-if (!audioSource.includes("playCrunchShardImpact") || !audioSource.includes("SHARD_IMPACT_MIN_INTERVAL") || !audioSource.includes("crunch_vacuum") || !audioSource.includes("crunch_hit_3")) {
+if (!audioSource.includes("playCrunchShardImpact")
+  || !audioSource.includes("impactStrength")
+  || !audioSource.includes("crunch_vacuum")
+  || !audioSource.includes("crunch_hit_3")
+  || !cutsceneSource.includes("playCrunchShardImpact({ progress, strength })")) {
   throw new Error("Crunch Bank impact mixing or vacuum audio is missing");
 }
 if (!audioSource.includes("playing-card.mp3") || !audioSource.includes("playCardThrowSample") || !audioSource.includes("CARD_PLAY_VARIANTS") || !audioSource.includes("lastCardPlayVariant")) {
@@ -278,6 +292,15 @@ if (!cardGestureSource.includes("bindCardGesture") || !cardGestureSource.include
 }
 if (!cutsceneSource.includes("playInlineCrunchBonuses") || !cutsceneSource.includes("entry.bankPoints") || !css.includes("cutin-inline-bonuses")) {
   throw new Error("Crunch multipliers are not integrated into each card cut-in");
+}
+if (!cutsceneSource.includes("cutin-card-stage")
+  || !cutsceneSource.includes("cutin-result-stack")
+  || !cutsceneSource.includes("spawnModifierBurst")
+  || !cutsceneSource.includes("applyInlineBonus")
+  || !css.includes("Build 139: anchored crunch results")
+  || !css.includes("cutin-bonus-run")
+  || !css.includes("cutin-bonus-pot")) {
+  throw new Error("Crunch cards must stay anchored while color-coded modifiers resolve downward");
 }
 if (!scoringSource.includes("buildCrunchPresentationEntries") || !animationsSource.includes("presentationEntries") || !scoringSource.includes("MATCH_TIER_MULTIPLIERS")) {
   throw new Error("Growing suit and number matches are not consolidated into their final tier");
@@ -321,6 +344,13 @@ if (!mainSource.includes("activePressTargets") || mainSource.includes('classList
 }
 if (!tutorialSource.includes("Full Crunch") || !tutorialSource.includes("Bank Your Cash") || !tutorialSource.includes("Minus Crunch")) {
   throw new Error("Tutorial lessons do not cover full-hand, banking, and arithmetic Crunches");
+}
+if (!tutorialSource.includes("guideStackByStep")
+  || !gameStateSource.includes("tutorialGuideStackByStep")
+  || !uiSource.includes("syncTutorialGuidance")
+  || !css.includes("tutorial-guided-reference")
+  || !css.includes("liveTutorialReference")) {
+  throw new Error("Tutorial hand and reference-card guidance is missing");
 }
 if (!gameStateSource.includes("startTutorial") || !gameStateSource.includes("advanceTutorialLesson") || !gameStateSource.includes("playCrunchEntryExplanation")) {
   throw new Error("Tutorial does not run through the live game-state and Crunch pipeline");
@@ -412,4 +442,4 @@ if (!fullscreenSource.includes("requestFullscreen") || !fullscreenSource.include
   throw new Error("Fullscreen API hooks are missing");
 }
 
-console.log(`Verified ${results.length} scoring cases, economy rewards, energy regeneration, arcade run summary, round message cleanup, selectable themes and card skins, fullscreen controls, release UI hooks, and card-shard VFX.`);
+console.log(`Verified ${results.length} scoring cases, unlimited play, economy rewards, arcade run summary, round message cleanup, selectable themes and card skins, fullscreen controls, release UI hooks, and card-shard VFX.`);

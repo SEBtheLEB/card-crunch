@@ -18,9 +18,12 @@
   --bg-0: #04050d;
   --bg-1: #0a0f24;
   --bg-2: #121a3a;
-  --casino-table-bg: linear-gradient(180deg, #091427, #063124 36%, #03130f);
-  --menu-casino-art: url("../assets/backgrounds/pixel-casino-menu.jpg");
-  --game-casino-art: url("../assets/backgrounds/pixel-casino-table.jpg");
+  --casino-table-bg:
+    radial-gradient(82% 58% at 50% 38%, rgba(43, 148, 97, .2), transparent 72%),
+    radial-gradient(120% 86% at 50% 46%, transparent 42%, rgba(1, 15, 12, .48) 100%),
+    repeating-linear-gradient(52deg, rgba(255, 255, 255, .018) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(-52deg, rgba(0, 0, 0, .055) 0 1px, transparent 1px 6px),
+    linear-gradient(180deg, #0b563d 0%, #08432f 48%, #05281f 100%);
 
   /* Glass panels */
   --glass: rgba(16, 22, 48, .58);
@@ -88,15 +91,15 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   The casino room is authored as pixel art. Screens provide their own scene;
-   the body only supplies quiet gutters on wide displays.
+   Flat top-down table surface. The felt, weave, rail and lighting are all CSS
+   so the board stays crisp and correctly framed at every phone aspect ratio.
    -------------------------------------------------------------------------- */
 
 body {
   position: fixed;
   inset: 0;
   min-height: 100dvh;
-  background: #02060d;
+  background: var(--casino-table-bg);
 }
 
 body::before {
@@ -105,8 +108,8 @@ body::before {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(0, 0, 0, .68), transparent 26% 74%, rgba(0, 0, 0, .68)),
-    radial-gradient(90% 92% at 50% 42%, transparent 48%, rgba(0, 0, 0, .38) 100%);
+    radial-gradient(44% 32% at 50% 12%, rgba(255, 225, 142, .09), transparent 74%),
+    linear-gradient(90deg, rgba(0, 0, 0, .62), transparent 24% 76%, rgba(0, 0, 0, .62));
 }
 
 body::after {
@@ -114,7 +117,9 @@ body::after {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(140% 110% at 50% 42%, transparent 46%, rgba(1, 3, 8, .48) 100%);
+  background:
+    radial-gradient(140% 110% at 50% 42%, transparent 44%, rgba(1, 3, 8, .48) 100%),
+    repeating-linear-gradient(0deg, transparent 0 7px, rgba(0, 0, 0, .025) 7px 8px);
 }
 
 /* Low-cost pixel/scanline pass. It sits above every screen, including
@@ -186,17 +191,13 @@ button.is-pressing:not(:disabled) {
   min-height: 100dvh;
   margin: 0 auto;
   padding: calc(12px + var(--safe-top)) calc(14px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(14px + var(--safe-left));
-  background-color: #063124;
-  background-image:
-    linear-gradient(180deg, rgba(1, 5, 13, .18) 0%, transparent 24% 76%, rgba(1, 5, 9, .2) 100%),
-    var(--game-casino-art);
-  background-position: center;
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
+  background: var(--casino-table-bg);
   box-shadow:
-    inset 0 0 0 2px rgba(185, 129, 55, .26),
-    inset 0 0 72px rgba(0, 0, 0, .2),
-    0 0 48px rgba(0, 0, 0, .72);
+    inset 0 0 0 3px #120a07,
+    inset 0 0 0 7px #553116,
+    inset 0 0 0 9px rgba(234, 178, 66, .36),
+    inset 0 0 74px rgba(0, 0, 0, .28),
+    0 0 44px rgba(0, 0, 0, .62);
   isolation: isolate;
 }
 
@@ -1639,6 +1640,12 @@ button.is-pressing:not(:disabled) {
   display: grid;
   place-items: center;
   margin-top: clamp(-4px, -.8dvh, 0px);
+  margin-bottom: clamp(10px, 1.7dvh, 18px);
+}
+
+.cutin-match-row,
+.cutin-full-hand-row {
+  margin-bottom: clamp(12px, 2dvh, 22px);
 }
 
 .cutin-card {
@@ -2502,7 +2509,7 @@ h2 {
    MAIN MENU — redesigned
    ========================================================================== */
 
-/* The menu is a separate casino alcove overlooking the same felt table. */
+/* The menu sits on the same top-down felt table as gameplay. */
 .main-menu-screen {
   display: none;
   align-items: stretch;
@@ -2510,13 +2517,12 @@ h2 {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right)) calc(20px + var(--safe-bottom)) calc(16px + var(--safe-left));
-  background-color: #02060d;
-  background-image:
-    linear-gradient(180deg, rgba(1, 4, 11, .08), rgba(1, 5, 9, .18)),
-    var(--menu-casino-art);
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
+  background: var(--casino-table-bg);
+  box-shadow:
+    inset 0 0 0 3px #120a07,
+    inset 0 0 0 7px #553116,
+    inset 0 0 0 9px rgba(234, 178, 66, .36),
+    inset 0 0 96px rgba(0, 0, 0, .3);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -2526,16 +2532,7 @@ h2 {
   place-items: start center;
 }
 
-/* Preserve the portrait room composition on wider displays instead of
-   enlarging it until the ceiling and table rail are cropped away. */
-@media (min-aspect-ratio: 3 / 4) {
-  .main-menu-screen {
-    background-size: 100% 100%, auto 100dvh;
-  }
-}
-
-/* The backdrop already carries the room detail; duplicate floating suits
-   made the home screen visually noisy and cost a compositing layer. */
+/* Keep the table quiet enough for the cards and menu controls to lead. */
 .menu-ambient {
   display: none;
 }
@@ -2564,8 +2561,8 @@ h2 {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(0, 0, 0, .3), transparent 16% 84%, rgba(0, 0, 0, .3)),
-    radial-gradient(46% 30% at 50% 20%, rgba(255, 220, 127, .08), transparent 76%);
+    linear-gradient(90deg, rgba(0, 0, 0, .24), transparent 15% 85%, rgba(0, 0, 0, .24)),
+    radial-gradient(46% 30% at 50% 20%, rgba(255, 222, 140, .11), transparent 76%);
   animation: none;
 }
 
@@ -2581,7 +2578,7 @@ h2 {
 /* Top bar */
 .menu-topbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(112px, .95fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: stretch;
   animation: menuRise .5s cubic-bezier(.18, 1.3, .3, 1) both;
@@ -2615,12 +2612,6 @@ h2 {
   box-shadow: 0 0 14px rgba(255, 197, 61, .4), inset 0 -3px 0 rgba(140, 80, 0, .35);
 }
 
-.energy-icon {
-  background: linear-gradient(180deg, #9ee7ff, var(--cyan));
-  color: #063a52;
-  box-shadow: 0 0 14px rgba(69, 215, 255, .4), inset 0 -3px 0 rgba(8, 74, 104, .4);
-}
-
 .menu-chip strong {
   overflow: hidden;
   font-family: var(--font-display);
@@ -2629,28 +2620,6 @@ h2 {
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.energy-chip {
-  grid-template-columns: auto auto minmax(0, 1fr);
-}
-
-.energy-chip i {
-  display: block;
-  height: 7px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(2, 4, 12, .85);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .7);
-}
-
-.energy-chip b {
-  display: block;
-  width: 78%;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--cyan), var(--gold-hot));
-  box-shadow: 0 0 8px rgba(69, 215, 255, .5);
 }
 
 .menu-topbar-actions {
@@ -4943,7 +4912,7 @@ h2 {
   }
 
   .menu-topbar {
-    grid-template-columns: minmax(0, 1fr) minmax(96px, .88fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 6px;
   }
 
@@ -5364,11 +5333,6 @@ h2 {
   border: 2px solid #442800;
   border-radius: 2px;
   box-shadow: 2px 2px 0 #05070b;
-}
-
-.energy-chip i,
-.energy-chip b {
-  border-radius: 0;
 }
 
 .menu-icon-button {
@@ -6013,7 +5977,7 @@ h2 {
 }
 
 .cutin-card-shard.is-shattered-piece,
-.cutin-card-shard.is-vacuuming {
+.cutin-card-shard.is-physics-active {
   visibility: visible;
   border-color: transparent !important;
   outline: 0 !important;
@@ -6024,14 +5988,14 @@ h2 {
   backface-visibility: hidden;
 }
 
-.cutin-card-shard.is-vacuuming {
-  animation: cutinCardShardVacuum var(--shard-duration, 820ms) cubic-bezier(.34, 0, .14, 1) var(--shard-delay, 0ms) both !important;
+.cutin-card-shard.is-physics-active {
+  animation: none !important;
 }
 
 .cutin-card-shard.is-shattered-piece::before,
 .cutin-card-shard.is-shattered-piece::after,
-.cutin-card-shard.is-vacuuming::before,
-.cutin-card-shard.is-vacuuming::after {
+.cutin-card-shard.is-physics-active::before,
+.cutin-card-shard.is-physics-active::after {
   content: none !important;
   display: none !important;
   border: 0 !important;
@@ -6098,49 +6062,14 @@ h2 {
   animation: bankDigitsRolling 90ms steps(2, end) infinite alternate;
 }
 
-.bank-intake-spark {
+.cutin-bank-impact-canvas {
   position: fixed;
-  z-index: 98;
-  width: 6px;
-  height: 6px;
-  margin: -3px 0 0 -3px;
-  border: 0;
-  border-radius: 0;
-  background: #fff3a6;
-  box-shadow: 0 0 0 2px #a75f07, 0 0 10px rgba(255, 201, 55, .92);
+  z-index: 99;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  opacity: 0;
-}
-
-.bank-intake-spark.is-active {
-  animation: bankIntakeSpark 330ms steps(5, end) var(--intake-delay) both;
-}
-
-@keyframes cutinCardShardVacuum {
-  0% {
-    opacity: 1;
-    transform: translate3d(var(--shard-rest-x), var(--shard-rest-y), 0) rotate(var(--shard-rotation-rest)) scale(1);
-  }
-  10% {
-    opacity: 1;
-    transform: translate3d(var(--shard-draw-x), var(--shard-draw-y), 0) rotate(var(--shard-rotation-rest)) scale(.99);
-  }
-  36% {
-    opacity: 1;
-    transform: translate3d(var(--shard-curve-x), var(--shard-curve-y), 0) rotate(var(--shard-rotation-mid)) scale(.82);
-  }
-  68% {
-    opacity: 1;
-    transform: translate3d(var(--shard-funnel-x), var(--shard-funnel-y), 0) rotate(var(--shard-rotation)) scale(.44);
-  }
-  91% {
-    opacity: .92;
-    transform: translate3d(var(--shard-intake-x), var(--shard-intake-y), 0) rotate(var(--shard-rotation)) scale(.16, .09);
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(var(--shard-fly-x), var(--shard-fly-y), 0) rotate(var(--shard-rotation)) scale(.025);
-  }
+  image-rendering: pixelated;
 }
 
 /* Stepped masks break the rectangle silhouettes without a costly canvas
@@ -6253,19 +6182,7 @@ h2 {
   to { color: #fffbe0; text-shadow: 3px 3px 0 #754600, 0 0 20px rgba(255, 226, 105, .95); }
 }
 
-@keyframes bankIntakeSpark {
-  0% { opacity: 0; transform: translate(0, 5px) scale(.4); }
-  20% { opacity: 1; }
-  70% { opacity: 1; transform: translate(var(--intake-x), var(--intake-y)) scale(1); }
-  100% { opacity: 0; transform: translate(var(--intake-x-far), var(--intake-y-far)) scale(0); }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .cutin-card-shard.is-vacuuming {
-    animation-duration: 120ms !important;
-    animation-delay: 0ms !important;
-  }
-
   .score-panel.bank-feeding,
   .cutin-bank-counter.bank-feeding,
   .score-panel.bank-feeding strong,
@@ -6348,7 +6265,7 @@ h2 {
 
 @media (max-width: 370px) {
   .menu-topbar {
-    grid-template-columns: minmax(0, 1fr) minmax(84px, .82fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 4px;
   }
 
@@ -6376,7 +6293,7 @@ h2 {
 }
 
 /* ==========================================================================
-   Persistent economy: tappable wallet, functional store, and energy gate
+   Persistent economy: tappable wallet and functional store
    ========================================================================== */
 
 button.menu-chip {
@@ -6395,35 +6312,9 @@ button.menu-chip:active {
   filter: brightness(1.2);
 }
 
-.energy-chip {
-  grid-template-columns: auto minmax(38px, auto) minmax(24px, 1fr);
-  gap: 6px;
-}
-
-.energy-copy {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.energy-copy small {
-  overflow: hidden;
-  color: #9eeaff;
-  font-family: var(--font-pixel);
-  font-size: clamp(.35rem, 1.35vw, .45rem);
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.energy-chip i b {
-  width: calc(var(--energy-progress, 1) * 100%);
-  transition: width .24s steps(6, end);
-}
-
 .store-wallet {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 7px;
 }
 
@@ -6567,88 +6458,7 @@ button.menu-chip:active {
   text-shadow: 2px 2px 0 #4f3100, 0 0 12px rgba(255, 204, 62, .55);
 }
 
-.energy-gate-screen {
-  z-index: 140;
-  place-items: center;
-  padding: calc(14px + var(--safe-top)) calc(14px + var(--safe-right)) calc(14px + var(--safe-bottom)) calc(14px + var(--safe-left));
-  background: rgba(2, 6, 13, .84);
-}
-
-.energy-gate-card {
-  display: grid;
-  width: min(100%, 390px);
-  gap: 11px;
-  place-items: center;
-  padding: clamp(18px, 5vw, 26px);
-  border: 3px solid #11283b;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(80, 211, 255, .2), transparent 48%),
-    #0d2630;
-  box-shadow: inset 0 0 0 2px #34768d, 7px 8px 0 rgba(1, 4, 9, .8), 0 0 28px rgba(74, 207, 255, .24);
-  text-align: center;
-}
-
-.energy-gate-card h2 {
-  font-size: clamp(1.35rem, 7vw, 2.3rem);
-}
-
-.energy-gate-card > p:not(.eyebrow) {
-  margin: 0;
-  color: #b7d7db;
-  font-size: clamp(.75rem, 3.1vw, .9rem);
-  font-weight: 900;
-  line-height: 1.3;
-}
-
-.energy-gate-icon {
-  display: grid;
-  width: 64px;
-  height: 64px;
-  place-items: center;
-  border: 4px solid #072030;
-  clip-path: var(--pixel-panel-silhouette);
-  background: #58d7f5;
-  box-shadow: inset 0 0 0 3px #c7f7ff, 5px 5px 0 #041019;
-  color: #073447;
-  font-size: 2rem;
-}
-
-.energy-gate-meter {
-  display: grid;
-  width: 100%;
-  grid-template-columns: auto 1fr;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 12px;
-  border: 3px solid #07151e;
-  clip-path: var(--pixel-panel-silhouette);
-  background: #071b25;
-  box-shadow: inset 0 0 0 2px #24566c;
-}
-
-.energy-gate-meter strong,
-.energy-gate-meter span {
-  font-family: var(--font-pixel);
-}
-
-.energy-gate-meter strong { color: #a4efff; font-size: clamp(.8rem, 3.6vw, 1.05rem); }
-.energy-gate-meter span { color: #d7eff2; font-size: clamp(.48rem, 2vw, .62rem); text-align: right; }
-
-.energy-gate-card .ad-button,
-.energy-gate-card .primary-button,
-.energy-gate-card .secondary-button {
-  width: 100%;
-}
-
 @media (max-width: 390px) {
-  .energy-chip {
-    grid-template-columns: auto minmax(34px, auto) minmax(18px, 1fr);
-  }
-
-  .energy-copy small {
-    font-size: .34rem;
-  }
-
   .store-grid {
     gap: 7px;
   }
@@ -8557,15 +8367,42 @@ html[data-card-skin="rainbow"] .cutin-card {
 
 .hand-zone .card.tutorial-guided-card:not(.is-staged-card) {
   z-index: 5;
-  animation: liveTutorialGuide .9s ease-in-out infinite alternate;
+  outline: 3px solid #ffe578;
+  outline-offset: 3px;
+  animation: liveTutorialGuide .78s ease-in-out infinite;
+  will-change: transform, filter;
+}
+
+.table-card-slot.tutorial-guided-reference {
+  z-index: 8;
+}
+
+.table-card-slot.tutorial-guided-reference .card {
+  outline: 3px solid #ffe578;
+  outline-offset: 3px;
+  animation: liveTutorialReference .82s ease-in-out infinite;
+  will-change: transform, filter;
 }
 
 @keyframes liveTutorialGuide {
-  from {
-    filter: drop-shadow(3px 6px 0 rgba(3, 4, 10, .72));
+  0%, 100% {
+    transform: translate3d(-2px, calc(var(--fan-lift, 0px) - 4px), 0) rotate(calc(var(--fan-rotate, 0deg) - 1.5deg)) scale(1.025);
+    filter: drop-shadow(0 0 9px rgba(255, 218, 86, .72)) brightness(1.05);
   }
-  to {
-    filter: drop-shadow(0 0 15px rgba(255, 218, 86, .9)) brightness(1.08);
+  50% {
+    transform: translate3d(2px, calc(var(--fan-lift, 0px) - 10px), 0) rotate(calc(var(--fan-rotate, 0deg) + 1.5deg)) scale(1.065);
+    filter: drop-shadow(0 0 19px rgba(255, 226, 111, .98)) brightness(1.13);
+  }
+}
+
+@keyframes liveTutorialReference {
+  0%, 100% {
+    transform: translate3d(-2px, -2px, 0) rotate(-1.2deg) scale(1.025);
+    filter: drop-shadow(0 0 10px rgba(255, 218, 86, .75)) brightness(1.06);
+  }
+  50% {
+    transform: translate3d(2px, -7px, 0) rotate(1.2deg) scale(1.055);
+    filter: drop-shadow(0 0 21px rgba(255, 226, 111, 1)) brightness(1.14);
   }
 }
 
@@ -8588,7 +8425,8 @@ html[data-card-skin="rainbow"] .cutin-card {
   }
 }
 
-.reduce-motion .hand-zone .card.tutorial-guided-card {
+.reduce-motion .hand-zone .card.tutorial-guided-card,
+.reduce-motion .table-card-slot.tutorial-guided-reference .card {
   animation: none !important;
   filter: drop-shadow(0 0 10px rgba(255, 218, 86, .75));
 }
@@ -8599,7 +8437,7 @@ html[data-card-skin="rainbow"] .cutin-card {
    ========================================================================== */
 
 .menu-topbar {
-  grid-template-columns: minmax(76px, .9fr) minmax(108px, 1.15fr) auto;
+  grid-template-columns: minmax(76px, 1fr) auto;
   gap: 0;
   min-height: 54px;
   padding: 4px;
@@ -8624,16 +8462,14 @@ html[data-card-skin="rainbow"] .cutin-card {
   box-shadow: none;
 }
 
-.menu-chip-copy,
-.energy-copy {
+.menu-chip-copy {
   display: grid;
   min-width: 0;
   gap: 2px;
   align-content: center;
 }
 
-.menu-chip-copy small,
-.energy-copy small {
+.menu-chip-copy small {
   overflow: hidden;
   color: #8fc3d3;
   font: 400 clamp(.35rem, 1.35vw, .45rem) / 1 var(--font-pixel);
@@ -8666,20 +8502,6 @@ html[data-card-skin="rainbow"] .cutin-card {
   color: #062815 !important;
   font: 900 .72rem / 1 var(--font-pixel) !important;
   text-shadow: none;
-}
-
-.menu-topbar .energy-chip {
-  grid-template-columns: auto minmax(34px, auto) minmax(18px, 1fr) auto;
-  gap: 5px;
-}
-
-.menu-topbar .energy-chip > i {
-  width: 100%;
-  min-width: 16px;
-  height: 7px;
-  border: 1px solid #03101b;
-  background: #03101b;
-  box-shadow: none;
 }
 
 .menu-topbar-actions {
@@ -9167,4 +8989,229 @@ html[data-card-skin="rainbow"] .cutin-card {
   .menu-topbar .menu-icon-button { width: 30px; }
   .pot-grid-row { gap: 7px; }
   .menu-level-map .pot-level-card { min-height: 198px; padding-inline: 8px; }
+}
+
+/* ==========================================================================
+   Build 139: anchored crunch results and readable modifier impacts
+   ========================================================================== */
+
+/* Match cards have a fixed top anchor. Result copy is a separate flow below
+   it, so adding another multiplier can never pull the title under the cards. */
+.cutin-match-stage,
+.cutin-math-stage {
+  position: absolute;
+  top: clamp(96px, 13dvh, 132px);
+  left: 50%;
+  width: min(calc(100% - 24px - var(--safe-left) - var(--safe-right)), 560px);
+  place-items: stretch center;
+  align-content: start;
+  gap: clamp(5px, 1dvh, 9px);
+  translate: -50% 0;
+}
+
+.cutin-card-stage {
+  position: relative;
+  display: grid;
+  width: 100%;
+  place-items: center;
+  align-content: start;
+  gap: clamp(2px, .55dvh, 5px);
+}
+
+.cutin-result-stack {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  place-items: center;
+  align-content: start;
+  gap: clamp(3px, .55dvh, 6px);
+}
+
+.cutin-card-stage .cutin-match-row,
+.cutin-card-stage .cutin-full-hand-row,
+.cutin-card-stage .cutin-answer-wrap {
+  margin-bottom: 0;
+}
+
+.cutin-card-stage .cutin-answer-wrap {
+  margin-top: clamp(-5px, -.7dvh, -2px);
+}
+
+.cutin-result-stack .cutin-operator,
+.cutin-result-stack .cutin-equation,
+.cutin-result-stack .cutin-label,
+.cutin-result-stack .cutin-points {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+}
+
+.cutin-result-stack .cutin-operator { font-size: clamp(1.45rem, 7vw, 3.15rem); }
+.cutin-result-stack .cutin-label { font-size: clamp(1rem, 5.1vw, 2.15rem); }
+.cutin-result-stack .cutin-equation { font-size: clamp(.82rem, 4.25vw, 1.65rem); }
+.cutin-result-stack .cutin-points { font-size: clamp(1.2rem, 5.9vw, 2.45rem); }
+
+/* The strongest reason for the card has its own stable color language. */
+.cutin-tone-suit { --cutin-reason-color: #78ddff; --cutin-reason-shadow: #0a4967; }
+.cutin-tone-rank { --cutin-reason-color: #ffe47d; --cutin-reason-shadow: #6b4300; }
+.cutin-tone-add,
+.cutin-tone-subtract { --cutin-reason-color: #d7adff; --cutin-reason-shadow: #4a236f; }
+
+.cutin-tone-suit .cutin-result-stack .cutin-operator,
+.cutin-tone-suit .cutin-result-stack .cutin-label,
+.cutin-tone-rank .cutin-result-stack .cutin-operator,
+.cutin-tone-rank .cutin-result-stack .cutin-label,
+.cutin-tone-add .cutin-result-stack .cutin-label,
+.cutin-tone-subtract .cutin-result-stack .cutin-label {
+  color: var(--cutin-reason-color);
+  text-shadow:
+    3px 3px 0 var(--cutin-reason-shadow),
+    0 0 15px color-mix(in srgb, var(--cutin-reason-color) 72%, transparent);
+}
+
+/* Modifiers arrive as individual downward-growing rows. There is deliberately
+   no badge around them: color, motion, and sound carry the meaning. */
+.cutin-inline-bonuses {
+  display: grid;
+  width: min(84vw, 390px);
+  max-width: 100%;
+  min-height: 0;
+  justify-content: stretch;
+  gap: clamp(2px, .35dvh, 4px);
+}
+
+.cutin-inline-bonuses:empty { display: none; }
+
+.cutin-inline-bonus {
+  --bonus-color: #fff1a6;
+  --bonus-shadow: #5a3903;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  width: 100%;
+  gap: 12px;
+  padding: 1px clamp(10px, 3vw, 18px);
+  color: var(--bonus-color);
+  text-shadow:
+    2px 2px 0 var(--bonus-shadow),
+    0 0 13px color-mix(in srgb, var(--bonus-color) 72%, transparent);
+  animation: cutinModifierImpact .36s cubic-bezier(.12, 1.5, .28, 1) both;
+}
+
+.cutin-inline-bonus::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 1px;
+  width: 6px;
+  height: 6px;
+  background: var(--bonus-color);
+  box-shadow: 0 0 10px var(--bonus-color);
+  translate: 0 -50%;
+  rotate: 45deg;
+}
+
+.cutin-inline-bonus em,
+.cutin-inline-bonus strong { color: var(--bonus-color); }
+
+.cutin-inline-bonus em {
+  overflow: hidden;
+  font-size: clamp(.53rem, 2.3vw, .82rem);
+  line-height: 1.12;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cutin-inline-bonus strong {
+  font-size: clamp(.78rem, 3.35vw, 1.2rem);
+  line-height: 1;
+}
+
+.cutin-bonus-suit { --bonus-color: #72ddff; --bonus-shadow: #084a67; }
+.cutin-bonus-rank { --bonus-color: #ffe071; --bonus-shadow: #684000; }
+.cutin-bonus-math { --bonus-color: #d3a0ff; --bonus-shadow: #47206d; }
+.cutin-bonus-double { --bonus-color: #ffad52; --bonus-shadow: #703000; }
+.cutin-bonus-speed { --bonus-color: #7ff5ff; --bonus-shadow: #07556a; }
+.cutin-bonus-streak { --bonus-color: #ff7a61; --bonus-shadow: #6b160d; }
+.cutin-bonus-fever { --bonus-color: #ff71bd; --bonus-shadow: #68123e; }
+.cutin-bonus-pot { --bonus-color: #8fff9f; --bonus-shadow: #145929; }
+.cutin-bonus-run { --bonus-color: #ff9d5c; --bonus-shadow: #703112; }
+.cutin-bonus-total { --bonus-color: #fff3a1; --bonus-shadow: #654300; }
+
+.cutin-stage[data-bonus-tone="suit"] .cutin-points { color: #c7f5ff; }
+.cutin-stage[data-bonus-tone="rank"] .cutin-points { color: #fff3a1; }
+.cutin-stage[data-bonus-tone="math"] .cutin-points { color: #ead2ff; }
+.cutin-stage[data-bonus-tone="speed"] .cutin-points { color: #bdfaff; }
+.cutin-stage[data-bonus-tone="streak"] .cutin-points,
+.cutin-stage[data-bonus-tone="fever"] .cutin-points { color: #ffb09c; }
+.cutin-stage[data-bonus-tone="pot"] .cutin-points { color: #c8ffd1; }
+.cutin-stage[data-bonus-tone="run"] .cutin-points { color: #ffd0a3; }
+
+.cutin-modifier-spark {
+  --spark-color: #ffe47d;
+  position: fixed;
+  z-index: 8;
+  width: 5px;
+  height: 5px;
+  background: var(--spark-color);
+  box-shadow: 0 0 10px var(--spark-color);
+  pointer-events: none;
+  image-rendering: pixelated;
+  animation: cutinModifierSpark .56s cubic-bezier(.14, .78, .22, 1) var(--spark-delay, 0ms) both;
+}
+
+.cutin-spark-suit { --spark-color: #72ddff; }
+.cutin-spark-rank,
+.cutin-spark-total { --spark-color: #ffe071; }
+.cutin-spark-math { --spark-color: #d3a0ff; }
+.cutin-spark-double,
+.cutin-spark-run { --spark-color: #ffad52; }
+.cutin-spark-speed { --spark-color: #7ff5ff; }
+.cutin-spark-streak,
+.cutin-spark-fever { --spark-color: #ff7a61; }
+.cutin-spark-pot { --spark-color: #8fff9f; }
+
+.cutin-bank-counter.bank-modifier-pulse,
+.score-panel.bank-modifier-pulse {
+  animation: bankModifierPulse .28s cubic-bezier(.12, 1.55, .28, 1) both;
+}
+
+@keyframes cutinModifierImpact {
+  0% { opacity: 0; translate: 0 14px; scale: .62; filter: brightness(2); }
+  58% { opacity: 1; translate: 0 -3px; scale: 1.16; filter: brightness(1.5); }
+  78% { translate: 0 1px; scale: .96; }
+  100% { opacity: 1; translate: 0 0; scale: 1; filter: brightness(1); }
+}
+
+@keyframes cutinModifierSpark {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.25); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--spark-x)), calc(-50% + var(--spark-y))) scale(.05); }
+}
+
+@keyframes bankModifierPulse {
+  0%, 100% { scale: 1; filter: brightness(1); }
+  52% { scale: 1.065; filter: brightness(1.45) drop-shadow(0 0 12px rgba(255, 220, 95, .72)); }
+}
+
+@media (max-height: 760px) {
+  .cutin-match-stage,
+  .cutin-math-stage {
+    top: clamp(88px, 12dvh, 104px);
+    gap: 3px;
+  }
+
+  .cutin-math-stage .cutin-card:not(.answer) { width: clamp(68px, 21vw, 92px); }
+  .cutin-math-stage .cutin-card.answer { width: clamp(76px, 23vw, 102px); }
+  .cutin-result-stack { gap: 2px; }
+  .cutin-inline-bonuses { gap: 1px; }
+}
+
+.reduce-motion .cutin-inline-bonus,
+.reduce-motion .cutin-modifier-spark,
+.reduce-motion .cutin-bank-counter.bank-modifier-pulse,
+.reduce-motion .score-panel.bank-modifier-pulse {
+  animation-duration: .01ms !important;
 }

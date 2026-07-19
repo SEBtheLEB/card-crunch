@@ -3,8 +3,8 @@ import { isPotUnlocked } from "./progression.js?v=126";
 import { formatCompactNumber } from "./format.js?v=90";
 import { hasShieldToken } from "./save.js?v=90";
 import { bindInstantAction } from "./input.js?v=90";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=90";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=122";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=137";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=134";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -68,28 +68,14 @@ export function createUI() {
     startButton: document.querySelector("#startButton"),
     hamburgerButton: document.querySelector("#hamburgerButton"),
     shieldAdButton: document.querySelector("#shieldAdButton"),
-    menuEnergyValue: document.querySelector("#menuEnergyValue"),
-    menuEnergyTimer: document.querySelector("#menuEnergyTimer"),
-    menuEnergyButton: document.querySelector(".energy-chip"),
     menuCoinsValue: document.querySelector("#menuCoinsValue"),
     menuCoinsButton: document.querySelector(".coin-chip"),
     storeCoinsValue: document.querySelector("#storeCoinsValue"),
-    storeEnergyValue: document.querySelector("#storeEnergyValue"),
     storeStatus: document.querySelector("#storeStatus"),
-    buyEnergyButton: document.querySelector("#buyEnergyButton"),
-    watchEnergyAdButton: document.querySelector("#watchEnergyAdButton"),
     buyShieldButton: document.querySelector("#buyShieldButton"),
     watchCoinAdButton: document.querySelector("#watchCoinAdButton"),
     buyCoinPackButton: document.querySelector("#buyCoinPackButton"),
-    energyAdsRemaining: document.querySelector("#energyAdsRemaining"),
     coinAdsRemaining: document.querySelector("#coinAdsRemaining"),
-    energyGateScreen: document.querySelector("#energyGateScreen"),
-    energyGateValue: document.querySelector("#energyGateValue"),
-    energyGateTimer: document.querySelector("#energyGateTimer"),
-    energyGateAdButton: document.querySelector("#energyGateAdButton"),
-    energyGateAdRemaining: document.querySelector("#energyGateAdRemaining"),
-    energyGateCoinButton: document.querySelector("#energyGateCoinButton"),
-    energyGateCloseButton: document.querySelector("#energyGateCloseButton"),
     profileBestScore: document.querySelector("#profileBestScore"),
     leaderboardBestScore: document.querySelector("#leaderboardBestScore"),
     playLeaderboardButton: document.querySelector("#playLeaderboardButton"),
@@ -120,6 +106,7 @@ export function createUI() {
         renderHand(elements, state, handlers);
         renderCache.hand = handSignature;
       }
+      syncTutorialGuidance(elements, state);
       syncHandInteractionState(elements, state);
       elements.shell.classList.toggle("is-locked", state.locked);
     },
@@ -234,12 +221,6 @@ export function createUI() {
         popCounter(elements.summaryMultiplier, "gold");
         popCounter(elements.summaryStreak, "gold");
       }, 390);
-    },
-    showEnergyGate(show, snapshot = economy.getSnapshot()) {
-      elements.energyGateScreen.classList.toggle("is-visible", show);
-      elements.energyGateScreen.setAttribute("aria-hidden", String(!show));
-      if (!show) return;
-      renderEnergyGate(elements, snapshot);
     },
     setStoreStatus(message, tone = "neutral") {
       if (!elements.storeStatus) return;
@@ -560,7 +541,7 @@ function createPotDetailPanel(pot, handlers) {
           <span><b>${pot.complete ? "Full" : "Progress"}</b><strong>${formatCompactNumber(pot.progress)} / ${formatCompactNumber(pot.target)}</strong></span>
           <i aria-hidden="true"><b style="width:${progress * 100}%"></b></i>
         </div>
-        <button class="pot-play-button" type="button">${pot.complete ? "Replay" : "Play"}<small>&#9889;${ECONOMY_CONFIG.energyPerRun}</small></button>
+        <button class="pot-play-button" type="button">${pot.complete ? "Replay" : "Play"}</button>
       </section>
     </div>
   `;
@@ -587,25 +568,10 @@ function renderMenuStats(elements, state) {
   const bestStreak = Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak ?? 0);
   const potsCleared = state.pots?.filter((pot) => pot.complete).length ?? 0;
 
-  if (elements.menuEnergyValue) elements.menuEnergyValue.textContent = String(wallet.energy);
-  if (elements.menuEnergyTimer) elements.menuEnergyTimer.textContent = wallet.energy >= wallet.energyMax ? "FULL" : formatEnergyTime(wallet.nextEnergyInMs);
-  if (elements.menuEnergyButton) {
-    elements.menuEnergyButton.style.setProperty("--energy-progress", wallet.energyProgress.toFixed(3));
-    elements.menuEnergyButton.setAttribute("aria-label", `Open store. Energy ${wallet.energy} of ${wallet.energyMax}${wallet.energy < wallet.energyMax ? `. Next energy in ${formatEnergyTime(wallet.nextEnergyInMs)}` : ""}`);
-  }
   if (elements.menuCoinsValue) elements.menuCoinsValue.textContent = formatCompactNumber(coins);
   if (elements.menuCoinsButton) elements.menuCoinsButton.setAttribute("aria-label", `Open store. Coin balance ${coins}`);
   if (elements.storeCoinsValue) elements.storeCoinsValue.textContent = formatCompactNumber(coins);
-  if (elements.storeEnergyValue) elements.storeEnergyValue.textContent = `${wallet.energy}/${wallet.energyMax}`;
-  if (elements.buyEnergyButton) elements.buyEnergyButton.disabled = !wallet.canBuyEnergy;
-  if (elements.watchEnergyAdButton) elements.watchEnergyAdButton.disabled = !wallet.canWatchEnergyAd;
   if (elements.watchCoinAdButton) elements.watchCoinAdButton.disabled = !wallet.canWatchCoinAd;
-  if (elements.energyAdsRemaining) {
-    const refillRoom = wallet.energy <= wallet.energyMax - ECONOMY_CONFIG.energyAdReward;
-    elements.energyAdsRemaining.textContent = wallet.energy >= wallet.energyMax
-      ? "Energy full"
-      : refillRoom ? `${wallet.energyAdsRemaining} left today` : "Use energy first";
-  }
   if (elements.coinAdsRemaining) elements.coinAdsRemaining.textContent = `${wallet.coinAdsRemaining} left today`;
   if (elements.buyShieldButton) {
     const armed = hasShieldToken();
@@ -621,33 +587,9 @@ function renderMenuStats(elements, state) {
   if (elements.profileCoins) elements.profileCoins.textContent = formatCompactNumber(coins);
   if (previousWallet) {
     if (coins > previousWallet.coins) popCounter(elements.menuCoinsValue, "gold");
-    if (wallet.energy > previousWallet.energy) popCounter(elements.menuEnergyValue, "blue");
   }
-  elements._menuWalletCache = { coins, energy: wallet.energy };
+  elements._menuWalletCache = { coins };
   refreshShieldOffer(elements);
-}
-
-function renderEnergyGate(elements, snapshot) {
-  elements.energyGateValue.textContent = `${snapshot.energy}/${snapshot.energyMax}`;
-  elements.energyGateTimer.textContent = snapshot.energy >= snapshot.energyMax ? "Energy full" : `Next in ${formatEnergyTime(snapshot.nextEnergyInMs)}`;
-  elements.energyGateAdButton.disabled = !snapshot.canWatchEnergyAd;
-  const refillRoom = snapshot.energy <= snapshot.energyMax - ECONOMY_CONFIG.energyAdReward;
-  elements.energyGateAdRemaining.textContent = snapshot.canWatchEnergyAd
-    ? `${snapshot.energyAdsRemaining} refills left today`
-    : snapshot.energy >= snapshot.energyMax
-      ? "Energy full"
-      : refillRoom ? "No ad refills left today" : "Use energy first";
-  elements.energyGateCoinButton.disabled = !snapshot.canBuyEnergy;
-  elements.energyGateCoinButton.textContent = snapshot.coins >= ECONOMY_CONFIG.energyCoinCost
-    ? `Use ${ECONOMY_CONFIG.energyCoinCost} Coins`
-    : `Need ${ECONOMY_CONFIG.energyCoinCost} Coins`;
-}
-
-function formatEnergyTime(milliseconds) {
-  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 function refreshShieldOffer(elements) {
@@ -997,6 +939,25 @@ function syncHandInteractionState(elements, state) {
   });
   elements.selectedCardTray.querySelectorAll("[data-hand-index]").forEach((card) => {
     if (card.disabled !== disabled) card.disabled = disabled;
+  });
+}
+
+function syncTutorialGuidance(elements, state) {
+  const guideStep = state.selectedHandIndexes.length;
+  const guidedHandIndex = state.tutorialExpectedIndexes?.[guideStep];
+  const guidedStackIndexes = new Set(state.tutorialGuideStackByStep?.[guideStep] ?? []);
+  const showGuide = Boolean(state.isTutorial && !state.tutorialBankStep && !state.locked && state.status === "playing");
+
+  elements.tableZone.querySelectorAll(".base-stack-card").forEach((slot) => {
+    const stackIndex = Number(slot.dataset.stackSlot);
+    slot.classList.toggle("tutorial-guided-reference", showGuide && guidedStackIndexes.has(stackIndex));
+  });
+  [elements.handZone, elements.selectedCardTray].forEach((zone) => {
+    zone.querySelectorAll("[data-hand-index]").forEach((card) => {
+      const handIndex = Number(card.dataset.handIndex);
+      const isStaged = state.selectedHandIndexes.includes(handIndex);
+      card.classList.toggle("tutorial-guided-card", showGuide && !isStaged && handIndex === guidedHandIndex);
+    });
   });
 }
 

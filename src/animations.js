@@ -3,8 +3,8 @@ import {
   hideCrunchSkipText,
   isCrunchSkipRequested,
   showCrunchSkipText
-} from "./crunchCutscene.js?v=133";
-import { playGameSfx } from "./audio.js?v=129";
+} from "./crunchCutscene.js?v=139";
+import { playGameSfx } from "./audio.js?v=134";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RESOLVE_HIGHLIGHT_DURATION_MS = 700;

@@ -3,7 +3,6 @@ import { haptic } from "./haptics.js?v=90";
 const AudioContextClass = globalThis.AudioContext ?? globalThis.webkitAudioContext;
 const SETTINGS_KEY = "cardCrunchSettings";
 const MAX_ACTIVE_VOICES = 28;
-const SHARD_IMPACT_MIN_INTERVAL = 24;
 const CARD_PLAY_SAMPLE_URL = new URL("../assets/sfx/playing-card.mp3", import.meta.url).href;
 const DEAL_SAMPLE_URLS = [1, 2, 3, 4].map((index) => new URL(`../assets/sfx/deal-hand-${index}.mp3`, import.meta.url).href);
 const CARD_PLAY_MAX_VOICES = 4;
@@ -22,10 +21,7 @@ let noiseBuffer = null;
 let musicTimer = null;
 let musicStep = 0;
 let activeVoices = 0;
-let lastShardImpactAt = -Infinity;
-let pendingShardImpacts = 0;
 let shardImpactStep = 0;
-let shardImpactResetTimer = null;
 let cardPlayBuffer = null;
 let cardPlayBufferPromise = null;
 let lastCardPlayVariant = -1;
@@ -86,43 +82,31 @@ export function playGameSfx(name) {
 
 }
 
-/* Shards can reach the bank only a few milliseconds apart. Every contact is
-   registered, but nearby contacts are mixed into one short, quiet crunch so
-   a full-hand Crunch never clips or becomes painfully loud. */
+/* Each physical bank contact gets a very short low-gain voice. The clips are
+   intentionally tiny so even a full-hand stream reads as coins without clipping. */
 export function playCrunchShardImpact({ progress = 0.5, strength = 1 } = {}) {
   if (!settings.sound) return;
   const audio = ensureAudio();
   if (!audio) return;
   if (audio.state === "suspended") audio.resume?.().catch(() => {});
 
-  pendingShardImpacts = Math.min(6, pendingShardImpacts + Math.max(0.5, strength));
-  window.clearTimeout(shardImpactResetTimer);
-  shardImpactResetTimer = window.setTimeout(() => {
-    pendingShardImpacts = 0;
-    shardImpactResetTimer = null;
-  }, 90);
-  const now = globalThis.performance?.now?.() ?? Date.now();
-  if (now - lastShardImpactAt < SHARD_IMPACT_MIN_INTERVAL) return;
-
-  const mixedStrength = pendingShardImpacts;
-  pendingShardImpacts = 0;
-  lastShardImpactAt = now;
   shardImpactStep += 1;
 
   const jitter = ((shardImpactStep * 17) % 9) - 4;
   const arrival = Math.max(0, Math.min(1, progress));
-  const gain = Math.min(0.038, 0.012 + mixedStrength * 0.0042);
+  const impactStrength = Math.max(.45, Math.min(1.8, strength));
+  const gain = Math.min(0.021, 0.006 + impactStrength * 0.0065);
   const frequency = 185 + arrival * 82 + jitter * 5;
   tone({
     frequency,
     endFrequency: Math.max(58, frequency * 0.42),
-    duration: 0.042,
+    duration: 0.034,
     gain,
     type: "square"
   });
   noise({
-    duration: 0.032,
-    gain: Math.min(0.026, 0.007 + mixedStrength * 0.0032),
+    duration: 0.026,
+    gain: Math.min(0.014, 0.003 + impactStrength * 0.0045),
     highpass: 720 + arrival * 540
   });
 }

@@ -1,5 +1,5 @@
 import { formatCompactNumber } from "./format.js?v=90";
-import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=129";
+import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=134";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -20,15 +20,28 @@ const CUTSCENE_CONFIG = {
 };
 const CARD_SHARD_CONFIG = {
   columns: 4,
-  rows: 4,
-  duration: 820,
-  rowDurationStep: 38,
-  rowReleaseDelays: [0, 100, 168, 218],
-  columnDelayStep: 12,
-  cardDelayStep: 18,
-  intakeSparks: 10
+  rows: 4
 };
-const SHARD_IMPACT_BUCKET_MS = 38;
+const SHARD_PHYSICS_CONFIG = {
+  explosionMinSpeed: 250,
+  explosionMaxSpeed: 510,
+  explosionLift: 72,
+  scatterDrag: .957,
+  angularDrag: .948,
+  wallBounce: .42,
+  wallFriction: .78,
+  settleAfter: 520,
+  forceSettleAfter: 1100,
+  hoverBeforeVacuum: 300,
+  vacuumStagger: 880,
+  vacuumBaseForce: 430,
+  vacuumRampForce: 2250,
+  vacuumSpring: 1.2,
+  vacuumMaxSpeed: 1380,
+  intakeRadius: 24,
+  maxDuration: 5200,
+  impactCrumbs: 5
+};
 const CRUNCH_DEBRIS_CONFIG = {
   maxParticles: 320,
   devicePixelRatioCap: 1.35,
@@ -55,6 +68,7 @@ const tapBounceTimers = new WeakMap();
 const preparedShardSets = new WeakMap();
 const crunchDebrisEmitters = new WeakMap();
 const activeBankFeeds = new WeakMap();
+let bankImpactEmitter = null;
 let skipAllRequested = false;
 let skipTextElement = null;
 let skipTextLocks = 0;
@@ -179,11 +193,21 @@ export function createCrunchBankCounter({ panelEl = null, labelEl = null, valueE
       value += amount;
       if (cardElements.length) {
         playGameSfx("score_step");
-        const feedDuration = getCardFeedDuration(cardElements.length, getShardGrid(cardElements.length));
-        const bankEffect = trackBankEffect(Promise.all([
-          feedCutinCardsToBank(cardElements, element),
-          countBankBy(counterValueEl, counterState, amount, feedDuration)
-        ]).then(async () => {
+        const feedDuration = getCardFeedDuration(cardElements.length);
+        let creditedAmount = 0;
+        const bankEffect = trackBankEffect(feedCutinCardsToBank(cardElements, element, ({ arrived, total }) => {
+          const nextCreditedAmount = arrived >= total
+            ? amount
+            : Math.round(amount * arrived / Math.max(1, total));
+          counterState.value += nextCreditedAmount - creditedAmount;
+          creditedAmount = nextCreditedAmount;
+          if (counterValueEl) counterValueEl.textContent = formatCompactNumber(counterState.value);
+        }).then(async () => {
+          if (creditedAmount < amount) {
+            counterState.value += amount - creditedAmount;
+            creditedAmount = amount;
+            if (counterValueEl) counterValueEl.textContent = formatCompactNumber(counterState.value);
+          }
           element.classList.add("bank-bump");
           await sleep(180);
           element.classList.remove("bank-bump");
@@ -470,43 +494,109 @@ async function playEntryCutin(overlay, entry, tier, advance, sourceCards = [], b
   const crunchPrompt = createInteractiveCrunchPrompt(overlay);
   const cleanupSharedHandoff = await transitionSourceCardsIntoCutin(overlay, sourceCards, advance);
   playGameSfx(getEntrySound(entry));
-  await playInlineCrunchBonuses(overlay, entry, advance);
+  await playInlineCrunchBonuses(overlay, entry, advance, bankEl);
   await playInteractiveCardCrunch(overlay, advance, crunchPrompt, bankEl);
   return cleanupSharedHandoff;
 }
 
-async function playInlineCrunchBonuses(overlay, entry, advance) {
+async function playInlineCrunchBonuses(overlay, entry, advance, bankEl = null) {
   const bonuses = entry.inlineBonuses ?? [];
   const bankPoints = entry.bankPoints ?? entry.points;
   if (!bonuses.length && bankPoints === entry.points) return;
 
   const stage = overlay.querySelector(".cutin-stage");
   const points = overlay.querySelector(".cutin-points");
-  if (!stage || !points) return;
-
-  const reaction = document.createElement("div");
-  reaction.className = "cutin-inline-bonuses";
-  reaction.innerHTML = bonuses.map((bonus) => `
-    <span class="cutin-inline-bonus cutin-bonus-${bonus.tone ?? "total"}">
-      <em>${bonus.label}</em>
-      <strong>${bonus.value}</strong>
-    </span>
-  `).join("");
-  points.insertAdjacentElement("beforebegin", reaction);
+  const reaction = overlay.querySelector(".cutin-inline-bonuses");
+  if (!stage || !points || !reaction) return;
 
   const isMultiMatch = (entry.matchType === "rank" || entry.matchType === "suit")
     && (entry.matchCount ?? 0) >= 3;
-  stage.classList.add("is-bonus-reacting");
-  if (isMultiMatch) stage.classList.add("is-multi-match-reacting");
-  playGameSfx(isMultiMatch ? "double_match" : "score_step");
-  await advance.wait(360);
+  let runningPoints = entry.displayPoints ?? entry.points;
 
-  points.textContent = `+${formatCompactNumber(bankPoints)}`;
-  points.classList.add("is-multiplied");
+  for (let index = 0; index < bonuses.length; index += 1) {
+    const bonus = bonuses[index];
+    const bonusEl = document.createElement("span");
+    const tone = bonus.tone ?? "total";
+    bonusEl.className = `cutin-inline-bonus cutin-bonus-${tone}`;
+    bonusEl.innerHTML = `<em>${bonus.label}</em><strong>${bonus.value}</strong>`;
+    reaction.appendChild(bonusEl);
+
+    runningPoints = applyInlineBonus(runningPoints, bonus);
+    if (index === bonuses.length - 1) runningPoints = bankPoints;
+    points.textContent = `+${formatCompactNumber(runningPoints)}`;
+    points.classList.remove("is-multiplied");
+    void points.offsetWidth;
+    points.classList.add("is-multiplied");
+
+    stage.classList.remove("is-bonus-reacting", "is-multi-match-reacting");
+    void stage.offsetWidth;
+    stage.classList.add("is-bonus-reacting");
+    if (isMultiMatch || bonus.kind === "entry-multiplier") stage.classList.add("is-multi-match-reacting");
+    stage.dataset.bonusTone = tone;
+    pulseModifierBank(bankEl);
+    spawnModifierBurst(overlay, bonusEl, tone);
+    playGameSfx(getModifierSound(bonus, isMultiMatch));
+    await advance.wait(index === 0 ? 440 : 360);
+  }
+
+  if (runningPoints !== bankPoints) {
+    points.textContent = `+${formatCompactNumber(bankPoints)}`;
+    points.classList.remove("is-multiplied");
+    void points.offsetWidth;
+    points.classList.add("is-multiplied");
+  }
+
   stage.classList.add("is-award-ready");
-  playGameSfx("score_total");
-  await advance.wait(420);
+  if (!bonuses.length) playGameSfx("score_total");
+  await advance.wait(bonuses.length ? 240 : 380);
   stage.classList.remove("is-bonus-reacting", "is-multi-match-reacting");
+  delete stage.dataset.bonusTone;
+}
+
+function applyInlineBonus(points, bonus) {
+  if (Number.isFinite(bonus.multiplier) && bonus.multiplier > 1) {
+    return Math.round(points * bonus.multiplier);
+  }
+  if (Number.isFinite(bonus.flatBonus) && bonus.flatBonus > 0) {
+    return Math.round(points + bonus.flatBonus);
+  }
+  return points;
+}
+
+function getModifierSound(bonus, isMultiMatch) {
+  if (bonus.kind === "entry-multiplier" || isMultiMatch) return "double_match";
+  if (bonus.tone === "math") return "math_combo";
+  return "score_step";
+}
+
+function pulseModifierBank(bankEl) {
+  if (!bankEl?.isConnected) return;
+  bankEl.classList.remove("bank-modifier-pulse");
+  void bankEl.offsetWidth;
+  bankEl.classList.add("bank-modifier-pulse");
+  window.setTimeout(() => bankEl.classList.remove("bank-modifier-pulse"), 280);
+}
+
+function spawnModifierBurst(overlay, sourceEl, tone) {
+  if (!overlay?.isConnected || !sourceEl?.isConnected) return;
+  const rect = sourceEl.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const amount = document.documentElement.classList.contains("reduce-motion") ? 4 : 10;
+
+  for (let index = 0; index < amount; index += 1) {
+    const angle = (Math.PI * 2 * index) / amount + Math.random() * .28;
+    const distance = 22 + Math.random() * 34;
+    const spark = document.createElement("i");
+    spark.className = `cutin-modifier-spark cutin-spark-${tone}`;
+    spark.style.left = `${centerX}px`;
+    spark.style.top = `${centerY}px`;
+    spark.style.setProperty("--spark-x", `${Math.cos(angle) * distance}px`);
+    spark.style.setProperty("--spark-y", `${Math.sin(angle) * distance}px`);
+    spark.style.setProperty("--spark-delay", `${index * 8}ms`);
+    overlay.appendChild(spark);
+    window.setTimeout(() => spark.remove(), 620);
+  }
 }
 
 function getActiveCutinCards(overlay) {
@@ -544,6 +634,9 @@ async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null
       card.dataset.crunchDamage = String(hit);
     });
     if (prepared) showPreparedCardAssembly(prepared, hit);
+    if (prepared && hit === CUTSCENE_CONFIG.interactiveCrunchHits) {
+      startPreparedShardPhysics(prepared);
+    }
     if (fullHand) {
       stage.classList.remove("is-full-hand-reacting");
       void stage.offsetWidth;
@@ -799,33 +892,43 @@ function createCardFractureMap(card, grid = CARD_SHARD_CONFIG) {
 
 function createMathCutinMarkup({ entry, matched, operator, equation, tier }) {
   return `
-    <div class="cutin-stage cutin-math-stage ${tier === "full" ? "cutin-full" : ""}">
-      <div class="cutin-expression-row">
-        ${createCutinCardMarkup(matched[0], "source source-1")}
-        <div class="cutin-operator cutin-inline-operator">${operator}</div>
-        ${createCutinCardMarkup(matched[1], "source source-2")}
+    <div class="cutin-stage cutin-math-stage cutin-tone-${entry.matchType} ${tier === "full" ? "cutin-full" : ""}">
+      <div class="cutin-card-stage cutin-math-card-stage">
+        <div class="cutin-expression-row">
+          ${createCutinCardMarkup(matched[0], "source source-1")}
+          <div class="cutin-operator cutin-inline-operator">${operator}</div>
+          ${createCutinCardMarkup(matched[1], "source source-2")}
+        </div>
+        <div class="cutin-answer-wrap">
+          ${createCutinCardMarkup(entry.card, "answer")}
+        </div>
       </div>
-      <div class="cutin-answer-wrap">
-        ${createCutinCardMarkup(entry.card, "answer")}
+      <div class="cutin-result-stack">
+        <div class="cutin-equation">${equation}</div>
+        <div class="cutin-label">${entry.label}</div>
+        <div class="cutin-inline-bonuses" aria-live="polite"></div>
+        <div class="cutin-points">+${formatCompactNumber(entry.displayPoints ?? entry.points)}</div>
       </div>
-      <div class="cutin-equation">${equation}</div>
-      <div class="cutin-label">${entry.label}</div>
-      <div class="cutin-points">+${formatCompactNumber(entry.displayPoints ?? entry.points)}</div>
     </div>
   `;
 }
 
 function createMatchCutinMarkup({ entry, matched, operator, equation, tier }) {
   return `
-    <div class="cutin-stage cutin-match-stage ${tier === "full" ? "cutin-full" : ""}">
-      <div class="cutin-match-row">
-        ${matched.map((card, index) => createCutinCardMarkup(card, `source source-${index + 1}`)).join("")}
-        ${createCutinCardMarkup(entry.card, "answer")}
+    <div class="cutin-stage cutin-match-stage cutin-tone-${entry.matchType} ${tier === "full" ? "cutin-full" : ""}">
+      <div class="cutin-card-stage cutin-match-card-stage">
+        <div class="cutin-match-row">
+          ${matched.map((card, index) => createCutinCardMarkup(card, `source source-${index + 1}`)).join("")}
+          ${createCutinCardMarkup(entry.card, "answer")}
+        </div>
       </div>
-      <div class="cutin-operator">${operator}</div>
-      <div class="cutin-equation">${equation}</div>
-      <div class="cutin-label">${entry.label}</div>
-      <div class="cutin-points">+${formatCompactNumber(entry.displayPoints ?? entry.points)}</div>
+      <div class="cutin-result-stack">
+        <div class="cutin-operator">${operator}</div>
+        <div class="cutin-equation">${equation}</div>
+        <div class="cutin-label">${entry.label}</div>
+        <div class="cutin-inline-bonuses" aria-live="polite"></div>
+        <div class="cutin-points">+${formatCompactNumber(entry.displayPoints ?? entry.points)}</div>
+      </div>
     </div>
   `;
 }
@@ -1193,12 +1296,14 @@ function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
 
   const nodes = [];
   const shards = [];
-  const sparks = [];
+  const shardStates = [];
   const seams = [];
-  const impacts = [];
   const fragment = document.createDocumentFragment();
-  const totalShardCount = measurements.length * grid.rows * grid.columns;
-  let latestArrival = 0;
+  const random = createSeededRandom(measurements.reduce((seed, { card, rect }, index) => (
+    seed
+      ^ Math.round(rect.left * 31 + rect.top * 17 + rect.width * 13)
+      ^ hashString(`${card.textContent}:${index}`)
+  ), 0x9e3779b9));
 
   measurements.forEach(({ card, rect }, cardIndex) => {
     const seam = createPrecutSeamOverlay(card, rect, grid);
@@ -1229,31 +1334,12 @@ function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
         const cellHeight = 100 / grid.rows;
         const pieceX = rect.left + (column + .5) * (rect.width / grid.columns);
         const pieceY = rect.top + (row + .5) * (rect.height / grid.rows);
-        const centerColumn = (grid.columns - 1) / 2;
-        const centerRow = (grid.rows - 1) / 2;
-        const spreadX = (column - centerColumn) * 19 + ((shardIndex + cardIndex) % 3 - 1) * 5;
-        const spreadY = (row - centerRow) * 13 - 8 - (shardIndex % 2) * 4;
-        const burstX = spreadX * 1.38 + Math.sign(spreadX || column - centerColumn || 1) * (5 + shardIndex % 4);
-        const burstY = spreadY * 1.26 + (row - centerRow) * 5 - 5;
-        const slideX = spreadX * 1.12;
-        const slideY = spreadY * 1.08 + 1;
-        const flyX = targetX - pieceX + ((shardIndex % 3) - 1) * 3;
-        const flyY = targetY - pieceY;
-        const archDirection = pieceX < targetX ? -1 : 1;
-        const archWidth = Math.min(58, 24 + Math.abs(flyX) * .075);
-        const curveX = spreadX + flyX * .2 + archDirection * archWidth;
-        const curveY = spreadY + flyY * .19 - 12;
-        const drawX = spreadX + (curveX - spreadX) * .1;
-        const drawY = spreadY + (curveY - spreadY) * .1;
-        const funnelX = flyX * .7 + archDirection * 9;
-        const funnelY = flyY * .69;
-        const intakeX = flyX * .93 + archDirection * 2;
-        const intakeY = flyY * .92;
-        const rowDelay = CARD_SHARD_CONFIG.rowReleaseDelays[row] ?? row * 55;
-        const launchDelay = rowDelay + column * CARD_SHARD_CONFIG.columnDelayStep + cardIndex * CARD_SHARD_CONFIG.cardDelayStep;
-        const travelDuration = CARD_SHARD_CONFIG.duration - row * CARD_SHARD_CONFIG.rowDurationStep + ((column + cardIndex) % 3) * 5;
-        const arrivalAt = launchDelay + travelDuration;
-        latestArrival = Math.max(latestArrival, arrivalAt);
+        const cardCenterX = rect.left + rect.width / 2;
+        const cardCenterY = rect.top + rect.height / 2;
+        const radialAngle = Math.atan2(pieceY - cardCenterY, pieceX - cardCenterX);
+        const launchAngle = radialAngle + (random() - .5) * .62;
+        const launchSpeed = SHARD_PHYSICS_CONFIG.explosionMinSpeed
+          + random() * (SHARD_PHYSICS_CONFIG.explosionMaxSpeed - SHARD_PHYSICS_CONFIG.explosionMinSpeed);
 
         shard.classList.add("cutin-card-shard");
         shard.setAttribute("aria-hidden", "true");
@@ -1265,33 +1351,22 @@ function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
         shard.style.height = `${rect.height}px`;
         shard.style.clipPath = createPixelShardClip(column, row, shardIndex, grid.columns, grid.rows);
         shard.style.setProperty("--shard-origin", `${(column + .5) * cellWidth}% ${(row + .5) * cellHeight}%`);
-        shard.style.setProperty("--shard-burst-x", `${burstX}px`);
-        shard.style.setProperty("--shard-burst-y", `${burstY}px`);
-        shard.style.setProperty("--shard-slide-x", `${slideX}px`);
-        shard.style.setProperty("--shard-slide-y", `${slideY}px`);
-        shard.style.setProperty("--shard-rest-x", `${spreadX}px`);
-        shard.style.setProperty("--shard-rest-y", `${spreadY}px`);
-        shard.style.setProperty("--shard-draw-x", `${drawX}px`);
-        shard.style.setProperty("--shard-draw-y", `${drawY}px`);
-        shard.style.setProperty("--shard-curve-x", `${curveX}px`);
-        shard.style.setProperty("--shard-curve-y", `${curveY}px`);
-        shard.style.setProperty("--shard-funnel-x", `${funnelX}px`);
-        shard.style.setProperty("--shard-funnel-y", `${funnelY}px`);
-        shard.style.setProperty("--shard-intake-x", `${intakeX}px`);
-        shard.style.setProperty("--shard-intake-y", `${intakeY}px`);
-        shard.style.setProperty("--shard-fly-x", `${flyX}px`);
-        shard.style.setProperty("--shard-fly-y", `${flyY}px`);
-        shard.style.setProperty("--shard-delay", `${launchDelay}ms`);
-        shard.style.setProperty("--shard-duration", `${travelDuration}ms`);
-        const rotation = (column - row) * 26 + (shardIndex % 2 ? 18 : -18);
-        shard.style.setProperty("--shard-rotation-small", `${rotation * .3}deg`);
-        shard.style.setProperty("--shard-rotation-mid", `${rotation * .72}deg`);
-        shard.style.setProperty("--shard-rotation-rest", `${rotation * .26}deg`);
-        shard.style.setProperty("--shard-rotation", `${rotation}deg`);
-        impacts.push({
-          arrivalAt,
-          progress: (cardIndex * grid.rows * grid.columns + shardIndex + 1) / totalShardCount,
-          strength: row === 0 ? .85 : 1
+        shardStates.push({
+          node: shard,
+          originX: pieceX,
+          originY: pieceY,
+          width: rect.width / grid.columns,
+          height: rect.height / grid.rows,
+          x: 0,
+          y: 0,
+          vx: Math.cos(launchAngle) * launchSpeed,
+          vy: Math.sin(launchAngle) * launchSpeed - SHARD_PHYSICS_CONFIG.explosionLift * (.7 + random() * .6),
+          rotation: 0,
+          angularVelocity: (random() - .5) * 430,
+          hoverPhase: random() * Math.PI * 2,
+          vacuumDelay: 0,
+          vacuumDistance: 1,
+          arrived: false
         });
         nodes.push(shard);
         shards.push(shard);
@@ -1300,41 +1375,48 @@ function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
     }
   });
 
-  for (let index = 0; index < CARD_SHARD_CONFIG.intakeSparks; index += 1) {
-    const spark = document.createElement("i");
-    spark.className = "bank-intake-spark";
-    spark.setAttribute("aria-hidden", "true");
-    spark.style.left = `${targetX}px`;
-    spark.style.top = `${targetY}px`;
-    const intakeX = ((index % 5) - 2) * 8;
-    const intakeY = -8 - (index % 3) * 7;
-    spark.style.setProperty("--intake-x", `${intakeX}px`);
-    spark.style.setProperty("--intake-y", `${intakeY}px`);
-    spark.style.setProperty("--intake-x-far", `${intakeX * 1.45}px`);
-    spark.style.setProperty("--intake-y-far", `${intakeY * 1.6}px`);
-    spark.style.setProperty("--intake-delay", `${Math.max(250, CARD_SHARD_CONFIG.duration - 190) + index * 22}ms`);
-    nodes.push(spark);
-    sparks.push(spark);
-    fragment.appendChild(spark);
-  }
-
   document.body.appendChild(fragment);
   const prepared = {
     bankEl,
     cards: measurements.map(({ card }) => card),
     nodes,
     shards,
-    sparks,
+    shardStates,
     seams,
     grid,
-    latestArrival,
-    impactSchedule: createShardImpactSchedule(impacts),
-    impactTimers: [],
-    totalDuration: Math.max(getCardFeedDuration(measurements.length, grid), latestArrival + 90),
-    active: false
+    targetX,
+    targetY,
+    totalDuration: getCardFeedDuration(measurements.length),
+    active: false,
+    physicsStarted: false,
+    vacuumRequested: false,
+    physicsFrameId: 0,
+    resolvePhysics: null,
+    onImpact: null,
+    arrivedCount: 0
   };
   prepared.cards.forEach((card) => preparedShardSets.set(card, prepared));
   return prepared;
+}
+
+function hashString(value) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function createSeededRandom(seed) {
+  let state = seed >>> 0 || 0x6d2b79f5;
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ value >>> 15, value | 1);
+    value ^= value + Math.imul(value ^ value >>> 7, value | 61);
+    return ((value ^ value >>> 14) >>> 0) / 4294967296;
+  };
 }
 
 function createPrecutSeamOverlay(card, rect, grid) {
@@ -1384,28 +1466,245 @@ function showPreparedCardAssembly(prepared, hit) {
   });
 }
 
-/* Reveals the pre-cut pieces in the same frame the intact cards disappear,
-   then feeds them through a staggered top-to-bottom vacuum curve. */
-async function feedCutinCardsToBank(cardElements, bankEl) {
+/* The third hit starts a radial scatter. Banking later switches the same
+   fragments into a progressively stronger force field aimed at the intake. */
+async function feedCutinCardsToBank(cardElements, bankEl, onImpact = null) {
   const cards = cardElements.filter((card) => card?.isConnected);
   if (!cards.length || !bankEl?.isConnected) return;
 
   const prepared = prepareCutinCardShards(cards, bankEl);
   if (!prepared) return;
   prepared.active = true;
+  prepared.onImpact = onImpact;
   clearPreparedDamageArtifacts(prepared);
   prepared.cards.forEach((card) => card.classList.add("is-shattering", "is-consumed-after-shatter"));
   prepared.shards.forEach((shard) => {
     shard.classList.remove("is-precut-piece", "is-precut-light", "is-precut-heavy");
     shard.removeAttribute("data-crunch-damage");
-    shard.classList.add("is-vacuuming");
+    shard.classList.add("is-physics-active");
   });
-  prepared.sparks.forEach((spark) => spark.classList.add("is-active"));
   beginBankFeed(prepared);
-  playGameSfx("crunch_vacuum");
-  schedulePreparedShardImpacts(prepared);
-  await sleep(prepared.totalDuration);
+  startPreparedShardPhysics(prepared);
+  requestPreparedShardVacuum(prepared);
+  await prepared.physicsPromise;
   discardPreparedShardSet(prepared);
+}
+
+function startPreparedShardPhysics(prepared) {
+  if (!prepared || prepared.physicsStarted || prepared.disposed) return prepared?.physicsPromise;
+  prepared.active = true;
+  prepared.physicsStarted = true;
+  prepared.physicsStartedAt = performance.now();
+  prepared.lastPhysicsFrame = prepared.physicsStartedAt;
+  prepared.viewportWidth = Math.max(1, window.innerWidth);
+  prepared.viewportHeight = Math.max(1, window.innerHeight);
+  prepared.shards.forEach((shard) => {
+    shard.classList.remove("is-precut-piece", "is-precut-light", "is-precut-heavy");
+    shard.classList.add("is-physics-active", "is-shattered-piece");
+    shard.removeAttribute("data-crunch-damage");
+    shard.style.opacity = "1";
+    shard.style.transform = "translate3d(0, 0, 0) rotate(0deg) scale(1)";
+  });
+  clearPreparedDamageArtifacts(prepared);
+
+  prepared.physicsPromise = new Promise((resolve) => {
+    prepared.resolvePhysics = resolve;
+  });
+  prepared.physicsFrameId = window.requestAnimationFrame((now) => stepPreparedShardPhysics(prepared, now));
+  return prepared.physicsPromise;
+}
+
+function requestPreparedShardVacuum(prepared) {
+  if (!prepared || prepared.vacuumRequested || prepared.disposed) return;
+  prepared.vacuumRequested = true;
+  prepared.vacuumRequestedAt = performance.now();
+  prepared.vacuumStartAt = Math.max(
+    prepared.physicsStartedAt + SHARD_PHYSICS_CONFIG.forceSettleAfter,
+    prepared.vacuumRequestedAt + SHARD_PHYSICS_CONFIG.hoverBeforeVacuum
+  );
+
+  const byDistance = [...prepared.shardStates]
+    .sort((a, b) => getShardDistanceToBank(a, prepared) - getShardDistanceToBank(b, prepared));
+  byDistance.forEach((state, index) => {
+    state.vacuumDelay = byDistance.length <= 1
+      ? 0
+      : index / (byDistance.length - 1) * SHARD_PHYSICS_CONFIG.vacuumStagger;
+    state.vacuumDistance = Math.max(1, getShardDistanceToBank(state, prepared));
+  });
+}
+
+function stepPreparedShardPhysics(prepared, now) {
+  if (prepared.disposed) return finishPreparedShardPhysics(prepared);
+  const deltaSeconds = Math.min(.034, Math.max(.001, (now - prepared.lastPhysicsFrame) / 1000));
+  prepared.lastPhysicsFrame = now;
+  const elapsed = now - prepared.physicsStartedAt;
+  const vacuumElapsed = prepared.vacuumRequested ? now - prepared.vacuumStartAt : -1;
+  const vacuumRamp = Math.max(0, Math.min(1, vacuumElapsed / 1550));
+  let remaining = 0;
+
+  if (vacuumElapsed >= 0 && !prepared.vacuumSoundStarted) {
+    prepared.vacuumSoundStarted = true;
+    playGameSfx("crunch_vacuum");
+  }
+
+  for (const state of prepared.shardStates) {
+    if (state.arrived) continue;
+    remaining += 1;
+    const vacuumActive = vacuumElapsed >= state.vacuumDelay;
+    if (vacuumActive) updateVacuumShard(state, prepared, deltaSeconds, vacuumRamp);
+    else updateScatteredShard(state, prepared, deltaSeconds, elapsed, now);
+
+    const centerX = state.originX + state.x;
+    const centerY = state.originY + state.y;
+    const distance = Math.hypot(prepared.targetX - centerX, prepared.targetY - centerY);
+    if (vacuumActive && (distance <= SHARD_PHYSICS_CONFIG.intakeRadius
+      || (centerY <= prepared.targetY + 3 && Math.abs(centerX - prepared.targetX) < 42))) {
+      registerShardBankImpact(prepared, state, distance);
+      remaining -= 1;
+      continue;
+    }
+
+    if (elapsed >= SHARD_PHYSICS_CONFIG.maxDuration) {
+      registerShardBankImpact(prepared, state, 0);
+      remaining -= 1;
+      continue;
+    }
+    renderPhysicsShard(state, prepared, vacuumActive, distance);
+  }
+
+  if (remaining > 0) {
+    prepared.physicsFrameId = window.requestAnimationFrame((nextNow) => stepPreparedShardPhysics(prepared, nextNow));
+  } else {
+    finishPreparedShardPhysics(prepared);
+  }
+}
+
+function updateScatteredShard(state, prepared, deltaSeconds, elapsed, now) {
+  const drag = Math.pow(SHARD_PHYSICS_CONFIG.scatterDrag, deltaSeconds * 60);
+  const angularDrag = Math.pow(SHARD_PHYSICS_CONFIG.angularDrag, deltaSeconds * 60);
+  state.vx *= drag;
+  state.vy *= drag;
+  state.angularVelocity *= angularDrag;
+  state.x += state.vx * deltaSeconds;
+  state.y += state.vy * deltaSeconds;
+  state.rotation += state.angularVelocity * deltaSeconds;
+  resolveShardWallCollisions(state, prepared);
+
+  const speed = Math.hypot(state.vx, state.vy);
+  if (!state.settled && elapsed >= SHARD_PHYSICS_CONFIG.settleAfter
+    && (speed < 34 || elapsed >= SHARD_PHYSICS_CONFIG.forceSettleAfter)) {
+    state.settled = true;
+    state.restX = state.x;
+    state.restY = state.y;
+    state.restRotation = state.rotation;
+    state.vx = 0;
+    state.vy = 0;
+    state.angularVelocity = 0;
+  }
+  if (state.settled) {
+    const hoverTime = now / 1000 + state.hoverPhase;
+    state.x = state.restX + Math.sin(hoverTime * 2.1) * 1.7;
+    state.y = state.restY + Math.cos(hoverTime * 1.75) * 1.3;
+    state.rotation = state.restRotation + Math.sin(hoverTime * 1.4) * .8;
+  }
+}
+
+function resolveShardWallCollisions(state, prepared) {
+  const halfWidth = Math.max(3, state.width * .46);
+  const halfHeight = Math.max(3, state.height * .46);
+  const minX = halfWidth;
+  const maxX = prepared.viewportWidth - halfWidth;
+  const minY = Math.min(prepared.viewportHeight - halfHeight, prepared.targetY + halfHeight + 8);
+  const maxY = prepared.viewportHeight - halfHeight - 4;
+  let centerX = state.originX + state.x;
+  let centerY = state.originY + state.y;
+
+  if (centerX < minX || centerX > maxX) {
+    centerX = Math.max(minX, Math.min(maxX, centerX));
+    state.x = centerX - state.originX;
+    state.vx = -state.vx * SHARD_PHYSICS_CONFIG.wallBounce;
+    state.vy *= SHARD_PHYSICS_CONFIG.wallFriction;
+    state.angularVelocity *= -.58;
+  }
+  if (centerY < minY || centerY > maxY) {
+    centerY = Math.max(minY, Math.min(maxY, centerY));
+    state.y = centerY - state.originY;
+    state.vy = -state.vy * SHARD_PHYSICS_CONFIG.wallBounce;
+    state.vx *= SHARD_PHYSICS_CONFIG.wallFriction;
+    state.angularVelocity *= -.58;
+  }
+}
+
+function updateVacuumShard(state, prepared, deltaSeconds, vacuumRamp) {
+  if (state.settled) {
+    state.settled = false;
+    state.vx = 0;
+    state.vy = -8;
+  }
+  const centerX = state.originX + state.x;
+  const centerY = state.originY + state.y;
+  const dx = prepared.targetX - centerX;
+  const dy = prepared.targetY - centerY;
+  const distance = Math.max(1, Math.hypot(dx, dy));
+  const force = SHARD_PHYSICS_CONFIG.vacuumBaseForce
+    + SHARD_PHYSICS_CONFIG.vacuumRampForce * vacuumRamp * vacuumRamp
+    + Math.min(1050, distance * SHARD_PHYSICS_CONFIG.vacuumSpring);
+  const funnelStrength = 1.4 + vacuumRamp * 5.2;
+  state.vx += (dx / distance * force + dx * funnelStrength) * deltaSeconds;
+  state.vy += (dy / distance * force) * deltaSeconds;
+  const drag = Math.pow(.988 - vacuumRamp * .006, deltaSeconds * 60);
+  state.vx *= drag;
+  state.vy *= drag;
+  const speed = Math.hypot(state.vx, state.vy);
+  if (speed > SHARD_PHYSICS_CONFIG.vacuumMaxSpeed) {
+    const scale = SHARD_PHYSICS_CONFIG.vacuumMaxSpeed / speed;
+    state.vx *= scale;
+    state.vy *= scale;
+  }
+  state.x += state.vx * deltaSeconds;
+  state.y += state.vy * deltaSeconds;
+  state.angularVelocity += (dx >= 0 ? 1 : -1) * 75 * deltaSeconds;
+  state.angularVelocity *= Math.pow(.985, deltaSeconds * 60);
+  state.rotation += state.angularVelocity * deltaSeconds;
+}
+
+function renderPhysicsShard(state, prepared, vacuumActive, distance) {
+  const intakeScale = vacuumActive
+    ? Math.max(.07, Math.min(1, distance / state.vacuumDistance))
+    : 1;
+  state.node.style.opacity = vacuumActive ? String(Math.max(.18, Math.min(1, intakeScale * 1.4))) : "1";
+  state.node.style.transform = `translate3d(${state.x.toFixed(2)}px, ${state.y.toFixed(2)}px, 0) rotate(${state.rotation.toFixed(2)}deg) scale(${intakeScale.toFixed(3)})`;
+}
+
+function getShardDistanceToBank(state, prepared) {
+  return Math.hypot(
+    prepared.targetX - (state.originX + state.x),
+    prepared.targetY - (state.originY + state.y)
+  );
+}
+
+function registerShardBankImpact(prepared, state, distance) {
+  if (state.arrived) return;
+  state.arrived = true;
+  state.node.style.opacity = "0";
+  state.node.style.visibility = "hidden";
+  prepared.arrivedCount += 1;
+  const total = prepared.shardStates.length;
+  const progress = prepared.arrivedCount / Math.max(1, total);
+  const speed = Math.hypot(state.vx, state.vy);
+  const strength = Math.max(.55, Math.min(1.7, speed / 720 + (distance < 10 ? .25 : 0)));
+  playCrunchShardImpact({ progress, strength });
+  spawnBankImpactCrumbs(prepared.targetX, prepared.targetY, strength);
+  prepared.onImpact?.({ arrived: prepared.arrivedCount, total, progress, strength });
+}
+
+function finishPreparedShardPhysics(prepared) {
+  if (prepared.physicsFinished) return;
+  prepared.physicsFinished = true;
+  if (prepared.physicsFrameId) window.cancelAnimationFrame(prepared.physicsFrameId);
+  prepared.physicsFrameId = 0;
+  prepared.resolvePhysics?.();
+  prepared.resolvePhysics = null;
 }
 
 function clearPreparedDamageArtifacts(prepared) {
@@ -1429,8 +1728,10 @@ function discardPreparedCardShards(card) {
 function discardPreparedShardSet(prepared) {
   if (prepared.disposed) return;
   prepared.disposed = true;
-  prepared.impactTimers?.forEach((timerId) => window.clearTimeout(timerId));
-  prepared.impactTimers = [];
+  if (prepared.physicsFrameId) window.cancelAnimationFrame(prepared.physicsFrameId);
+  prepared.physicsFrameId = 0;
+  prepared.resolvePhysics?.();
+  prepared.resolvePhysics = null;
   prepared.nodes.forEach((node) => node.remove());
   prepared.cards.forEach((card) => {
     preparedShardSets.delete(card);
@@ -1460,34 +1761,108 @@ function endBankFeed(prepared) {
   }
 }
 
-function createShardImpactSchedule(impacts) {
-  const buckets = new Map();
-  impacts.forEach(({ arrivalAt, progress, strength }) => {
-    const bucketAt = Math.ceil(arrivalAt / SHARD_IMPACT_BUCKET_MS) * SHARD_IMPACT_BUCKET_MS;
-    const bucket = buckets.get(bucketAt) ?? { arrivalAt: bucketAt, progress: 0, strength: 0, count: 0 };
-    bucket.progress += progress;
-    bucket.strength += strength;
-    bucket.count += 1;
-    buckets.set(bucketAt, bucket);
-  });
-
-  return [...buckets.values()]
-    .sort((a, b) => a.arrivalAt - b.arrivalAt)
-    .map((bucket) => ({
-      arrivalAt: bucket.arrivalAt,
-      impact: {
-        progress: bucket.progress / bucket.count,
-        strength: Math.min(4, bucket.strength)
-      }
-    }));
+function spawnBankImpactCrumbs(x, y, strength = 1) {
+  const emitter = ensureBankImpactEmitter();
+  if (!emitter) return;
+  const amount = Math.max(3, Math.round(SHARD_PHYSICS_CONFIG.impactCrumbs * Math.min(1.45, strength)));
+  for (let index = 0; index < amount; index += 1) {
+    const direction = index % 2 === 0 ? -1 : 1;
+    const speed = 48 + Math.random() * 135;
+    emitter.particles.push({
+      x: x + (Math.random() - .5) * 22,
+      y: y + 1,
+      vx: direction * speed * (.35 + Math.random() * .65),
+      vy: 55 + Math.random() * 175,
+      gravity: 580 + Math.random() * 280,
+      drag: .976 + Math.random() * .012,
+      size: 2 + Math.floor(Math.random() * 4),
+      length: 3 + Math.floor(Math.random() * 6),
+      vertical: Math.random() > .5,
+      color: index % 3 === 0 ? "#fff0a0" : "#f2ad24",
+      edge: "#75420a",
+      age: 0,
+      delay: 0,
+      maxAge: 520 + Math.random() * 260
+    });
+  }
+  startBankImpactEmitter(emitter);
 }
 
-function schedulePreparedShardImpacts(prepared) {
-  prepared.impactTimers?.forEach((timerId) => window.clearTimeout(timerId));
-  prepared.impactTimers = prepared.impactSchedule.map(({ arrivalAt, impact }) => window.setTimeout(() => {
-    if (!prepared.active || !prepared.bankEl?.isConnected) return;
-    playCrunchShardImpact(impact);
-  }, arrivalAt));
+function ensureBankImpactEmitter() {
+  if (bankImpactEmitter?.canvas?.isConnected) return bankImpactEmitter;
+  const canvas = document.createElement("canvas");
+  canvas.className = "cutin-bank-impact-canvas";
+  canvas.setAttribute("aria-hidden", "true");
+  const context = canvas.getContext("2d", { alpha: true, desynchronized: true });
+  if (!context) return null;
+  bankImpactEmitter = {
+    canvas,
+    context,
+    particles: [],
+    running: false,
+    lastFrame: 0,
+    width: 0,
+    height: 0,
+    dpr: 1
+  };
+  document.body.appendChild(canvas);
+  syncBankImpactCanvas(bankImpactEmitter);
+  return bankImpactEmitter;
+}
+
+function syncBankImpactCanvas(emitter) {
+  const width = Math.max(1, window.innerWidth);
+  const height = Math.max(1, window.innerHeight);
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+  if (emitter.width === width && emitter.height === height && emitter.dpr === dpr) return;
+  emitter.width = width;
+  emitter.height = height;
+  emitter.dpr = dpr;
+  emitter.canvas.width = Math.round(width * dpr);
+  emitter.canvas.height = Math.round(height * dpr);
+  emitter.canvas.style.width = `${width}px`;
+  emitter.canvas.style.height = `${height}px`;
+  emitter.context.setTransform(dpr, 0, 0, dpr, 0, 0);
+  emitter.context.imageSmoothingEnabled = false;
+}
+
+function startBankImpactEmitter(emitter) {
+  if (emitter.running) return;
+  emitter.running = true;
+  emitter.lastFrame = performance.now();
+  const drawFrame = (now) => {
+    if (!emitter.canvas.isConnected) {
+      emitter.running = false;
+      emitter.particles.length = 0;
+      return;
+    }
+    syncBankImpactCanvas(emitter);
+    const deltaSeconds = Math.min(.034, Math.max(.001, (now - emitter.lastFrame) / 1000));
+    emitter.lastFrame = now;
+    const { context, width, height, particles } = emitter;
+    context.clearRect(0, 0, width, height);
+    let writeIndex = 0;
+    for (let index = 0; index < particles.length; index += 1) {
+      const particle = particles[index];
+      particle.age += deltaSeconds * 1000;
+      particle.vy += particle.gravity * deltaSeconds;
+      particle.vx *= Math.pow(particle.drag, deltaSeconds * 60);
+      particle.x += particle.vx * deltaSeconds;
+      particle.y += particle.vy * deltaSeconds;
+      if (particle.age >= particle.maxAge || particle.y > height + 18) continue;
+      const opacity = Math.max(0, Math.min(1, (particle.maxAge - particle.age) / 180));
+      drawPixelCrumb(context, particle, opacity);
+      particles[writeIndex] = particle;
+      writeIndex += 1;
+    }
+    particles.length = writeIndex;
+    if (particles.length) window.requestAnimationFrame(drawFrame);
+    else {
+      emitter.running = false;
+      context.clearRect(0, 0, width, height);
+    }
+  };
+  window.requestAnimationFrame(drawFrame);
 }
 
 function createPixelShardClip(column, row, variant, columns, rows) {
@@ -1525,16 +1900,11 @@ function getPixelShardPolygon(column, row, variant, columns = CARD_SHARD_CONFIG.
   ];
 }
 
-function getCardFeedDuration(cardCount, grid = CARD_SHARD_CONFIG) {
-  const lastRow = grid.rows - 1;
-  const lastColumn = grid.columns - 1;
-  const finalRowDelay = CARD_SHARD_CONFIG.rowReleaseDelays[lastRow] ?? lastRow * 55;
-  const finalTravelDuration = CARD_SHARD_CONFIG.duration - lastRow * CARD_SHARD_CONFIG.rowDurationStep + 10;
-  return finalRowDelay
-    + lastColumn * CARD_SHARD_CONFIG.columnDelayStep
-    + Math.max(0, cardCount - 1) * CARD_SHARD_CONFIG.cardDelayStep
-    + finalTravelDuration
-    + 90;
+function getCardFeedDuration(cardCount) {
+  return Math.min(
+    SHARD_PHYSICS_CONFIG.maxDuration,
+    SHARD_PHYSICS_CONFIG.forceSettleAfter + SHARD_PHYSICS_CONFIG.vacuumStagger + 1150 + cardCount * 70
+  );
 }
 
 function getCrossedScoreMilestone(from, to) {
@@ -1774,26 +2144,6 @@ async function countBankTo(valueEl, from, to, advance = null, duration = 520) {
       } else {
         done();
       }
-    };
-    requestAnimationFrame(tick);
-  });
-}
-
-function countBankBy(valueEl, counterState, amount, duration) {
-  if (!valueEl || !counterState || !amount) return Promise.resolve();
-  const startedAt = performance.now();
-
-  return new Promise((resolve) => {
-    let renderedAmount = 0;
-    const tick = (now) => {
-      const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const nextAmount = Math.round(amount * eased);
-      counterState.value += nextAmount - renderedAmount;
-      renderedAmount = nextAmount;
-      valueEl.textContent = formatCompactNumber(counterState.value);
-      if (progress < 1) requestAnimationFrame(tick);
-      else resolve();
     };
     requestAnimationFrame(tick);
   });

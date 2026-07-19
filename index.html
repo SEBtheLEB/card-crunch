@@ -15,10 +15,8 @@
     <link rel="icon" href="assets/icons/icon-192.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" as="image" href="assets/backgrounds/pixel-casino-menu.jpg">
-    <link rel="preload" as="image" href="assets/backgrounds/pixel-casino-table.jpg">
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/main.css?v=133">
+  <link rel="stylesheet" href="styles/main.css?v=139">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -110,15 +108,6 @@
             <span class="menu-chip-copy"><small>Coins</small><strong id="menuCoinsValue">0</strong></span>
             <span class="menu-chip-add" aria-hidden="true">+</span>
           </button>
-          <button class="menu-chip energy-chip" data-menu-page="shop" type="button" aria-label="Open store. Energy 30 of 30">
-            <span class="chip-icon energy-icon" aria-hidden="true">&#9889;</span>
-            <span class="energy-copy">
-              <strong id="menuEnergyValue">30</strong>
-              <small id="menuEnergyTimer">FULL</small>
-            </span>
-            <i><b></b></i>
-            <span class="menu-chip-add" aria-hidden="true">+</span>
-          </button>
           <div class="menu-topbar-actions">
             <button class="menu-icon-button" data-menu-page="leaderboard" type="button" aria-label="Leaderboard">&#9819;</button>
             <button class="menu-icon-button fullscreen-toggle-button" data-fullscreen-toggle type="button" aria-label="Enter full screen" aria-pressed="false"><span class="fullscreen-icon" aria-hidden="true">&#x26F6;</span></button>
@@ -183,22 +172,9 @@
             <h2 id="shopTitle">Store</h2>
             <div class="store-wallet" aria-label="Wallet">
               <span><i aria-hidden="true">&#9670;</i><b id="storeCoinsValue">0</b> Coins</span>
-              <span><i aria-hidden="true">&#9889;</i><b id="storeEnergyValue">30/30</b> Energy</span>
             </div>
-            <p class="store-status" id="storeStatus" aria-live="polite">Energy refills automatically while you are away.</p>
+            <p class="store-status" id="storeStatus" aria-live="polite">Earn coins from runs and spend them on useful boosts.</p>
             <div class="store-grid">
-              <button class="store-item energy-store-item" id="buyEnergyButton" type="button">
-                <i aria-hidden="true">&#9889;</i>
-                <strong>+5 Energy</strong>
-                <span id="buyEnergyPrice">75 Coins</span>
-                <small>Keep playing now</small>
-              </button>
-              <button class="store-item ad-store-item" id="watchEnergyAdButton" type="button">
-                <i aria-hidden="true">&#9654;</i>
-                <strong>Free Energy</strong>
-                <span>Watch Ad &middot; +5</span>
-                <small id="energyAdsRemaining">4 left today</small>
-              </button>
               <button class="store-item shield-store-item" id="buyShieldButton" type="button">
                 <i aria-hidden="true">&#9829;</i>
                 <strong>Bank Shield</strong>
@@ -385,33 +361,12 @@
             <b aria-hidden="true">AD</b>
           </button>
         </div>
-        <button class="primary-button" id="restartButton" type="button">Play Again &middot; &#9889;5</button>
+        <button class="primary-button" id="restartButton" type="button">Play Again</button>
         <button class="secondary-button" id="returnToPotsButton" type="button">Return to Pots</button>
       </div>
     </section>
 
-    <section class="modal-screen energy-gate-screen" id="energyGateScreen" aria-labelledby="energyGateTitle" aria-hidden="true">
-      <div class="modal-card energy-gate-card">
-        <span class="energy-gate-icon" aria-hidden="true">&#9889;</span>
-        <p class="eyebrow">Out of Energy</p>
-        <h2 id="energyGateTitle">Need 5 Energy</h2>
-        <p id="energyGateCopy">Energy restores automatically. Refill now or come back when the timer finishes.</p>
-        <div class="energy-gate-meter">
-          <strong id="energyGateValue">0/30</strong>
-          <span id="energyGateTimer">Next in 12:00</span>
-        </div>
-        <button class="ad-button energy-gate-ad" id="energyGateAdButton" type="button">
-          <i aria-hidden="true">&#9654;</i>
-          <span>Watch Ad: +5 Energy</span>
-          <small id="energyGateAdRemaining">4 refills left today</small>
-          <b aria-hidden="true">AD</b>
-        </button>
-        <button class="primary-button energy-coin-button" id="energyGateCoinButton" type="button">Use 75 Coins</button>
-        <button class="secondary-button" id="energyGateCloseButton" type="button">Not Now</button>
-      </div>
-    </section>
-
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-  <script type="module" src="src/main.js?v=133"></script>
+  <script type="module" src="src/main.js?v=139"></script>
   </body>
 </html>

@@ -321,7 +321,8 @@ function createMatchTierBonus(entry) {
     label: entry.cutinLabel ?? entry.label,
     value: `x${multiplier}`,
     tone: entry.matchType,
-    kind: "entry-multiplier"
+    kind: "entry-multiplier",
+    multiplier
   }];
 }
 
@@ -526,12 +527,19 @@ function getStackPairs(cards) {
 
 function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, potRuleMultiplier = 1, potRuleLabel = "POT RULE", runMultiplier = 1, total }) {
   const steps = [{ label: "STORED", value: `+${formatCompactNumber(storedBase)}`, tone: "total", kind: "base" }];
-  if (handMultiplier > 1) steps.push({ label: "HAND", value: `x${handMultiplier}`, tone: "double", kind: "multiplier" });
-  if (speedBonus.multiplier > 1) steps.push({ label: speedBonus.label, value: `x${formatMultiplier(speedBonus.multiplier)}`, tone: "speed", kind: "multiplier" });
-  if (streakMultiplier > 1) steps.push({ label: "STREAK", value: `x${streakMultiplier}`, tone: streakMultiplier >= 10 ? "fever" : "streak", kind: "multiplier" });
-  stackTypes.forEach((bonus) => steps.push({ label: bonus.label, value: bonus.value, tone: bonus.tone, kind: bonus.multiplier ? "multiplier" : "bonus" }));
-  if (potRuleMultiplier > 1) steps.push({ label: potRuleLabel, value: `x${formatMultiplier(potRuleMultiplier)}`, tone: "fever", kind: "multiplier" });
-  if (runMultiplier > 1) steps.push({ label: "RUN MULTI", value: `x${formatMultiplier(runMultiplier)}`, tone: "fever", kind: "multiplier" });
+  if (handMultiplier > 1) steps.push({ label: "HAND", value: `x${handMultiplier}`, tone: "double", kind: "multiplier", multiplier: handMultiplier });
+  if (speedBonus.multiplier > 1) steps.push({ label: speedBonus.label, value: `x${formatMultiplier(speedBonus.multiplier)}`, tone: "speed", kind: "multiplier", multiplier: speedBonus.multiplier });
+  if (streakMultiplier > 1) steps.push({ label: "STREAK", value: `x${streakMultiplier}`, tone: streakMultiplier >= 10 ? "fever" : "streak", kind: "multiplier", multiplier: streakMultiplier });
+  stackTypes.forEach((bonus) => steps.push({
+    label: bonus.label,
+    value: bonus.value,
+    tone: bonus.tone,
+    kind: bonus.multiplier ? "multiplier" : "bonus",
+    multiplier: bonus.multiplier,
+    flatBonus: bonus.flatBonus
+  }));
+  if (potRuleMultiplier > 1) steps.push({ label: potRuleLabel, value: `x${formatMultiplier(potRuleMultiplier)}`, tone: "pot", kind: "multiplier", multiplier: potRuleMultiplier });
+  if (runMultiplier > 1) steps.push({ label: "RUN MULTI", value: `x${formatMultiplier(runMultiplier)}`, tone: "run", kind: "multiplier", multiplier: runMultiplier });
   steps.push({ label: "TOTAL", value: `+${formatCompactNumber(total)}`, tone: "total", kind: "total" });
   return steps;
 }
