@@ -954,13 +954,15 @@ export function createGame(ui) {
 
   function discardSelectedCards() {
     const selected = new Set(state.selectedHandIndexes);
-    state.hand = state.hand.map((card, index) => {
+    const survivingCards = state.hand.filter((card, index) => {
       if (selected.has(index)) {
         if (card) state.discard.push(card);
-        return null;
+        return false;
       }
-      return card;
+      return Boolean(card);
     });
+    const openSlots = Math.max(0, 4 - survivingCards.length);
+    state.hand = [...Array(openSlots).fill(null), ...survivingCards].slice(-4);
     state.selectedHandIndexes = [];
   }
 

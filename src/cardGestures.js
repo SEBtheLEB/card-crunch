@@ -129,11 +129,11 @@ export function bindCardGesture(element, action) {
 }
 
 export function animateCardTransfer(card, fromRect, toRect, { withTrail = false } = {}) {
-  if (!card || !fromRect || !toRect) return;
+  if (!card || !fromRect || !toRect) return null;
   const dx = fromRect.left - toRect.left;
   const dy = fromRect.top - toRect.top;
   const distance = Math.hypot(dx, dy);
-  if (distance < 2) return;
+  if (distance < 2) return null;
 
   const reducedMotion = document.documentElement.classList.contains("reduce-motion");
   if (withTrail && !reducedMotion) spawnCardFlightTrail(card, fromRect, toRect);
@@ -161,6 +161,39 @@ export function animateCardTransfer(card, fromRect, toRect, { withTrail = false 
     flightAnimations.delete(card);
     card.classList.remove("card-in-flight");
   });
+  return animation;
+}
+
+/* Replacement cards are dealt from off-screen left into the newly opened
+   hand slots. The same lightweight trail used for staging cards keeps the
+   motion visually connected to the rest of the game. */
+export function animateCardDealIn(card, dealOrder = 0) {
+  if (!card) return;
+  const reducedMotion = document.documentElement.classList.contains("reduce-motion");
+  const delay = reducedMotion ? 0 : Math.max(0, dealOrder) * 72;
+
+  const launch = () => {
+    if (!card.isConnected) return;
+    const toRect = card.getBoundingClientRect();
+    const laneOffset = Math.max(0, dealOrder) * 18;
+    const fromRect = {
+      left: -toRect.width - 30 - laneOffset,
+      top: toRect.top + Math.min(34, toRect.height * .18) + laneOffset * .18,
+      width: toRect.width * .94,
+      height: toRect.height * .94
+    };
+    const animation = animateCardTransfer(card, fromRect, toRect, { withTrail: true });
+    card.classList.remove("card-deal-pending");
+
+    if (!animation) return;
+    animation.finished.catch(() => {}).finally(() => {
+      if (!card.isConnected) return;
+      card.classList.add("card-deal-landed");
+      window.setTimeout(() => card.classList.remove("card-deal-landed"), 240);
+    });
+  };
+
+  window.setTimeout(() => requestAnimationFrame(launch), delay);
 }
 
 function spawnCardFlightTrail(card, fromRect, toRect) {

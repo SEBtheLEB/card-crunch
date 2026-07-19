@@ -203,6 +203,15 @@ if (!gameStateSource.includes("startTutorial") || !gameStateSource.includes("adv
 if (!cardGestureSource.includes("flightAnimations") || !uiSource.includes("card-layout-moving")) {
   throw new Error("Card transfer stability guards are missing");
 }
+if (!gameStateSource.includes("survivingCards") || !gameStateSource.includes("Array(openSlots).fill(null)")) {
+  throw new Error("Hand survivors must compact right before replacement cards are dealt");
+}
+if (!cardGestureSource.includes("export function animateCardDealIn") || !uiSource.includes("animateCardDealIn") || !css.includes("card-deal-pending")) {
+  throw new Error("Left-to-right hand refill dealing or its flight trail is missing");
+}
+if (!uiSource.includes("const currentIndex = Number(button.dataset.handIndex)")) {
+  throw new Error("Repositioned hand cards must select their current slot");
+}
 if (!css.includes('html[data-card-skin="dark"]') || !css.includes('html[data-card-skin="pink"]') || !css.includes('html[data-card-skin="gold"]') || !css.includes('html[data-card-skin="rainbow"]')) {
   throw new Error("One or more card skin styles are missing");
 }

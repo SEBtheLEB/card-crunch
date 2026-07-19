@@ -4,7 +4,7 @@ import { formatCompactNumber } from "./format.js?v=90";
 import { hasShieldToken } from "./save.js?v=90";
 import { bindInstantAction } from "./input.js?v=90";
 import { ECONOMY_CONFIG, economy } from "./economy.js?v=90";
-import { animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=90";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=114";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -629,15 +629,20 @@ function renderHand(elements, state, handlers) {
   const zone = elements.handZone;
   const tray = elements.selectedCardTray;
   const disabled = state.locked || state.status !== "playing" || state.tutorialBankStep;
-  const previousRects = new Map();
-  const previousZones = new Map();
-  const previousCardIds = new Map();
+  const previousCards = new Map();
+  const existingButtons = [
+    ...zone.querySelectorAll("[data-hand-index]"),
+    ...tray.querySelectorAll("[data-hand-index]")
+  ];
 
-  [...zone.querySelectorAll("[data-hand-index]"), ...tray.querySelectorAll("[data-hand-index]")].forEach((button) => {
-    const index = Number(button.dataset.handIndex);
-    previousRects.set(index, button.getBoundingClientRect());
-    previousZones.set(index, button.closest(".selected-card-tray") ? "tray" : "hand");
-    previousCardIds.set(index, button.dataset.cardId);
+  existingButtons.forEach((button) => {
+    if (!button.dataset.cardId) return;
+    previousCards.set(button.dataset.cardId, {
+      button,
+      index: Number(button.dataset.handIndex),
+      rect: button.getBoundingClientRect(),
+      zone: button.closest(".selected-card-tray") ? "tray" : "hand"
+    });
   });
 
   for (let index = 0; index < 4; index += 1) {
@@ -649,38 +654,42 @@ function renderHand(elements, state, handlers) {
     zone.appendChild(slot);
   }
 
+  const liveCardIds = new Set(state.hand.filter(Boolean).map((card) => card.id));
+  existingButtons.forEach((button) => {
+    if (!liveCardIds.has(button.dataset.cardId)) button.remove();
+  });
+
   const cardsByIndex = new Map();
+  const dealOrders = new Map();
 
   for (let index = 0; index < 4; index += 1) {
     const card = state.hand[index] ?? null;
-    let button = zone.querySelector(`[data-hand-index="${index}"]`)
-      ?? tray.querySelector(`[data-hand-index="${index}"]`);
 
     if (!card) {
-      button?.remove();
       zone.querySelector(`[data-hand-slot="${index}"]`)?.classList.remove("is-occupied", "is-staged");
       continue;
     }
 
-    if (!button || button.dataset.cardId !== card.id) {
-      const fresh = createCard(card, { handIndex: index, isButton: true });
-      fresh.dataset.cardId = card.id;
-      dealIn(fresh, index * 45);
-      bindCardGesture(fresh, () => handlers.onCardSelect(index));
-      if (button) {
-        button.replaceWith(fresh);
-      } else {
-        zone.querySelector(`[data-hand-slot="${index}"]`)?.appendChild(fresh);
-      }
-      button = fresh;
+    const previous = previousCards.get(card.id);
+    let button = previous?.button;
+    if (!button) {
+      button = createCard(card, { handIndex: index, isButton: true });
+      button.dataset.cardId = card.id;
+      button.classList.add("card-deal-pending");
+      dealOrders.set(button, dealOrders.size);
+      bindCardGesture(button, () => {
+        const currentIndex = Number(button.dataset.handIndex);
+        if (Number.isInteger(currentIndex)) handlers.onCardSelect(currentIndex);
+      });
     }
+    button.dataset.handIndex = String(index);
+    button.style.setProperty("--fan-rotate", `${[-8, -3, 3, 8][index] ?? 0}deg`);
 
     const order = state.selectedHandIndexes.indexOf(index);
     const destinationZone = order >= 0 ? "tray" : "hand";
-    const crossesZones = previousZones.has(index)
-      && previousZones.get(index) !== destinationZone
-      && previousCardIds.get(index) === button.dataset.cardId;
-    if (crossesZones) {
+    const changesPosition = previous
+      && (previous.zone !== destinationZone || previous.index !== index);
+    if (changesPosition) {
       button.classList.add("card-layout-moving");
       button.classList.remove("card-enter");
       button.style.animationDelay = "";
@@ -724,15 +733,19 @@ function renderHand(elements, state, handlers) {
   elements.tableZone.classList.toggle("has-staged-cards", selectedCount > 0);
 
   cardsByIndex.forEach((button, index) => {
-    const fromRect = previousRects.get(index);
-    if (!fromRect || previousCardIds.get(index) !== button.dataset.cardId || button.dataset.cardId !== state.hand[index]?.id) return;
+    const previous = previousCards.get(button.dataset.cardId);
+    if (!previous) {
+      animateCardDealIn(button, dealOrders.get(button) ?? 0);
+      return;
+    }
     const toRect = button.getBoundingClientRect();
     const currentZone = button.closest(".selected-card-tray") ? "tray" : "hand";
-    const previousZone = previousZones.get(index);
-    const shouldAnimate = previousZone !== currentZone || (previousZone === "tray" && currentZone === "tray");
+    const shouldAnimate = previous.zone !== currentZone
+      || previous.index !== index
+      || (previous.zone === "tray" && currentZone === "tray");
     if (!shouldAnimate) return;
-    animateCardTransfer(button, fromRect, toRect, {
-      withTrail: previousZone !== currentZone
+    animateCardTransfer(button, previous.rect, toRect, {
+      withTrail: previous.zone !== currentZone
     });
     requestAnimationFrame(() => button.classList.remove("card-layout-moving"));
   });
