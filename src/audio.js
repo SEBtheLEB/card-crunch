@@ -4,6 +4,14 @@ const AudioContextClass = globalThis.AudioContext ?? globalThis.webkitAudioConte
 const SETTINGS_KEY = "cardCrunchSettings";
 const MAX_ACTIVE_VOICES = 28;
 const SHARD_IMPACT_MIN_INTERVAL = 24;
+const CARD_PLAY_SAMPLE_URL = new URL("../assets/sfx/playing-card.mp3", import.meta.url).href;
+const CARD_PLAY_MAX_VOICES = 4;
+const CARD_PLAY_VARIANTS = [
+  { rate: .94, gain: .27, pan: -.08, offset: .002 },
+  { rate: .985, gain: .3, pan: .04, offset: .006 },
+  { rate: 1.025, gain: .255, pan: -.03, offset: 0 },
+  { rate: 1.06, gain: .28, pan: .08, offset: .009 }
+];
 
 let context = null;
 let master = null;
@@ -16,12 +24,23 @@ let lastShardImpactAt = -Infinity;
 let pendingShardImpacts = 0;
 let shardImpactStep = 0;
 let shardImpactResetTimer = null;
+let cardPlayBuffer = null;
+let cardPlayBufferPromise = null;
+let lastCardPlayVariant = -1;
+const activeCardPlayVoices = new Set();
 let settings = readSettings();
+const cardPlayEncodedPromise = fetch(CARD_PLAY_SAMPLE_URL, { cache: "force-cache" })
+  .then((response) => {
+    if (!response.ok) throw new Error(`Card play sample failed: ${response.status}`);
+    return response.arrayBuffer();
+  })
+  .catch(() => null);
 
 export function installAudioUnlock() {
   const unlock = () => {
     ensureAudio();
     context?.resume?.().catch(() => {});
+    void loadCardPlayBuffer();
     syncMusic();
   };
   document.addEventListener("pointerdown", unlock, { capture: true, once: true, passive: true });
@@ -107,6 +126,72 @@ function ensureAudio() {
   return context;
 }
 
+function loadCardPlayBuffer() {
+  if (cardPlayBuffer) return Promise.resolve(cardPlayBuffer);
+  if (!context) return Promise.resolve(null);
+  if (cardPlayBufferPromise) return cardPlayBufferPromise;
+  cardPlayBufferPromise = cardPlayEncodedPromise
+    .then((encoded) => encoded ? context.decodeAudioData(encoded) : null)
+    .then((buffer) => {
+      cardPlayBuffer = buffer;
+      return buffer;
+    })
+    .catch(() => null);
+  return cardPlayBufferPromise;
+}
+
+function playCardThrowSample() {
+  if (!context || !cardPlayBuffer || activeVoices >= MAX_ACTIVE_VOICES) {
+    void loadCardPlayBuffer();
+    return false;
+  }
+
+  let variantIndex = Math.floor(Math.random() * (CARD_PLAY_VARIANTS.length - 1));
+  if (variantIndex >= lastCardPlayVariant) variantIndex += 1;
+  lastCardPlayVariant = variantIndex;
+  const variant = CARD_PLAY_VARIANTS[variantIndex];
+  const source = context.createBufferSource();
+  const envelope = context.createGain();
+  const panner = typeof context.createStereoPanner === "function" ? context.createStereoPanner() : null;
+  const microVariation = 1 + (Math.random() - .5) * .018;
+  const start = context.currentTime;
+  const offset = Math.min(variant.offset, Math.max(0, cardPlayBuffer.duration - .04));
+  const playbackDuration = Math.max(.04, (cardPlayBuffer.duration - offset) / (variant.rate * microVariation));
+  const end = start + playbackDuration;
+
+  if (activeCardPlayVoices.size >= CARD_PLAY_MAX_VOICES) {
+    const oldest = activeCardPlayVoices.values().next().value;
+    if (oldest && activeCardPlayVoices.delete(oldest)) activeVoices = Math.max(0, activeVoices - 1);
+    try { oldest?.stop(start); } catch {}
+  }
+
+  activeVoices += 1;
+  activeCardPlayVoices.add(source);
+  source.buffer = cardPlayBuffer;
+  source.playbackRate.setValueAtTime(variant.rate * microVariation, start);
+  envelope.gain.setValueAtTime(.0001, start);
+  envelope.gain.exponentialRampToValueAtTime(variant.gain, start + .008);
+  envelope.gain.setValueAtTime(variant.gain, Math.max(start + .01, end - .025));
+  envelope.gain.exponentialRampToValueAtTime(.0001, end);
+  if (panner) panner.pan.setValueAtTime(variant.pan, start);
+
+  source.connect(envelope);
+  if (panner) {
+    envelope.connect(panner);
+    panner.connect(master);
+  } else {
+    envelope.connect(master);
+  }
+  source.start(start, offset);
+  source.addEventListener("ended", () => {
+    if (activeCardPlayVoices.delete(source)) activeVoices = Math.max(0, activeVoices - 1);
+    source.disconnect();
+    envelope.disconnect();
+    panner?.disconnect();
+  }, { once: true });
+  return true;
+}
+
 function tone({ frequency = 440, endFrequency = frequency, duration = 0.1, delay = 0, gain = 0.12, type = "square", destination = master } = {}) {
   if (!context || activeVoices >= MAX_ACTIVE_VOICES) return;
   const start = context.currentTime + delay;
@@ -166,6 +251,7 @@ function arpeggio(frequencies, { duration = 0.12, spacing = 0.055, gain = 0.08, 
 const EFFECTS = {
   tap: () => tone({ frequency: 260, endFrequency: 220, duration: 0.045, gain: 0.045 }),
   card_select: () => {
+    if (playCardThrowSample()) return;
     tone({ frequency: 520, endFrequency: 690, duration: 0.055, gain: 0.075, type: "triangle" });
     noise({ duration: 0.035, gain: 0.035, highpass: 2200 });
   },

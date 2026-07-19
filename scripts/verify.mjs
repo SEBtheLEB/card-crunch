@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
@@ -16,11 +16,15 @@ const required = [
   "src/tutorial.js",
   "src/economy.js",
   "src/purchases.js",
+  "assets/sfx/playing-card.mp3",
   "styles/main.css",
   "capacitor.config.json"
 ];
 
 await Promise.all(required.map((file) => access(resolve(root, file))));
+if ((await stat(resolve(root, "assets/sfx/playing-card.mp3"))).size <= 0) {
+  throw new Error("Card-play sample is empty");
+}
 
 const scoringModule = await import(`../src/scoring.js?verify=${Date.now()}`);
 const results = scoringModule.runScoringSelfTests();
@@ -170,6 +174,9 @@ if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.inc
 }
 if (!audioSource.includes("playCrunchShardImpact") || !audioSource.includes("SHARD_IMPACT_MIN_INTERVAL") || !audioSource.includes("crunch_vacuum") || !audioSource.includes("crunch_hit_3")) {
   throw new Error("Crunch Bank impact mixing or vacuum audio is missing");
+}
+if (!audioSource.includes("playing-card.mp3") || !audioSource.includes("playCardThrowSample") || !audioSource.includes("CARD_PLAY_VARIANTS") || !audioSource.includes("lastCardPlayVariant")) {
+  throw new Error("Varied sampled card-play audio is missing");
 }
 
 if (!css.includes("--pixel-card-silhouette") || !css.includes("visibility: hidden")) {

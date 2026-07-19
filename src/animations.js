@@ -4,7 +4,7 @@ import {
   isCrunchSkipRequested,
   showCrunchSkipText
 } from "./crunchCutscene.js?v=90";
-import { playGameSfx } from "./audio.js?v=90";
+import { playGameSfx } from "./audio.js?v=116";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RESOLVE_HANDOFF_DELAY = 220;
