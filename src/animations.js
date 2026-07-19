@@ -3,7 +3,7 @@ import {
   hideCrunchSkipText,
   isCrunchSkipRequested,
   showCrunchSkipText
-} from "./crunchCutscene.js?v=127";
+} from "./crunchCutscene.js?v=128";
 import { playGameSfx } from "./audio.js?v=120";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -188,27 +188,42 @@ export async function animateSelectionResolve({
   resolution,
   fail,
   onEntryResolved,
+  presentationEntries = null,
   retainConsumedSources = true
 }) {
-  const activeVisualCards = [...baseStackCards];
-  const limit = fail ? resolution.failedIndex : selectedHandCards.length;
+  const elementByCardId = new Map();
+  resolution.activeStack.slice(0, baseStackCards.length).forEach((card, index) => {
+    if (card?.id && baseStackCards[index]) elementByCardId.set(card.id, baseStackCards[index]);
+  });
+  resolution.history.forEach((entry, index) => {
+    if (entry.card?.id && selectedHandCards[index]) elementByCardId.set(entry.card.id, selectedHandCards[index]);
+  });
+  const visualEntries = !fail && presentationEntries?.length
+    ? presentationEntries
+    : resolution.history.map((entry, index) => ({ ...entry, selectedIndexes: [index] }));
+  const limit = fail ? resolution.failedIndex : visualEntries.length;
   const advance = createSequenceAdvanceController();
   let clearSpotlight = () => {};
   showCrunchSkipText();
 
   try {
     for (let i = 0; i < limit; i += 1) {
-      const handCard = selectedHandCards[i];
-      const entry = resolution.history[i];
-      const matchedCards = entry.matchedIndexes.map((index) => activeVisualCards[index]).filter(Boolean);
-      [handCard, ...matchedCards].forEach((card) => card?.classList.remove("cutin-shared-source-hidden"));
+      const entry = visualEntries[i];
+      const selectedIndexes = entry.selectedIndexes?.length ? entry.selectedIndexes : [i];
+      const selectedCards = selectedIndexes.map((index) => selectedHandCards[index]).filter(Boolean);
+      const handCard = elementByCardId.get(entry.card?.id) ?? selectedCards.at(-1);
+      const matchedCards = [...new Set((entry.matchedCards ?? [])
+        .map((card) => elementByCardId.get(card?.id))
+        .filter(Boolean))];
+      const emphasizedCards = [...new Set([...selectedCards, ...matchedCards])];
+      emphasizedCards.forEach((card) => card.classList.remove("cutin-shared-source-hidden"));
       playSfx("card_resolve");
       const particleType = entry.matchType === "suit" ? "suit" : entry.matchType === "rank" ? "rank" : "math";
-      handCard?.classList.add("card-selected", "resolve-selected-card", "is-vibrating");
+      selectedCards.forEach((card) => card.classList.add("card-selected", "resolve-selected-card", "is-vibrating"));
       matchedCards.forEach((card) => card.classList.add("card-match-glow", "resolve-reference-card", "is-vibrating"));
-      clearSpotlight = applyResolveSpotlight([handCard, ...matchedCards]);
-      burstAround(handCard, 14, particleType);
-      matchedCards.forEach((card) => burstAround(card, 14, particleType));
+      clearSpotlight = applyResolveSpotlight(emphasizedCards);
+      const burstAmount = Math.max(5, Math.floor(32 / Math.max(1, emphasizedCards.length)));
+      emphasizedCards.forEach((card) => burstAround(card, burstAmount, particleType));
       if (entry.matchType === "add" || entry.matchType === "subtract") drawComboStreak(handCard, matchedCards);
       await advance.wait(RESOLVE_HIGHLIGHT_DURATION_MS);
       await onEntryResolved?.(entry, i, {
@@ -218,10 +233,9 @@ export async function animateSelectionResolve({
         ].filter(({ element }) => Boolean(element))
       });
       matchedCards.forEach((card) => card.classList.remove("card-match-glow", "resolve-reference-card", "is-vibrating"));
-      handCard?.classList.remove("card-selected", "resolve-selected-card", "is-vibrating");
+      selectedCards.forEach((card) => card.classList.remove("card-selected", "resolve-selected-card", "is-vibrating"));
       clearSpotlight();
       clearSpotlight = () => {};
-      if (handCard) activeVisualCards.push(handCard);
       await advance.wait(120);
     }
 

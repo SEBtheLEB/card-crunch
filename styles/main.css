@@ -1838,6 +1838,96 @@ button.is-pressing:not(:disabled) {
   text-shadow: 0 0 12px #fff4bd, 0 0 25px var(--gold-glow), 0 4px 0 rgba(4, 5, 13, .9);
 }
 
+.cutin-full-hand-stage {
+  gap: clamp(8px, 1.55dvh, 13px);
+  max-width: min(96vw, 620px);
+  text-align: center;
+}
+
+.cutin-full-hand-kicker,
+.cutin-full-hand-title,
+.cutin-full-hand-subtitle,
+.cutin-full-hand-bonuses {
+  font-family: var(--font-pixel);
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.cutin-full-hand-kicker {
+  color: #8fe9ff;
+  font-size: clamp(.65rem, 2.8vw, 1rem);
+  text-shadow: 2px 2px 0 #08314d, 0 0 14px rgba(69, 215, 255, .72);
+  animation: cutinEquationPop .2s ease both;
+}
+
+.cutin-full-hand-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  isolation: isolate;
+}
+
+.cutin-card.full-hand-card {
+  width: clamp(60px, 20vw, 104px);
+  margin-inline: clamp(-8px, -1.8vw, -3px);
+  transform-origin: 50% 92%;
+  will-change: translate, scale, filter;
+}
+
+.full-hand-card-1 { z-index: 1; rotate: -12deg; }
+.full-hand-card-2 { z-index: 2; rotate: -4deg; }
+.full-hand-card-3 { z-index: 3; rotate: 4deg; }
+.full-hand-card-4 { z-index: 4; rotate: 12deg; }
+
+.cutin-full-hand-title {
+  color: #fff1a8;
+  font-size: clamp(1.7rem, 8.8vw, 3.8rem);
+  line-height: .86;
+  text-shadow: 4px 4px 0 #573300, 0 0 18px #fff0a2, 0 0 38px var(--gold-glow);
+  animation: cutinFinalSlam .32s cubic-bezier(.16, 1.45, .3, 1) .12s both;
+}
+
+.cutin-full-hand-subtitle {
+  color: white;
+  font-size: clamp(.7rem, 3.2vw, 1.15rem);
+  text-shadow: 2px 2px 0 #2b1a04, 0 0 12px var(--gold-glow);
+}
+
+.cutin-full-hand-bonuses {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(10px, 3vw, 20px);
+}
+
+.cutin-full-hand-bonuses span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  color: #fff4bd;
+  text-shadow: 2px 2px 0 #392100, 0 0 14px var(--gold-glow);
+}
+
+.cutin-full-hand-bonuses em {
+  font-size: clamp(.62rem, 2.6vw, .9rem);
+  font-style: normal;
+}
+
+.cutin-full-hand-bonuses strong {
+  color: var(--gold-hot);
+  font-size: clamp(1rem, 4.4vw, 1.65rem);
+  font-weight: 400;
+}
+
+.cutin-full-hand-stage.is-full-hand-reacting .full-hand-card {
+  animation: fullHandCardCharge .58s steps(6, end) both !important;
+}
+
+.cutin-full-hand-stage.is-full-hand-reacting .cutin-full-hand-title {
+  animation: fullHandTitleCharge .58s steps(5, end) both;
+}
+
 .cutin-bank-counter {
   position: fixed;
   z-index: 74;
@@ -3905,6 +3995,21 @@ h2 {
   to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes fullHandCardCharge {
+  0%, 100% { translate: 0 0; scale: 1; filter: brightness(1); }
+  16% { translate: -3px -2px; scale: 1.04; filter: brightness(1.35); }
+  32% { translate: 3px 0; scale: .98; }
+  50% { translate: -2px -5px; scale: 1.08; filter: brightness(1.55) drop-shadow(0 0 18px var(--gold-glow)); }
+  68% { translate: 2px -1px; scale: 1.02; }
+  84% { translate: -1px -3px; scale: 1.05; filter: brightness(1.3) drop-shadow(0 0 12px var(--gold-glow)); }
+}
+
+@keyframes fullHandTitleCharge {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  35% { transform: scale(1.13); filter: brightness(1.5); }
+  68% { transform: scale(.98); filter: brightness(1.22); }
+}
+
 .cutin-card.cutin-shared-target {
   animation: none !important;
   rotate: none !important;
@@ -4066,6 +4171,8 @@ h2 {
 .reduce-motion .cutin-stage.is-multi-match-reacting .cutin-equation,
 .reduce-motion .cutin-points.is-multiplied,
 .reduce-motion .cutin-inline-bonus,
+.reduce-motion .cutin-full-hand-stage.is-full-hand-reacting .full-hand-card,
+.reduce-motion .cutin-full-hand-stage.is-full-hand-reacting .cutin-full-hand-title,
 .reduce-motion .cutin-crunch-prompt {
   animation-duration: 80ms !important;
 }

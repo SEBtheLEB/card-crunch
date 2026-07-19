@@ -340,6 +340,46 @@ export async function playCrunchTotalExplanation({ total, scoreEl, tier = "norma
   }
 }
 
+export async function playFullHandPrelude({ cards = [], fullHand = null } = {}) {
+  if (cards.length < 4 || !fullHand) return;
+
+  const overlay = createOverlay("full");
+  overlay.classList.add("is-full-hand-prelude");
+  const advance = createAdvanceController(overlay);
+  overlay.innerHTML = `
+    <div class="cutin-stage cutin-full-hand-stage">
+      <div class="cutin-full-hand-kicker">MAXIMUM COMBO</div>
+      <div class="cutin-full-hand-row">
+        ${cards.map((card, index) => createCutinCardMarkup(card, `full-hand-card full-hand-card-${index + 1}`)).join("")}
+      </div>
+      <div class="cutin-full-hand-title">${fullHand.label}</div>
+      <div class="cutin-full-hand-subtitle">${fullHand.subtitle}</div>
+      <div class="cutin-full-hand-bonuses">
+        ${(fullHand.bonuses ?? []).map((bonus) => `
+          <span><em>${bonus.label}</em><strong>${bonus.value}</strong></span>
+        `).join("")}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  try {
+    const stage = overlay.querySelector(".cutin-full-hand-stage");
+    const cutinCards = [...overlay.querySelectorAll(".full-hand-card")];
+    playGameSfx("score_total");
+    await advance.wait(180);
+    stage?.classList.add("is-full-hand-reacting");
+    spawnCrunchDamageBurst(overlay, cutinCards, 3);
+    playGameSfx("crunch_hit_3");
+    await advance.wait(720);
+    overlay.classList.add("is-leaving");
+    await waitMaybe(advance, CUTSCENE_CONFIG.fadeOutDuration);
+  } finally {
+    advance.destroy();
+    overlay.remove();
+  }
+}
+
 export async function playBustCutin({ failedCard, activeStack = [] }) {
   const overlay = createOverlay("fail");
   const advance = createAdvanceController(overlay);
@@ -473,9 +513,13 @@ function spawnCrunchDamageBurst(overlay, cards, hit) {
 
   const reduceMotion = document.documentElement.classList.contains("reduce-motion")
     || document.body.classList.contains("reduce-motion");
-  const desiredPerCard = reduceMotion
+  const fullHandBurst = overlay.classList.contains("cutscene-full") || overlay.classList.contains("is-full-hand-prelude");
+  const baseDesiredPerCard = reduceMotion
     ? Math.min(5, CRUNCH_DEBRIS_CONFIG.particlesPerHit[hit] ?? 5)
     : CRUNCH_DEBRIS_CONFIG.particlesPerHit[hit] ?? 12;
+  const desiredPerCard = fullHandBurst && !reduceMotion
+    ? Math.round(baseDesiredPerCard * 1.35)
+    : baseDesiredPerCard;
   const available = Math.max(0, CRUNCH_DEBRIS_CONFIG.maxParticles - emitter.particles.length);
   const perCard = Math.min(desiredPerCard, Math.floor(available / activeCards.length));
 
@@ -503,8 +547,8 @@ function spawnCrunchDamageBurst(overlay, cards, hit) {
         size,
         length: size + 2 + Math.floor(nextRandom() * 7),
         vertical: nextRandom() > .55,
-        color: index % 7 === 0 ? "#ffc83d" : palette[index % palette.length],
-        edge: index % 7 === 0 ? "#8c4c05" : palette[2],
+        color: index % (fullHandBurst ? 3 : 7) === 0 ? "#ffc83d" : palette[index % palette.length],
+        edge: index % (fullHandBurst ? 3 : 7) === 0 ? "#8c4c05" : palette[2],
         age: 0,
         delay: (index % 8) * 10,
         maxAge: CRUNCH_DEBRIS_CONFIG.maxLifetime - Math.floor(nextRandom() * 280)
@@ -674,7 +718,7 @@ function createMathCutinMarkup({ entry, matched, operator, equation, tier }) {
       </div>
       <div class="cutin-equation">${equation}</div>
       <div class="cutin-label">${entry.label}</div>
-      <div class="cutin-points">+${formatCompactNumber(entry.points)}</div>
+      <div class="cutin-points">+${formatCompactNumber(entry.displayPoints ?? entry.points)}</div>
     </div>
   `;
 }
@@ -689,7 +733,7 @@ function createMatchCutinMarkup({ entry, matched, operator, equation, tier }) {
       <div class="cutin-operator">${operator}</div>
       <div class="cutin-equation">${equation}</div>
       <div class="cutin-label">${entry.label}</div>
-      <div class="cutin-points">+${formatCompactNumber(entry.points)}</div>
+      <div class="cutin-points">+${formatCompactNumber(entry.displayPoints ?? entry.points)}</div>
     </div>
   `;
 }
@@ -700,7 +744,7 @@ async function playMiniEntry(overlay, entry, advance) {
       ${createCutinCardMarkup(entry.card, "answer mini-card")}
       <div>
         <strong>${entry.label}</strong>
-        <span>+${formatCompactNumber(entry.points)}</span>
+        <span>+${formatCompactNumber(entry.displayPoints ?? entry.points)}</span>
       </div>
     </div>
   `;

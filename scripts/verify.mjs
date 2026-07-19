@@ -130,6 +130,7 @@ const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardGestur
 const mainSource = await readFile(resolve(root, "src/main.js"), "utf8");
 const tutorialSource = await readFile(resolve(root, "src/tutorial.js"), "utf8");
 const audioSource = await readFile(resolve(root, "src/audio.js"), "utf8");
+const scoringSource = await readFile(resolve(root, "src/scoring.js"), "utf8");
 if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createPixelShardClip") || !css.includes("cutin-card-shard")) {
   throw new Error("Crunch Bank card-shard animation hooks are missing");
 }
@@ -222,11 +223,11 @@ if (!sharedHandoffSource.includes("await waitForPaint()")
 }
 if (sharedHandoffSource.includes('classList.remove("cutin-shared-source-hidden")')
   || !sharedHandoffSource.includes("target.remove()")
-  || !selectionResolveSource.includes('[handCard, ...matchedCards].forEach')
+  || !selectionResolveSource.includes('emphasizedCards.forEach')
   || !css.includes(".cutin-shared-source-hidden {\n  opacity: 0 !important;")) {
   throw new Error("Consumed hand and table cards must stay absent behind the Crunch cutscene");
 }
-if (!animationsSource.includes('from "./crunchCutscene.js?v=127"') || !gameStateSource.includes('from "./crunchCutscene.js?v=127"')) {
+if (!animationsSource.includes('from "./crunchCutscene.js?v=128"') || !gameStateSource.includes('from "./crunchCutscene.js?v=128"')) {
   throw new Error("Crunch skip and handoff state must use one shared module instance");
 }
 if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("--shard-burst-x") || !css.includes("cutin-fracture-map") || !css.includes("--shard-rest-x") || !css.includes("cutin-card-shard.is-vacuuming")) {
@@ -260,6 +261,12 @@ if (!cardGestureSource.includes("bindCardGesture") || !cardGestureSource.include
 }
 if (!cutsceneSource.includes("playInlineCrunchBonuses") || !cutsceneSource.includes("entry.bankPoints") || !css.includes("cutin-inline-bonuses")) {
   throw new Error("Crunch multipliers are not integrated into each card cut-in");
+}
+if (!scoringSource.includes("buildCrunchPresentationEntries") || !animationsSource.includes("presentationEntries") || !scoringSource.includes("MATCH_TIER_MULTIPLIERS")) {
+  throw new Error("Growing suit and number matches are not consolidated into their final tier");
+}
+if (!cutsceneSource.includes("playFullHandPrelude") || !cutsceneSource.includes("is-full-hand-prelude") || !css.includes("cutin-full-hand-stage")) {
+  throw new Error("The full-hand opening reaction is missing");
 }
 if (!mainSource.includes("activePressTargets") || mainSource.includes('classList.add("tap-pop")')) {
   throw new Error("Stable press feedback regression guards are missing");
