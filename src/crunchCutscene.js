@@ -36,6 +36,11 @@ const CRUNCH_DEBRIS_CONFIG = {
   gravity: 1480,
   maxLifetime: 2200
 };
+const CRUNCH_CARD_SHAKE_CONFIG = {
+  maxXByHit: [0, 3.6, 4.8, 6],
+  maxYByHit: [0, 2.4, 3.4, 4.5],
+  maxRotationByHit: [0, 1.6, 2.3, 3]
+};
 const MAJOR_SCORE_RAMP_CONFIG = {
   minimumMilestone: 100000,
   moveDuration: 360,
@@ -532,6 +537,7 @@ async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null
     await advance.waitForTap(0);
     if (isCrunchSkipRequested()) return;
 
+    assignCrunchShakeVectors(cards, hit);
     stage.dataset.crunchHit = String(hit);
     overlay.dataset.crunchHit = String(hit);
     cards.forEach((card) => {
@@ -556,6 +562,40 @@ async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null
 
   await sleep(CUTSCENE_CONFIG.finalCrackHold);
   prompt.remove();
+}
+
+function assignCrunchShakeVectors(cards, hit) {
+  const hitIndex = Math.max(1, Math.min(CUTSCENE_CONFIG.interactiveCrunchHits, hit));
+  const maxX = CRUNCH_CARD_SHAKE_CONFIG.maxXByHit[hitIndex];
+  const maxY = CRUNCH_CARD_SHAKE_CONFIG.maxYByHit[hitIndex];
+  const maxRotation = CRUNCH_CARD_SHAKE_CONFIG.maxRotationByHit[hitIndex];
+  const signedMagnitude = (minimum, maximum) => {
+    const direction = Math.random() < .5 ? -1 : 1;
+    return direction * (minimum + Math.random() * Math.max(0, maximum - minimum));
+  };
+  const clamp = (value, limit) => Math.max(-limit, Math.min(limit, value));
+
+  cards.forEach((card) => {
+    const xA = signedMagnitude(maxX * .48, maxX);
+    const yA = signedMagnitude(maxY * .3, maxY);
+    const rotationA = signedMagnitude(maxRotation * .38, maxRotation);
+    const xB = clamp(-xA * (.62 + Math.random() * .22) + signedMagnitude(0, maxX * .22), maxX);
+    const yB = clamp(-yA * (.48 + Math.random() * .28) + signedMagnitude(0, maxY * .22), maxY);
+    const rotationB = clamp(-rotationA * (.58 + Math.random() * .24), maxRotation);
+    const xC = clamp(signedMagnitude(maxX * .12, maxX * .42), maxX);
+    const yC = clamp(signedMagnitude(maxY * .08, maxY * .36), maxY);
+    const rotationC = clamp(signedMagnitude(maxRotation * .08, maxRotation * .32), maxRotation);
+
+    card.style.setProperty("--crunch-shake-x-a", `${xA.toFixed(2)}px`);
+    card.style.setProperty("--crunch-shake-y-a", `${yA.toFixed(2)}px`);
+    card.style.setProperty("--crunch-shake-r-a", `${rotationA.toFixed(2)}deg`);
+    card.style.setProperty("--crunch-shake-x-b", `${xB.toFixed(2)}px`);
+    card.style.setProperty("--crunch-shake-y-b", `${yB.toFixed(2)}px`);
+    card.style.setProperty("--crunch-shake-r-b", `${rotationB.toFixed(2)}deg`);
+    card.style.setProperty("--crunch-shake-x-c", `${xC.toFixed(2)}px`);
+    card.style.setProperty("--crunch-shake-y-c", `${yC.toFixed(2)}px`);
+    card.style.setProperty("--crunch-shake-r-c", `${rotationC.toFixed(2)}deg`);
+  });
 }
 
 function spawnCrunchDamageBurst(overlay, cards, hit) {

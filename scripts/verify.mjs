@@ -238,11 +238,17 @@ if (sharedHandoffSource.includes('classList.remove("cutin-shared-source-hidden")
   || !css.includes(".cutin-shared-source-hidden {\n  opacity: 0 !important;")) {
   throw new Error("Consumed hand and table cards must stay absent behind the Crunch cutscene");
 }
-if (!animationsSource.includes('from "./crunchCutscene.js?v=132"') || !gameStateSource.includes('from "./crunchCutscene.js?v=132"')) {
+if (!animationsSource.includes('from "./crunchCutscene.js?v=133"') || !gameStateSource.includes('from "./crunchCutscene.js?v=133"')) {
   throw new Error("Crunch skip and handoff state must use one shared module instance");
 }
 if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("--shard-burst-x") || !css.includes("cutin-fracture-map") || !css.includes("--shard-rest-x") || !css.includes("cutin-card-shard.is-vacuuming")) {
   throw new Error("Three-hit interactive Crunch damage sequence is missing");
+}
+if (!cutsceneSource.includes("assignCrunchShakeVectors")
+  || !cutsceneSource.includes("maxRotationByHit")
+  || !css.includes("--crunch-shake-x-a")
+  || !css.includes("--crunch-shake-r-c")) {
+  throw new Error("Crunch hits must assign bounded, varied per-card shake vectors");
 }
 if (!audioSource.includes("playCrunchShardImpact") || !audioSource.includes("SHARD_IMPACT_MIN_INTERVAL") || !audioSource.includes("crunch_vacuum") || !audioSource.includes("crunch_hit_3")) {
   throw new Error("Crunch Bank impact mixing or vacuum audio is missing");
