@@ -238,7 +238,7 @@ if (sharedHandoffSource.includes('classList.remove("cutin-shared-source-hidden")
   || !css.includes(".cutin-shared-source-hidden {\n  opacity: 0 !important;")) {
   throw new Error("Consumed hand and table cards must stay absent behind the Crunch cutscene");
 }
-if (!animationsSource.includes('from "./crunchCutscene.js?v=129"') || !gameStateSource.includes('from "./crunchCutscene.js?v=129"')) {
+if (!animationsSource.includes('from "./crunchCutscene.js?v=132"') || !gameStateSource.includes('from "./crunchCutscene.js?v=132"')) {
   throw new Error("Crunch skip and handoff state must use one shared module instance");
 }
 if (!cutsceneSource.includes("playInteractiveCardCrunch") || !cutsceneSource.includes("prepareCutinCardShards") || !cutsceneSource.includes("--shard-burst-x") || !css.includes("cutin-fracture-map") || !css.includes("--shard-rest-x") || !css.includes("cutin-card-shard.is-vacuuming")) {
@@ -283,8 +283,12 @@ const fullHandPreludeSource = cutsceneSource.slice(
   cutsceneSource.indexOf("export async function playFullHandPrelude"),
   cutsceneSource.indexOf("export async function playBustCutin")
 );
-if (!fullHandPreludeSource.includes("playInteractiveCardCrunch") || !fullHandPreludeSource.includes("fullHand: true")) {
-  throw new Error("Full Hand must wait for the complete three-hit Crunch interaction");
+if (!fullHandPreludeSource.includes("playInteractiveCardCrunch")
+  || !fullHandPreludeSource.includes("fullHand: true")
+  || !fullHandPreludeSource.includes("transitionSourceCardsIntoCutin")
+  || !fullHandPreludeSource.includes("bank.add")
+  || !selectionResolveSource.includes("onFullHandResolved")) {
+  throw new Error("Full Hand must highlight, hand off the live cards, complete three hits, and vacuum into the bank");
 }
 if (!cutsceneSource.includes("getCrossedScoreMilestone")
   || !cutsceneSource.includes("playMajorScoreRamp")

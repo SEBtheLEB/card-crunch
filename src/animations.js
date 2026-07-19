@@ -3,7 +3,7 @@ import {
   hideCrunchSkipText,
   isCrunchSkipRequested,
   showCrunchSkipText
-} from "./crunchCutscene.js?v=129";
+} from "./crunchCutscene.js?v=132";
 import { playGameSfx } from "./audio.js?v=129";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -189,7 +189,10 @@ export async function animateSelectionResolve({
   fail,
   onEntryResolved,
   presentationEntries = null,
-  retainConsumedSources = true
+  retainConsumedSources = true,
+  fullHand = null,
+  fullHandCards = [],
+  onFullHandResolved = null
 }) {
   const elementByCardId = new Map();
   resolution.activeStack.slice(0, baseStackCards.length).forEach((card, index) => {
@@ -207,6 +210,31 @@ export async function animateSelectionResolve({
   showCrunchSkipText();
 
   try {
+    if (!fail && fullHand && selectedHandCards.length === 4) {
+      const fullHandElements = selectedHandCards.filter(Boolean);
+      fullHandElements.forEach((card) => {
+        card.classList.remove("cutin-shared-source-hidden");
+        card.classList.add("card-selected", "resolve-selected-card", "resolve-full-hand-card", "is-vibrating");
+      });
+      const shell = fullHandElements[0]?.closest(".game-shell, .tutorial-page");
+      shell?.classList.add("resolve-full-hand");
+      clearSpotlight = applyResolveSpotlight(fullHandElements);
+      playSfx("score_total");
+      fullHandElements.forEach((card) => burstAround(card, 18, "double"));
+      await advance.wait(RESOLVE_HIGHLIGHT_DURATION_MS);
+      await onFullHandResolved?.({
+        sourceCards: fullHandCards.map((card, index) => ({ card, element: selectedHandCards[index] }))
+          .filter(({ card, element }) => Boolean(card && element))
+      });
+      fullHandElements.forEach((card) => {
+        card.classList.remove("card-selected", "resolve-selected-card", "resolve-full-hand-card", "is-vibrating");
+      });
+      shell?.classList.remove("resolve-full-hand");
+      clearSpotlight();
+      clearSpotlight = () => {};
+      await advance.wait(120);
+    }
+
     for (let i = 0; i < limit; i += 1) {
       const entry = visualEntries[i];
       const selectedIndexes = entry.selectedIndexes?.length ? entry.selectedIndexes : [i];
@@ -252,6 +280,9 @@ export async function animateSelectionResolve({
     }
   } finally {
     clearSpotlight();
+    selectedHandCards.forEach((card) => card?.classList.remove("resolve-full-hand-card"));
+    document.querySelectorAll(".game-shell.resolve-full-hand, .tutorial-page.resolve-full-hand")
+      .forEach((shell) => shell.classList.remove("resolve-full-hand"));
     if (!retainConsumedSources) {
       [...selectedHandCards, ...baseStackCards].forEach((card) => card?.classList.remove("cutin-shared-source-hidden"));
     }

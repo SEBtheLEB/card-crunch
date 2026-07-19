@@ -1213,6 +1213,17 @@ button.is-pressing:not(:disabled) {
   z-index: 31;
 }
 
+.game-shell.resolve-full-hand .resolve-full-hand-card,
+.tutorial-page.resolve-full-hand .resolve-full-hand-card {
+  outline-color: #fff5b3;
+  box-shadow:
+    0 12px 0 rgba(6, 4, 16, .9),
+    0 0 0 7px rgba(255, 205, 61, .24),
+    0 0 38px rgba(255, 225, 125, .98),
+    0 0 74px rgba(255, 143, 20, .78);
+  animation: fullHandCardCharge .7s steps(6, end) both !important;
+}
+
 .is-vibrating {
   animation: shinePulse .62s ease-in-out infinite alternate;
 }
@@ -1918,7 +1929,18 @@ button.is-pressing:not(:disabled) {
   font-weight: 400;
 }
 
+.cutin-full-hand-points {
+  margin-top: clamp(-2px, -.3dvh, 0px);
+  color: #fffbd1;
+  font-size: clamp(1.65rem, 7.8vw, 3.4rem);
+  text-shadow: 3px 3px 0 #503000, 0 0 16px #fff3a8, 0 0 34px var(--gold-glow);
+}
+
 .cutin-full-hand-stage.is-full-hand-reacting .full-hand-card {
+  animation: fullHandCardCharge .58s steps(6, end) both !important;
+}
+
+.is-full-hand-prelude.is-full-hand-impact .cutin-live-card {
   animation: fullHandCardCharge .58s steps(6, end) both !important;
 }
 

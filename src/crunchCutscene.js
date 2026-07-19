@@ -377,11 +377,13 @@ export async function playCrunchTotalExplanation({ total, scoreEl, tier = "norma
   }
 }
 
-export async function playFullHandPrelude({ cards = [], fullHand = null } = {}) {
+export async function playFullHandPrelude({ cards = [], fullHand = null, sourceCards = [], bank = null } = {}) {
   if (cards.length < 4 || !fullHand) return;
 
-  const overlay = createOverlay("full");
+  const hasSharedHandoff = sourceCards.some(({ element }) => element?.isConnected);
+  const overlay = createOverlay("full", { deferFocus: hasSharedHandoff });
   overlay.classList.add("is-full-hand-prelude");
+  if (hasSharedHandoff) overlay.classList.add("is-shared-handoff");
   const advance = createAdvanceController(overlay);
   overlay.innerHTML = `
     <div class="cutin-stage cutin-full-hand-stage">
@@ -396,19 +398,27 @@ export async function playFullHandPrelude({ cards = [], fullHand = null } = {}) 
           <span><em>${bonus.label}</em><strong>${bonus.value}</strong></span>
         `).join("")}
       </div>
+      <div class="cutin-points cutin-full-hand-points">+${formatCompactNumber(fullHand.bankPoints ?? 0)}</div>
     </div>
   `;
   document.body.appendChild(overlay);
+  let cleanupSharedHandoff = () => {};
 
   try {
+    cleanupSharedHandoff = await transitionSourceCardsIntoCutin(overlay, sourceCards, advance);
     const stage = overlay.querySelector(".cutin-full-hand-stage");
     const crunchPrompt = createInteractiveCrunchPrompt(overlay);
     playGameSfx("score_total");
     stage?.classList.add("is-full-hand-ready");
-    await playInteractiveCardCrunch(overlay, advance, crunchPrompt, null, { fullHand: true });
+    await playInteractiveCardCrunch(overlay, advance, crunchPrompt, bank?.element ?? null, { fullHand: true });
+    if (bank) {
+      const activeCards = getActiveCutinCards(overlay);
+      await bank.add(fullHand.bankPoints ?? 0, overlay.querySelector(".cutin-full-hand-points"), advance, activeCards);
+    }
     overlay.classList.add("is-leaving");
     await waitMaybe(advance, CUTSCENE_CONFIG.fadeOutDuration);
   } finally {
+    cleanupSharedHandoff();
     advance.destroy();
     overlay.remove();
   }

@@ -208,19 +208,31 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
     runMultiplier,
     total
   });
-  const entryAwards = allocateCutsceneAwards({
-    awardedPoints,
-    total,
-    multiplier: handMultiplier
-      * speedBonus.multiplier
-      * streakMultiplier
-      * stackTypeMultiplier
-      * potRuleMultiplier
-      * runMultiplier
-  });
   const fullHandSteps = selectedCards.length === 4
     ? breakdown.filter((step) => step.label === "HAND" || step.label === "PERFECT HAND")
     : [];
+  const perfectHandMultiplier = selectedCards.length === 4
+    ? stackTypes.find((bonus) => bonus.label === "PERFECT HAND")?.multiplier ?? 1
+    : 1;
+  const fullHandMultiplier = selectedCards.length === 4
+    ? handMultiplier * perfectHandMultiplier
+    : 1;
+  const fullScoreMultiplier = handMultiplier
+    * speedBonus.multiplier
+    * streakMultiplier
+    * stackTypeMultiplier
+    * potRuleMultiplier
+    * runMultiplier;
+  const entryScoreMultiplier = fullScoreMultiplier / fullHandMultiplier;
+  const entryAwardTotal = selectedCards.length === 4
+    ? Math.min(total, Math.max(0, Math.round(storedBase * entryScoreMultiplier + stackTypeFlat * runMultiplier)))
+    : total;
+  const fullHandBankPoints = Math.max(0, total - entryAwardTotal);
+  const entryAwards = allocateCutsceneAwards({
+    awardedPoints,
+    total: entryAwardTotal,
+    multiplier: entryScoreMultiplier
+  });
   const fullHandLabels = new Set(fullHandSteps.map((step) => step.label));
   const inlineMultipliers = breakdown.filter((step) => step.kind === "multiplier" && !fullHandLabels.has(step.label));
   const inlineFlatBonuses = breakdown.filter((step) => step.kind === "bonus");
@@ -261,7 +273,12 @@ export function calculateCrunchScore({ baseStack, selectedCards, timeLeft, strea
       selectedCount: selectedCards.length,
       tier: selectedCards.length === 4 ? "full" : selectedCards.length >= 3 ? "big" : "normal",
       fullHand: selectedCards.length === 4
-        ? { label: "FULL HAND!", subtitle: "ALL 4 CARDS LOCKED", bonuses: fullHandSteps }
+        ? {
+            label: "FULL HAND!",
+            subtitle: "ALL 4 CARDS LOCKED",
+            bonuses: fullHandSteps,
+            bankPoints: fullHandBankPoints
+          }
         : null
     },
     breakdown
@@ -467,8 +484,9 @@ export function runScoringSelfTests() {
       pass: perfectHand.success
         && perfectHand.cutscene.fullHand?.bonuses.some((bonus) => bonus.label === "HAND" && bonus.value === "x8")
         && perfectHand.cutscene.fullHand?.bonuses.some((bonus) => bonus.label === "PERFECT HAND" && bonus.value === "x3")
+        && perfectHand.cutscene.fullHand.bankPoints > 0
         && perfectHand.cutscene.entries.every((entry) => entry.inlineBonuses.every((bonus) => bonus.label !== "HAND" && bonus.label !== "PERFECT HAND"))
-        && perfectHand.cutscene.entries.reduce((sum, entry) => sum + entry.bankPoints, 0) === perfectHand.total
+        && perfectHand.cutscene.entries.reduce((sum, entry) => sum + entry.bankPoints, perfectHand.cutscene.fullHand.bankPoints) === perfectHand.total
     }
   ];
 
