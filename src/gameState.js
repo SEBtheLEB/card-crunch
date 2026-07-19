@@ -9,6 +9,7 @@ import { adManager } from "./ads.js?v=90";
 import { submitBestScore } from "./playGames.js?v=90";
 import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=90";
 import { purchaseManager } from "./purchases.js?v=90";
+import { getRoundDealDuration } from "./dealTiming.js?v=117";
 import {
   animateBust,
   animateSelectionResolve,
@@ -23,10 +24,6 @@ const RUN_MULTIPLIER_COMBO_STEP = 0.1;
 const SHIELD_SAVE_RATE = 0.25;
 const RECOVERY_RATE = 0.5;
 const BONUS_BANK_RATE = 0.25;
-const HAND_DEAL_LEAD_IN_MS = 110;
-const HAND_DEAL_FLIGHT_MS = 620;
-const HAND_DEAL_STAGGER_MS = 150;
-const HAND_DEAL_LAND_MS = 300;
 
 export function createGame(ui) {
   let pendingRunSave = loadRunSave();
@@ -79,7 +76,8 @@ export function createGame(ui) {
     runStartedAt: 0,
     isTutorial: false,
     tutorialBankStep: false,
-    tutorialExpectedIndexes: []
+    tutorialExpectedIndexes: [],
+    dealHandCount: 0
   };
 
   function showMap() {
@@ -159,6 +157,7 @@ export function createGame(ui) {
     state.safeBankShieldActive = Boolean(pot) && hasShieldToken();
     state.runStartedAt = Date.now();
     state.timeLeft = state.turnSeconds;
+    state.dealHandCount = 4;
     state.locked = true;
     state.status = "playing";
     ui.showStart(false);
@@ -921,26 +920,20 @@ export function createGame(ui) {
     state.selectedHandIndexes = [];
     state.timeLeft = state.turnSeconds;
     state.status = "playing";
-    state.locked = replacementCount > 0;
+    state.dealHandCount = replacementCount;
+    state.locked = true;
     ui.render(state, handlers);
     persistRun();
     finishHandDeal(replacementCount);
   }
 
   function finishHandDeal(replacementCount) {
-    if (replacementCount <= 0) {
-      state.locked = false;
-      ui.render(state, handlers);
-      startTimer();
-      return;
-    }
     const dealToken = state.timerToken;
-    const dealDuration = HAND_DEAL_LEAD_IN_MS
-      + HAND_DEAL_FLIGHT_MS
-      + Math.max(0, replacementCount - 1) * HAND_DEAL_STAGGER_MS
-      + HAND_DEAL_LAND_MS;
+    const reducedMotion = document.documentElement.classList.contains("reduce-motion");
+    const dealDuration = getRoundDealDuration(replacementCount, state.baseStackCount, reducedMotion);
     window.setTimeout(() => {
       if (dealToken !== state.timerToken || state.status !== "playing") return;
+      state.dealHandCount = 0;
       state.locked = false;
       ui.render(state, handlers);
       persistRun();

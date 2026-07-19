@@ -1,3 +1,5 @@
+import { DEAL_TIMING, getDealStartDelay } from "./dealTiming.js?v=117";
+
 const TAP_SLOP = 12;
 const FLICK_DISTANCE = 42;
 const FAST_FLICK_DISTANCE = 24;
@@ -193,11 +195,11 @@ export function animateCardTransfer(card, fromRect, toRect, {
 /* Replacement cards are dealt from off-screen left into the newly opened
    hand slots. The same lightweight trail used for staging cards keeps the
    motion visually connected to the rest of the game. */
-export function animateCardDealIn(card, dealOrder = 0) {
+export function animateCardDealIn(card, dealOrder = 0, { zone = "hand" } = {}) {
   if (!card) return;
   const reducedMotion = document.documentElement.classList.contains("reduce-motion");
   const normalizedOrder = Math.max(0, dealOrder);
-  const delay = reducedMotion ? 0 : 110 + normalizedOrder * 115;
+  const delay = getDealStartDelay(normalizedOrder, reducedMotion);
 
   const launch = () => {
     if (!card.isConnected) return;
@@ -205,14 +207,16 @@ export function animateCardDealIn(card, dealOrder = 0) {
     const laneOffset = normalizedOrder * 18;
     const fromRect = {
       left: -toRect.width - 30 - laneOffset,
-      top: toRect.top + Math.min(46, toRect.height * .24) + laneOffset * .22,
+      top: zone === "table"
+        ? toRect.top - Math.min(54, toRect.height * .28) + laneOffset * .12
+        : toRect.top + Math.min(46, toRect.height * .24) + laneOffset * .22,
       width: toRect.width * .9,
       height: toRect.height * .9
     };
     const animation = animateCardTransfer(card, fromRect, toRect, {
       withTrail: true,
       motion: "deal",
-      duration: 620 + normalizedOrder * 35
+      duration: reducedMotion ? DEAL_TIMING.reducedFlightMs : DEAL_TIMING.flightMs
     });
     card.classList.remove("card-deal-pending");
 
@@ -220,7 +224,10 @@ export function animateCardDealIn(card, dealOrder = 0) {
     animation.finished.catch(() => {}).finally(() => {
       if (!card.isConnected) return;
       card.classList.add("card-deal-landed");
-      window.setTimeout(() => card.classList.remove("card-deal-landed"), 300);
+      window.setTimeout(
+        () => card.classList.remove("card-deal-landed"),
+        reducedMotion ? DEAL_TIMING.reducedLandingMs : DEAL_TIMING.landingMs
+      );
     });
   };
 

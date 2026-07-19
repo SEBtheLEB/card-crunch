@@ -4,7 +4,7 @@ import { formatCompactNumber } from "./format.js?v=90";
 import { hasShieldToken } from "./save.js?v=90";
 import { bindInstantAction } from "./input.js?v=90";
 import { ECONOMY_CONFIG, economy } from "./economy.js?v=90";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=115";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=117";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -562,9 +562,10 @@ function renderStack(elements, state) {
     slot.dataset.stackSlot = String(index);
     slot.style.setProperty("--stack-rotate", `${index === 0 ? -4 : 4}deg`);
     const cardEl = createCard(card, { stackIndex: index });
-    dealIn(cardEl, index * 70);
+    cardEl.classList.add("card-deal-pending");
     slot.appendChild(cardEl);
     elements.tableZone.insertBefore(slot, elements.selectedCardTray);
+    animateCardDealIn(cardEl, (state.dealHandCount ?? 0) + index, { zone: "table" });
   });
 }
 
@@ -754,17 +755,6 @@ function renderHand(elements, state, handlers) {
     });
     requestAnimationFrame(() => button.classList.remove("card-layout-moving"));
   });
-}
-
-/* Staggered deal-in pop for newly drawn cards. The delay is cleared on a
-   timer so it never postpones later animations (tap pops, shakes). */
-function dealIn(element, delayMs) {
-  element.classList.add("card-enter");
-  if (delayMs > 0) element.style.animationDelay = `${delayMs}ms`;
-  window.setTimeout(() => {
-    element.classList.remove("card-enter");
-    element.style.animationDelay = "";
-  }, 420 + delayMs);
 }
 
 function getRunEndCopy(summary, potComplete) {

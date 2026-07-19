@@ -9,6 +9,7 @@ const required = [
   "src/haptics.js",
   "src/input.js",
   "src/cardGestures.js",
+  "src/dealTiming.js",
   "src/playGames.js",
   "src/fullscreen.js",
   "src/themes.js",
@@ -33,6 +34,7 @@ if (!Array.isArray(results) || results.some((result) => result.pass === false)) 
 }
 
 const { formatCompactNumber } = await import(`../src/format.js?verify=${Date.now()}`);
+const dealTimingModule = await import(`../src/dealTiming.js?verify=${Date.now()}`);
 const compactCases = [
   [100_000, "100K"],
   [100_000_000, "100M"],
@@ -40,6 +42,14 @@ const compactCases = [
 ];
 if (compactCases.some(([value, expected]) => formatCompactNumber(value) !== expected)) {
   throw new Error("Compact number formatting failed");
+}
+const firstDealStart = dealTimingModule.getDealStartDelay(0);
+const secondDealStart = dealTimingModule.getDealStartDelay(1);
+if (secondDealStart - firstDealStart < dealTimingModule.DEAL_TIMING.flightMs) {
+  throw new Error("Sequential card deals overlap before the previous card lands");
+}
+if (dealTimingModule.getRoundDealDuration(2, 2) <= dealTimingModule.getRoundDealDuration(0, 2)) {
+  throw new Error("Round deal duration does not include replacement hand cards");
 }
 
 const html = await readFile(resolve(root, "index.html"), "utf8");
@@ -83,12 +93,13 @@ if (regen.energy !== 12 || economyModule.ECONOMY_CONFIG.energyPerRun !== 5 || ec
   throw new Error("Energy regeneration or run cost is incorrect");
 }
 
-const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardGestureSource, gameStateSource, uiSource, css] = await Promise.all([
+const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardGestureSource, dealTimingSource, gameStateSource, uiSource, css] = await Promise.all([
   readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
   readFile(resolve(root, "src/animations.js"), "utf8"),
   readFile(resolve(root, "src/themes.js"), "utf8"),
   readFile(resolve(root, "src/cardSkins.js"), "utf8"),
   readFile(resolve(root, "src/cardGestures.js"), "utf8"),
+  readFile(resolve(root, "src/dealTiming.js"), "utf8"),
   readFile(resolve(root, "src/gameState.js"), "utf8"),
   readFile(resolve(root, "src/ui.js"), "utf8"),
   readFile(resolve(root, "styles/main.css"), "utf8")
@@ -216,11 +227,14 @@ if (!gameStateSource.includes("survivingCards") || !gameStateSource.includes("Ar
 if (!cardGestureSource.includes("export function animateCardDealIn") || !uiSource.includes("animateCardDealIn") || !css.includes("card-deal-pending")) {
   throw new Error("Left-to-right hand refill dealing or its flight trail is missing");
 }
-if (!cardGestureSource.includes('motion: "deal"') || !cardGestureSource.includes("normalizedOrder * 115") || !uiSource.includes('motion: shiftsWithinHand ? "hand-shift"')) {
+if (!cardGestureSource.includes('motion: "deal"') || !cardGestureSource.includes("getDealStartDelay") || !uiSource.includes('motion: shiftsWithinHand ? "hand-shift"')) {
   throw new Error("Paced card deal or synchronized survivor shift is missing");
 }
-if (!gameStateSource.includes("HAND_DEAL_FLIGHT_MS") || !gameStateSource.includes("dealToken !== state.timerToken") || !gameStateSource.includes("finishHandDeal(4)")) {
+if (!dealTimingSource.includes("getRoundDealDuration") || !gameStateSource.includes("dealToken !== state.timerToken") || !gameStateSource.includes("finishHandDeal(4)")) {
   throw new Error("The turn timer must wait for the hand deal to finish");
+}
+if (!uiSource.includes("(state.dealHandCount ?? 0) + index") || !cardGestureSource.includes('zone === "table"')) {
+  throw new Error("Table cards must deal after all replacement hand cards");
 }
 if (!uiSource.includes("const currentIndex = Number(button.dataset.handIndex)")) {
   throw new Error("Repositioned hand cards must select their current slot");
