@@ -1,8 +1,8 @@
-import { formatCompactNumber } from "./format.js?v=160";
-import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=160";
-import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=160";
-import { getPowerCardDetails } from "./arcadeMode.js?v=160";
-import { createScoreSurgePlan } from "./scoreSurge.js?v=160";
+import { formatCompactNumber } from "./format.js?v=161";
+import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=161";
+import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=161";
+import { getPowerCardDetails } from "./arcadeMode.js?v=161";
+import { createScoreSurgePlan } from "./scoreSurge.js?v=161";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -54,9 +54,11 @@ const CRUNCH_DEBRIS_CONFIG = {
   maxLifetime: 2200
 };
 const CRUNCH_CARD_SHAKE_CONFIG = {
-  maxXByHit: [0, 3.6, 4.8, 6],
-  maxYByHit: [0, 2.4, 3.4, 4.5],
-  maxRotationByHit: [0, 1.6, 2.3, 3]
+  maxXByHit: [0, 5.2, 7, 9],
+  maxYByHit: [0, 4, 5.5, 7],
+  maxRotationByHit: [0, 3.2, 4.8, 6.4],
+  bounceHeightByHit: [0, 11, 15, 19],
+  durationByHit: [0, 340, 380, 420]
 };
 const MAJOR_SCORE_RAMP_CONFIG = {
   minimumMilestone: 100000,
@@ -748,6 +750,8 @@ function assignCrunchShakeVectors(cards, hit) {
   const maxX = CRUNCH_CARD_SHAKE_CONFIG.maxXByHit[hitIndex];
   const maxY = CRUNCH_CARD_SHAKE_CONFIG.maxYByHit[hitIndex];
   const maxRotation = CRUNCH_CARD_SHAKE_CONFIG.maxRotationByHit[hitIndex];
+  const bounceHeight = CRUNCH_CARD_SHAKE_CONFIG.bounceHeightByHit[hitIndex];
+  const baseDuration = CRUNCH_CARD_SHAKE_CONFIG.durationByHit[hitIndex];
   const signedMagnitude = (minimum, maximum) => {
     const direction = Math.random() < .5 ? -1 : 1;
     return direction * (minimum + Math.random() * Math.max(0, maximum - minimum));
@@ -774,7 +778,9 @@ function assignCrunchShakeVectors(cards, hit) {
     card.style.setProperty("--crunch-shake-x-c", `${xC.toFixed(2)}px`);
     card.style.setProperty("--crunch-shake-y-c", `${yC.toFixed(2)}px`);
     card.style.setProperty("--crunch-shake-r-c", `${rotationC.toFixed(2)}deg`);
-    card.style.setProperty("--crunch-shake-delay", `${Math.min(24, index * 6)}ms`);
+    card.style.setProperty("--crunch-bounce-height", `${(bounceHeight * (.88 + Math.random() * .24)).toFixed(2)}px`);
+    card.style.setProperty("--crunch-shake-duration", `${Math.round(baseDuration + signedMagnitude(0, 22))}ms`);
+    card.style.setProperty("--crunch-shake-delay", `${Math.min(21, index * 5)}ms`);
     card.classList.add("is-crunch-shaking");
   });
 }

@@ -399,9 +399,13 @@ if (!cutsceneSource.includes("assignCrunchShakeVectors")
   || !cutsceneSource.includes("getDisplayedCrunchCards")
   || !cutsceneSource.includes("is-crunch-shaking")
   || !cutsceneSource.includes("maxRotationByHit")
+  || !cutsceneSource.includes("bounceHeightByHit")
+  || !cutsceneSource.includes("durationByHit")
   || !cutsceneSource.includes("pulseBankOnShardImpact")
   || !css.includes("--crunch-shake-x-a")
   || !css.includes("--crunch-shake-r-c")
+  || !css.includes("--crunch-bounce-height")
+  || !css.includes("--crunch-shake-duration")
   || !css.includes("transform-origin: 50% 50% !important")) {
   throw new Error("Crunch hits must assign bounded, varied per-card shake vectors");
 }

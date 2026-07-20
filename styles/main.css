@@ -4379,21 +4379,22 @@ h2 {
 
 .crunch-cutscene-overlay[data-crunch-hit="1"] .is-crunch-shaking,
 .cutin-stage[data-crunch-hit="1"] .is-crunch-shaking {
-  animation: cutinCrunchHitOne 210ms cubic-bezier(.2, 1.55, .28, 1) var(--crunch-shake-delay, 0ms) both !important;
+  animation: cutinCrunchHitOne var(--crunch-shake-duration, 340ms) cubic-bezier(.16, 1.18, .24, 1) var(--crunch-shake-delay, 0ms) both !important;
 }
 
 .crunch-cutscene-overlay[data-crunch-hit="2"] .is-crunch-shaking,
 .cutin-stage[data-crunch-hit="2"] .is-crunch-shaking {
-  animation: cutinCrunchHitTwo 240ms cubic-bezier(.2, 1.55, .28, 1) var(--crunch-shake-delay, 0ms) both !important;
+  animation: cutinCrunchHitTwo var(--crunch-shake-duration, 380ms) cubic-bezier(.14, 1.16, .22, 1) var(--crunch-shake-delay, 0ms) both !important;
 }
 
 .crunch-cutscene-overlay[data-crunch-hit="3"] .is-crunch-shaking,
 .cutin-stage[data-crunch-hit="3"] .is-crunch-shaking {
-  animation: cutinCrunchHitThree 285ms cubic-bezier(.16, 1.5, .24, 1) var(--crunch-shake-delay, 0ms) both !important;
+  animation: cutinCrunchHitThree var(--crunch-shake-duration, 420ms) cubic-bezier(.12, 1.12, .2, 1) var(--crunch-shake-delay, 0ms) both !important;
 }
 
 .crunch-cutscene-overlay .is-crunch-shaking {
   transform-origin: 50% 50% !important;
+  transform-box: border-box;
   backface-visibility: hidden;
   will-change: transform;
 }
@@ -4420,24 +4421,35 @@ h2 {
 
 @keyframes cutinCrunchHitOne {
   0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
-  26% { transform: translate3d(var(--crunch-shake-x-a, 3px), var(--crunch-shake-y-a, 2px), 0) rotate(var(--crunch-shake-r-a, 1deg)) scale(1.045, .93); }
-  54% { transform: translate3d(var(--crunch-shake-x-b, -2px), var(--crunch-shake-y-b, -1px), 0) rotate(var(--crunch-shake-r-b, -1deg)) scale(.985, 1.025); }
-  78% { transform: translate3d(var(--crunch-shake-x-c, 1px), var(--crunch-shake-y-c, 1px), 0) rotate(var(--crunch-shake-r-c, .4deg)) scale(1.012, .98); }
+  12% { transform: translate3d(0, 4px, 0) rotate(calc(var(--crunch-shake-r-a, 2deg) * -.22)) scale(1.11, .84); }
+  30% { transform: translate3d(var(--crunch-shake-x-a, 5px), calc(var(--crunch-shake-y-a, 3px) - var(--crunch-bounce-height, 11px)), 0) rotate(var(--crunch-shake-r-a, 2deg)) scale(.93, 1.14); }
+  48% { transform: translate3d(var(--crunch-shake-x-b, -4px), calc(var(--crunch-shake-y-b, -2px) + 2px), 0) rotate(var(--crunch-shake-r-b, -1.6deg)) scale(1.075, .9); }
+  64% { transform: translate3d(var(--crunch-shake-x-c, 2px), calc(var(--crunch-shake-y-c, 1px) - var(--crunch-bounce-height, 11px) * .34), 0) rotate(var(--crunch-shake-r-c, .8deg)) scale(.98, 1.055); }
+  80% { transform: translate3d(calc(var(--crunch-shake-x-a, 5px) * -.22), 1px, 0) rotate(calc(var(--crunch-shake-r-a, 2deg) * -.18)) scale(1.025, .97); }
+  91% { transform: translate3d(calc(var(--crunch-shake-x-c, 2px) * .16), -1px, 0) rotate(calc(var(--crunch-shake-r-c, .8deg) * .15)) scale(.995, 1.012); }
 }
 
 @keyframes cutinCrunchHitTwo {
   0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
-  24% { transform: translate3d(var(--crunch-shake-x-a, -4px), var(--crunch-shake-y-a, 3px), 0) rotate(var(--crunch-shake-r-a, -1.8deg)) scale(1.07, .87); }
-  48% { transform: translate3d(var(--crunch-shake-x-b, 3px), var(--crunch-shake-y-b, -2px), 0) rotate(var(--crunch-shake-r-b, 1.4deg)) scale(.97, 1.045); }
-  72% { transform: translate3d(var(--crunch-shake-x-c, -1px), var(--crunch-shake-y-c, 1px), 0) rotate(var(--crunch-shake-r-c, -.6deg)) scale(1.02, .96); }
+  10% { transform: translate3d(0, 5px, 0) rotate(calc(var(--crunch-shake-r-a, 3deg) * -.24)) scale(1.15, .78); }
+  27% { transform: translate3d(var(--crunch-shake-x-a, -7px), calc(var(--crunch-shake-y-a, 5px) - var(--crunch-bounce-height, 15px)), 0) rotate(var(--crunch-shake-r-a, -3deg)) scale(.9, 1.18); }
+  43% { transform: translate3d(var(--crunch-shake-x-b, 5px), calc(var(--crunch-shake-y-b, -3px) + 3px), 0) rotate(var(--crunch-shake-r-b, 2.4deg)) scale(1.1, .86); }
+  58% { transform: translate3d(var(--crunch-shake-x-c, -3px), calc(var(--crunch-shake-y-c, 2px) - var(--crunch-bounce-height, 15px) * .4), 0) rotate(var(--crunch-shake-r-c, -1.2deg)) scale(.965, 1.08); }
+  72% { transform: translate3d(calc(var(--crunch-shake-x-a, -7px) * -.3), 2px, 0) rotate(calc(var(--crunch-shake-r-a, -3deg) * -.25)) scale(1.045, .945); }
+  85% { transform: translate3d(calc(var(--crunch-shake-x-b, 5px) * -.16), -2px, 0) rotate(calc(var(--crunch-shake-r-b, 2.4deg) * -.14)) scale(.99, 1.025); }
+  94% { transform: translate3d(1px, 0, 0) rotate(.12deg) scale(1.008, .995); }
 }
 
 @keyframes cutinCrunchHitThree {
   0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
-  20% { transform: translate3d(var(--crunch-shake-x-a, 5px), var(--crunch-shake-y-a, 4px), 0) rotate(var(--crunch-shake-r-a, 2.5deg)) scale(1.095, .8); }
-  42% { transform: translate3d(var(--crunch-shake-x-b, -4px), var(--crunch-shake-y-b, -3px), 0) rotate(var(--crunch-shake-r-b, -2deg)) scale(.95, 1.07); }
-  66% { transform: translate3d(var(--crunch-shake-x-c, 2px), var(--crunch-shake-y-c, 1px), 0) rotate(var(--crunch-shake-r-c, .8deg)) scale(1.03, .93); }
-  84% { transform: translate3d(calc(var(--crunch-shake-x-c, 2px) * -.35), calc(var(--crunch-shake-y-c, 1px) * -.35), 0) rotate(calc(var(--crunch-shake-r-c, .8deg) * -.35)) scale(.99, 1.015); }
+  8% { transform: translate3d(0, 7px, 0) rotate(calc(var(--crunch-shake-r-a, 5deg) * -.28)) scale(1.19, .7); }
+  22% { transform: translate3d(var(--crunch-shake-x-a, 9px), calc(var(--crunch-shake-y-a, 7px) - var(--crunch-bounce-height, 19px)), 0) rotate(var(--crunch-shake-r-a, 5deg)) scale(.86, 1.22); }
+  36% { transform: translate3d(var(--crunch-shake-x-b, -7px), calc(var(--crunch-shake-y-b, -5px) + 4px), 0) rotate(var(--crunch-shake-r-b, -4deg)) scale(1.13, .82); }
+  49% { transform: translate3d(var(--crunch-shake-x-c, 4px), calc(var(--crunch-shake-y-c, 3px) - var(--crunch-bounce-height, 19px) * .42), 0) rotate(var(--crunch-shake-r-c, 1.8deg)) scale(.94, 1.1); }
+  62% { transform: translate3d(calc(var(--crunch-shake-x-a, 9px) * -.3), 3px, 0) rotate(calc(var(--crunch-shake-r-a, 5deg) * -.24)) scale(1.065, .91); }
+  74% { transform: translate3d(calc(var(--crunch-shake-x-b, -7px) * -.2), -3px, 0) rotate(calc(var(--crunch-shake-r-b, -4deg) * -.18)) scale(.98, 1.04); }
+  86% { transform: translate3d(calc(var(--crunch-shake-x-c, 4px) * -.12), 1px, 0) rotate(calc(var(--crunch-shake-r-c, 1.8deg) * -.12)) scale(1.02, .975); }
+  94% { transform: translate3d(1px, -1px, 0) rotate(.18deg) scale(.995, 1.012); }
 }
 
 .reduce-motion .crunch-cutscene-overlay[data-crunch-hit] .is-crunch-shaking,
