@@ -288,7 +288,30 @@ export function calculateCrunchScore({
   enableFullHand = true
 }) {
   const resolution = resolutionOverride ?? resolveSelectedCrunch(baseStack, selectedCards, gameplayModifier);
-  if (!resolution.success) return { success: false, resolution };
+  if (!resolution.success) {
+    const validCardCount = resolution.history.length;
+    const partial = validCardCount > 0
+      ? calculateCrunchScore({
+          baseStack,
+          selectedCards: selectedCards.slice(0, validCardCount),
+          timeLeft,
+          streak,
+          runMultiplier,
+          gameplayModifier,
+          resolutionOverride: {
+            success: true,
+            activeStack: resolution.activeStack,
+            history: resolution.history,
+            failedIndex: -1,
+            failedCard: null
+          },
+          selectionMultiplierOverride: null,
+          selectionLabel,
+          enableFullHand: false
+        })
+      : null;
+    return { success: false, resolution, partial };
+  }
 
   const presentationEntries = buildCrunchPresentationEntries(resolution.history);
   const displayPoints = presentationEntries.map((entry) => getRuleAdjustedDisplayPoints(entry, gameplayModifier));
@@ -376,6 +399,7 @@ export function calculateCrunchScore({
         equation: entry.equation,
         sequenceValues: entry.sequenceValues,
         sequenceRanks: entry.sequenceRanks,
+        orderedCards: entry.orderedCards,
         label: entry.cutinLabel ?? entry.label,
         isDouble: entry.matchedCards.length > 1 && (entry.matchType === MATCH_TYPES.RANK || entry.matchType === MATCH_TYPES.SUIT),
         multiplier: entry.matchedCards.length > 1 && (entry.matchType === MATCH_TYPES.RANK || entry.matchType === MATCH_TYPES.SUIT) ? 2 : 1,
@@ -518,15 +542,63 @@ function buildCrunchPresentationEntries(history) {
 
     const groupedEntries = memberIndexes.map((memberIndex) => history[memberIndex]);
     const finalEntry = memberIndexes.length > 1 ? groupedEntries.at(-1) : entry;
-    const matchedCards = uniqueCards(finalEntry.matchedCards);
+    const orderedCards = finalEntry.matchType === MATCH_TYPES.SEQUENCE
+      ? orderSequenceCards(finalEntry)
+      : uniqueCards([...finalEntry.matchedCards, finalEntry.card]);
+    const matchedCards = orderedCards.filter((card) => card?.id !== finalEntry.card?.id);
+    const secondaryMatches = mergeSecondaryMatches(groupedEntries);
+    const sequenceSuitMatch = finalEntry.matchType === MATCH_TYPES.SEQUENCE
+      ? createSequenceSuitMatch(orderedCards)
+      : null;
     return [{
       ...finalEntry,
       matchedCards,
-      secondaryMatches: mergeSecondaryMatches(groupedEntries),
+      orderedCards,
+      secondaryMatches: sequenceSuitMatch
+        ? [...secondaryMatches.filter((match) => match.type !== MATCH_TYPES.SUIT), sequenceSuitMatch]
+        : secondaryMatches,
       selectedIndexes: [...memberIndexes],
-      matchCount: uniqueCards([...matchedCards, finalEntry.card]).length
+      matchCount: orderedCards.length
     }];
   });
+}
+
+function orderSequenceCards(entry) {
+  const cards = uniqueCards([...(entry.matchedCards ?? []), entry.card]);
+  const cardsByValue = new Map(cards.map((card) => [Number(card?.value), card]));
+  const ordered = (entry.sequenceValues ?? [])
+    .map((value) => cardsByValue.get(Number(value)))
+    .filter(Boolean);
+  return ordered.length === cards.length
+    ? ordered
+    : [...cards].sort((a, b) => Number(a?.value) - Number(b?.value));
+}
+
+function createSequenceSuitMatch(cards) {
+  const groups = new Map();
+  cards.forEach((card) => {
+    if (!card?.suit) return;
+    if (!groups.has(card.suit)) groups.set(card.suit, []);
+    groups.get(card.suit).push(card);
+  });
+  const strongest = [...groups.entries()]
+    .filter(([, suitedCards]) => suitedCards.length >= 2)
+    .sort(([, cardsA], [, cardsB]) => cardsB.length - cardsA.length)[0];
+  if (!strongest) return null;
+
+  const [suit, suitedCards] = strongest;
+  const matchCount = suitedCards.length;
+  return {
+    type: MATCH_TYPES.SUIT,
+    label: getSuitMatchLabel(matchCount),
+    multiplier: matchCount >= 3
+      ? getMatchTierMultiplier(matchCount)
+      : SECONDARY_MATCH_MULTIPLIERS[MATCH_TYPES.SUIT],
+    tone: MATCH_TYPES.SUIT,
+    suit,
+    matchedCards: suitedCards,
+    matchedIndexes: []
+  };
 }
 
 function getGrowingMatchKey(entry) {
@@ -747,6 +819,18 @@ export function runScoringSelfTests() {
     timeLeft: 3,
     streak: 0
   });
+  const orderedSequenceWithTripleSuit = calculateCrunchScore({
+    baseStack: [card(8, "clubs"), card(9, "clubs")],
+    selectedCards: [card("J", "clubs", 11), card(10, "hearts")],
+    timeLeft: 3,
+    streak: 0
+  });
+  const partialFailure = calculateCrunchScore({
+    baseStack: base,
+    selectedCards: [card(8, "hearts"), card("Q", "clubs", 12), card(3, "hearts")],
+    timeLeft: 3,
+    streak: 0
+  });
   const heartLockSuccess = calculateCrunchScore({
     baseStack: base,
     selectedCards: [card(8, "hearts")],
@@ -837,6 +921,29 @@ export function runScoringSelfTests() {
         && growingSequence.cutscene.entries[0].sequenceRanks.join(",") === "A,2,3,4,5"
         && growingSequence.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "5-CARD RUN" && bonus.value === "x4")
         && growingSequence.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "SUIT MATCH")
+    },
+    {
+      name: "sequence cards render in canonical value order",
+      pass: orderedSequenceWithTripleSuit.success
+        && orderedSequenceWithTripleSuit.cutscene.entries
+          .find((entry) => entry.matchType === MATCH_TYPES.SEQUENCE)
+          ?.orderedCards.map((entryCard) => entryCard.value).join(",") === "8,9,10,11"
+    },
+    {
+      name: "sequence derives its strongest suit tier modifier",
+      pass: orderedSequenceWithTripleSuit.success
+        && orderedSequenceWithTripleSuit.cutscene.entries
+          .find((entry) => entry.matchType === MATCH_TYPES.SEQUENCE)
+          ?.inlineBonuses.some((bonus) => bonus.label === "TRIPLE SUIT MATCH" && bonus.value === "x6")
+    },
+    {
+      name: "failed crunch banks only the valid left-to-right prefix",
+      pass: !partialFailure.success
+        && partialFailure.resolution.failedIndex === 1
+        && partialFailure.resolution.history.length === 1
+        && partialFailure.partial?.success
+        && partialFailure.partial.cutscene.selectedCount === 1
+        && partialFailure.partial.cutscene.entries.reduce((sum, entry) => sum + entry.bankPoints, 0) === partialFailure.partial.total
     },
     {
       name: "triple rank reacts inline",

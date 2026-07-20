@@ -1,5 +1,5 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=155";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=155";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=156";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=156";
 import {
   ARCADE_CONFIG,
   ARCADE_MODE,
@@ -9,24 +9,24 @@ import {
   isArcadeMode,
   isPowerCard,
   resolveArcadeCrunch
-} from "./arcadeMode.js?v=155";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=155";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=155";
-import { ensurePlayableRound } from "./handSafety.js?v=155";
-import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=155";
-import { formatCompactNumber } from "./format.js?v=155";
-import { adManager } from "./ads.js?v=155";
-import { submitBestScore } from "./playGames.js?v=155";
-import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=155";
-import { purchaseManager } from "./purchases.js?v=155";
-import { getRoundDealDuration } from "./dealTiming.js?v=155";
+} from "./arcadeMode.js?v=156";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=156";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=156";
+import { ensurePlayableRound } from "./handSafety.js?v=156";
+import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=156";
+import { formatCompactNumber } from "./format.js?v=156";
+import { adManager } from "./ads.js?v=156";
+import { submitBestScore } from "./playGames.js?v=156";
+import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=156";
+import { purchaseManager } from "./purchases.js?v=156";
+import { getRoundDealDuration } from "./dealTiming.js?v=156";
 import {
   animateBust,
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=155";
+} from "./animations.js?v=156";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -395,19 +395,47 @@ export function createGame(ui) {
     }
 
     if (!crunch.success) {
-      await animateSelectionResolve({
-        selectedHandCards: selectedCardElements,
-        baseStackCards: ui.getAllStackCardElements(),
-        resolution: crunch.resolution,
-        fail: true,
-        onEntryResolved: async (entry, _index, transition) => {
-          await playCrunchEntryExplanation({
-            entry: createCutsceneEntry(entry),
-            tier: "normal",
-            sourceCards: transition?.sourceCards
+      const partial = crunch.partial?.success ? crunch.partial : null;
+      const partialBank = partial ? createActiveCrunchBankCounter() : null;
+      try {
+        await animateSelectionResolve({
+          selectedHandCards: selectedCardElements,
+          baseStackCards: ui.getAllStackCardElements(),
+          resolution: crunch.resolution,
+          fail: true,
+          presentationEntries: partial?.cutscene.entries ?? null,
+          onEntryResolved: async (entry, _index, transition) => {
+            await playCrunchEntryExplanation({
+              entry: partial ? entry : createCutsceneEntry(entry),
+              tier: partial?.cutscene.tier ?? "normal",
+              bank: partialBank,
+              sourceCards: transition?.sourceCards
+            });
+          }
+        });
+        if (partialBank) {
+          await playCrunchTotalExplanation({
+            total: partial.cutscene.total,
+            scoreEl: ui.elements.scoreValue,
+            tier: partial.cutscene.tier,
+            bank: partialBank
           });
         }
-      });
+      } catch (error) {
+        partialBank?.remove();
+        throw error;
+      }
+
+      if (partial) {
+        const validCardCount = crunch.resolution.history.length;
+        state.score += partial.total;
+        state.runGrossCash += partial.total;
+        if (arcadeRun) state.arcadeCardsCrunchedThisRun += validCardCount;
+        recordCrunchedCards(validCardCount);
+        state.bestScore = Math.max(state.bestScore, state.score);
+        localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
+        ui.syncResolvedHud(state);
+      }
       await playBustCutin({
         failedCard: crunch.resolution.failedCard,
         activeStack: crunch.resolution.activeStack
@@ -416,18 +444,7 @@ export function createGame(ui) {
       return;
     }
 
-    const crunchBank = createCrunchBankCounter({
-      panelEl: ui.elements.scorePanel,
-      labelEl: ui.elements.scoreLabel,
-      valueEl: ui.elements.scoreValue,
-      startingValue: state.score,
-      coinRewards: {
-        cashMilestone: ECONOMY_CONFIG.crunchCashMilestone,
-        coinsPerMilestone: ECONOMY_CONFIG.coinsPerCrunchMilestone,
-        getBalance: () => economy.getSnapshot().coins,
-        award: awardCrunchMilestoneCoins
-      }
-    });
+    const crunchBank = createActiveCrunchBankCounter();
     try {
       await animateSelectionResolve({
         selectedHandCards: selectedCardElements,
@@ -485,11 +502,35 @@ export function createGame(ui) {
       return;
     }
 
-    localStorage.setItem("cardCrunchTotalCrunches", String(Number(localStorage.getItem("cardCrunchTotalCrunches") ?? 0) + selectedCards.length));
+    recordCrunchedCards(selectedCards.length);
     state.bestScore = Math.max(state.bestScore, state.score);
     localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
     localStorage.setItem("cardCrunchBestStreak", String(Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak)));
     startNewRound();
+  }
+
+  function createActiveCrunchBankCounter() {
+    return createCrunchBankCounter({
+      panelEl: ui.elements.scorePanel,
+      labelEl: ui.elements.scoreLabel,
+      valueEl: ui.elements.scoreValue,
+      startingValue: state.score,
+      coinRewards: {
+        cashMilestone: ECONOMY_CONFIG.crunchCashMilestone,
+        coinsPerMilestone: ECONOMY_CONFIG.coinsPerCrunchMilestone,
+        getBalance: () => economy.getSnapshot().coins,
+        award: awardCrunchMilestoneCoins
+      }
+    });
+  }
+
+  function recordCrunchedCards(count) {
+    const safeCount = Math.max(0, Math.floor(Number(count) || 0));
+    if (!safeCount) return;
+    localStorage.setItem(
+      "cardCrunchTotalCrunches",
+      String(Number(localStorage.getItem("cardCrunchTotalCrunches") ?? 0) + safeCount)
+    );
   }
 
   function isTutorialSelectionCorrect() {

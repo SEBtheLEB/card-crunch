@@ -3,8 +3,8 @@ import {
   hideCrunchSkipText,
   isCrunchSkipRequested,
   showCrunchSkipText
-} from "./crunchCutscene.js?v=155";
-import { playGameSfx } from "./audio.js?v=155";
+} from "./crunchCutscene.js?v=156";
+import { playGameSfx } from "./audio.js?v=156";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RESOLVE_HIGHLIGHT_DURATION_MS = 700;
@@ -201,10 +201,10 @@ export async function animateSelectionResolve({
   resolution.history.forEach((entry, index) => {
     if (entry.card?.id && selectedHandCards[index]) elementByCardId.set(entry.card.id, selectedHandCards[index]);
   });
-  const visualEntries = !fail && presentationEntries?.length
+  const visualEntries = presentationEntries?.length
     ? presentationEntries
     : resolution.history.map((entry, index) => ({ ...entry, selectedIndexes: [index] }));
-  const limit = fail ? resolution.failedIndex : visualEntries.length;
+  const limit = visualEntries.length;
   const advance = createSequenceAdvanceController();
   let clearSpotlight = () => {};
   showCrunchSkipText();

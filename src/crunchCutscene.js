@@ -1,8 +1,8 @@
-import { formatCompactNumber } from "./format.js?v=155";
-import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=155";
-import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=155";
-import { getPowerCardDetails } from "./arcadeMode.js?v=155";
-import { createScoreSurgePlan } from "./scoreSurge.js?v=155";
+import { formatCompactNumber } from "./format.js?v=156";
+import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=156";
+import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=156";
+import { getPowerCardDetails } from "./arcadeMode.js?v=156";
+import { createScoreSurgePlan } from "./scoreSurge.js?v=156";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -1018,12 +1018,17 @@ function createMathCutinMarkup({ entry, matched, operator, equation, tier }) {
 }
 
 function createMatchCutinMarkup({ entry, matched, operator, equation, tier }) {
+  const displayCards = entry.matchType === "sequence"
+    ? getOrderedSequenceDisplayCards(entry, matched)
+    : [...matched, entry.card];
   return `
     <div class="cutin-stage cutin-match-stage cutin-tone-${entry.matchType} ${tier === "full" ? "cutin-full" : ""}">
       <div class="cutin-card-stage cutin-match-card-stage">
         <div class="cutin-match-row">
-          ${matched.map((card, index) => createCutinCardMarkup(card, `source source-${index + 1}`)).join("")}
-          ${createCutinCardMarkup(entry.card, "answer")}
+          ${displayCards.map((card, index) => createCutinCardMarkup(
+            card,
+            card?.id === entry.card?.id ? "answer" : `source source-${index + 1}`
+          )).join("")}
         </div>
       </div>
       <div class="cutin-result-stack">
@@ -1035,6 +1040,18 @@ function createMatchCutinMarkup({ entry, matched, operator, equation, tier }) {
       </div>
     </div>
   `;
+}
+
+function getOrderedSequenceDisplayCards(entry, matched) {
+  const cards = [...(entry.orderedCards ?? []), ...matched, entry.card]
+    .filter((card, index, all) => card && all.findIndex((candidate) => candidate?.id === card.id) === index);
+  const cardsByValue = new Map(cards.map((card) => [Number(card.value), card]));
+  const ordered = (entry.sequenceValues ?? [])
+    .map((value) => cardsByValue.get(Number(value)))
+    .filter(Boolean);
+  return ordered.length === cards.length
+    ? ordered
+    : [...cards].sort((a, b) => Number(a.value) - Number(b.value));
 }
 
 async function playMiniEntry(overlay, entry, advance) {
