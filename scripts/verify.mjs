@@ -518,8 +518,17 @@ if (!uiSource.includes("syncHandInteractionState(elements, state)")
   || !css.includes("var(--deal-landing-ms, 140ms)")) {
   throw new Error("Deal completion must unlock cards without rebuilding or blinking the hand");
 }
-if (!dealTimingSource.includes("getRoundDealDuration") || !gameStateSource.includes("dealToken !== state.timerToken") || !gameStateSource.includes("finishHandDeal(4)")) {
+if (!dealTimingSource.includes("getRoundDealDuration") || !gameStateSource.includes("dealToken !== state.timerToken") || !gameStateSource.includes("finishHandDeal(4,")) {
   throw new Error("The turn timer must wait for the hand deal to finish");
+}
+if (!gameStateSource.includes("finishHandDeal(4, { announceReady: Boolean(pot) })")
+  || !gameStateSource.includes("if (announceReady) ui.playInitialReadyPulse()")
+  || gameStateSource.indexOf("ui.playInitialReadyPulse()") > gameStateSource.indexOf("startTimer();", gameStateSource.indexOf("function finishHandDeal"))
+  || !uiSource.includes("playInitialReadyPulse()")
+  || !uiSource.includes("is-initial-ready-pulse")
+  || !css.includes("handCardsReadyPulse")
+  || !css.includes("tableCardsReadyPulse")) {
+  throw new Error("The initial pot deal must finish with a one-shot ready pulse before the timer starts");
 }
 if (!gameStateSource.includes("ui.syncResolvedHud(state)")
   || !gameStateSource.includes("ui.beginRoundHandoff(state)")

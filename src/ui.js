@@ -1,12 +1,12 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=151";
-import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=151";
-import { isPotUnlocked } from "./progression.js?v=151";
-import { formatCompactNumber } from "./format.js?v=151";
-import { hasShieldToken } from "./save.js?v=151";
-import { bindInstantAction } from "./input.js?v=151";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=151";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=151";
-import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=151";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=152";
+import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=152";
+import { isPotUnlocked } from "./progression.js?v=152";
+import { formatCompactNumber } from "./format.js?v=152";
+import { hasShieldToken } from "./save.js?v=152";
+import { bindInstantAction } from "./input.js?v=152";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=152";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=152";
+import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=152";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -137,6 +137,48 @@ export function createUI() {
           elements.shell.classList.remove("is-round-handoff");
           roundHandoffFrame = null;
         });
+      });
+    },
+    playInitialReadyPulse() {
+      const slots = [
+        ...elements.handZone.querySelectorAll(".hand-card-slot.is-occupied"),
+        ...elements.tableZone.querySelectorAll(":scope > .base-stack-card")
+      ];
+      slots.forEach((slot, index) => {
+        const direction = Math.random() < .5 ? -1 : 1;
+        const crossDirection = Math.random() < .5 ? -1 : 1;
+        const x = direction * (1.4 + Math.random() * 1.8);
+        const y = crossDirection * (.7 + Math.random() * 1.2);
+        const rotation = direction * (.45 + Math.random() * .75);
+        slot.classList.remove("is-initial-ready-pulse");
+        slot.style.setProperty("--ready-delay", `${index * 34}ms`);
+        slot.style.setProperty("--ready-x", `${x.toFixed(2)}px`);
+        slot.style.setProperty("--ready-y", `${y.toFixed(2)}px`);
+        slot.style.setProperty("--ready-r", `${rotation.toFixed(2)}deg`);
+        slot.style.setProperty("--ready-x-b", `${(-x * .6).toFixed(2)}px`);
+        slot.style.setProperty("--ready-y-b", `${(-y * .5).toFixed(2)}px`);
+        slot.style.setProperty("--ready-r-b", `${(-rotation * .7).toFixed(2)}deg`);
+        slot.style.setProperty("--ready-x-c", `${(x * .45).toFixed(2)}px`);
+        slot.style.setProperty("--ready-y-c", `${(y * .35).toFixed(2)}px`);
+        slot.style.setProperty("--ready-r-c", `${(rotation * .42).toFixed(2)}deg`);
+        slot.style.setProperty("--ready-x-d", `${(-x * .22).toFixed(2)}px`);
+        slot.style.setProperty("--ready-r-d", `${(-rotation * .2).toFixed(2)}deg`);
+        slot.classList.add("is-initial-ready-pulse");
+        window.setTimeout(() => {
+          slot.classList.remove("is-initial-ready-pulse");
+          slot.style.removeProperty("--ready-delay");
+          slot.style.removeProperty("--ready-x");
+          slot.style.removeProperty("--ready-y");
+          slot.style.removeProperty("--ready-r");
+          slot.style.removeProperty("--ready-x-b");
+          slot.style.removeProperty("--ready-y-b");
+          slot.style.removeProperty("--ready-r-b");
+          slot.style.removeProperty("--ready-x-c");
+          slot.style.removeProperty("--ready-y-c");
+          slot.style.removeProperty("--ready-r-c");
+          slot.style.removeProperty("--ready-x-d");
+          slot.style.removeProperty("--ready-r-d");
+        }, 820 + index * 34);
       });
     },
     setMessage(message, tone = "neutral", duration = 1600) {

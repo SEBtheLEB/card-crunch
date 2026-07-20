@@ -1,5 +1,5 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=151";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=151";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=152";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=152";
 import {
   ARCADE_CONFIG,
   ARCADE_MODE,
@@ -9,24 +9,24 @@ import {
   isArcadeMode,
   isPowerCard,
   resolveArcadeCrunch
-} from "./arcadeMode.js?v=151";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=151";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=151";
-import { ensurePlayableHand } from "./handSafety.js?v=151";
-import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=151";
-import { formatCompactNumber } from "./format.js?v=151";
-import { adManager } from "./ads.js?v=151";
-import { submitBestScore } from "./playGames.js?v=151";
-import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=151";
-import { purchaseManager } from "./purchases.js?v=151";
-import { getRoundDealDuration } from "./dealTiming.js?v=151";
+} from "./arcadeMode.js?v=152";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=152";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=152";
+import { ensurePlayableHand } from "./handSafety.js?v=152";
+import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=152";
+import { formatCompactNumber } from "./format.js?v=152";
+import { adManager } from "./ads.js?v=152";
+import { submitBestScore } from "./playGames.js?v=152";
+import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=152";
+import { purchaseManager } from "./purchases.js?v=152";
+import { getRoundDealDuration } from "./dealTiming.js?v=152";
 import {
   animateBust,
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=151";
+} from "./animations.js?v=152";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -185,7 +185,7 @@ export function createGame(ui) {
     ui.clearMessage();
     if (state.safeBankShieldActive) ui.setMessage("Shield armed: busting out auto-banks 25%", "good");
     ui.render(state, handlers);
-    finishHandDeal(4);
+    finishHandDeal(4, { announceReady: Boolean(pot) });
   }
 
   function startEndless() {
@@ -1007,7 +1007,7 @@ export function createGame(ui) {
     finishHandDeal(replacementCount);
   }
 
-  function finishHandDeal(replacementCount) {
+  function finishHandDeal(replacementCount, { announceReady = false } = {}) {
     const dealToken = state.timerToken;
     const reducedMotion = document.documentElement.classList.contains("reduce-motion");
     const dealDuration = getRoundDealDuration(replacementCount, state.baseStackCount, reducedMotion);
@@ -1017,6 +1017,7 @@ export function createGame(ui) {
       state.locked = false;
       ui.render(state, handlers);
       ui.finishRoundHandoff();
+      if (announceReady) ui.playInitialReadyPulse();
       startTimer();
     }, dealDuration);
   }

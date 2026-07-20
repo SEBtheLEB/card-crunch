@@ -877,6 +877,20 @@ button.is-pressing:not(:disabled) {
   animation: cardDealLand var(--deal-landing-ms, 140ms) cubic-bezier(.16, 1.2, .3, 1) both;
 }
 
+.hand-card-slot.is-initial-ready-pulse,
+.table-card-slot.is-initial-ready-pulse {
+  transform-origin: 50% 50%;
+  will-change: transform, filter;
+}
+
+.hand-card-slot.is-initial-ready-pulse {
+  animation: handCardsReadyPulse 680ms cubic-bezier(.2, 1.35, .3, 1) var(--ready-delay, 0ms) both;
+}
+
+.table-card-slot.is-initial-ready-pulse {
+  animation: tableCardsReadyPulse 680ms cubic-bezier(.2, 1.35, .3, 1) var(--ready-delay, 0ms) both;
+}
+
 /* Round changes are a card-deal transition, not another HUD event. Keep the
    counters and progress bars visually locked until the final card settles. */
 .game-shell.is-round-handoff .score-panel,
@@ -898,6 +912,28 @@ button.is-pressing:not(:disabled) {
   0% { scale: 1; filter: brightness(1.12) drop-shadow(0 0 14px rgba(255, 218, 112, .7)); }
   46% { scale: 1.045 .97; filter: brightness(1.18) drop-shadow(0 0 18px rgba(255, 218, 112, .82)); }
   100% { scale: 1; filter: none; }
+}
+
+@keyframes handCardsReadyPulse {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); filter: brightness(1); }
+  16% { transform: translate3d(var(--ready-x, 2px), var(--ready-y, 1px), 0) rotate(var(--ready-r, .8deg)) scale(1.045); filter: brightness(1.2) drop-shadow(0 0 10px rgba(255, 215, 105, .68)); }
+  32% { transform: translate3d(var(--ready-x-b, -1.2px), var(--ready-y-b, -.5px), 0) rotate(var(--ready-r-b, -.56deg)) scale(.985); filter: brightness(1.08); }
+  51% { transform: translate3d(var(--ready-x-c, .9px), var(--ready-y-c, .35px), 0) rotate(var(--ready-r-c, .34deg)) scale(1.028); filter: brightness(1.16) drop-shadow(0 0 8px rgba(112, 226, 255, .56)); }
+  70% { transform: translate3d(var(--ready-x-d, -.44px), 0, 0) rotate(var(--ready-r-d, -.16deg)) scale(.995); filter: brightness(1.05); }
+}
+
+@keyframes tableCardsReadyPulse {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--stack-rotate, 0deg)) scale(1); filter: brightness(1); }
+  16% { transform: translate3d(var(--ready-x, 2px), var(--ready-y, 1px), 0) rotate(calc(var(--stack-rotate, 0deg) + var(--ready-r, .8deg))) scale(1.045); filter: brightness(1.2) drop-shadow(0 0 12px rgba(255, 215, 105, .72)); }
+  32% { transform: translate3d(var(--ready-x-b, -1.2px), var(--ready-y-b, -.5px), 0) rotate(calc(var(--stack-rotate, 0deg) + var(--ready-r-b, -.56deg))) scale(.985); filter: brightness(1.08); }
+  51% { transform: translate3d(var(--ready-x-c, .9px), var(--ready-y-c, .35px), 0) rotate(calc(var(--stack-rotate, 0deg) + var(--ready-r-c, .34deg))) scale(1.028); filter: brightness(1.16) drop-shadow(0 0 10px rgba(112, 226, 255, .62)); }
+  70% { transform: translate3d(var(--ready-x-d, -.44px), 0, 0) rotate(calc(var(--stack-rotate, 0deg) + var(--ready-r-d, -.16deg))) scale(.995); filter: brightness(1.05); }
+}
+
+.reduce-motion .hand-card-slot.is-initial-ready-pulse,
+.reduce-motion .table-card-slot.is-initial-ready-pulse {
+  animation-duration: 180ms !important;
+  animation-delay: 0ms !important;
 }
 
 .card-flight-trail {

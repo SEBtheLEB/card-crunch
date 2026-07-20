@@ -1,5 +1,5 @@
-import { DEAL_TIMING, getDealStartDelay } from "./dealTiming.js?v=151";
-import { playGameSfx } from "./audio.js?v=151";
+import { DEAL_TIMING, getDealStartDelay } from "./dealTiming.js?v=152";
+import { playGameSfx } from "./audio.js?v=152";
 
 const TAP_SLOP = 12;
 const FLICK_DISTANCE = 42;
