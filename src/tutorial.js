@@ -1,5 +1,5 @@
-import { formatCompactNumber } from "./format.js?v=153";
-import { bindInstantAction } from "./input.js?v=153";
+import { formatCompactNumber } from "./format.js?v=154";
+import { bindInstantAction } from "./input.js?v=154";
 
 const SUITS = {
   hearts: { suitSymbol: "&hearts;", color: "red", label: "Hearts" },

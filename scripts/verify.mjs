@@ -140,7 +140,9 @@ if (!html.includes("tutorialStartButton") || !html.includes("tutorialCoach") || 
 if (!html.includes('id="endlessArcadeButton"') || !html.includes("ENDLESS ARCADE")) {
   throw new Error("Endless Arcade menu action is missing");
 }
-if (!html.includes("Each pot has a unique rule.") || (html.match(/menu-chip-add/g) ?? []).length !== 1) {
+if (!html.includes("Each pot is a different challenge.")
+  || !html.includes("pot-state-legend")
+  || (html.match(/menu-chip-add/g) ?? []).length !== 1) {
   throw new Error("Pot challenge copy or unified header actions are missing");
 }
 if (html.includes('id="tutorialPage"')) {
@@ -541,7 +543,10 @@ if (!gameStateSource.includes("ui.syncResolvedHud(state)")
 if (!uiSource.includes("pot-grid-row")
   || !uiSource.includes("createPotDetailPanel")
   || !uiSource.includes("selectingSamePot")
+  || !uiSource.includes("dataset.potState")
+  || !uiSource.includes("pot-lock-summary")
   || !css.includes(".pot-detail-shell.is-open")
+  || !css.includes("Build 154: readable Pot challenge states")
   || !gameStateSource.includes("gameplayModifier: state.activePot?.gameplayModifier")
   || !gameStateSource.includes("minimumBankStreak")) {
   throw new Error("Expandable challenge pots or their gameplay modifiers are missing");

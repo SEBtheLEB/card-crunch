@@ -10070,3 +10070,392 @@ body.is-entry-score-surge-active .crunch-cutscene-overlay .cutin-stage {
   46% { opacity: 1; transform: translate3d(-50%, -50%, 0) scale(1.24); filter: brightness(2); }
   to { opacity: 0; transform: translate3d(-50%, -50%, 0) scale(.12); filter: brightness(2.4); }
 }
+
+/* Build 154: readable Pot challenge states
+   One challenge per row keeps rule, progress, and unlock requirements legible
+   inside the portrait-width menu shell. */
+.menu-page[data-page="pots"] {
+  gap: 9px;
+}
+
+.menu-page[data-page="pots"] > h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 7vw, 2rem);
+}
+
+.pot-page-copy {
+  gap: 3px;
+  margin: 0 auto;
+}
+
+.pot-page-copy strong {
+  color: #fff0a5;
+  font-size: clamp(.58rem, 2.7vw, .72rem);
+}
+
+.pot-page-copy span {
+  color: #c2d9d8;
+  font-size: clamp(.66rem, 2.8vw, .8rem);
+}
+
+.pot-state-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  width: 100%;
+  padding: 5px;
+  border: 2px solid #07101d;
+  background: rgba(3, 13, 20, .55);
+  box-shadow: inset 0 0 0 1px rgba(120, 180, 184, .14);
+}
+
+.pot-state-legend span {
+  display: flex;
+  min-width: 0;
+  min-height: 27px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #afc2c5;
+  font: 400 clamp(.38rem, 1.75vw, .5rem) / 1 var(--font-pixel);
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.pot-state-legend i {
+  color: inherit;
+  font-size: .72rem;
+  font-style: normal;
+}
+
+.pot-state-legend .is-cleared { color: #72efa5; }
+.pot-state-legend .is-available { color: #ffe072; }
+.pot-state-legend .is-locked { color: #8799a5; }
+
+.menu-level-map {
+  gap: 8px;
+  padding: 2px 4px 8px;
+}
+
+.pot-grid-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.menu-level-map .pot-level-card {
+  --pot-state-color: var(--pot-accent);
+  min-height: 0;
+  gap: 0;
+  padding: 10px 11px 9px 13px;
+  border: 2px solid #06101a;
+  border-left: 5px solid var(--pot-state-color);
+  border-radius: 2px;
+  background:
+    linear-gradient(100deg, rgba(var(--pot-accent-rgb), .15), transparent 58%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .022) 0 3px, transparent 3px 7px),
+    #11283a;
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--pot-accent-rgb), .28),
+    3px 4px 0 rgba(2, 5, 10, .78);
+}
+
+.menu-level-map .pot-level-card::before {
+  inset: 4px;
+  border: 1px solid rgba(172, 212, 214, .1);
+}
+
+.menu-level-map .pot-level-card:not(:disabled):active {
+  transform: scale(.985);
+}
+
+.pot-card-topline {
+  min-height: 22px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(164, 202, 206, .16);
+}
+
+.menu-level-map .pot-card-topline b {
+  color: var(--pot-state-color);
+  font-size: clamp(.46rem, 2vw, .57rem);
+}
+
+.menu-level-map .pot-state-badge {
+  display: inline-flex;
+  width: auto;
+  min-height: 21px;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 3px;
+  border: 1px solid color-mix(in srgb, var(--pot-state-color) 65%, #07101d);
+  background: color-mix(in srgb, var(--pot-state-color) 14%, #071522);
+  color: var(--pot-state-color);
+  font: 400 clamp(.39rem, 1.7vw, .5rem) / 1 var(--font-pixel);
+  font-style: normal;
+  text-transform: uppercase;
+}
+
+.menu-level-map .pot-state-badge i {
+  color: inherit;
+  font-size: .64rem;
+  font-style: normal;
+}
+
+.pot-card-overview {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 9px 0 8px;
+}
+
+.menu-level-map .pot-card-icon {
+  width: 44px;
+  height: 44px;
+  justify-self: start;
+  border: 2px solid #06101a;
+  background: var(--pot-state-color);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .24), 2px 3px 0 #05080c;
+  font-size: clamp(.82rem, 3.8vw, 1.08rem);
+}
+
+.pot-card-copy {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.pot-card-title-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.menu-level-map .pot-card-title-line > strong {
+  min-width: 0;
+  color: #fff0b0;
+  font: 400 clamp(.62rem, 2.75vw, .78rem) / 1.08 var(--font-pixel);
+  text-align: left;
+  text-shadow: 2px 2px 0 #392400;
+  text-transform: uppercase;
+}
+
+.menu-level-map .pot-card-copy > small {
+  color: #bdd1d2;
+  font-size: clamp(.67rem, 2.75vw, .79rem);
+  font-weight: 900;
+  line-height: 1.18;
+  text-align: left;
+  text-transform: none;
+}
+
+.menu-level-map .pot-rule-ribbon {
+  position: static;
+  flex: 0 0 auto;
+  padding: 3px 4px 2px;
+  border: 1px solid #574006;
+  background: #f3ce53 !important;
+  box-shadow: none !important;
+  color: #302000 !important;
+  font-size: clamp(.3rem, 1.35vw, .39rem) !important;
+}
+
+.menu-level-map .pot-card-progress-copy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(164, 202, 206, .14);
+}
+
+.pot-card-progress-copy > span {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.menu-level-map .pot-card-progress-copy i {
+  flex: 0 0 auto;
+  color: #91abb2;
+  font: 400 clamp(.37rem, 1.55vw, .46rem) / 1 var(--font-pixel);
+  font-style: normal;
+  text-transform: uppercase;
+}
+
+.menu-level-map .pot-card-progress-copy b {
+  min-width: 0;
+  overflow: hidden;
+  color: #fff0a3;
+  font: 400 clamp(.48rem, 2.05vw, .6rem) / 1 var(--font-pixel);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-level-map .pot-card-progress-copy > em {
+  color: var(--pot-state-color);
+  font: 400 clamp(.52rem, 2.2vw, .66rem) / 1 var(--font-pixel);
+  font-style: normal;
+}
+
+.menu-level-map .pot-progress-track {
+  height: 10px;
+  margin-top: 6px;
+  border: 2px solid #030911;
+  background: #02080d;
+}
+
+.menu-level-map .pot-progress-track > i {
+  min-width: 3px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .18) 0 8px, transparent 8px 10px),
+    var(--pot-state-color);
+}
+
+.pot-card-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  padding-top: 6px;
+  color: #c9dcda;
+  font: 400 clamp(.39rem, 1.6vw, .48rem) / 1 var(--font-pixel);
+  text-transform: uppercase;
+}
+
+.pot-card-action i {
+  color: var(--pot-state-color);
+  font-size: .9rem;
+  font-style: normal;
+}
+
+.pot-lock-summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0 2px;
+  border-top: 1px solid rgba(164, 202, 206, .12);
+}
+
+.pot-lock-summary > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.pot-lock-summary i {
+  color: #9aaab1;
+  font-size: .66rem;
+  font-style: normal;
+}
+
+.pot-lock-summary b,
+.pot-lock-summary em {
+  color: #aab9bd;
+  font: 400 clamp(.4rem, 1.7vw, .5rem) / 1.1 var(--font-pixel);
+  font-style: normal;
+  text-transform: uppercase;
+}
+
+.pot-lock-summary em {
+  flex: 0 0 auto;
+  color: #778b94;
+}
+
+.menu-level-map .pot-level-card.is-complete {
+  --pot-state-color: #6ce99f;
+  background:
+    linear-gradient(100deg, rgba(74, 222, 133, .2), transparent 58%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .022) 0 3px, transparent 3px 7px),
+    #123126;
+  filter: none;
+}
+
+.menu-level-map .pot-level-card.is-locked,
+.menu-level-map .pot-level-card:disabled {
+  --pot-state-color: #80919b;
+  opacity: .78;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, .025) 0 7px, transparent 7px 14px),
+    #11212c;
+  filter: saturate(.45);
+}
+
+.menu-level-map .pot-level-card.is-locked .pot-card-icon {
+  background: #6f818b;
+}
+
+.menu-level-map .pot-level-card.is-locked .pot-card-title-line > strong {
+  color: #c3ced0;
+  text-shadow: none;
+}
+
+.menu-level-map .pot-level-card.is-locked .pot-rule-ribbon {
+  opacity: .62;
+}
+
+.menu-level-map .pot-level-card.is-selected {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 0 0 2px var(--pot-state-color),
+    0 0 18px color-mix(in srgb, var(--pot-state-color) 42%, transparent),
+    3px 5px 0 rgba(2, 5, 10, .82);
+}
+
+.pot-selection-pointer {
+  bottom: -10px;
+  width: 15px !important;
+  height: 10px !important;
+  background: var(--pot-state-color) !important;
+}
+
+.pot-detail-shell {
+  margin-top: -3px;
+}
+
+.pot-detail-shell.is-open {
+  margin-top: 2px;
+}
+
+.pot-detail-panel {
+  gap: 10px;
+  padding: 13px 12px;
+  border: 2px solid #06101a;
+  box-shadow: inset 0 0 0 2px var(--pot-accent), 3px 4px 0 rgba(2, 5, 10, .82);
+}
+
+.pot-detail-panel > header {
+  gap: 4px;
+  text-align: left;
+}
+
+.pot-detail-panel > header strong {
+  font-size: clamp(.78rem, 3.6vw, 1.02rem);
+  text-shadow: 2px 2px 0 #402700;
+}
+
+.pot-detail-rule {
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.pot-detail-rule > i {
+  width: 46px;
+  height: 46px;
+  border-width: 2px;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .3), 2px 3px 0 #05070b;
+}
+
+.pot-detail-stats article {
+  min-height: 48px;
+  border-width: 1px;
+}
+
+.pot-play-button {
+  min-height: 54px;
+  box-shadow: inset 0 0 0 2px #ffe97d, 0 5px 0 #3d2605;
+}
