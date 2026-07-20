@@ -711,6 +711,12 @@ button.is-pressing:not(:disabled) {
   color: var(--suit-green);
 }
 
+.card-green .card-rank,
+.card-green .card-pips,
+.card-green .card-corner {
+  color: var(--suit-green);
+}
+
 .card:disabled {
   cursor: default;
 }
@@ -1758,6 +1764,12 @@ button.is-pressing:not(:disabled) {
 .cutin-card.card-clubs strong,
 .cutin-card.card-clubs .cutin-suit,
 .cutin-card.card-clubs .cutin-corner {
+  color: var(--suit-green);
+}
+
+.cutin-card.card-green strong,
+.cutin-card.card-green .cutin-suit,
+.cutin-card.card-green .cutin-corner {
   color: var(--suit-green);
 }
 

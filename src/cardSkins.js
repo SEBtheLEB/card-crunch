@@ -4,13 +4,15 @@ import {
   getCardCollectionSnapshot,
   getEquippedCardSkin as resolveCollectedCardSkin,
   isFullDeckSkinOwned,
-  setFullDeckSkin
-} from "./cardCollection.js?v=163";
+  setFullDeckSkin,
+  subscribeToCardCollection
+} from "./cardCollection.js?v=164";
 
 const CARD_SKIN_STORAGE_KEY = "cardCrunchCardSkin";
 const SKIN_CLASS_PREFIX = "card-skin-";
 const PINK_ARCADE_ASSET_ROOT = new URL("../assets/card-sets/pink_arcade/", import.meta.url);
 let pinkArcadePreloadPromise = null;
+let collectionSkinSyncInstalled = false;
 
 export const CARD_SKINS = Object.freeze({
   classic: { name: "Classic" },
@@ -26,7 +28,14 @@ export const CARD_SKINS = Object.freeze({
 });
 
 export function initializeCardSkin() {
-  return applyCardSkin(getCardCollectionSnapshot().fullDeckSkin, { persist: false });
+  const skinId = applyCardSkin(getCardCollectionSnapshot().fullDeckSkin, { persist: false });
+  if (!collectionSkinSyncInstalled) {
+    collectionSkinSyncInstalled = true;
+    subscribeToCardCollection((_snapshot, reason) => {
+      if (reason === "card-equip" || reason === "card-unequip") syncCardSkinFromCollection();
+    });
+  }
+  return skinId;
 }
 
 export function applyCardSkin(cardSkinId, { persist = true } = {}) {
@@ -66,6 +75,14 @@ export function getEquippedCardSkin(card) {
 
 export function getCardSkinClass(card) {
   return `${SKIN_CLASS_PREFIX}${getEquippedCardSkin(card)}`;
+}
+
+export function getCardVisualColorClass(card) {
+  const suit = String(card?.suit ?? "").toLowerCase();
+  if (suit === "clubs") return "green";
+  if (suit === "hearts" || suit === "diamonds") return "red";
+  if (suit === "spades") return "black";
+  return String(card?.color ?? "black").toLowerCase();
 }
 
 export function getCardSkinAssetUrl(card, skinId = getEquippedCardSkin(card)) {

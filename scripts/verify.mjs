@@ -629,6 +629,15 @@ if (!cardCollectionUiSource.includes("captureCollectionViewportState")
   || !cardCollectionUiSource.includes("renderCardCollection({ preserveMatrixScroll: false })")) {
   throw new Error("Card collection toggles must preserve the card matrix scroll position and focus");
 }
+if (!cardSkinSource.includes("getCardVisualColorClass")
+  || !cardSkinSource.includes('reason === "card-equip" || reason === "card-unequip"')
+  || !uiSource.includes("getCardVisualColorClass(card)")
+  || !cutsceneSource.includes("getCardVisualColorClass(card)")
+  || !cardCollectionSource.includes("resolveCardSkinFromState")
+  || !collectionCss.includes(".collection-card-slot.card-green")
+  || !collectionCss.includes(".card-skin-rainbow")) {
+  throw new Error("Equipped per-card skins and the green Club palette must stay consistent in game and cut-ins");
+}
 const roundStartSource = gameStateSource.slice(
   gameStateSource.indexOf("function startNewRound("),
   gameStateSource.indexOf("function startTimer()")

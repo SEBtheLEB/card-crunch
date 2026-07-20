@@ -1,5 +1,5 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=163";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=163";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=164";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=164";
 import {
   ARCADE_CONFIG,
   ARCADE_MODE,
@@ -9,24 +9,24 @@ import {
   isArcadeMode,
   isPowerCard,
   resolveArcadeCrunch
-} from "./arcadeMode.js?v=163";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=163";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=163";
-import { ensurePlayableRound } from "./handSafety.js?v=163";
-import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=163";
-import { formatCompactNumber } from "./format.js?v=163";
-import { adManager } from "./ads.js?v=163";
-import { submitBestScore } from "./playGames.js?v=163";
-import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=163";
-import { purchaseManager } from "./purchases.js?v=163";
-import { getRoundDealDuration } from "./dealTiming.js?v=163";
+} from "./arcadeMode.js?v=164";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=164";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=164";
+import { ensurePlayableRound } from "./handSafety.js?v=164";
+import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=164";
+import { formatCompactNumber } from "./format.js?v=164";
+import { adManager } from "./ads.js?v=164";
+import { submitBestScore } from "./playGames.js?v=164";
+import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=164";
+import { purchaseManager } from "./purchases.js?v=164";
+import { getRoundDealDuration } from "./dealTiming.js?v=164";
 import {
   animateBust,
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=163";
+} from "./animations.js?v=164";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;

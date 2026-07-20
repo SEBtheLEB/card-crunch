@@ -1,5 +1,5 @@
-import { playGameSfx } from "./audio.js?v=163";
-import { economy, ECONOMY_CONFIG } from "./economy.js?v=163";
+import { playGameSfx } from "./audio.js?v=164";
+import { economy, ECONOMY_CONFIG } from "./economy.js?v=164";
 import {
   CARD_RANKS,
   CARD_SUITS,
@@ -18,8 +18,8 @@ import {
   subscribeToCardCollection,
   unequipCollectedCard,
   unlockFullDeckSkin
-} from "./cardCollection.js?v=163";
-import { applyCardSkin, CARD_SKINS, preloadCardSkinAssets, syncCardSkinFromCollection } from "./cardSkins.js?v=163";
+} from "./cardCollection.js?v=164";
+import { applyCardSkin, CARD_SKINS, getCardVisualColorClass, preloadCardSkinAssets } from "./cardSkins.js?v=164";
 
 const SUIT_SYMBOLS = Object.freeze({ hearts: "\u2665", diamonds: "\u2666", clubs: "\u2663", spades: "\u2660" });
 const SKIN_ICONS = Object.freeze({ dark: "\u263E", pink: "\u2665", gold: "\u2605", rainbow: "\u25C6" });
@@ -201,7 +201,6 @@ function claimAndClosePack(shouldEquip) {
   }
   if (shouldEquip) {
     equipCollectedCard(reward.skinId, reward.key);
-    syncCardSkinFromCollection();
   }
   elements.overlay.classList.add("is-collecting");
   playGameSfx(shouldEquip ? "card_select" : "score_arrive");
@@ -392,7 +391,6 @@ function onCollectionCardAction(event) {
   const isEquipped = snapshot.fullDeckSkin === "custom" && snapshot.equippedByCard[key] === skinId;
   const changed = isEquipped ? unequipCollectedCard(key) : equipCollectedCard(skinId, key);
   if (!changed) return;
-  syncCardSkinFromCollection();
   const card = parseCardKey(key);
   setCollectionStatus(isEquipped
     ? `${card.rank} of ${capitalize(card.suit)} returned to the Default card.`
@@ -430,7 +428,7 @@ function setCollectionStatus(message) {
 }
 
 function getSuitColorClass(suit) {
-  return suit === "hearts" || suit === "diamonds" ? "red" : "black";
+  return getCardVisualColorClass({ suit });
 }
 
 function capitalize(value) {

@@ -1,4 +1,4 @@
-import { formatCompactNumber } from "./format.js?v=163";
+import { formatCompactNumber } from "./format.js?v=164";
 
 const SUIT_SYMBOLS = {
   hearts: "\u2665",

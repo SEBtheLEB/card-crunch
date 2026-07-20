@@ -83,11 +83,14 @@ export function getCardSkinRarity(skinId) {
 }
 
 export function getEquippedCardSkin(card) {
-  const state = ensureCollection();
-  if (state.fullDeckSkin !== "custom") return state.fullDeckSkin;
+  return resolveCardSkinFromState(ensureCollection(), card);
+}
+
+export function resolveCardSkinFromState(state, card) {
+  if (state?.fullDeckSkin !== "custom") return state?.fullDeckSkin ?? "classic";
   const key = createCardKey(card?.rank, card?.suit);
   const equipped = state.equippedByCard[key];
-  return equipped && isCardSkinOwned(equipped, key) ? equipped : "classic";
+  return equipped && state.owned?.[equipped]?.includes(key) ? equipped : "classic";
 }
 
 export function setFullDeckSkin(skinId) {
@@ -216,12 +219,23 @@ export function runCardCollectionSelfTests() {
   const epic = selectWeightedPackReward({}, 0.7);
   const legendary = selectWeightedPackReward({}, 0.9);
   const mythic = selectWeightedPackReward({}, 0.99);
+  const customState = {
+    fullDeckSkin: "custom",
+    owned: { dark: [], pink: [createCardKey("2", "clubs")], gold: [], rainbow: [createCardKey("9", "hearts")] },
+    equippedByCard: {
+      [createCardKey("2", "clubs")]: "pink",
+      [createCardKey("9", "hearts")]: "rainbow"
+    }
+  };
   return [
     { name: "52 unique playing cards", pass: keys.length === 52 && new Set(keys).size === 52 },
     { name: "208 duplicate-protected collectible rewards", pass: emptyPool.length === 208 },
     { name: "owned rewards leave the pack pool", pass: reducedPool.length === 207 && !reducedPool.some((entry) => entry.skinId === "dark" && entry.key === "A|hearts") },
     { name: "rarity ladder uses weighted skin rolls", pass: rare?.skinId === "gold" && epic?.skinId === "pink" && legendary?.skinId === "dark" && mythic?.skinId === "rainbow" },
-    { name: "rainbow is the highest rarity", pass: getCardSkinRarity("rainbow").order > getCardSkinRarity("dark").order && getCardSkinRarity("dark").order > getCardSkinRarity("pink").order }
+    { name: "rainbow is the highest rarity", pass: getCardSkinRarity("rainbow").order > getCardSkinRarity("dark").order && getCardSkinRarity("dark").order > getCardSkinRarity("pink").order },
+    { name: "individual club skin resolves in game", pass: resolveCardSkinFromState(customState, { rank: "2", suit: "clubs" }) === "pink" },
+    { name: "individual rainbow skin resolves in game", pass: resolveCardSkinFromState(customState, { rank: "9", suit: "hearts" }) === "rainbow" },
+    { name: "unmapped custom card falls back to classic", pass: resolveCardSkinFromState(customState, { rank: "K", suit: "spades" }) === "classic" }
   ];
 }
 
@@ -251,7 +265,7 @@ function normalizeCollection(saved) {
     ? "classic"
     : requestedFullDeckSkin;
   const state = {
-    version: 3,
+    version: 4,
     owned: Object.fromEntries(COLLECTIBLE_SKIN_IDS.map((skinId) => [skinId, []])),
     equippedByCard: {},
     fullDeckSkin,
@@ -270,6 +284,10 @@ function normalizeCollection(saved) {
         state.equippedByCard[key] = skinId;
       }
     });
+  }
+
+  if (state.fullDeckSkin === "custom" && Object.keys(state.equippedByCard).length === 0) {
+    state.fullDeckSkin = "classic";
   }
 
   const pending = saved?.pendingReward;

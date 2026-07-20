@@ -1,8 +1,8 @@
-import { formatCompactNumber } from "./format.js?v=163";
-import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=163";
-import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=163";
-import { getPowerCardDetails } from "./arcadeMode.js?v=163";
-import { createScoreSurgePlan } from "./scoreSurge.js?v=163";
+import { formatCompactNumber } from "./format.js?v=164";
+import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=164";
+import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle, getCardVisualColorClass } from "./cardSkins.js?v=164";
+import { getPowerCardDetails } from "./arcadeMode.js?v=164";
+import { createScoreSurgePlan } from "./scoreSurge.js?v=164";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -811,7 +811,9 @@ function spawnCrunchDamageBurst(overlay, cards, hit) {
     };
     const palette = card.classList.contains("card-red")
       ? ["#fff0c6", "#e74a5f", "#792031"]
-      : ["#fff0c6", "#26324b", "#111827"];
+      : card.classList.contains("card-clubs")
+        ? ["#fff0c6", "#2ecc80", "#11623d"]
+        : ["#fff0c6", "#26324b", "#111827"];
 
     for (let index = 0; index < perCard; index += 1) {
       const horizontalBias = nextRandom() < .5 ? -1 : 1;
@@ -1187,6 +1189,7 @@ function playTapBounce(overlay) {
 function createCutinCardMarkup(card, extraClass = "") {
   if (!card) return "";
   const skinClass = getCardSkinClass(card);
+  const visualColorClass = getCardVisualColorClass(card);
   const skinStyle = getCardSkinStyle(card);
   const skinAssetUrl = getCardSkinAssetUrl(card);
   const power = getPowerCardDetails(card);
@@ -1205,7 +1208,7 @@ function createCutinCardMarkup(card, extraClass = "") {
       ${power ? `<span class="power-card-kicker">CHARGED</span><small class="power-card-tooltip">SCORE x2</small>` : ""}
     `;
   return `
-    <div class="cutin-card card-${card.color} card-${card.suit} ${skinClass} ${powerClass} ${extraClass}" data-cutin-card-id="${card.id}" data-card-rank="${card.rank}" data-card-suit="${card.suit}"${card.powerType ? ` data-power-type="${card.powerType}"` : ""} data-equipped-skin="${skinClass.replace("card-skin-", "")}"${skinStyle ? ` style="${skinStyle}"` : ""}>
+    <div class="cutin-card card-${visualColorClass} card-${card.suit} ${skinClass} ${powerClass} ${extraClass}" data-cutin-card-id="${card.id}" data-card-rank="${card.rank}" data-card-suit="${card.suit}"${card.powerType ? ` data-power-type="${card.powerType}"` : ""} data-equipped-skin="${skinClass.replace("card-skin-", "")}"${skinStyle ? ` style="${skinStyle}"` : ""}>
       ${skinAssetUrl ? `<img class="card-skin-art" src="${skinAssetUrl}" alt="" decoding="async" draggable="false">` : ""}
       ${content}
     </div>

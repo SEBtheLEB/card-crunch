@@ -1,13 +1,13 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=163";
-import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=163";
-import { isPotUnlocked } from "./progression.js?v=163";
-import { formatCompactNumber } from "./format.js?v=163";
-import { hasShieldToken } from "./save.js?v=163";
-import { bindInstantAction } from "./input.js?v=163";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=163";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=163";
-import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=163";
-import { getPotRuleFacts, renderPotInfo } from "./potInfo.js?v=163";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=164";
+import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=164";
+import { isPotUnlocked } from "./progression.js?v=164";
+import { formatCompactNumber } from "./format.js?v=164";
+import { hasShieldToken } from "./save.js?v=164";
+import { bindInstantAction } from "./input.js?v=164";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=164";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=164";
+import { applyCardSkinPresentation, getCardSkinClass, getCardVisualColorClass } from "./cardSkins.js?v=164";
+import { getPotRuleFacts, renderPotInfo } from "./potInfo.js?v=164";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -1369,9 +1369,10 @@ function getRunEndCopy(summary, potComplete) {
 function createCard(card, options = {}) {
   const element = document.createElement(options.isButton ? "button" : "div");
   const skinClass = getCardSkinClass(card);
+  const visualColorClass = getCardVisualColorClass(card);
   const powerDetails = getPowerCardDetails(card);
   const powerClass = card.powerType ? `power-card power-card-${card.powerType}` : "";
-  element.className = `card card-${card.color} card-${card.suit} ${skinClass} ${powerClass}`;
+  element.className = `card card-${visualColorClass} card-${card.suit} ${skinClass} ${powerClass}`;
   element.type = options.isButton ? "button" : undefined;
   element.dataset.cardRank = card.rank;
   element.dataset.cardSuit = card.suit;
