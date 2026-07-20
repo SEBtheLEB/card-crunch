@@ -18,7 +18,9 @@ import { formatCompactNumber } from "./format.js?v=164";
 import { adManager } from "./ads.js?v=164";
 import { submitBestScore } from "./playGames.js?v=164";
 import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=164";
-import { purchaseManager } from "./purchases.js?v=164";
+import { purchaseManager } from "./purchases.js?v=166";
+import { mergeCardCollectionSnapshot } from "./cardCollection.js?v=167";
+import { storeState } from "./storeState.js?v=167";
 import { getRoundDealDuration } from "./dealTiming.js?v=164";
 import {
   animateBust,
@@ -1038,6 +1040,8 @@ export function createGame(ui) {
     const localCoins = economy.getSnapshot().coins;
     const remoteCoins = Math.max(0, Math.floor(Number(stats.coins) || 0));
     if (remoteCoins > localCoins) economy.addCoins(remoteCoins - localCoins);
+    mergeCardCollectionSnapshot(gameEntry.progress?.cardCollection);
+    storeState.mergeRemoteSnapshot(gameEntry.progress?.store);
     ui.renderMap(state.pots, handlers);
     ui.renderMenuStats(state);
   }

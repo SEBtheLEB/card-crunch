@@ -549,6 +549,7 @@ function showMenuPage(elements, pageName = "home") {
   const isHomePage = pageName === "home";
   elements.startScreen.classList.toggle("is-home-page", isHomePage);
   elements.startScreen.classList.toggle("is-pots-page", pageName === "pots");
+  elements.startScreen.classList.toggle("is-store-page", pageName === "shop");
   if (isHomePage) elements.startScreen.scrollTop = 0;
   elements.startScreen.querySelectorAll("[data-page]").forEach((page) => {
     page.classList.toggle("is-active", page.dataset.page === pageName);

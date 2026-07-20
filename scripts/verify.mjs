@@ -18,6 +18,9 @@ const required = [
   "src/cardSkins.js",
   "src/cardCollection.js",
   "src/cardCollectionUI.js",
+  "src/store.js",
+  "src/storeProducts.js",
+  "src/storeState.js",
   "src/potInfo.js",
   "src/tutorial.js",
   "src/economy.js",
@@ -33,6 +36,7 @@ const required = [
   "assets/card-sets/pink_arcade/previews/full-deck-preview.png",
   "styles/main.css",
   "styles/collection.css",
+  "styles/store.css",
   "capacitor.config.json"
 ];
 
@@ -138,10 +142,10 @@ if (!backgroundStyles.includes("--casino-table-bg:")
 if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButton")) {
   throw new Error("Release UI hooks are missing");
 }
-if ((html.match(/data-fullscreen-toggle/g) ?? []).length !== 2) {
+if ((html.match(/data-fullscreen-toggle/g) ?? []).length < 2) {
   throw new Error("Menu and gameplay fullscreen controls are missing");
 }
-if (!html.includes("summaryCoins") || !html.includes("storeCoinsValue") || !html.includes("buyShieldButton")) {
+if (!html.includes("summaryCoins") || !html.includes("storeCoinsValue") || !html.includes("storeContent")) {
   throw new Error("Economy UI hooks are missing");
 }
 if (!html.includes('id="potInfoButton"')
@@ -155,13 +159,10 @@ if (/energy|recharge/i.test(html)) {
 if ((html.match(/data-theme-id=/g) ?? []).length !== 3 || !html.includes("gold-table") || !html.includes("knight-deck")) {
   throw new Error("Selectable theme controls are missing");
 }
-if ((html.match(/data-card-skin-id=/g) ?? []).length !== 6
-  || !html.includes("skin-preview-rainbow")
-  || !html.includes("buyPinkArcadeDeckButton")
-  || !html.includes("skin-preview-pink-arcade")) {
-  throw new Error("Selectable card skin controls are missing");
+if (!html.includes("storeTabs") || !html.includes("storeCollectionPanel") || !html.includes("storePurchaseOverlay")) {
+  throw new Error("Data-driven Store tab or purchase hooks are missing");
 }
-if (!html.includes("buyMysteryPackButton") || !html.includes("packOpeningOverlay") || !html.includes("collectionDeckList") || !html.includes("collectionDetail")) {
+if (!html.includes("packOpeningOverlay") || !html.includes("collectionDeckList") || !html.includes("collectionDetail")) {
   throw new Error("Mystery pack or 52-card collection UI hooks are missing");
 }
 if (!html.includes("run-scoreboard") || !html.includes("summaryRecoveryTicker")) {
@@ -192,7 +193,9 @@ const accountStorage = new Map([
   ["cardCrunchBestScore", "1250000"],
   ["cardCrunchBestStreak", "12"],
   ["cardCrunchTotalCrunches", "345"],
-  ["cardCrunchCoins", "890"]
+  ["cardCrunchCoins", "890"],
+  ["cardCrunchStoreV1", JSON.stringify({ dailyClaims: { "daily-free-pack": "2026-07-20" } })],
+  ["cardCrunchCardCollectionV1", JSON.stringify({ owned: { gold: ["9|hearts"] } })]
 ]);
 const accountSnapshot = accountModule.buildCardCrunchProgressSnapshot({
   state: { pots: Array.from({ length: 12 }, (_, index) => ({ id: index + 1, progress: 100, target: 100, complete: true })) },
@@ -202,7 +205,9 @@ if (accountModule.STL_ACCOUNT_API_BASE !== "https://stlproductionz.io/api/games"
   || accountSnapshot.stats.bestScore !== 1250000
   || accountSnapshot.stats.potsCleared !== 12
   || accountSnapshot.totals.achievements !== 4
-  || !accountSnapshot.achievements["million-run"].unlocked) {
+  || !accountSnapshot.achievements["million-run"].unlocked
+  || accountSnapshot.progress.store.dailyClaims["daily-free-pack"] !== "2026-07-20"
+  || accountSnapshot.progress.cardCollection.owned.gold[0] !== "9|hearts") {
   throw new Error("Card Crunch shared-account progress mapping is incomplete");
 }
 const lowReward = economyModule.calculateRunCoinReward({ grossCash: 100_000, bestStreak: 2 });
@@ -213,8 +218,16 @@ if (lowReward.total <= 0 || highReward.total <= lowReward.total) {
 if ("energyPerRun" in economyModule.ECONOMY_CONFIG || "calculateRegeneratedEnergy" in economyModule) {
   throw new Error("Energy gating still exists in the economy module");
 }
-if (economyModule.ECONOMY_CONFIG.mysteryCardPackCost <= 0 || economyModule.ECONOMY_CONFIG.pinkArcadeDeckCost <= 0) {
-  throw new Error("Mystery packs and premium decks need positive coin prices");
+const storeProductsModule = await import(`../src/storeProducts.js?verify=${Date.now()}`);
+const storeProducts = storeProductsModule.STORE_PRODUCTS;
+const coinPacks = storeProducts.filter((product) => ["generic_card_pack", "themed_card_pack"].includes(product.productType));
+const fullDecks = storeProducts.filter((product) => product.productType === "full_deck");
+if (new Set(storeProducts.map((product) => product.id)).size !== storeProducts.length
+  || coinPacks.length < 4
+  || coinPacks.some((product) => product.currencyType !== "coins" || product.cardsAwarded !== 1 || product.unlockEntireCollection || !/pack/i.test(product.displayName))
+  || fullDecks.length < 3
+  || fullDecks.some((product) => product.currencyType !== "real_money" || !product.unlockEntireCollection || !product.platformProductId || !/full deck/i.test(product.displayName))) {
+  throw new Error("Store products do not clearly separate coin packs from verified full-deck purchases");
 }
 const milestoneReward = economyModule.calculateCrunchMilestoneCoinReward({ fromCash: 90_000, toCash: 310_000 });
 if (milestoneReward.milestones !== 3 || milestoneReward.coins !== 30) {
@@ -241,7 +254,7 @@ if (!cardSkinModule.getCardSkinAssetUrl({ rank: "A", suit: "hearts" }, "pink_arc
   throw new Error("Pink Arcade rank and suit asset mapping is incorrect");
 }
 
-const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollectionSource, cardCollectionUiSource, cardGestureSource, dealTimingSource, gameStateSource, uiSource, css, collectionCss] = await Promise.all([
+const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollectionSource, cardCollectionUiSource, cardGestureSource, dealTimingSource, gameStateSource, uiSource, storeSource, css, collectionCss, storeCss] = await Promise.all([
   readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
   readFile(resolve(root, "src/animations.js"), "utf8"),
   readFile(resolve(root, "src/themes.js"), "utf8"),
@@ -252,8 +265,10 @@ const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollec
   readFile(resolve(root, "src/dealTiming.js"), "utf8"),
   readFile(resolve(root, "src/gameState.js"), "utf8"),
   readFile(resolve(root, "src/ui.js"), "utf8"),
+  readFile(resolve(root, "src/store.js"), "utf8"),
   readFile(resolve(root, "styles/main.css"), "utf8"),
-  readFile(resolve(root, "styles/collection.css"), "utf8")
+  readFile(resolve(root, "styles/collection.css"), "utf8"),
+  readFile(resolve(root, "styles/store.css"), "utf8")
 ]);
 const mainSource = await readFile(resolve(root, "src/main.js"), "utf8");
 const tutorialSource = await readFile(resolve(root, "src/tutorial.js"), "utf8");
@@ -285,9 +300,10 @@ if (!cardCollectionSource.includes("buildCollectiblePool")
   || !cardCollectionSource.includes("CARD_SKIN_RARITIES")
   || !cardCollectionSource.includes("selectWeightedPackReward")
   || !cardCollectionSource.includes("unlockFullDeckSkin")
-  || !cardCollectionUiSource.includes("createPendingPackReward")
+  || !storeSource.includes("createPendingPackReward")
   || !cardCollectionUiSource.includes("getCardSkinRarity")
-  || !cardCollectionUiSource.includes("buyOrEquipPinkArcadeDeck")
+  || !storeSource.includes("confirmRealMoneyPurchase")
+  || !storeSource.includes("registerVerifiedTransaction")
   || !uiSource.includes("getCardSkinClass")
   || !cutsceneSource.includes("getCardSkinClass")
   || !cutsceneSource.includes('class="card-skin-art"')
@@ -297,6 +313,8 @@ if (!cardCollectionSource.includes("buildCollectiblePool")
   || !css.includes(".card.card-skin-pink_arcade")
   || !css.includes(".card-skin-art")
   || !collectionCss.includes(".pack-opening-overlay")
+  || !storeCss.includes(".store-tabs")
+  || !storeCss.includes(".store-product-card")
   || !collectionCss.includes(".rarity-mythic")
   || !collectionCss.includes(".collection-card-matrix")) {
   throw new Error("Rarity-weighted packs, per-card equips, or collection visuals are incomplete");

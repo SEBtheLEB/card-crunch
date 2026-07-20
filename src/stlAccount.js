@@ -114,6 +114,7 @@ export class STLAccountClient extends EventTarget {
 
 export function initializeSTLAccount({ getState, applyCloudProgress, bindAction } = {}) {
   const client = new STLAccountClient();
+  let syncTimer = 0;
   const elements = {
     signedOut: document.querySelector("#stlAccountSignedOut"),
     signedIn: document.querySelector("#stlAccountSignedIn"),
@@ -173,6 +174,12 @@ export function initializeSTLAccount({ getState, applyCloudProgress, bindAction 
     }
   };
 
+  const scheduleSync = () => {
+    if (!client.signedIn) return;
+    globalThis.clearTimeout(syncTimer);
+    syncTimer = globalThis.setTimeout(() => sync({ quiet: true }), 800);
+  };
+
   const hydrate = async () => {
     render();
     if (!client.signedIn) {
@@ -220,6 +227,8 @@ export function initializeSTLAccount({ getState, applyCloudProgress, bindAction 
   window.addEventListener("focus", () => {
     if (client.signedIn) sync({ quiet: true });
   });
+  window.addEventListener("card-crunch-store-change", scheduleSync);
+  window.addEventListener("card-crunch-collection-change", scheduleSync);
   hydrate();
   return { client, sync };
 }
@@ -231,6 +240,8 @@ export function buildCardCrunchProgressSnapshot({ state = {}, storage = globalTh
   const pots = Array.isArray(state.pots) ? state.pots : readJson(storage, "cardCrunchLevelPots", []);
   const potsCleared = pots.filter((pot) => pot?.complete || Number(pot?.progress) >= Number(pot?.target) && Number(pot?.target) > 0).length;
   const coins = Math.max(0, integer(readNumber(storage, "cardCrunchCoins")));
+  const store = readJson(storage, "cardCrunchStoreV1", {});
+  const cardCollection = readJson(storage, "cardCrunchCardCollectionV1", {});
   const now = new Date().toISOString();
   const achievementSpecs = [
     ["first-crunch", "First Crunch", "Complete your first successful Crunch.", totalCrunches >= 1, Math.min(1, totalCrunches)],
@@ -254,7 +265,9 @@ export function buildCardCrunchProgressSnapshot({ state = {}, storage = globalTh
     progress: {
       version: 1,
       pots: pots.map((pot) => ({ id: integer(pot?.id), progress: Math.max(0, Number(pot?.progress) || 0), complete: Boolean(pot?.complete) })),
-      wallet: { coins }
+      wallet: { coins },
+      store,
+      cardCollection
     },
     metadata: { platform: "card-crunch-web", syncedAt: now }
   };

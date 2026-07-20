@@ -43,13 +43,16 @@ function armFirstGestureFullscreen() {
   if (firstGestureArmed) return;
   firstGestureArmed = true;
 
-  const onFirstGesture = async (event) => {
+  const onFirstGesture = (event) => {
     if (event.target?.closest?.("[data-fullscreen-toggle]")) {
       disarm();
       return;
     }
     disarm();
-    await enterFullscreen();
+    // Let the tapped control finish its own pointer/click action before the
+    // browser changes display mode. Some mobile browsers cancel the target
+    // event when fullscreen begins inside the capture phase.
+    window.setTimeout(() => enterFullscreen(), 0);
   };
   const disarm = () => {
     firstGestureArmed = false;

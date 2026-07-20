@@ -4,6 +4,7 @@ export const CARD_RANKS = Object.freeze(["A", "2", "3", "4", "5", "6", "7", "8",
 export const CARD_SUITS = Object.freeze(["hearts", "diamonds", "clubs", "spades"]);
 export const COLLECTIBLE_SKIN_IDS = Object.freeze(["dark", "pink", "gold", "rainbow"]);
 export const PREMIUM_FULL_DECK_SKIN_IDS = Object.freeze(["pink_arcade"]);
+export const PURCHASABLE_FULL_DECK_SKIN_IDS = Object.freeze([...COLLECTIBLE_SKIN_IDS, ...PREMIUM_FULL_DECK_SKIN_IDS]);
 
 // Pack odds are applied per skin first, then a random missing rank/suit is
 // chosen from that skin. This keeps a nearly-complete common set from making
@@ -22,7 +23,7 @@ const SUIT_SYMBOLS = Object.freeze({
   spades: "\u2660"
 });
 
-const VALID_FULL_DECK_SKINS = new Set(["classic", ...COLLECTIBLE_SKIN_IDS, ...PREMIUM_FULL_DECK_SKIN_IDS, "custom"]);
+const VALID_FULL_DECK_SKINS = new Set(["classic", ...PURCHASABLE_FULL_DECK_SKIN_IDS, "custom"]);
 let collectionState = null;
 const listeners = new Set();
 
@@ -49,6 +50,46 @@ export function subscribeToCardCollection(listener) {
   return () => listeners.delete(listener);
 }
 
+export function mergeCardCollectionSnapshot(remote = {}) {
+  if (!remote || typeof remote !== "object") return false;
+  const state = ensureCollection();
+  const before = JSON.stringify(state);
+
+  const remotePurchased = Array.isArray(remote.purchasedFullDeckSkins)
+    ? remote.purchasedFullDeckSkins.filter((skinId) => PURCHASABLE_FULL_DECK_SKIN_IDS.includes(skinId))
+    : [];
+  state.purchasedFullDeckSkins = [...new Set([...state.purchasedFullDeckSkins, ...remotePurchased])];
+
+  COLLECTIBLE_SKIN_IDS.forEach((skinId) => {
+    const remoteOwned = Array.isArray(remote.owned?.[skinId]) ? remote.owned[skinId].filter(isValidCardKey) : [];
+    state.owned[skinId] = state.purchasedFullDeckSkins.includes(skinId)
+      ? getAllCardKeys()
+      : [...new Set([...state.owned[skinId], ...remoteOwned])];
+  });
+
+  if (remote.equippedByCard && typeof remote.equippedByCard === "object") {
+    Object.entries(remote.equippedByCard).forEach(([cardKey, skinId]) => {
+      if (isValidCardKey(cardKey) && COLLECTIBLE_SKIN_IDS.includes(skinId) && state.owned[skinId].includes(cardKey)) {
+        state.equippedByCard[cardKey] = skinId;
+      }
+    });
+  }
+
+  const remoteFullDeck = VALID_FULL_DECK_SKINS.has(remote.fullDeckSkin) ? remote.fullDeckSkin : null;
+  if (state.fullDeckSkin === "classic" && remoteFullDeck && (
+    remoteFullDeck === "classic"
+    || remoteFullDeck === "custom"
+    || state.purchasedFullDeckSkins.includes(remoteFullDeck)
+    || (COLLECTIBLE_SKIN_IDS.includes(remoteFullDeck) && state.owned[remoteFullDeck].length >= 52)
+  )) {
+    state.fullDeckSkin = remoteFullDeck;
+  }
+
+  if (before === JSON.stringify(state)) return false;
+  commitCollection("cloud-merge");
+  return true;
+}
+
 export function createCardKey(rank, suit) {
   return `${String(rank).toUpperCase()}|${String(suit).toLowerCase()}`;
 }
@@ -69,13 +110,16 @@ export function getAllCardKeys() {
 
 export function getCollectionProgress(skinId) {
   if (skinId === "classic") return { owned: 52, total: 52, complete: true };
+  if (ensureCollection().purchasedFullDeckSkins.includes(skinId)) return { owned: 52, total: 52, complete: true };
   const owned = ensureCollection().owned[skinId]?.length ?? 0;
   return { owned, total: 52, complete: owned >= 52 };
 }
 
 export function isCardSkinOwned(skinId, cardKey) {
   if (skinId === "classic") return true;
-  return ensureCollection().owned[skinId]?.includes(cardKey) ?? false;
+  const state = ensureCollection();
+  if (state.purchasedFullDeckSkins.includes(skinId)) return true;
+  return state.owned[skinId]?.includes(cardKey) ?? false;
 }
 
 export function getCardSkinRarity(skinId) {
@@ -96,7 +140,7 @@ export function resolveCardSkinFromState(state, card) {
 export function setFullDeckSkin(skinId) {
   const state = ensureCollection();
   const resolved = VALID_FULL_DECK_SKINS.has(skinId) ? skinId : "classic";
-  if (PREMIUM_FULL_DECK_SKIN_IDS.includes(resolved) && !state.purchasedFullDeckSkins.includes(resolved)) {
+  if (!isFullDeckSkinOwned(resolved)) {
     return state.fullDeckSkin;
   }
   if (state.fullDeckSkin === resolved) return resolved;
@@ -106,15 +150,18 @@ export function setFullDeckSkin(skinId) {
 }
 
 export function isFullDeckSkinOwned(skinId) {
-  if (skinId === "classic" || skinId === "custom" || COLLECTIBLE_SKIN_IDS.includes(skinId)) return true;
-  return PREMIUM_FULL_DECK_SKIN_IDS.includes(skinId) && ensureCollection().purchasedFullDeckSkins.includes(skinId);
+  if (skinId === "classic" || skinId === "custom") return true;
+  const state = ensureCollection();
+  if (state.purchasedFullDeckSkins.includes(skinId)) return true;
+  return COLLECTIBLE_SKIN_IDS.includes(skinId) && (state.owned[skinId]?.length ?? 0) >= 52;
 }
 
 export function unlockFullDeckSkin(skinId) {
   const state = ensureCollection();
-  if (!PREMIUM_FULL_DECK_SKIN_IDS.includes(skinId)) return false;
+  if (!PURCHASABLE_FULL_DECK_SKIN_IDS.includes(skinId)) return false;
   if (state.purchasedFullDeckSkins.includes(skinId)) return true;
   state.purchasedFullDeckSkins.push(skinId);
+  if (COLLECTIBLE_SKIN_IDS.includes(skinId)) state.owned[skinId] = getAllCardKeys();
   commitCollection("premium-deck-unlocked");
   return true;
 }
@@ -139,15 +186,29 @@ export function unequipCollectedCard(cardKey) {
   return true;
 }
 
-export function createPendingPackReward(randomValue = secureRandom()) {
+export function createPendingPackReward(options = {}, randomValue = secureRandom()) {
   const state = ensureCollection();
   if (state.pendingReward) return { ...state.pendingReward };
-  const reward = selectWeightedPackReward(state.owned, randomValue);
+  const normalizedOptions = typeof options === "number"
+    ? { randomValue: options }
+    : options && typeof options === "object"
+      ? options
+      : {};
+  const roll = normalizedOptions.randomValue ?? randomValue;
+  const collectionId = COLLECTIBLE_SKIN_IDS.includes(normalizedOptions.collectionId)
+    ? normalizedOptions.collectionId
+    : null;
+  const reward = collectionId
+    ? selectCollectionPackReward(state.owned, collectionId, roll)
+    : selectWeightedPackReward(state.owned, roll);
   if (!reward) return null;
-  const normalizedRandom = normalizeRandom(randomValue);
+  const normalizedRandom = normalizeRandom(roll);
   state.pendingReward = {
     id: `pack-${Date.now()}-${Math.floor(normalizedRandom * 1_000_000)}`,
     ...reward,
+    productId: String(normalizedOptions.productId ?? "mystery-card-pack"),
+    productName: String(normalizedOptions.productName ?? "Mystery Card Pack"),
+    sourceCollectionId: collectionId,
     createdAt: Date.now()
   };
   commitCollection("pack-created");
@@ -210,6 +271,21 @@ export function selectWeightedPackReward(owned = {}, randomValue = 0) {
   };
 }
 
+export function selectCollectionPackReward(owned = {}, skinId, randomValue = 0) {
+  if (!COLLECTIBLE_SKIN_IDS.includes(skinId)) return null;
+  const ownedSet = new Set(Array.isArray(owned[skinId]) ? owned[skinId] : []);
+  const available = getAllCardKeys().filter((key) => !ownedSet.has(key));
+  if (!available.length) return null;
+  const key = available[Math.floor(normalizeRandom(randomValue) * available.length)];
+  const rarity = getCardSkinRarity(skinId);
+  return {
+    skinId,
+    rarityId: rarity.id,
+    rarityLabel: rarity.label,
+    ...parseCardKey(key)
+  };
+}
+
 export function runCardCollectionSelfTests() {
   const keys = getAllCardKeys();
   const emptyPool = buildCollectiblePool({});
@@ -257,15 +333,16 @@ function normalizeCollection(saved) {
   const legacySkin = readLegacyFullDeckSkin();
   const purchasedFullDeckSkins = [...new Set(
     (Array.isArray(saved?.purchasedFullDeckSkins) ? saved.purchasedFullDeckSkins : [])
-      .filter((skinId) => PREMIUM_FULL_DECK_SKIN_IDS.includes(skinId))
+      .filter((skinId) => PURCHASABLE_FULL_DECK_SKIN_IDS.includes(skinId))
   )];
   const requestedFullDeckSkin = VALID_FULL_DECK_SKINS.has(saved?.fullDeckSkin) ? saved.fullDeckSkin : legacySkin;
-  const fullDeckSkin = PREMIUM_FULL_DECK_SKIN_IDS.includes(requestedFullDeckSkin)
+  const fullDeckSkin = PURCHASABLE_FULL_DECK_SKIN_IDS.includes(requestedFullDeckSkin)
     && !purchasedFullDeckSkins.includes(requestedFullDeckSkin)
+    && !(COLLECTIBLE_SKIN_IDS.includes(requestedFullDeckSkin) && (saved?.owned?.[requestedFullDeckSkin]?.length ?? 0) >= 52)
     ? "classic"
     : requestedFullDeckSkin;
   const state = {
-    version: 4,
+    version: 5,
     owned: Object.fromEntries(COLLECTIBLE_SKIN_IDS.map((skinId) => [skinId, []])),
     equippedByCard: {},
     fullDeckSkin,
@@ -275,7 +352,9 @@ function normalizeCollection(saved) {
 
   COLLECTIBLE_SKIN_IDS.forEach((skinId) => {
     const entries = Array.isArray(saved?.owned?.[skinId]) ? saved.owned[skinId] : [];
-    state.owned[skinId] = [...new Set(entries.filter(isValidCardKey))];
+    state.owned[skinId] = state.purchasedFullDeckSkins.includes(skinId)
+      ? getAllCardKeys()
+      : [...new Set(entries.filter(isValidCardKey))];
   });
 
   if (saved?.equippedByCard && typeof saved.equippedByCard === "object") {
@@ -298,6 +377,9 @@ function normalizeCollection(saved) {
       rarityId: getCardSkinRarity(pending.skinId).id,
       rarityLabel: getCardSkinRarity(pending.skinId).label,
       ...parseCardKey(pending.key),
+      productId: String(pending.productId ?? "mystery-card-pack"),
+      productName: String(pending.productName ?? "Mystery Card Pack"),
+      sourceCollectionId: COLLECTIBLE_SKIN_IDS.includes(pending.sourceCollectionId) ? pending.sourceCollectionId : null,
       createdAt: Number(pending.createdAt) || Date.now()
     };
   }

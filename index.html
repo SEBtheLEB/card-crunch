@@ -16,8 +16,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/main.css?v=164">
-  <link rel="stylesheet" href="styles/collection.css?v=164">
+  <link rel="stylesheet" href="styles/main.css?v=167">
+  <link rel="stylesheet" href="styles/collection.css?v=167">
+  <link rel="stylesheet" href="styles/store.css?v=167">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -242,94 +243,32 @@
             <p class="play-games-status" id="playLeaderboardStatus" aria-live="polite">Your best run is submitted when a run ends.</p>
           </section>
 
-          <section class="menu-page" data-page="shop" aria-labelledby="shopTitle">
-            <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
-            <h2 id="shopTitle">Store</h2>
-            <div class="store-wallet" aria-label="Wallet">
-              <span><i aria-hidden="true">&#9670;</i><b id="storeCoinsValue">0</b> Coins</span>
+          <section class="menu-page store-page" data-page="shop" aria-labelledby="shopTitle">
+            <div class="store-page-heading">
+              <button class="page-back-button store-home-button" data-menu-page="home" type="button">&lsaquo; Home</button>
+              <div><span>Card Crunch</span><h2 id="shopTitle">Store</h2></div>
+              <button class="store-restore-button" type="button" data-store-action="restore-purchases">Restore</button>
             </div>
-            <p class="store-status" id="storeStatus" aria-live="polite">Earn coins from runs and spend them on useful boosts.</p>
-            <div class="store-grid">
-              <button class="store-item mystery-pack-store-item" id="buyMysteryPackButton" type="button">
-                <i aria-hidden="true">?</i>
-                <strong>Mystery Card Pack</strong>
-                <span id="mysteryPackPrice">125 Coins</span>
-                <small>208 new cards remain</small>
+
+            <header class="store-wallet-bar" aria-label="Store wallet and utilities">
+              <button class="store-wallet-main" type="button" data-store-action="open-coins" aria-label="Open Coins tab">
+                <span class="store-coin-icon" aria-hidden="true">&#9670;</span>
+                <span><small>Coins</small><strong id="storeCoinsValue">0</strong></span>
+                <i aria-hidden="true">+</i>
               </button>
-              <button class="store-item pink-arcade-store-item" id="buyPinkArcadeDeckButton" type="button">
-                <span class="pink-arcade-store-art" aria-hidden="true">
-                  <img src="assets/card-sets/pink_arcade/previews/card-back-preview.png" alt="">
-                  <i>52</i>
-                </span>
-                <strong>Pink Arcade Deck</strong>
-                <span id="pinkArcadeDeckPrice">1,500 Coins</span>
-                <small>Complete 52-card pixel deck</small>
-              </button>
-              <button class="store-item shield-store-item" id="buyShieldButton" type="button">
-                <i aria-hidden="true">&#9829;</i>
-                <strong>Bank Shield</strong>
-                <span id="buyShieldPrice">500 Coins</span>
-                <small>Save 25% when a run busts</small>
-              </button>
-              <button class="store-item ad-store-item" id="watchCoinAdButton" type="button">
-                <i aria-hidden="true">&#9670;</i>
-                <strong>Coin Drop</strong>
-                <span>Watch Ad &middot; +125</span>
-                <small id="coinAdsRemaining">3 left today</small>
-              </button>
-              <button class="store-item premium-store-item" id="buyCoinPackButton" type="button">
-                <i aria-hidden="true">&#9733;</i>
-                <strong>Coin Vault</strong>
-                <span>1,500 Coins &middot; $1.99</span>
-                <small>Google Play purchase</small>
-              </button>
+              <span class="store-wallet-divider" aria-hidden="true"></span>
+              <button class="store-wallet-tool" data-menu-page="leaderboard" type="button" aria-label="Leaderboard"><span aria-hidden="true">&#9819;</span></button>
+              <button class="store-wallet-tool fullscreen-toggle-button" data-fullscreen-toggle type="button" aria-label="Enter full screen" aria-pressed="false"><span class="fullscreen-icon" aria-hidden="true">&#x26F6;</span></button>
+              <button class="store-wallet-tool" data-menu-page="settings" type="button" aria-label="Settings"><span aria-hidden="true">&#9881;</span></button>
+            </header>
+
+            <div class="store-tabs" id="storeTabs" role="tablist" aria-label="Store sections"></div>
+            <p class="store-status" id="storeStatus" aria-live="polite">Daily rewards and featured offers are ready.</p>
+            <div class="store-scroll" id="storeScroll">
+              <div class="store-content" id="storeContent"></div>
             </div>
-            <section class="skin-store-section" aria-labelledby="skinStoreTitle">
-              <div class="skin-store-heading">
-                <div>
-                  <span>Deck Locker</span>
-                  <h3 id="skinStoreTitle">Equip a Full Deck</h3>
-                </div>
-                <strong>Owned Decks</strong>
-              </div>
-              <div class="card-skin-picker" id="cardSkinPicker" role="group" aria-label="Card skins">
-                <button class="skin-option is-skin-selected" data-card-skin-id="classic" type="button" aria-pressed="true">
-                  <span class="skin-preview skin-preview-classic" aria-hidden="true"><i class="skin-preview-card"><b>A</b><em>&spades;</em></i></span>
-                  <span><strong>Classic</strong><small>Original paper deck</small></span>
-                  <em>Equipped</em>
-                </button>
-                <button class="skin-option" data-card-skin-id="dark" type="button" aria-pressed="false">
-                  <span class="skin-preview skin-preview-dark" aria-hidden="true"><i class="skin-preview-card"><b>K</b><em>&hearts;</em></i></span>
-                  <span><strong>Night Ink</strong><small>Dark-mode paper</small></span>
-                  <em>Equip</em>
-                </button>
-                <button class="skin-option" data-card-skin-id="pink" type="button" aria-pressed="false">
-                  <span class="skin-preview skin-preview-pink" aria-hidden="true"><i class="skin-preview-card"><b>Q</b><em>&diams;</em></i></span>
-                  <span><strong>Pink Pop</strong><small>Berry icing foil</small></span>
-                  <em>Equip</em>
-                </button>
-                <button class="skin-option" data-card-skin-id="gold" type="button" aria-pressed="false">
-                  <span class="skin-preview skin-preview-gold-card" aria-hidden="true"><i class="skin-preview-card"><b>10</b><em>&clubs;</em></i></span>
-                  <span><strong>Gold Royale</strong><small>Gilded casino foil</small></span>
-                  <em>Equip</em>
-                </button>
-                <button class="skin-option skin-option-rainbow" data-card-skin-id="rainbow" type="button" aria-pressed="false">
-                  <span class="skin-preview skin-preview-rainbow" aria-hidden="true"><i class="skin-rainbow-echo echo-one"></i><i class="skin-rainbow-echo echo-two"></i><i class="skin-preview-card"><b>J</b><em>&spades;</em></i></span>
-                  <span><strong>Rainbow Rush</strong><small>Animated smear trail</small></span>
-                  <em>Equip</em>
-                </button>
-                <button class="skin-option skin-option-pink-arcade" data-card-skin-id="pink_arcade" type="button" aria-pressed="false">
-                  <span class="skin-preview skin-preview-pink-arcade" aria-hidden="true">
-                    <img src="assets/card-sets/pink_arcade/previews/full-deck-preview.png" alt="">
-                    <i class="pink-arcade-preview-streak streak-one"></i>
-                    <i class="pink-arcade-preview-streak streak-two"></i>
-                  </span>
-                  <span><strong>Pink Arcade</strong><small>52 supplied pixel cards + neon trail</small></span>
-                  <em>Buy to Equip</em>
-                </button>
-              </div>
-              <p class="skin-store-status" id="skinStoreStatus" aria-live="polite">Classic full deck equipped.</p>
-            </section>
+
+            <section class="store-collection-panel" id="storeCollectionPanel" aria-hidden="true" hidden></section>
           </section>
 
           <section class="menu-page" data-page="themes" aria-labelledby="themesTitle">
@@ -498,12 +437,24 @@
         <button class="pack-open-button" id="openPackButton" type="button">OPEN PACK</button>
         <div class="pack-reward-actions">
           <button class="pack-equip-button" id="equipPackRewardButton" type="button" hidden>EQUIP CARD</button>
-          <button class="pack-collect-button" id="collectPackRewardButton" type="button" hidden>ADD TO COLLECTION</button>
+          <button class="pack-collect-button" id="collectPackRewardButton" type="button" hidden>CONTINUE</button>
+          <button class="pack-view-button" id="viewPackCollectionButton" type="button" hidden>VIEW COLLECTION</button>
+          <button class="pack-buy-another-button" id="buyAnotherPackButton" type="button" hidden>BUY ANOTHER</button>
         </div>
       </div>
     </section>
 
+    <section class="store-purchase-overlay" id="storePurchaseOverlay" aria-hidden="true" hidden>
+      <article class="store-purchase-dialog" role="dialog" aria-modal="true" aria-labelledby="storePurchaseDialogTitle">
+        <div id="storePurchaseBody"></div>
+        <div class="store-purchase-actions">
+          <button type="button" class="store-dialog-cancel" data-store-action="cancel-purchase">CANCEL</button>
+          <button type="button" class="store-dialog-confirm" data-store-action="confirm-purchase">CONFIRM PURCHASE</button>
+        </div>
+      </article>
+    </section>
+
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-  <script type="module" src="src/main.js?v=165"></script>
+  <script type="module" src="src/main.js?v=168"></script>
   </body>
 </html>
