@@ -7334,6 +7334,155 @@ html[data-theme="knight-deck"] .cutin-title {
   color: #ffe786;
 }
 
+/* Build 162: fixed Pot controls with a dedicated challenge scroller. */
+.main-menu-screen.is-pots-page {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.main-menu-screen.is-pots-page .menu-shell {
+  height: calc(100dvh - 36px - var(--safe-top) - var(--safe-bottom));
+  min-height: 0;
+}
+
+.main-menu-screen.is-pots-page .menu-pages,
+.main-menu-screen.is-pots-page .menu-page[data-page="pots"].is-active {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.main-menu-screen.is-pots-page .menu-page[data-page="pots"].is-active {
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
+  gap: 7px;
+}
+
+.pot-page-fixed {
+  display: grid;
+  flex: none;
+  gap: 6px;
+  min-height: 0;
+}
+
+.pot-page-heading-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 34px;
+}
+
+.pot-page-heading-row::after {
+  content: "";
+  width: 62px;
+}
+
+.pot-page-heading-row .page-back-button {
+  min-width: 62px;
+  padding: 7px 8px 6px 4px;
+}
+
+.menu-page[data-page="pots"] .pot-page-heading-row > h2 {
+  margin: 0;
+  font-size: clamp(1.1rem, 5.6vw, 1.65rem);
+  line-height: 1;
+  text-align: center;
+}
+
+.main-menu-screen.is-pots-page .pot-page-copy {
+  gap: 2px;
+}
+
+.main-menu-screen.is-pots-page .pot-page-copy strong {
+  font-size: clamp(.48rem, 2.15vw, .61rem);
+}
+
+.main-menu-screen.is-pots-page .pot-page-copy span {
+  font-size: clamp(.58rem, 2.35vw, .7rem);
+}
+
+.main-menu-screen.is-pots-page .pot-state-legend {
+  padding: 3px;
+}
+
+.main-menu-screen.is-pots-page .pot-state-legend span {
+  min-height: 22px;
+}
+
+.main-menu-screen.is-pots-page .shield-ad-button {
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-areas:
+    "icon label"
+    "icon sub";
+  min-height: 48px;
+  margin: 0;
+  padding: 6px 9px;
+}
+
+.main-menu-screen.is-pots-page .shield-ad-button i {
+  width: 28px;
+  height: 28px;
+  font-size: .64rem;
+}
+
+.main-menu-screen.is-pots-page .shield-ad-button span {
+  font: 400 clamp(.48rem, 2.2vw, .62rem) / 1 var(--font-pixel);
+}
+
+.main-menu-screen.is-pots-page .shield-ad-button small {
+  overflow: hidden;
+  font-size: clamp(.55rem, 2.2vw, .66rem);
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pot-scroll-region {
+  position: relative;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0 3px 12px;
+  overscroll-behavior: contain;
+  scroll-padding-top: 46px;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pot-scroll-region .menu-level-map {
+  padding: 0 2px 12px;
+}
+
+.pot-scroll-region .pot-chapter-heading {
+  position: sticky;
+  z-index: 8;
+  top: 0;
+  margin-top: 7px;
+  box-shadow:
+    inset 0 0 0 1px rgba(244, 197, 79, .18),
+    0 3px 0 rgba(2, 5, 10, .88),
+    0 7px 12px rgba(2, 5, 10, .46);
+}
+
+.pot-scroll-region .pot-chapter-heading:first-child {
+  margin-top: 0;
+}
+
+@media (max-height: 700px) {
+  .main-menu-screen.is-pots-page .menu-shell {
+    gap: 7px;
+  }
+
+  .main-menu-screen.is-pots-page .pot-page-copy span {
+    display: none;
+  }
+
+  .main-menu-screen.is-pots-page .shield-ad-button {
+    min-height: 42px;
+    padding-block: 4px;
+  }
+}
+
 .skin-option.is-skin-locked:not(.is-skin-selected) {
   border-color: #4c1c40;
   box-shadow: inset 0 0 0 2px #812958, 4px 4px 0 rgba(2, 5, 10, .78);

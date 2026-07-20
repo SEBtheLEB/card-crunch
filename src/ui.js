@@ -1,13 +1,13 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=161";
-import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=161";
-import { isPotUnlocked } from "./progression.js?v=161";
-import { formatCompactNumber } from "./format.js?v=161";
-import { hasShieldToken } from "./save.js?v=161";
-import { bindInstantAction } from "./input.js?v=161";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=161";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=161";
-import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=161";
-import { getPotRuleFacts, renderPotInfo } from "./potInfo.js?v=161";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=162";
+import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=162";
+import { isPotUnlocked } from "./progression.js?v=162";
+import { formatCompactNumber } from "./format.js?v=162";
+import { hasShieldToken } from "./save.js?v=162";
+import { bindInstantAction } from "./input.js?v=162";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=162";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=162";
+import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=162";
+import { getPotRuleFacts, renderPotInfo } from "./potInfo.js?v=162";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -548,6 +548,7 @@ function setText(element, value, cache, key) {
 function showMenuPage(elements, pageName = "home") {
   const isHomePage = pageName === "home";
   elements.startScreen.classList.toggle("is-home-page", isHomePage);
+  elements.startScreen.classList.toggle("is-pots-page", pageName === "pots");
   if (isHomePage) elements.startScreen.scrollTop = 0;
   elements.startScreen.querySelectorAll("[data-page]").forEach((page) => {
     page.classList.toggle("is-active", page.dataset.page === pageName);
@@ -677,7 +678,8 @@ function selectPotCard({ pot, card, row, map, handlers, mapState }) {
     row.appendChild(panel);
     window.requestAnimationFrame(() => {
       panel.classList.add("is-open");
-      window.setTimeout(() => keepPotPanelVisible(panel), 280);
+      alignPotRowToTop(row, map);
+      window.setTimeout(() => alignPotRowToTop(row, map), 280);
     });
   };
 
@@ -735,14 +737,23 @@ function getChapterEndId(pots, startIndex) {
   return endId;
 }
 
-function keepPotPanelVisible(panel) {
-  if (!panel?.isConnected) return;
-  const rect = panel.getBoundingClientRect();
-  const viewportBottom = window.innerHeight - 16;
-  if (rect.bottom <= viewportBottom && rect.top >= 8) return;
-  panel.scrollIntoView({
-    behavior: document.documentElement.classList.contains("reduce-motion") ? "auto" : "smooth",
-    block: "nearest"
+function alignPotRowToTop(row, map) {
+  if (!row?.isConnected) return;
+  const scroller = map.closest(".pot-scroll-region");
+  if (!scroller) return;
+
+  let chapter = row.previousElementSibling;
+  while (chapter && !chapter.classList.contains("pot-chapter-heading")) {
+    chapter = chapter.previousElementSibling;
+  }
+
+  const scrollerRect = scroller.getBoundingClientRect();
+  const rowRect = row.getBoundingClientRect();
+  const chapterOffset = chapter?.getBoundingClientRect().height ?? 0;
+  const targetTop = Math.max(0, scroller.scrollTop + rowRect.top - scrollerRect.top - chapterOffset - 6);
+  scroller.scrollTo({
+    top: targetTop,
+    behavior: document.documentElement.classList.contains("reduce-motion") ? "auto" : "smooth"
   });
 }
 

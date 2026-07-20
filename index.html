@@ -16,8 +16,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/main.css?v=161">
-  <link rel="stylesheet" href="styles/collection.css?v=161">
+  <link rel="stylesheet" href="styles/main.css?v=162">
+  <link rel="stylesheet" href="styles/collection.css?v=162">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -355,20 +355,26 @@
           </section>
 
           <section class="menu-page" data-page="pots" aria-hidden="true">
-            <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
-            <h2>Pick a Pot</h2>
-            <p class="menu-page-copy pot-page-copy"><strong>Each pot is a different challenge.</strong><span>Clear the available pot to unlock the next one.</span></p>
-            <div class="pot-state-legend" aria-label="Pot status guide">
-              <span class="is-cleared"><i aria-hidden="true">&#10003;</i> Cleared</span>
-              <span class="is-available"><i aria-hidden="true">&#9733;</i> Available</span>
-              <span class="is-locked"><i aria-hidden="true">&#128274;</i> Locked</span>
+            <div class="pot-page-fixed">
+              <div class="pot-page-heading-row">
+                <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
+                <h2>Pick a Pot</h2>
+              </div>
+              <p class="menu-page-copy pot-page-copy"><strong>Each pot is a different challenge.</strong><span>Clear the available pot to unlock the next one.</span></p>
+              <div class="pot-state-legend" aria-label="Pot status guide">
+                <span class="is-cleared"><i aria-hidden="true">&#10003;</i> Cleared</span>
+                <span class="is-available"><i aria-hidden="true">&#9733;</i> Available</span>
+                <span class="is-locked"><i aria-hidden="true">&#128274;</i> Locked</span>
+              </div>
+              <button class="ad-button shield-ad-button" id="shieldAdButton" type="button">
+                <i aria-hidden="true">&#9654;</i>
+                <span>Safe Bank Shield</span>
+                <small>Watch ad &bull; save 25% if you bust</small>
+              </button>
             </div>
-            <div class="menu-level-map" id="levelMap"></div>
-            <button class="ad-button shield-ad-button" id="shieldAdButton" type="button">
-              <i aria-hidden="true">&#9654;</i>
-              <span>Safe Bank Shield</span>
-              <small>Watch ad &bull; auto-bank 25% if you bust out</small>
-            </button>
+            <div class="pot-scroll-region" aria-label="Pot challenges">
+              <div class="menu-level-map" id="levelMap"></div>
+            </div>
             <strong id="profilePotsCleared" hidden>0</strong>
             <strong id="profileCoins" hidden>0</strong>
           </section>
@@ -464,6 +470,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-  <script type="module" src="src/main.js?v=161"></script>
+  <script type="module" src="src/main.js?v=162"></script>
   </body>
 </html>

@@ -603,6 +603,16 @@ if (!uiSource.includes("pot-grid-row")
   || !gameStateSource.includes("ensurePlayableRound")) {
   throw new Error("Expandable challenge pots or their gameplay modifiers are missing");
 }
+if (!html.includes("pot-page-fixed")
+  || !html.includes("pot-scroll-region")
+  || !uiSource.includes('classList.toggle("is-pots-page"')
+  || !uiSource.includes("alignPotRowToTop")
+  || uiSource.includes("keepPotPanelVisible")
+  || !css.includes("Build 162: fixed Pot controls")
+  || !css.includes(".pot-scroll-region .pot-chapter-heading")
+  || !css.includes("position: sticky")) {
+  throw new Error("Pot controls must stay fixed while selected challenge rows align inside their own scroller");
+}
 if (!uiSource.includes("(state.dealHandCount ?? 0) + index") || !cardGestureSource.includes('zone === "table"')) {
   throw new Error("Table cards must deal after all replacement hand cards");
 }
