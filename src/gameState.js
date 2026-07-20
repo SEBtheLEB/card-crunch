@@ -1,5 +1,5 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=157";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=157";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=158";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=158";
 import {
   ARCADE_CONFIG,
   ARCADE_MODE,
@@ -9,24 +9,24 @@ import {
   isArcadeMode,
   isPowerCard,
   resolveArcadeCrunch
-} from "./arcadeMode.js?v=157";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=157";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=157";
-import { ensurePlayableRound } from "./handSafety.js?v=157";
-import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=157";
-import { formatCompactNumber } from "./format.js?v=157";
-import { adManager } from "./ads.js?v=157";
-import { submitBestScore } from "./playGames.js?v=157";
-import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=157";
-import { purchaseManager } from "./purchases.js?v=157";
-import { getRoundDealDuration } from "./dealTiming.js?v=157";
+} from "./arcadeMode.js?v=158";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=158";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=158";
+import { ensurePlayableRound } from "./handSafety.js?v=158";
+import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=158";
+import { formatCompactNumber } from "./format.js?v=158";
+import { adManager } from "./ads.js?v=158";
+import { submitBestScore } from "./playGames.js?v=158";
+import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=158";
+import { purchaseManager } from "./purchases.js?v=158";
+import { getRoundDealDuration } from "./dealTiming.js?v=158";
 import {
   animateBust,
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=157";
+} from "./animations.js?v=158";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -101,6 +101,7 @@ export function createGame(ui) {
 
   function showMap() {
     stopTimer();
+    ui.hidePotInfo({ immediate: true });
     ui.hideBonusBankOffer();
     ui.clearMessage();
     state.locked = true;
@@ -126,6 +127,7 @@ export function createGame(ui) {
 
   function start(pot = state.pots.find((item) => !item.complete) ?? state.pots[0], { gameMode = pot ? "pot" : "endless" } = {}) {
     stopTimer();
+    ui.hidePotInfo({ immediate: true });
     ui.hideBonusBankOffer();
     tutorialSession?.hooks?.onExit?.();
     tutorialSession = null;
@@ -1020,6 +1022,7 @@ export function createGame(ui) {
     if (state.status !== "playing") return;
     const returnHome = isArcadeMode(state);
     stopTimer();
+    ui.hidePotInfo({ immediate: true });
     ui.hideBonusBankOffer();
     ui.clearMessage();
     clearRunSave();
@@ -1103,11 +1106,13 @@ export function createGame(ui) {
     return freshCards.length;
   }
 
-  function startTimer() {
+  function startTimer({ resume = false } = {}) {
     stopTimer();
     const token = state.timerToken;
     const startedAt = performance.now();
-    const totalMs = Math.max(0, state.timeLeft + state.timerGraceSeconds) * 1000;
+    // The hidden grace second is granted once at the start of a turn. Resuming
+    // the paused rulebook must not create extra time by repeatedly reopening it.
+    const totalMs = Math.max(0, state.timeLeft + (resume ? 0 : state.timerGraceSeconds)) * 1000;
     let warned = false;
 
     state.timerId = window.setInterval(() => {
@@ -1132,6 +1137,28 @@ export function createGame(ui) {
       window.clearInterval(state.timerId);
       state.timerId = null;
     }
+  }
+
+  function openPotInfo() {
+    if (!state.activePot || state.isTutorial || isArcadeMode(state)) return;
+    if (state.status !== "playing" || state.locked) return;
+    stopTimer();
+    state.status = "pausedInfo";
+    state.locked = true;
+    ui.render(state, handlers);
+    ui.showPotInfo(state.activePot);
+  }
+
+  function closePotInfo() {
+    if (state.status !== "pausedInfo") {
+      ui.hidePotInfo();
+      return;
+    }
+    ui.hidePotInfo();
+    state.status = "playing";
+    state.locked = false;
+    ui.render(state, handlers);
+    startTimer({ resume: true });
   }
 
   function resetRunSession() {
@@ -1237,7 +1264,9 @@ export function createGame(ui) {
     onCrunch,
     onBank: bankRun,
     onLevelSelect: enterLevel,
-    onExitLevel: exitRun
+    onExitLevel: exitRun,
+    onOpenPotInfo: openPotInfo,
+    onClosePotInfo: closePotInfo
   };
   return {
     state,
@@ -1250,6 +1279,8 @@ export function createGame(ui) {
     returnToMap,
     playAgain,
     exitRun,
+    openPotInfo,
+    closePotInfo,
     onCardSelect,
     onCrunch,
     bankRun,

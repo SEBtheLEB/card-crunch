@@ -1,12 +1,13 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=157";
-import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=157";
-import { isPotUnlocked } from "./progression.js?v=157";
-import { formatCompactNumber } from "./format.js?v=157";
-import { hasShieldToken } from "./save.js?v=157";
-import { bindInstantAction } from "./input.js?v=157";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=157";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=157";
-import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=157";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=158";
+import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=158";
+import { isPotUnlocked } from "./progression.js?v=158";
+import { formatCompactNumber } from "./format.js?v=158";
+import { hasShieldToken } from "./save.js?v=158";
+import { bindInstantAction } from "./input.js?v=158";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=158";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=158";
+import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=158";
+import { getPotRuleFacts, renderPotInfo } from "./potInfo.js?v=158";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -15,6 +16,8 @@ export function createUI() {
   let messageFrame = null;
   let messageGeneration = 0;
   let roundHandoffFrame = null;
+  let potInfoHideTimer = null;
+  let potInfoReturnFocus = null;
   const potMapState = { selectedId: null, generation: 0 };
   const elements = {
     shell: document.querySelector("#gameShell"),
@@ -47,6 +50,16 @@ export function createUI() {
     backToMenuButton: document.querySelector("#backToMenuButton"),
     exitLevelButton: document.querySelector("#exitLevelButton"),
     hintAdButton: document.querySelector("#hintAdButton"),
+    potInfoButton: document.querySelector("#potInfoButton"),
+    potInfoOverlay: document.querySelector("#potInfoOverlay"),
+    potInfoCloseButton: document.querySelector("#potInfoCloseButton"),
+    potInfoKicker: document.querySelector("#potInfoKicker"),
+    potInfoTitle: document.querySelector("#potInfoTitle"),
+    potInfoModifierIcon: document.querySelector("#potInfoModifierIcon"),
+    potInfoModifierName: document.querySelector("#potInfoModifierName"),
+    potInfoModifierCopy: document.querySelector("#potInfoModifierCopy"),
+    potInfoFacts: document.querySelector("#potInfoFacts"),
+    potInfoCrunchList: document.querySelector("#potInfoCrunchList"),
     gameOverScreen: document.querySelector("#gameOverScreen"),
     runEndEyebrow: document.querySelector("#runEndEyebrow"),
     gameOverTitle: document.querySelector("#gameOverTitle"),
@@ -117,6 +130,12 @@ export function createUI() {
       }
       syncTutorialGuidance(elements, state);
       syncHandInteractionState(elements, state);
+      const potInfoAvailable = Boolean(state.activePot)
+        && !state.isTutorial
+        && !isArcadeMode(state)
+        && (state.status === "playing" || state.status === "pausedInfo");
+      elements.potInfoButton.hidden = !potInfoAvailable;
+      elements.potInfoButton.disabled = !potInfoAvailable || state.locked || state.status !== "playing";
       elements.shell.classList.toggle("is-locked", state.locked);
     },
     syncResolvedHud(state) {
@@ -212,6 +231,46 @@ export function createUI() {
       elements.comboLabel.textContent = "";
       elements.comboLabel.dataset.tone = "neutral";
       elements.comboLabel.classList.remove("pop-message");
+    },
+    showPotInfo(pot) {
+      if (!pot || !elements.potInfoOverlay) return;
+      if (potInfoHideTimer) {
+        window.clearTimeout(potInfoHideTimer);
+        potInfoHideTimer = null;
+      }
+      potInfoReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : elements.potInfoButton;
+      renderPotInfo({
+        overlay: elements.potInfoOverlay,
+        kicker: elements.potInfoKicker,
+        title: elements.potInfoTitle,
+        modifierIcon: elements.potInfoModifierIcon,
+        modifierName: elements.potInfoModifierName,
+        modifierCopy: elements.potInfoModifierCopy,
+        facts: elements.potInfoFacts,
+        list: elements.potInfoCrunchList
+      }, pot);
+      elements.potInfoOverlay.hidden = false;
+      elements.potInfoOverlay.setAttribute("aria-hidden", "false");
+      document.body.classList.add("pot-info-open");
+      window.requestAnimationFrame(() => {
+        elements.potInfoOverlay.classList.add("is-visible");
+        elements.potInfoCloseButton.focus({ preventScroll: true });
+      });
+    },
+    hidePotInfo({ immediate = false } = {}) {
+      if (!elements.potInfoOverlay) return;
+      if (potInfoHideTimer) window.clearTimeout(potInfoHideTimer);
+      elements.potInfoOverlay.classList.remove("is-visible");
+      elements.potInfoOverlay.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("pot-info-open");
+      const finish = () => {
+        elements.potInfoOverlay.hidden = true;
+        potInfoHideTimer = null;
+      };
+      if (immediate) finish();
+      else potInfoHideTimer = window.setTimeout(finish, 180);
+      potInfoReturnFocus?.focus?.({ preventScroll: true });
+      potInfoReturnFocus = null;
     },
     showStart(show) {
       elements.startScreen.classList.toggle("is-visible", show);
@@ -671,36 +730,6 @@ function getChapterEndId(pots, startIndex) {
     endId = pots[index].id;
   }
   return endId;
-}
-
-function getPotRuleFacts(modifier = {}) {
-  const facts = [];
-  if (modifier.allowedSuits?.length) facts.push(`${modifier.allowedSuits.map(capitalizeRule).join(" / ")} only`);
-  if (modifier.allowedColors?.length) facts.push(`${modifier.allowedColors.map(capitalizeRule).join(" / ")} cards`);
-  if (modifier.valueParity) facts.push(`${capitalizeRule(modifier.valueParity)} values`);
-  if (Number.isFinite(modifier.minCardValue) || Number.isFinite(modifier.maxCardValue)) {
-    const low = Number.isFinite(modifier.minCardValue) ? modifier.minCardValue : "A";
-    const high = Number.isFinite(modifier.maxCardValue) ? modifier.maxCardValue : "K";
-    facts.push(`Values ${low}-${high}`);
-  }
-  if (modifier.allowedMatchTypes?.length) facts.push(`${modifier.allowedMatchTypes.map(formatMatchRule).join(" / ")} only`);
-  if (modifier.blockedMatchTypes?.length) facts.push(`No ${modifier.blockedMatchTypes.map(formatMatchRule).join(" / ")}`);
-  if (Number.isFinite(modifier.maxSelection)) facts.push(`Max ${modifier.maxSelection} cards`);
-  if (Number.isFinite(modifier.maxLives)) facts.push(`${modifier.maxLives} ${modifier.maxLives === 1 ? "life" : "lives"}`);
-  if (Number.isFinite(modifier.minBankStreak)) facts.push(`Bank at streak ${modifier.minBankStreak}`);
-  if (Number.isFinite(modifier.minimumBankCash)) facts.push(`Bank at $${formatCompactNumber(modifier.minimumBankCash)}`);
-  if (Number.isFinite(modifier.startingRunMultiplier)) facts.push(`Start x${modifier.startingRunMultiplier}`);
-  return facts.length > 0 ? facts : ["Standard scoring", "3 lives", "Bank anytime"];
-}
-
-function formatMatchRule(type) {
-  const labels = { suit: "Suit", rank: "Number", add: "Sum", subtract: "Minus", sequence: "Sequence" };
-  return labels[type] ?? capitalizeRule(type);
-}
-
-function capitalizeRule(value) {
-  const text = String(value ?? "");
-  return text ? `${text[0].toUpperCase()}${text.slice(1)}` : text;
 }
 
 function keepPotPanelVisible(panel) {

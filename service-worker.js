@@ -1,4 +1,4 @@
-const CACHE_NAME = "card-crunch-v157";
+const CACHE_NAME = "card-crunch-v158";
 const PINK_ARCADE_SUITS = ["hearts", "diamonds", "clubs", "spades"];
 const PINK_ARCADE_RANKS = ["ace", "02", "03", "04", "05", "06", "07", "08", "09", "10", "jack", "queen", "king"];
 const PINK_ARCADE_ASSETS = [
@@ -43,6 +43,7 @@ const ASSETS = [
   "./src/animations.js",
   "./src/crunchCutscene.js",
   "./src/ui.js",
+  "./src/potInfo.js",
   "./src/progression.js",
   "./manifest.json",
   "./assets/icons/icon-192.svg",

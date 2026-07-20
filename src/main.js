@@ -1,18 +1,18 @@
-import { createGame } from "./gameState.js?v=157";
-import { createUI } from "./ui.js?v=157";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=157";
-import { adManager } from "./ads.js?v=157";
-import { grantShieldToken, hasShieldToken } from "./save.js?v=157";
-import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=157";
-import { haptic } from "./haptics.js?v=157";
-import { bindInstantAction } from "./input.js?v=157";
-import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=157";
-import { installFullscreenControls } from "./fullscreen.js?v=157";
-import { bindThemePicker, initializeTheme } from "./themes.js?v=157";
-import { initializeCardCollection } from "./cardCollection.js?v=157";
-import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=157";
-import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=157";
-import { initializeTutorial } from "./tutorial.js?v=157";
+import { createGame } from "./gameState.js?v=158";
+import { createUI } from "./ui.js?v=158";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=158";
+import { adManager } from "./ads.js?v=158";
+import { grantShieldToken, hasShieldToken } from "./save.js?v=158";
+import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=158";
+import { haptic } from "./haptics.js?v=158";
+import { bindInstantAction } from "./input.js?v=158";
+import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=158";
+import { installFullscreenControls } from "./fullscreen.js?v=158";
+import { bindThemePicker, initializeTheme } from "./themes.js?v=158";
+import { initializeCardCollection } from "./cardCollection.js?v=158";
+import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=158";
+import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=158";
+import { initializeTutorial } from "./tutorial.js?v=158";
 
 initializeTheme();
 initializeCardCollection();
@@ -30,6 +30,14 @@ bindInstantAction(ui.elements.backToMenuButton, () => {
   ui.showStart(true);
 });
 bindInstantAction(ui.elements.exitLevelButton, game.exitRun);
+bindInstantAction(ui.elements.potInfoButton, game.openPotInfo);
+bindInstantAction(ui.elements.potInfoCloseButton, game.closePotInfo);
+ui.elements.potInfoOverlay?.addEventListener("pointerdown", (event) => {
+  if (event.target === ui.elements.potInfoOverlay) game.closePotInfo();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && game.state.status === "pausedInfo") game.closePotInfo();
+});
 bindInstantAction(ui.elements.restartButton, game.playAgain);
 bindInstantAction(ui.elements.returnToPotsButton, game.returnToMap);
 bindInstantAction(ui.elements.reviveAdButton, game.onReviveAd);
@@ -68,7 +76,7 @@ document.addEventListener(
   "touchmove",
   (event) => {
     // Menus and modals scroll; only the game board locks panning.
-    if (event.target.closest?.(".main-menu-screen, .modal-screen, .ad-placeholder-overlay")) return;
+    if (event.target.closest?.(".main-menu-screen, .modal-screen, .ad-placeholder-overlay, .pot-info-overlay")) return;
     event.preventDefault();
   },
   { passive: false }

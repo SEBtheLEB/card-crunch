@@ -17,6 +17,7 @@ const required = [
   "src/cardSkins.js",
   "src/cardCollection.js",
   "src/cardCollectionUI.js",
+  "src/potInfo.js",
   "src/tutorial.js",
   "src/economy.js",
   "src/scoreSurge.js",
@@ -141,6 +142,11 @@ if ((html.match(/data-fullscreen-toggle/g) ?? []).length !== 2) {
 }
 if (!html.includes("summaryCoins") || !html.includes("storeCoinsValue") || !html.includes("buyShieldButton")) {
   throw new Error("Economy UI hooks are missing");
+}
+if (!html.includes('id="potInfoButton"')
+  || !html.includes('id="potInfoOverlay"')
+  || !html.includes('id="potInfoCrunchList"')) {
+  throw new Error("Paused Pot rulebook UI hooks are missing");
 }
 if (/energy|recharge/i.test(html)) {
   throw new Error("Energy gating must not appear in the unlimited-play UI");
