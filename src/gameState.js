@@ -1012,6 +1012,36 @@ export function createGame(ui) {
     ui.renderMenuStats(state);
   }
 
+  function applyCloudProgress(gameEntry = {}) {
+    const stats = gameEntry.stats && typeof gameEntry.stats === "object" ? gameEntry.stats : {};
+    state.bestScore = Math.max(state.bestScore, Math.floor(Number(stats.bestScore) || 0));
+    state.bestRunStreak = Math.max(state.bestRunStreak, Math.floor(Number(stats.bestStreak) || 0));
+    localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
+    localStorage.setItem("cardCrunchBestStreak", String(Math.max(
+      Number(localStorage.getItem("cardCrunchBestStreak")) || 0,
+      Number(stats.bestStreak) || 0
+    )));
+    localStorage.setItem("cardCrunchTotalCrunches", String(Math.max(
+      Number(localStorage.getItem("cardCrunchTotalCrunches")) || 0,
+      Number(stats.totalCrunches) || 0
+    )));
+
+    const remotePots = Array.isArray(gameEntry.progress?.pots) ? gameEntry.progress.pots : [];
+    for (const remote of remotePots) {
+      const local = state.pots.find((pot) => pot.id === Number(remote?.id));
+      if (!local) continue;
+      local.progress = Math.min(local.target, Math.max(local.progress, Number(remote.progress) || 0));
+      local.complete = local.complete || remote.complete === true || local.progress >= local.target;
+    }
+    savePots(state.pots);
+
+    const localCoins = economy.getSnapshot().coins;
+    const remoteCoins = Math.max(0, Math.floor(Number(stats.coins) || 0));
+    if (remoteCoins > localCoins) economy.addCoins(remoteCoins - localCoins);
+    ui.renderMap(state.pots, handlers);
+    ui.renderMenuStats(state);
+  }
+
   /* Leaving a run forfeits all temporary progress. Banked pot progress and
      other permanent save data are untouched. */
   function exitRun() {
@@ -1290,7 +1320,8 @@ export function createGame(ui) {
     onCoinAd,
     buyShieldWithCoins,
     buyCoinPack,
-    refreshEconomy
+    refreshEconomy,
+    applyCloudProgress
   };
 }
 

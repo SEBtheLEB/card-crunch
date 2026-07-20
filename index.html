@@ -189,8 +189,42 @@
             <section class="menu-tile-grid" aria-label="More modes">
               <button data-menu-page="shop" type="button"><span aria-hidden="true">&#9670;</span><strong>Store</strong><small>Coins &amp; boosts</small></button>
               <button data-menu-page="themes" type="button"><span aria-hidden="true">&spades;</span><strong>Collection</strong><small>Cards &amp; tables</small></button>
+              <button data-menu-page="account" type="button"><span aria-hidden="true">&#9733;</span><strong>STL Account</strong><small>Profile &amp; cloud progress</small></button>
               <button class="tutorial-menu-tile" id="tutorialStartButton" type="button"><span aria-hidden="true">?</span><strong>Tutorial</strong><small>Learn every Crunch</small></button>
             </section>
+          </section>
+
+          <section class="menu-page stl-account-page" data-page="account" aria-labelledby="stlAccountTitle">
+            <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
+            <p class="stl-account-kicker">One identity. Every STL game.</p>
+            <h2 id="stlAccountTitle">STL Account</h2>
+            <div class="stl-account-panel">
+              <div id="stlAccountSignedOut">
+                <div class="stl-account-mark" aria-hidden="true">STL</div>
+                <h3>Connect Card Crunch</h3>
+                <p>Use the same Google account as the STL Productionz website and Bit Crush Core. Your game, achievements, and profile will stay together.</p>
+                <button class="stl-google-button" id="stlGoogleSignInButton" type="button"><b>G</b><span>Continue with Google</span><i aria-hidden="true">&rsaquo;</i></button>
+              </div>
+              <div id="stlAccountSignedIn" hidden>
+                <div class="stl-account-identity">
+                  <span class="stl-account-avatar"><span id="stlAccountInitials">STL</span><img id="stlAccountAvatar" alt="STL profile" hidden></span>
+                  <span><small>Connected player</small><strong id="stlAccountName">STL Player</strong><em id="stlAccountEmail">Shared STL Account</em></span>
+                </div>
+                <div class="stl-account-benefits" aria-label="Connected account benefits">
+                  <span><b>&#10003;</b> Shared profile</span>
+                  <span><b>&#10003;</b> Achievements</span>
+                  <span><b>&#10003;</b> Cloud progress</span>
+                </div>
+                <p id="stlAccountSyncTime">Ready to sync</p>
+                <div class="stl-account-actions">
+                  <button id="stlSyncButton" type="button">Sync Now</button>
+                  <a href="https://stlproductionz.io/profile" target="_blank" rel="noopener">View Profile</a>
+                  <button id="stlSignOutButton" type="button">Sign Out</button>
+                </div>
+              </div>
+            </div>
+            <p class="stl-account-status" id="stlAccountStatus" aria-live="polite">Sign in once and Card Crunch will appear on your STL profile.</p>
+            <p class="stl-account-fineprint">STL Productionz handles the account. Card Crunch never receives your Google password.</p>
           </section>
 
           <section class="menu-page" data-page="leaderboard" aria-labelledby="leaderboardTitle">
@@ -470,6 +504,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-  <script type="module" src="src/main.js?v=164"></script>
+  <script type="module" src="src/main.js?v=165"></script>
   </body>
 </html>

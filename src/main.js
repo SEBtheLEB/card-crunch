@@ -13,6 +13,7 @@ import { initializeCardCollection } from "./cardCollection.js?v=164";
 import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=164";
 import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=164";
 import { initializeTutorial } from "./tutorial.js?v=164";
+import { initializeSTLAccount } from "./stlAccount.js?v=165";
 
 initializeTheme();
 initializeCardCollection();
@@ -20,6 +21,11 @@ initializeCardSkin();
 const ui = createUI();
 const game = createGame(ui);
 initializeTutorial({ game });
+initializeSTLAccount({
+  getState: () => game.state,
+  applyCloudProgress: game.applyCloudProgress,
+  bindAction: bindInstantAction
+});
 installAudioUnlock();
 initializePlayGames();
 installFullscreenControls(bindInstantAction);

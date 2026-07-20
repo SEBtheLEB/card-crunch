@@ -5,6 +5,7 @@ const root = resolve(import.meta.dirname, "..");
 const required = [
   "index.html",
   "src/main.js",
+  "src/stlAccount.js",
   "src/audio.js",
   "src/haptics.js",
   "src/input.js",
@@ -172,6 +173,9 @@ if (!html.includes("tutorialStartButton") || !html.includes("tutorialCoach") || 
 if (!html.includes('id="endlessArcadeButton"') || !html.includes("ENDLESS ARCADE")) {
   throw new Error("Endless Arcade menu action is missing");
 }
+if (!html.includes('data-page="account"') || !html.includes('id="stlGoogleSignInButton"')) {
+  throw new Error("Shared STL Account UI hooks are missing");
+}
 if (!html.includes("Each pot is a different challenge.")
   || !html.includes("pot-state-legend")
   || (html.match(/menu-chip-add/g) ?? []).length !== 1) {
@@ -182,6 +186,25 @@ if (html.includes('id="tutorialPage"')) {
 }
 
 const economyModule = await import(`../src/economy.js?verify=${Date.now()}`);
+
+const accountModule = await import(`../src/stlAccount.js?verify=${Date.now()}`);
+const accountStorage = new Map([
+  ["cardCrunchBestScore", "1250000"],
+  ["cardCrunchBestStreak", "12"],
+  ["cardCrunchTotalCrunches", "345"],
+  ["cardCrunchCoins", "890"]
+]);
+const accountSnapshot = accountModule.buildCardCrunchProgressSnapshot({
+  state: { pots: Array.from({ length: 12 }, (_, index) => ({ id: index + 1, progress: 100, target: 100, complete: true })) },
+  storage: { getItem: (key) => accountStorage.get(key) ?? null }
+});
+if (accountModule.STL_ACCOUNT_API_BASE !== "https://stlproductionz.io/api/games"
+  || accountSnapshot.stats.bestScore !== 1250000
+  || accountSnapshot.stats.potsCleared !== 12
+  || accountSnapshot.totals.achievements !== 4
+  || !accountSnapshot.achievements["million-run"].unlocked) {
+  throw new Error("Card Crunch shared-account progress mapping is incomplete");
+}
 const lowReward = economyModule.calculateRunCoinReward({ grossCash: 100_000, bestStreak: 2 });
 const highReward = economyModule.calculateRunCoinReward({ grossCash: 1_000_000, bestStreak: 8, potCleared: true });
 if (lowReward.total <= 0 || highReward.total <= lowReward.total) {

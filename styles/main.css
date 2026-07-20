@@ -7346,6 +7346,220 @@ html[data-theme="knight-deck"] .cutin-title {
   color: #ffe786;
 }
 
+/* Build 165: shared STL player identity */
+.stl-account-page {
+  gap: 12px;
+}
+
+.stl-account-kicker {
+  margin: 4px 0 -6px;
+  color: #76dfff;
+  font: 400 clamp(.46rem, 2vw, .58rem) / 1.4 var(--font-pixel);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.stl-account-panel {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(18px, 5vw, 28px);
+  border: 1px solid rgba(118, 223, 255, .35);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 90% 0, rgba(118, 223, 255, .18), transparent 42%),
+    linear-gradient(145deg, rgba(18, 44, 62, .95), rgba(4, 11, 22, .97));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 18px 42px rgba(0, 0, 0, .36);
+}
+
+.stl-account-panel h3 {
+  margin: 14px 0 8px;
+  color: #fff6d8;
+  font: 400 clamp(1.1rem, 5vw, 1.55rem) / 1.15 var(--font-display);
+  text-transform: uppercase;
+}
+
+.stl-account-panel p,
+.stl-account-fineprint {
+  color: #a9bdc8;
+  line-height: 1.65;
+}
+
+.stl-account-mark {
+  display: grid;
+  width: 68px;
+  height: 68px;
+  place-items: center;
+  border: 2px solid #76dfff;
+  border-radius: 18px 6px 18px 6px;
+  background: linear-gradient(145deg, rgba(118, 223, 255, .22), rgba(255, 197, 61, .08));
+  color: #fff;
+  font: 400 .82rem / 1 var(--font-pixel);
+  box-shadow: 0 0 28px rgba(118, 223, 255, .2);
+  transform: rotate(-3deg);
+}
+
+.stl-google-button {
+  display: grid;
+  width: 100%;
+  min-height: 60px;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  color: #17202b;
+  font: 700 clamp(.74rem, 3vw, .9rem) / 1.2 system-ui, sans-serif;
+  text-align: left;
+  box-shadow: 0 7px 0 #a9bdc8, 0 16px 28px rgba(0, 0, 0, .35);
+}
+
+.stl-google-button b {
+  color: #4285f4;
+  font-size: 1.2rem;
+}
+
+.stl-google-button i {
+  font-style: normal;
+  font-size: 1.6rem;
+}
+
+.stl-google-button:active {
+  transform: translateY(4px);
+  box-shadow: 0 3px 0 #a9bdc8, 0 8px 18px rgba(0, 0, 0, .35);
+}
+
+.stl-account-identity {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.stl-account-avatar {
+  position: relative;
+  display: grid;
+  width: 76px;
+  height: 76px;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid #76dfff;
+  border-radius: 50%;
+  background: #15374a;
+  color: #fff;
+  font: 400 .7rem / 1 var(--font-pixel);
+}
+
+.stl-account-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.stl-account-identity > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.stl-account-identity small {
+  color: #76dfff;
+  font: 400 .43rem / 1.2 var(--font-pixel);
+  text-transform: uppercase;
+}
+
+.stl-account-identity strong {
+  overflow: hidden;
+  color: #fff6d8;
+  font: 400 clamp(1rem, 4vw, 1.35rem) / 1.1 var(--font-display);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stl-account-identity em {
+  overflow: hidden;
+  color: #a9bdc8;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stl-account-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 18px 0;
+}
+
+.stl-account-benefits span {
+  display: grid;
+  min-height: 56px;
+  place-items: center;
+  gap: 3px;
+  padding: 8px 4px;
+  border: 1px solid rgba(118, 223, 255, .22);
+  border-radius: 10px;
+  color: #d9eef4;
+  font-size: clamp(.58rem, 2.5vw, .7rem);
+  text-align: center;
+}
+
+.stl-account-benefits b {
+  color: #8ff0ae;
+}
+
+.stl-account-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.stl-account-actions button,
+.stl-account-actions a {
+  display: grid;
+  min-height: 48px;
+  place-items: center;
+  padding: 10px;
+  border: 1px solid rgba(118, 223, 255, .34);
+  border-radius: 10px;
+  background: rgba(118, 223, 255, .09);
+  color: #e8f9ff;
+  font: 700 .68rem / 1.2 system-ui, sans-serif;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.stl-account-actions #stlSignOutButton {
+  grid-column: 1 / -1;
+  border-color: rgba(255, 119, 109, .35);
+  color: #ffb8b2;
+}
+
+.stl-account-status {
+  min-height: 44px;
+  margin: 0;
+  padding: 11px 13px;
+  border-left: 3px solid #76dfff;
+  background: rgba(118, 223, 255, .07);
+  color: #b9ccd5;
+  line-height: 1.45;
+}
+
+.stl-account-status[data-tone="good"] { border-color: #8ff0ae; color: #b9f3c9; }
+.stl-account-status[data-tone="bad"] { border-color: #ff776d; color: #ffb8b2; }
+.stl-account-fineprint { margin: 0; font-size: .72rem; text-align: center; }
+
+@media (max-width: 390px) {
+  .stl-account-benefits { grid-template-columns: 1fr; }
+  .stl-account-benefits span { grid-template-columns: auto 1fr; min-height: 42px; justify-content: start; text-align: left; }
+}
+
 /* Build 162: fixed Pot controls with a dedicated challenge scroller. */
 .main-menu-screen.is-pots-page {
   overflow: hidden;
