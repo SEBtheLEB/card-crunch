@@ -5,6 +5,16 @@ export const CARD_SUITS = Object.freeze(["hearts", "diamonds", "clubs", "spades"
 export const COLLECTIBLE_SKIN_IDS = Object.freeze(["dark", "pink", "gold", "rainbow"]);
 export const PREMIUM_FULL_DECK_SKIN_IDS = Object.freeze(["pink_arcade"]);
 
+// Pack odds are applied per skin first, then a random missing rank/suit is
+// chosen from that skin. This keeps a nearly-complete common set from making
+// Mythic Rainbow cards artificially common.
+export const CARD_SKIN_RARITIES = Object.freeze({
+  gold: Object.freeze({ id: "rare", label: "Rare", weight: 60, order: 1, color: "#f3ca58" }),
+  pink: Object.freeze({ id: "epic", label: "Epic", weight: 25, order: 2, color: "#ff72b4" }),
+  dark: Object.freeze({ id: "legendary", label: "Legendary", weight: 12, order: 3, color: "#9eb8ff" }),
+  rainbow: Object.freeze({ id: "mythic", label: "Mythic", weight: 3, order: 4, color: "#b98cff" })
+});
+
 const SUIT_SYMBOLS = Object.freeze({
   hearts: "\u2665",
   diamonds: "\u2666",
@@ -68,6 +78,10 @@ export function isCardSkinOwned(skinId, cardKey) {
   return ensureCollection().owned[skinId]?.includes(cardKey) ?? false;
 }
 
+export function getCardSkinRarity(skinId) {
+  return CARD_SKIN_RARITIES[skinId] ?? Object.freeze({ id: "default", label: "Default", weight: 0, order: 0, color: "#f4edcf" });
+}
+
 export function getEquippedCardSkin(card) {
   const state = ensureCollection();
   if (state.fullDeckSkin !== "custom") return state.fullDeckSkin;
@@ -117,7 +131,7 @@ export function unequipCollectedCard(cardKey) {
   const state = ensureCollection();
   if (!state.equippedByCard[cardKey]) return false;
   delete state.equippedByCard[cardKey];
-  state.fullDeckSkin = "custom";
+  state.fullDeckSkin = Object.keys(state.equippedByCard).length > 0 ? "custom" : "classic";
   commitCollection("card-unequip");
   return true;
 }
@@ -125,10 +139,9 @@ export function unequipCollectedCard(cardKey) {
 export function createPendingPackReward(randomValue = secureRandom()) {
   const state = ensureCollection();
   if (state.pendingReward) return { ...state.pendingReward };
-  const pool = buildCollectiblePool(state.owned);
-  if (!pool.length) return null;
-  const normalizedRandom = Math.min(0.999999999, Math.max(0, Number(randomValue) || 0));
-  const reward = pool[Math.floor(normalizedRandom * pool.length)];
+  const reward = selectWeightedPackReward(state.owned, randomValue);
+  if (!reward) return null;
+  const normalizedRandom = normalizeRandom(randomValue);
   state.pendingReward = {
     id: `pack-${Date.now()}-${Math.floor(normalizedRandom * 1_000_000)}`,
     ...reward,
@@ -158,15 +171,57 @@ export function buildCollectiblePool(owned = {}) {
   });
 }
 
+export function selectWeightedPackReward(owned = {}, randomValue = 0) {
+  const cardKeys = getAllCardKeys();
+  const availableSkins = COLLECTIBLE_SKIN_IDS
+    .map((skinId) => {
+      const ownedSet = new Set(Array.isArray(owned[skinId]) ? owned[skinId] : []);
+      const cards = cardKeys.filter((key) => !ownedSet.has(key));
+      return { skinId, cards, rarity: getCardSkinRarity(skinId) };
+    })
+    .filter((entry) => entry.cards.length > 0)
+    .sort((a, b) => a.rarity.order - b.rarity.order);
+  if (!availableSkins.length) return null;
+
+  const totalWeight = availableSkins.reduce((sum, entry) => sum + entry.rarity.weight, 0);
+  let roll = normalizeRandom(randomValue) * totalWeight;
+  let selected = availableSkins.at(-1);
+
+  for (const entry of availableSkins) {
+    if (roll < entry.rarity.weight) {
+      selected = entry;
+      break;
+    }
+    roll -= entry.rarity.weight;
+  }
+
+  const localRoll = selected.rarity.weight > 0
+    ? Math.min(0.999999999, Math.max(0, roll / selected.rarity.weight))
+    : 0;
+  const key = selected.cards[Math.floor(localRoll * selected.cards.length)];
+  return {
+    skinId: selected.skinId,
+    rarityId: selected.rarity.id,
+    rarityLabel: selected.rarity.label,
+    ...parseCardKey(key)
+  };
+}
+
 export function runCardCollectionSelfTests() {
   const keys = getAllCardKeys();
   const emptyPool = buildCollectiblePool({});
   const oneOwned = { dark: [createCardKey("A", "hearts")] };
   const reducedPool = buildCollectiblePool(oneOwned);
+  const rare = selectWeightedPackReward({}, 0.1);
+  const epic = selectWeightedPackReward({}, 0.7);
+  const legendary = selectWeightedPackReward({}, 0.9);
+  const mythic = selectWeightedPackReward({}, 0.99);
   return [
     { name: "52 unique playing cards", pass: keys.length === 52 && new Set(keys).size === 52 },
     { name: "208 duplicate-protected collectible rewards", pass: emptyPool.length === 208 },
-    { name: "owned rewards leave the pack pool", pass: reducedPool.length === 207 && !reducedPool.some((entry) => entry.skinId === "dark" && entry.key === "A|hearts") }
+    { name: "owned rewards leave the pack pool", pass: reducedPool.length === 207 && !reducedPool.some((entry) => entry.skinId === "dark" && entry.key === "A|hearts") },
+    { name: "rarity ladder uses weighted skin rolls", pass: rare?.skinId === "gold" && epic?.skinId === "pink" && legendary?.skinId === "dark" && mythic?.skinId === "rainbow" },
+    { name: "rainbow is the highest rarity", pass: getCardSkinRarity("rainbow").order > getCardSkinRarity("dark").order && getCardSkinRarity("dark").order > getCardSkinRarity("pink").order }
   ];
 }
 
@@ -196,7 +251,7 @@ function normalizeCollection(saved) {
     ? "classic"
     : requestedFullDeckSkin;
   const state = {
-    version: 2,
+    version: 3,
     owned: Object.fromEntries(COLLECTIBLE_SKIN_IDS.map((skinId) => [skinId, []])),
     equippedByCard: {},
     fullDeckSkin,
@@ -222,6 +277,8 @@ function normalizeCollection(saved) {
     state.pendingReward = {
       id: String(pending.id || `restored-${Date.now()}`),
       skinId: pending.skinId,
+      rarityId: getCardSkinRarity(pending.skinId).id,
+      rarityLabel: getCardSkinRarity(pending.skinId).label,
       ...parseCardKey(pending.key),
       createdAt: Number(pending.createdAt) || Date.now()
     };
@@ -241,6 +298,10 @@ function secureRandom() {
     return values[0] / 0x1_0000_0000;
   }
   return Math.random();
+}
+
+function normalizeRandom(value) {
+  return Math.min(0.999999999, Math.max(0, Number(value) || 0));
 }
 
 function readLegacyFullDeckSkin() {

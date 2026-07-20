@@ -1,5 +1,5 @@
-import { playGameSfx } from "./audio.js?v=158";
-import { economy, ECONOMY_CONFIG } from "./economy.js?v=158";
+import { playGameSfx } from "./audio.js?v=159";
+import { economy, ECONOMY_CONFIG } from "./economy.js?v=159";
 import {
   CARD_RANKS,
   CARD_SUITS,
@@ -9,18 +9,21 @@ import {
   createCardKey,
   createPendingPackReward,
   equipCollectedCard,
+  getCardSkinRarity,
   getCardCollectionSnapshot,
   getCollectionProgress,
   isFullDeckSkinOwned,
   isCardSkinOwned,
   parseCardKey,
   subscribeToCardCollection,
+  unequipCollectedCard,
   unlockFullDeckSkin
-} from "./cardCollection.js?v=158";
-import { applyCardSkin, CARD_SKINS, preloadCardSkinAssets, syncCardSkinFromCollection } from "./cardSkins.js?v=158";
+} from "./cardCollection.js?v=159";
+import { applyCardSkin, CARD_SKINS, preloadCardSkinAssets, syncCardSkinFromCollection } from "./cardSkins.js?v=159";
 
 const SUIT_SYMBOLS = Object.freeze({ hearts: "\u2665", diamonds: "\u2666", clubs: "\u2663", spades: "\u2660" });
 const SKIN_ICONS = Object.freeze({ dark: "\u263E", pink: "\u2665", gold: "\u2605", rainbow: "\u25C6" });
+const PACK_RARITY_CLASSES = Object.freeze(["rarity-rare", "rarity-epic", "rarity-legendary", "rarity-mythic"]);
 let selectedCollectionSkin = "dark";
 let packOpening = false;
 let packRevealed = false;
@@ -122,6 +125,8 @@ function showPackOverlay() {
   elements.overlay.hidden = false;
   elements.overlay.setAttribute("aria-hidden", "false");
   elements.overlay.classList.remove("is-opening", "is-revealed", "is-collecting");
+  elements.overlay.classList.remove(...PACK_RARITY_CLASSES);
+  delete elements.overlay.dataset.rarity;
   elements.packShell.hidden = false;
   elements.packReward.hidden = true;
   elements.openButton.hidden = false;
@@ -154,12 +159,13 @@ function revealPendingPack() {
     elements.overlay.classList.add("is-revealed");
     elements.packShell.hidden = true;
     elements.openButton.hidden = true;
+    const rarity = getCardSkinRarity(reward.skinId);
     renderPackReward(reward);
     elements.packReward.hidden = false;
     elements.collectButton.hidden = false;
     elements.equipButton.hidden = false;
-    elements.packPrompt.textContent = "NEW CARD SKIN";
-    spawnPackBurst();
+    elements.packPrompt.textContent = `${rarity.label.toUpperCase()} CARD`;
+    spawnPackBurst(reward);
     playGameSfx("card_unlock");
     elements.equipButton.focus({ preventScroll: true });
   }, 520);
@@ -168,6 +174,10 @@ function revealPendingPack() {
 function renderPackReward(reward) {
   const colorClass = getSuitColorClass(reward.suit);
   const skinName = CARD_SKINS[reward.skinId]?.name ?? reward.skinId;
+  const rarity = getCardSkinRarity(reward.skinId);
+  elements.overlay.classList.add(`rarity-${rarity.id}`);
+  elements.overlay.dataset.rarity = rarity.id;
+  elements.overlay.style.setProperty("--pack-rarity-color", rarity.color);
   elements.packReward.innerHTML = `
     <div class="pack-reward-card card-${colorClass} card-${reward.suit} card-skin-${reward.skinId}" data-card-rank="${reward.rank}" data-card-suit="${reward.suit}">
       <span>${reward.rank}${reward.suitSymbol}</span>
@@ -175,9 +185,9 @@ function renderPackReward(reward) {
       <i>${reward.suitSymbol}</i>
     </div>
     <div class="pack-reward-copy">
-      <span>${skinName}</span>
+      <span class="pack-rarity-label rarity-${rarity.id}">${rarity.label}</span>
       <h2>${reward.rank} of ${capitalize(reward.suit)}</h2>
-      <p>1 of 52 in this deck</p>
+      <p>${skinName} &bull; 1 of 52</p>
     </div>
   `;
 }
@@ -195,7 +205,9 @@ function claimAndClosePack(shouldEquip) {
   }
   elements.overlay.classList.add("is-collecting");
   playGameSfx(shouldEquip ? "card_select" : "score_arrive");
-  setStoreStatus(`${CARD_SKINS[reward.skinId].name} ${reward.rank} of ${capitalize(reward.suit)} added to your collection.`);
+  setStoreStatus(shouldEquip
+    ? `${CARD_SKINS[reward.skinId].name} ${reward.rank} of ${capitalize(reward.suit)} collected and equipped by itself.`
+    : `${CARD_SKINS[reward.skinId].name} ${reward.rank} of ${capitalize(reward.suit)} added to your collection.`);
   window.setTimeout(closePackOverlay, 260);
 }
 
@@ -204,6 +216,9 @@ function closePackOverlay() {
   elements.overlay.hidden = true;
   elements.overlay.setAttribute("aria-hidden", "true");
   elements.overlay.classList.remove("is-opening", "is-revealed", "is-collecting");
+  elements.overlay.classList.remove(...PACK_RARITY_CLASSES);
+  delete elements.overlay.dataset.rarity;
+  elements.overlay.style.removeProperty("--pack-rarity-color");
   elements.packReward.replaceChildren();
   document.body.classList.remove("pack-overlay-open");
   renderPackStoreState();
@@ -222,7 +237,7 @@ function renderPackStoreState() {
   elements.buyPackButton.classList.toggle("cannot-afford", !pending && wallet.coins < ECONOMY_CONFIG.mysteryCardPackCost);
   elements.buyPackPrice.textContent = pending ? "OPEN WAITING PACK" : `${ECONOMY_CONFIG.mysteryCardPackCost} Coins`;
   const small = elements.buyPackButton.querySelector("small");
-  if (small) small.textContent = remaining ? `${remaining} new cards remain` : "Collection complete";
+  if (small) small.textContent = remaining ? `${remaining} remain \u00b7 Rainbow 3%` : "Collection complete";
   renderPinkArcadeDeckStoreState(collection, wallet);
 }
 
@@ -256,17 +271,20 @@ function renderCardCollection() {
 
   elements.collectionDeckList.innerHTML = COLLECTIBLE_SKIN_IDS.map((skinId) => {
     const progress = getCollectionProgress(skinId);
+    const rarity = getCardSkinRarity(skinId);
     const selected = skinId === selectedCollectionSkin;
     return `
       <button class="collection-deck-pack skin-${skinId}${selected ? " is-selected" : ""}" data-collection-skin="${skinId}" type="button" aria-pressed="${selected}">
         <span class="collection-pack-art" aria-hidden="true"><i>${SKIN_ICONS[skinId]}</i></span>
         <strong>${CARD_SKINS[skinId].name}</strong>
         <small>${progress.owned} / ${progress.total}</small>
+        <em class="collection-rarity rarity-${rarity.id}">${rarity.label} \u00b7 ${rarity.weight}%</em>
       </button>
     `;
   }).join("");
 
   const progress = getCollectionProgress(selectedCollectionSkin);
+  const selectedRarity = getCardSkinRarity(selectedCollectionSkin);
   const suitRows = CARD_SUITS.map((suit) => `
     <div class="collection-suit-row" role="row">
       <span class="collection-suit-label" aria-label="${capitalize(suit)}">${SUIT_SYMBOLS[suit]}</span>
@@ -282,8 +300,9 @@ function renderCardCollection() {
       <div><span>Deck Collection</span><h3>${CARD_SKINS[selectedCollectionSkin].name}</h3></div>
       <strong>${progress.owned} / 52</strong>
     </header>
+    <div class="collection-detail-rarity rarity-${selectedRarity.id}"><strong>${selectedRarity.label}</strong><span>${selectedRarity.weight}% pack chance</span></div>
     <div class="collection-progress-track"><i style="--collection-progress:${(progress.owned / progress.total) * 100}%"></i></div>
-    <p>Find individual cards in Mystery Packs. Tap an owned card to equip it.</p>
+    <p>Tap an owned card to equip only that rank and suit. Tap it again to return that card to Default.</p>
     <button class="collection-full-deck-button${fullDeckActive ? " is-active" : ""}" data-test-full-deck="${selectedCollectionSkin}" type="button">
       ${fullDeckActive ? "FULL DECK ACTIVE" : "EQUIP FULL DECK (TEST)"}
     </button>
@@ -305,9 +324,9 @@ function renderCollectionCard(skinId, rank, suit, snapshot) {
   return `
     <button class="collection-card-slot card-${colorClass} card-${suit} card-skin-${skinId}${owned ? " is-owned" : " is-locked"}${equipped ? " is-equipped" : ""}"
       data-collection-card-key="${key}" data-collection-card-skin="${skinId}" type="button" ${owned ? "" : "disabled"}
-      aria-label="${owned ? `${equipped ? "Equipped" : "Equip"} ${CARD_SKINS[skinId].name} ${rank} of ${capitalize(suit)}` : `Locked ${rank} of ${capitalize(suit)}`}">
+      aria-label="${owned ? equipped ? `Unequip ${CARD_SKINS[skinId].name} ${rank} of ${capitalize(suit)} and restore Default` : `Equip only ${CARD_SKINS[skinId].name} ${rank} of ${capitalize(suit)}` : `Locked ${rank} of ${capitalize(suit)}`}">
       <span>${owned ? rank : "?"}</span><i>${owned ? SUIT_SYMBOLS[suit] : ""}</i>
-      ${equipped ? "<b aria-hidden=\"true\">E</b>" : ""}
+      ${equipped ? "<b aria-hidden=\"true\">ON</b>" : ""}
     </button>
   `;
 }
@@ -335,22 +354,30 @@ function onCollectionCardAction(event) {
   if (!cardButton || cardButton.disabled) return;
   const skinId = cardButton.dataset.collectionCardSkin;
   const key = cardButton.dataset.collectionCardKey;
-  if (!equipCollectedCard(skinId, key)) return;
+  const snapshot = getCardCollectionSnapshot();
+  const isEquipped = snapshot.fullDeckSkin === "custom" && snapshot.equippedByCard[key] === skinId;
+  const changed = isEquipped ? unequipCollectedCard(key) : equipCollectedCard(skinId, key);
+  if (!changed) return;
   syncCardSkinFromCollection();
   const card = parseCardKey(key);
-  setCollectionStatus(`${CARD_SKINS[skinId].name} ${card.rank} of ${capitalize(card.suit)} equipped.`);
+  setCollectionStatus(isEquipped
+    ? `${card.rank} of ${capitalize(card.suit)} returned to the Default card.`
+    : `${CARD_SKINS[skinId].name} ${card.rank} of ${capitalize(card.suit)} equipped by itself.`);
   renderCardCollection();
-  playGameSfx("card_select");
+  playGameSfx(isEquipped ? "card_deselect" : "card_select");
 }
 
-function spawnPackBurst() {
+function spawnPackBurst(reward) {
   if (!elements?.overlay) return;
+  const rarity = getCardSkinRarity(reward?.skinId);
+  const particleCount = 18 + rarity.order * 8;
   const fragment = document.createDocumentFragment();
-  for (let index = 0; index < 22; index += 1) {
+  for (let index = 0; index < particleCount; index += 1) {
     const spark = document.createElement("i");
-    const angle = (Math.PI * 2 * index) / 22 + Math.random() * .2;
-    const distance = 72 + Math.random() * 150;
+    const angle = (Math.PI * 2 * index) / particleCount + Math.random() * .2;
+    const distance = 72 + Math.random() * (130 + rarity.order * 18);
     spark.className = "pack-reveal-spark";
+    spark.style.color = rarity.color;
     spark.style.setProperty("--pack-x", `${Math.cos(angle) * distance}px`);
     spark.style.setProperty("--pack-y", `${Math.sin(angle) * distance}px`);
     spark.style.setProperty("--pack-delay", `${Math.random() * 90}ms`);

@@ -252,8 +252,12 @@ if (!cutsceneSource.includes("startPreparedShardPhysics")
 }
 if (!cardCollectionSource.includes("buildCollectiblePool")
   || !cardCollectionSource.includes("equipCollectedCard")
+  || !cardCollectionSource.includes("unequipCollectedCard")
+  || !cardCollectionSource.includes("CARD_SKIN_RARITIES")
+  || !cardCollectionSource.includes("selectWeightedPackReward")
   || !cardCollectionSource.includes("unlockFullDeckSkin")
   || !cardCollectionUiSource.includes("createPendingPackReward")
+  || !cardCollectionUiSource.includes("getCardSkinRarity")
   || !cardCollectionUiSource.includes("buyOrEquipPinkArcadeDeck")
   || !uiSource.includes("getCardSkinClass")
   || !cutsceneSource.includes("getCardSkinClass")
@@ -264,8 +268,9 @@ if (!cardCollectionSource.includes("buildCollectiblePool")
   || !css.includes(".card.card-skin-pink_arcade")
   || !css.includes(".card-skin-art")
   || !collectionCss.includes(".pack-opening-overlay")
+  || !collectionCss.includes(".rarity-mythic")
   || !collectionCss.includes(".collection-card-matrix")) {
-  throw new Error("Duplicate-protected packs, per-card equips, or collection visuals are incomplete");
+  throw new Error("Rarity-weighted packs, per-card equips, or collection visuals are incomplete");
 }
 if (!cutsceneSource.includes("is-consumed-after-shatter") || !css.includes(".cutin-live-card.is-consumed-after-shatter")) {
   throw new Error("Consumed cut-in cards can reappear after the vacuum finishes");
