@@ -592,11 +592,18 @@ if (!css.includes('html[data-card-skin="dark"]') || !css.includes('html[data-car
   throw new Error("One or more card skin styles are missing");
 }
 const roundStartSource = gameStateSource.slice(
-  gameStateSource.indexOf("function startNewRound()"),
+  gameStateSource.indexOf("function startNewRound("),
   gameStateSource.indexOf("function startTimer()")
 );
 if (!roundStartSource.includes("ui.clearMessage();") || !uiSource.includes("messageGeneration")) {
   throw new Error("Round message cleanup regression guards are missing");
+}
+if (!roundStartSource.includes("dealNextTable(retainedTableCards)")
+  || !gameStateSource.includes("getUncrunchedTableCards(crunch.resolution)")
+  || !gameStateSource.includes("state.stack = [...freshCards, ...retained]")
+  || !uiSource.includes("const existing = new Map()")
+  || !uiSource.includes('motion: "hand-shift"')) {
+  throw new Error("Untouched table cards must persist and slide right before replacement deals");
 }
 if (!uiSource.includes("animateSummaryNumber") || !css.includes("Arcade run summary")) {
   throw new Error("Arcade run summary counters or styles are missing");

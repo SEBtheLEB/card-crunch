@@ -1,5 +1,5 @@
-import { RANKS, SUITS, drawCard } from "./deck.js?v=156";
-import { MATCH_TYPES, SCORE_CONFIG, createStackEntry, evaluateStackAdd } from "./scoring.js?v=156";
+import { RANKS, SUITS, drawCard } from "./deck.js?v=157";
+import { MATCH_TYPES, SCORE_CONFIG, createStackEntry, evaluateStackAdd } from "./scoring.js?v=157";
 
 export const ARCADE_MODE = "endlessArcade";
 

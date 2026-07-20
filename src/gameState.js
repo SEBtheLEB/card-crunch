@@ -1,5 +1,5 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=156";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=156";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=157";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=157";
 import {
   ARCADE_CONFIG,
   ARCADE_MODE,
@@ -9,24 +9,24 @@ import {
   isArcadeMode,
   isPowerCard,
   resolveArcadeCrunch
-} from "./arcadeMode.js?v=156";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=156";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=156";
-import { ensurePlayableRound } from "./handSafety.js?v=156";
-import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=156";
-import { formatCompactNumber } from "./format.js?v=156";
-import { adManager } from "./ads.js?v=156";
-import { submitBestScore } from "./playGames.js?v=156";
-import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=156";
-import { purchaseManager } from "./purchases.js?v=156";
-import { getRoundDealDuration } from "./dealTiming.js?v=156";
+} from "./arcadeMode.js?v=157";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=157";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=157";
+import { ensurePlayableRound } from "./handSafety.js?v=157";
+import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=157";
+import { formatCompactNumber } from "./format.js?v=157";
+import { adManager } from "./ads.js?v=157";
+import { submitBestScore } from "./playGames.js?v=157";
+import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=157";
+import { purchaseManager } from "./purchases.js?v=157";
+import { getRoundDealDuration } from "./dealTiming.js?v=157";
 import {
   animateBust,
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=156";
+} from "./animations.js?v=157";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -95,7 +95,8 @@ export function createGame(ui) {
     tutorialBankStep: false,
     tutorialExpectedIndexes: [],
     tutorialGuideStackByStep: [],
-    dealHandCount: 0
+    dealHandCount: 0,
+    dealTableCount: 0
   };
 
   function showMap() {
@@ -177,6 +178,7 @@ export function createGame(ui) {
     state.runStartedAt = Date.now();
     state.timeLeft = state.turnSeconds;
     state.dealHandCount = 4;
+    state.dealTableCount = state.baseStackCount;
     state.locked = true;
     state.status = "playing";
     ui.showStart(false);
@@ -386,6 +388,9 @@ export function createGame(ui) {
       selectionLabel: arcadeRun ? "ARCADE STACK" : "HAND",
       enableFullHand: !arcadeRun
     });
+    const retainedTableCards = crunch.success
+      ? getUncrunchedTableCards(crunch.resolution)
+      : [];
 
     playSfx("crunch_start");
 
@@ -506,7 +511,7 @@ export function createGame(ui) {
     state.bestScore = Math.max(state.bestScore, state.score);
     localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
     localStorage.setItem("cardCrunchBestStreak", String(Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak)));
-    startNewRound();
+    startNewRound({ retainedTableCards });
   }
 
   function createActiveCrunchBankCounter() {
@@ -1027,51 +1032,75 @@ export function createGame(ui) {
     ui.showMap(false);
   }
 
-  function startNewRound() {
+  function startNewRound({ retainedTableCards = [] } = {}) {
     stopTimer();
     ui.clearMessage();
     if (isArcadeMode(state)) {
-      state.stack.forEach((card) => state.discard.push(card));
-      state.stack = drawCards(state, state.baseStackCount);
+      const tableDealCount = dealNextTable(retainedTableCards);
       state.arcadePlayedCards = [];
       state.selectedHandIndexes = [];
       state.timeLeft = state.turnSeconds;
       state.status = "playing";
       state.dealHandCount = 0;
+      state.dealTableCount = tableDealCount;
       state.locked = true;
       ui.beginRoundHandoff(state);
       ui.render(state, handlers);
-      finishHandDeal(0);
+      finishHandDeal(0, { tableDealCount, announceReady: true });
       return;
     }
     const hasReplacementSlots = state.hand.some((card) => !card);
     const replacementCount = state.hand.filter((card) => !card).length;
-    state.stack.forEach((card) => state.discard.push(card));
-    state.stack = drawCards(state, state.baseStackCount);
+    const tableDealCount = dealNextTable(retainedTableCards);
     refillHand({ allowOccupiedSafety: !hasReplacementSlots });
     state.selectedHandIndexes = [];
     state.timeLeft = state.turnSeconds;
     state.status = "playing";
     state.dealHandCount = replacementCount;
+    state.dealTableCount = tableDealCount;
     state.locked = true;
     ui.beginRoundHandoff(state);
     ui.render(state, handlers);
-    finishHandDeal(replacementCount);
+    finishHandDeal(replacementCount, { tableDealCount, announceReady: true });
   }
 
-  function finishHandDeal(replacementCount, { announceReady = false } = {}) {
+  function finishHandDeal(replacementCount, { tableDealCount = state.baseStackCount, announceReady = false } = {}) {
     const dealToken = state.timerToken;
     const reducedMotion = document.documentElement.classList.contains("reduce-motion");
-    const dealDuration = getRoundDealDuration(replacementCount, state.baseStackCount, reducedMotion);
+    const dealDuration = getRoundDealDuration(replacementCount, tableDealCount, reducedMotion);
     window.setTimeout(() => {
       if (dealToken !== state.timerToken || state.status !== "playing") return;
       state.dealHandCount = 0;
+      state.dealTableCount = 0;
       state.locked = false;
       ui.render(state, handlers);
       ui.finishRoundHandoff();
       if (announceReady) ui.playInitialReadyPulse();
       startTimer();
     }, dealDuration);
+  }
+
+  function getUncrunchedTableCards(resolution) {
+    const consumedIds = new Set(
+      (resolution?.history ?? []).flatMap((entry) => (entry.matchedCards ?? []).map((card) => card?.id))
+    );
+    return state.stack.filter((card) => card?.id && !consumedIds.has(card.id));
+  }
+
+  function dealNextTable(retainedTableCards = []) {
+    const retainedIds = new Set(retainedTableCards.map((card) => card?.id).filter(Boolean));
+    const retained = state.stack
+      .filter((card) => retainedIds.has(card?.id))
+      .slice(0, state.baseStackCount);
+
+    state.stack.forEach((card) => {
+      if (!retainedIds.has(card?.id)) state.discard.push(card);
+    });
+
+    const freshCards = drawCards(state, Math.max(0, state.baseStackCount - retained.length));
+    // Fresh cards enter from the left; an untouched table card owns the right slot.
+    state.stack = [...freshCards, ...retained];
+    return freshCards.length;
   }
 
   function startTimer() {
@@ -1127,6 +1156,7 @@ export function createGame(ui) {
     state.maxMisses = 3;
     state.timeLeft = state.turnSeconds;
     state.dealHandCount = 0;
+    state.dealTableCount = 0;
     state.bankMultiplier = 1;
     state.bestRunMultiplier = 1;
     state.bestRunStreak = 0;

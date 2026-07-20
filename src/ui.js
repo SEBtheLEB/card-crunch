@@ -1,12 +1,12 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=156";
-import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=156";
-import { isPotUnlocked } from "./progression.js?v=156";
-import { formatCompactNumber } from "./format.js?v=156";
-import { hasShieldToken } from "./save.js?v=156";
-import { bindInstantAction } from "./input.js?v=156";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=156";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=156";
-import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=156";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=157";
+import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=157";
+import { isPotUnlocked } from "./progression.js?v=157";
+import { formatCompactNumber } from "./format.js?v=157";
+import { hasShieldToken } from "./save.js?v=157";
+import { bindInstantAction } from "./input.js?v=157";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=157";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=157";
+import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=157";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -827,19 +827,60 @@ function sprayFromElement(element, tone = "gold") {
 }
 
 function renderStack(elements, state) {
-  elements.tableZone.querySelectorAll(":scope > .base-stack-card").forEach((slot) => slot.remove());
+  const existing = new Map();
+  elements.tableZone.querySelectorAll(":scope > .base-stack-card").forEach((slot) => {
+    const cardEl = slot.querySelector(".card[data-card-id]");
+    if (!cardEl?.dataset.cardId) {
+      slot.remove();
+      return;
+    }
+    existing.set(cardEl.dataset.cardId, {
+      slot,
+      cardEl,
+      index: Number(slot.dataset.stackSlot),
+      rect: cardEl.getBoundingClientRect()
+    });
+  });
+
+  const nextIds = new Set(state.stack.map((card) => card.id));
+  existing.forEach(({ slot }, cardId) => {
+    if (!nextIds.has(cardId)) slot.remove();
+  });
+
   elements.tableZone.style.setProperty("--stack-count", String(state.stack.length));
   elements.tableZone.style.setProperty("--stack-size", "clamp(118px, 40vw, 190px)");
+  const rendered = [];
   state.stack.forEach((card, index) => {
-    const slot = document.createElement("div");
+    const previous = existing.get(card.id);
+    const slot = previous?.slot ?? document.createElement("div");
     slot.className = "table-card-slot stack-slot base-stack-card";
     slot.dataset.stackSlot = String(index);
     slot.style.setProperty("--stack-rotate", `${index === 0 ? -4 : 4}deg`);
-    const cardEl = createCard(card, { stackIndex: index });
-    cardEl.classList.add("card-deal-pending");
-    slot.appendChild(cardEl);
+    const cardEl = previous?.cardEl ?? createCard(card, { stackIndex: index });
+    cardEl.dataset.cardId = card.id;
+    cardEl.dataset.stackCard = String(index);
+    if (!previous) {
+      cardEl.classList.add("card-deal-pending");
+      slot.appendChild(cardEl);
+    }
     elements.tableZone.insertBefore(slot, elements.selectedCardTray);
-    animateCardDealIn(cardEl, (state.dealHandCount ?? 0) + index, { zone: "table" });
+    rendered.push({ cardEl, previous, index });
+  });
+
+  rendered.forEach(({ cardEl, previous, index }) => {
+    if (!previous) {
+      animateCardDealIn(cardEl, (state.dealHandCount ?? 0) + index, { zone: "table" });
+      return;
+    }
+    if (previous.index === index) return;
+    const toRect = cardEl.getBoundingClientRect();
+    cardEl.classList.add("card-layout-moving");
+    const animation = animateCardTransfer(cardEl, previous.rect, toRect, {
+      withTrail: true,
+      motion: "hand-shift",
+      duration: 420
+    });
+    animation?.finished.catch(() => {}).finally(() => cardEl.classList.remove("card-layout-moving"));
   });
 }
 

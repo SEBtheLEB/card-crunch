@@ -1,5 +1,5 @@
-import { createDeck, drawCards, shuffle } from "./deck.js?v=156";
-import { evaluateStackAdd } from "./scoring.js?v=156";
+import { createDeck, drawCards, shuffle } from "./deck.js?v=157";
+import { evaluateStackAdd } from "./scoring.js?v=157";
 
 export function hasPlayableCard(stack, hand, gameplayModifier = null) {
   return hand.some((card) => card && evaluateStackAdd(stack, card, gameplayModifier).valid);
