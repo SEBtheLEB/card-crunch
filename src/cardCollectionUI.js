@@ -1,5 +1,5 @@
-import { playGameSfx } from "./audio.js?v=162";
-import { economy, ECONOMY_CONFIG } from "./economy.js?v=162";
+import { playGameSfx } from "./audio.js?v=163";
+import { economy, ECONOMY_CONFIG } from "./economy.js?v=163";
 import {
   CARD_RANKS,
   CARD_SUITS,
@@ -18,8 +18,8 @@ import {
   subscribeToCardCollection,
   unequipCollectedCard,
   unlockFullDeckSkin
-} from "./cardCollection.js?v=162";
-import { applyCardSkin, CARD_SKINS, preloadCardSkinAssets, syncCardSkinFromCollection } from "./cardSkins.js?v=162";
+} from "./cardCollection.js?v=163";
+import { applyCardSkin, CARD_SKINS, preloadCardSkinAssets, syncCardSkinFromCollection } from "./cardSkins.js?v=163";
 
 const SUIT_SYMBOLS = Object.freeze({ hearts: "\u2665", diamonds: "\u2666", clubs: "\u2663", spades: "\u2660" });
 const SKIN_ICONS = Object.freeze({ dark: "\u263E", pink: "\u2665", gold: "\u2605", rainbow: "\u25C6" });
@@ -264,8 +264,9 @@ function renderPinkArcadeDeckStoreState(collection = getCardCollectionSnapshot()
   if (detail) detail.textContent = owned ? "52 cards + custom neon trail" : "Complete 52-card pixel deck";
 }
 
-function renderCardCollection() {
+function renderCardCollection({ preserveMatrixScroll = true } = {}) {
   if (!elements?.collectionDeckList || !elements?.collectionDetail) return;
+  const viewportState = preserveMatrixScroll ? captureCollectionViewportState() : null;
   const snapshot = getCardCollectionSnapshot();
   if (!COLLECTIBLE_SKIN_IDS.includes(selectedCollectionSkin)) selectedCollectionSkin = "dark";
 
@@ -310,9 +311,42 @@ function renderCardCollection() {
       ${suitRows}
     </div>
   `;
+  restoreCollectionViewportState(viewportState);
 
   if (elements.collectionStatus && !elements.collectionStatus.textContent.trim()) {
     elements.collectionStatus.textContent = "Open packs to build a deck, or equip a full deck for testing.";
+  }
+}
+
+function captureCollectionViewportState() {
+  const matrix = elements?.collectionDetail?.querySelector(".collection-card-matrix");
+  const focusedCard = document.activeElement?.closest?.("[data-collection-card-key]");
+  if (!matrix) return null;
+  return {
+    left: matrix.scrollLeft,
+    top: matrix.scrollTop,
+    focusedKey: focusedCard?.dataset.collectionCardKey ?? null,
+    focusedSkin: focusedCard?.dataset.collectionCardSkin ?? null
+  };
+}
+
+function restoreCollectionViewportState(viewportState) {
+  if (!viewportState) return;
+  const matrix = elements?.collectionDetail?.querySelector(".collection-card-matrix");
+  if (!matrix) return;
+
+  const restore = () => {
+    matrix.scrollLeft = viewportState.left;
+    matrix.scrollTop = viewportState.top;
+  };
+  restore();
+  window.requestAnimationFrame(restore);
+
+  if (viewportState.focusedKey && viewportState.focusedSkin) {
+    const card = matrix.querySelector(
+      `[data-collection-card-key="${viewportState.focusedKey}"][data-collection-card-skin="${viewportState.focusedSkin}"]`
+    );
+    card?.focus({ preventScroll: true });
   }
 }
 
@@ -336,7 +370,7 @@ function onCollectionDeckAction(event) {
   if (!button) return;
   selectedCollectionSkin = button.dataset.collectionSkin;
   playGameSfx("card_select");
-  renderCardCollection();
+  renderCardCollection({ preserveMatrixScroll: false });
 }
 
 function onCollectionCardAction(event) {

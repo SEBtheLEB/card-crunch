@@ -622,6 +622,13 @@ if (!uiSource.includes("const currentIndex = Number(button.dataset.handIndex)"))
 if (!css.includes('html[data-card-skin="dark"]') || !css.includes('html[data-card-skin="pink"]') || !css.includes('html[data-card-skin="gold"]') || !css.includes('html[data-card-skin="rainbow"]')) {
   throw new Error("One or more card skin styles are missing");
 }
+if (!cardCollectionUiSource.includes("captureCollectionViewportState")
+  || !cardCollectionUiSource.includes("restoreCollectionViewportState")
+  || !cardCollectionUiSource.includes("matrix.scrollLeft = viewportState.left")
+  || !cardCollectionUiSource.includes("focus({ preventScroll: true })")
+  || !cardCollectionUiSource.includes("renderCardCollection({ preserveMatrixScroll: false })")) {
+  throw new Error("Card collection toggles must preserve the card matrix scroll position and focus");
+}
 const roundStartSource = gameStateSource.slice(
   gameStateSource.indexOf("function startNewRound("),
   gameStateSource.indexOf("function startTimer()")
