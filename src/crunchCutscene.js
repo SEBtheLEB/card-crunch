@@ -1,8 +1,8 @@
-import { formatCompactNumber } from "./format.js?v=159";
-import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=159";
-import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=159";
-import { getPowerCardDetails } from "./arcadeMode.js?v=159";
-import { createScoreSurgePlan } from "./scoreSurge.js?v=159";
+import { formatCompactNumber } from "./format.js?v=160";
+import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=160";
+import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=160";
+import { getPowerCardDetails } from "./arcadeMode.js?v=160";
+import { createScoreSurgePlan } from "./scoreSurge.js?v=160";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 

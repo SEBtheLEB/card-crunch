@@ -239,6 +239,12 @@ const hapticsSource = await readFile(resolve(root, "src/haptics.js"), "utf8");
 const scoringSource = await readFile(resolve(root, "src/scoring.js"), "utf8");
 const scoreSurgeSource = await readFile(resolve(root, "src/scoreSurge.js"), "utf8");
 const arcadeModeSource = await readFile(resolve(root, "src/arcadeMode.js"), "utf8");
+if (!html.includes("main-menu-screen is-visible is-home-page")
+  || !uiSource.includes('classList.toggle("is-home-page"')
+  || !css.includes(".main-menu-screen.is-home-page")
+  || !css.includes("grid-template-columns: repeat(3, minmax(0, 1fr))")) {
+  throw new Error("The home menu must fit one viewport while secondary pages remain scrollable");
+}
 if (!cutsceneSource.includes("feedCutinCardsToBank") || !cutsceneSource.includes("createPixelShardClip") || !css.includes("cutin-card-shard")) {
   throw new Error("Crunch Bank card-shard animation hooks are missing");
 }

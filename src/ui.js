@@ -1,13 +1,13 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=159";
-import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=159";
-import { isPotUnlocked } from "./progression.js?v=159";
-import { formatCompactNumber } from "./format.js?v=159";
-import { hasShieldToken } from "./save.js?v=159";
-import { bindInstantAction } from "./input.js?v=159";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=159";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=159";
-import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=159";
-import { getPotRuleFacts, renderPotInfo } from "./potInfo.js?v=159";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=160";
+import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=160";
+import { isPotUnlocked } from "./progression.js?v=160";
+import { formatCompactNumber } from "./format.js?v=160";
+import { hasShieldToken } from "./save.js?v=160";
+import { bindInstantAction } from "./input.js?v=160";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=160";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=160";
+import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=160";
+import { getPotRuleFacts, renderPotInfo } from "./potInfo.js?v=160";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -546,6 +546,9 @@ function setText(element, value, cache, key) {
 }
 
 function showMenuPage(elements, pageName = "home") {
+  const isHomePage = pageName === "home";
+  elements.startScreen.classList.toggle("is-home-page", isHomePage);
+  if (isHomePage) elements.startScreen.scrollTop = 0;
   elements.startScreen.querySelectorAll("[data-page]").forEach((page) => {
     page.classList.toggle("is-active", page.dataset.page === pageName);
   });

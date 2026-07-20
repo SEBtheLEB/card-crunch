@@ -10366,6 +10366,110 @@ body.is-entry-score-surge-active .crunch-cutscene-overlay .cutin-stage {
   to { opacity: 0; transform: translate3d(-50%, -50%, 0) scale(.12); filter: brightness(2.4); }
 }
 
+/* Build 160: the home screen is a single mobile viewport. Long secondary
+   pages keep the menu's normal scroll behavior. */
+.main-menu-screen.is-home-page {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.main-menu-screen.is-home-page .menu-shell {
+  height: calc(100dvh - 36px - var(--safe-top) - var(--safe-bottom));
+  min-height: 0;
+}
+
+.main-menu-screen.is-home-page .menu-pages,
+.main-menu-screen.is-home-page .home-page.is-active {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.main-menu-screen.is-home-page .home-page.is-active {
+  grid-template-rows: minmax(0, 1fr) auto auto auto auto auto;
+  gap: clamp(6px, 1.1dvh, 10px);
+  padding-bottom: 0;
+}
+
+.main-menu-screen.is-home-page .menu-hero {
+  min-height: 0;
+  padding-block: 0;
+}
+
+.main-menu-screen.is-home-page .menu-tile-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.main-menu-screen.is-home-page .menu-tile-grid button {
+  min-height: 68px;
+  gap: 3px;
+  padding: 7px 4px;
+}
+
+.main-menu-screen.is-home-page .menu-tile-grid span {
+  font-size: 1.05rem;
+}
+
+.main-menu-screen.is-home-page .menu-tile-grid strong {
+  font-size: clamp(.48rem, 2.05vw, .68rem);
+}
+
+.main-menu-screen.is-home-page .menu-tile-grid small {
+  font-size: clamp(.52rem, 2.05vw, .65rem);
+  line-height: 1.05;
+}
+
+@media (max-height: 680px) {
+  .main-menu-screen.is-home-page .menu-shell {
+    gap: 6px;
+  }
+
+  .main-menu-screen.is-home-page .home-page.is-active {
+    gap: 4px;
+  }
+
+  .main-menu-screen.is-home-page .hero-card-fan {
+    scale: .82;
+  }
+
+  .main-menu-screen.is-home-page .menu-hero h1 {
+    width: min(76%, 270px);
+    padding-block: 9px 7px;
+    font-size: clamp(1.25rem, 6.6vw, 1.85rem);
+  }
+
+  .main-menu-screen.is-home-page .hero-tagline {
+    margin-top: 6px;
+  }
+
+  .main-menu-screen.is-home-page .hero-stats article {
+    min-height: 50px;
+    gap: 3px;
+    padding: 5px;
+  }
+
+  .main-menu-screen.is-home-page .play-button {
+    min-height: 50px;
+  }
+
+  .main-menu-screen.is-home-page .endless-arcade-button {
+    min-height: 44px;
+    margin-top: 0;
+    padding-block: 5px;
+  }
+
+  .main-menu-screen.is-home-page .endless-arcade-button small,
+  .main-menu-screen.is-home-page .play-subcopy,
+  .main-menu-screen.is-home-page .menu-tile-grid small {
+    display: none;
+  }
+
+  .main-menu-screen.is-home-page .menu-tile-grid button {
+    min-height: 48px;
+    padding-block: 4px;
+  }
+}
+
 /* Build 154: readable Pot challenge states
    One challenge per row keeps rule, progress, and unlock requirements legible
    inside the portrait-width menu shell. */
