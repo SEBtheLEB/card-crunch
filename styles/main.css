@@ -9486,13 +9486,16 @@ html[data-card-skin="rainbow"] .cutin-card {
 .cutin-tone-rank { --cutin-reason-color: #ffe47d; --cutin-reason-shadow: #6b4300; }
 .cutin-tone-add,
 .cutin-tone-subtract { --cutin-reason-color: #d7adff; --cutin-reason-shadow: #4a236f; }
+.cutin-tone-sequence { --cutin-reason-color: #8ff7ff; --cutin-reason-shadow: #174a70; }
 
 .cutin-tone-suit .cutin-result-stack .cutin-operator,
 .cutin-tone-suit .cutin-result-stack .cutin-label,
 .cutin-tone-rank .cutin-result-stack .cutin-operator,
 .cutin-tone-rank .cutin-result-stack .cutin-label,
 .cutin-tone-add .cutin-result-stack .cutin-label,
-.cutin-tone-subtract .cutin-result-stack .cutin-label {
+.cutin-tone-subtract .cutin-result-stack .cutin-label,
+.cutin-tone-sequence .cutin-result-stack .cutin-operator,
+.cutin-tone-sequence .cutin-result-stack .cutin-label {
   color: var(--cutin-reason-color);
   text-shadow:
     3px 3px 0 var(--cutin-reason-shadow),
@@ -9562,6 +9565,7 @@ html[data-card-skin="rainbow"] .cutin-card {
 .cutin-bonus-suit { --bonus-color: #72ddff; --bonus-shadow: #084a67; }
 .cutin-bonus-rank { --bonus-color: #ffe071; --bonus-shadow: #684000; }
 .cutin-bonus-math { --bonus-color: #d3a0ff; --bonus-shadow: #47206d; }
+.cutin-bonus-sequence { --bonus-color: #8ff7ff; --bonus-shadow: #174a70; }
 .cutin-bonus-double { --bonus-color: #ffad52; --bonus-shadow: #703000; }
 .cutin-bonus-speed { --bonus-color: #7ff5ff; --bonus-shadow: #07556a; }
 .cutin-bonus-streak { --bonus-color: #ff7a61; --bonus-shadow: #6b160d; }

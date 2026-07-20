@@ -3,8 +3,8 @@ import {
   hideCrunchSkipText,
   isCrunchSkipRequested,
   showCrunchSkipText
-} from "./crunchCutscene.js?v=152";
-import { playGameSfx } from "./audio.js?v=152";
+} from "./crunchCutscene.js?v=153";
+import { playGameSfx } from "./audio.js?v=153";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RESOLVE_HIGHLIGHT_DURATION_MS = 700;
@@ -173,7 +173,7 @@ export async function animateStackAdd({ handCard, matchedCards, matchedSlots, ma
   matchedCards.forEach((card) => card.classList.add("card-match-glow", "is-matched", "is-vibrating"));
   matchedSlots.forEach((slot) => slot.classList.add("case-match-glow", "slot-matched"));
   matchedCards.forEach((card) => burstAround(card, 10, particleType));
-  if (matchType === "add" || matchType === "subtract") drawComboStreak(handCard, matchedCards);
+  if (matchType === "sequence" || matchType === "add" || matchType === "subtract") drawComboStreak(handCard, matchedCards);
   await popStoredLabel(handCard ?? matchedCards[0], label, particleType);
   await sleep(180);
 
@@ -252,7 +252,7 @@ export async function animateSelectionResolve({
       clearSpotlight = applyResolveSpotlight(emphasizedCards);
       const burstAmount = Math.max(5, Math.floor(32 / Math.max(1, emphasizedCards.length)));
       emphasizedCards.forEach((card) => burstAround(card, burstAmount, particleType));
-      if (entry.matchType === "add" || entry.matchType === "subtract") drawComboStreak(handCard, matchedCards);
+      if (entry.matchType === "sequence" || entry.matchType === "add" || entry.matchType === "subtract") drawComboStreak(handCard, matchedCards);
       await advance.wait(RESOLVE_HIGHLIGHT_DURATION_MS);
       await onEntryResolved?.(entry, i, {
         sourceCards: [

@@ -1,4 +1,4 @@
-import { haptic } from "./haptics.js?v=152";
+import { haptic } from "./haptics.js?v=153";
 
 const AudioContextClass = globalThis.AudioContext ?? globalThis.webkitAudioContext;
 const SETTINGS_KEY = "cardCrunchSettings";

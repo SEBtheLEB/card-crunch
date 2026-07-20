@@ -1,5 +1,5 @@
-import { RANKS, SUITS, drawCard } from "./deck.js?v=152";
-import { MATCH_TYPES, SCORE_CONFIG, createStackEntry, evaluateStackAdd } from "./scoring.js?v=152";
+import { RANKS, SUITS, drawCard } from "./deck.js?v=153";
+import { MATCH_TYPES, SCORE_CONFIG, createStackEntry, evaluateStackAdd } from "./scoring.js?v=153";
 
 export const ARCADE_MODE = "endlessArcade";
 
@@ -55,6 +55,7 @@ const POWER_WEIGHTS = Object.freeze([
 ]);
 
 const MATCH_PRIORITY = Object.freeze({
+  [MATCH_TYPES.SEQUENCE]: 5,
   [MATCH_TYPES.ADD]: 4,
   [MATCH_TYPES.SUBTRACT]: 4,
   [MATCH_TYPES.RANK]: 3,

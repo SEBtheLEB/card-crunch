@@ -1,8 +1,8 @@
-import { formatCompactNumber } from "./format.js?v=152";
-import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=152";
-import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=152";
-import { getPowerCardDetails } from "./arcadeMode.js?v=152";
-import { createScoreSurgePlan } from "./scoreSurge.js?v=152";
+import { formatCompactNumber } from "./format.js?v=153";
+import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=153";
+import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle } from "./cardSkins.js?v=153";
+import { getPowerCardDetails } from "./arcadeMode.js?v=153";
+import { createScoreSurgePlan } from "./scoreSurge.js?v=153";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -585,7 +585,7 @@ async function playInlineCrunchBonuses(overlay, entry, advance, bankEl = null) {
   const reaction = overlay.querySelector(".cutin-inline-bonuses");
   if (!stage || !points || !reaction) return;
 
-  const isMultiMatch = (entry.matchType === "rank" || entry.matchType === "suit")
+  const isMultiMatch = (entry.matchType === "sequence" || entry.matchType === "rank" || entry.matchType === "suit")
     && (entry.matchCount ?? 0) >= 3;
   let runningPoints = entry.displayPoints ?? entry.points;
 
@@ -1330,6 +1330,7 @@ function orderMatchedCardsForEquation(entry) {
 }
 
 function getOperatorText(entry) {
+  if (entry.matchType === "sequence") return "RUN";
   if (entry.matchType === "add") return "+";
   if (entry.matchType === "subtract") return "-";
   if (entry.matchType === "rank") return getMatchOperatorText(entry, "MATCH");
@@ -1338,6 +1339,7 @@ function getOperatorText(entry) {
 }
 
 function getEquationText(entry) {
+  if (entry.matchType === "sequence") return (entry.sequenceRanks ?? []).join(" • ") || entry.label;
   if (entry.matchType === "rank") return createRepeatedMatchEquation(entry, "rank");
   if (entry.matchType === "suit") return createRepeatedMatchEquation(entry, "suitSymbol");
   if (entry.equation) {
@@ -1351,6 +1353,7 @@ function isMathEntry(entry) {
 }
 
 function getEntrySound(entry) {
+  if (entry.matchType === "sequence") return "math_combo";
   if ((entry.matchedCards?.length ?? 0) > 1 && (entry.matchType === "rank" || entry.matchType === "suit")) return "double_match";
   if (entry.matchType === "suit") return "suit_match";
   if (entry.matchType === "rank") return "rank_match";

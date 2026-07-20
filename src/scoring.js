@@ -1,4 +1,5 @@
 export const MATCH_TYPES = {
+  SEQUENCE: "sequence",
   ADD: "add",
   SUBTRACT: "subtract",
   RANK: "rank",
@@ -11,7 +12,22 @@ import { formatCompactNumber } from "./format.js";
 export const SCORE_CONFIG = {
   suit: 100,
   rank: 300,
-  math: 500
+  math: 500,
+  sequence: 700
+};
+
+export const SEQUENCE_TIER_MULTIPLIERS = {
+  3: 1,
+  4: 2,
+  5: 4,
+  6: 6
+};
+
+const SECONDARY_MATCH_MULTIPLIERS = {
+  [MATCH_TYPES.ADD]: 1.5,
+  [MATCH_TYPES.SUBTRACT]: 1.5,
+  [MATCH_TYPES.RANK]: 1.5,
+  [MATCH_TYPES.SUIT]: 1.5
 };
 
 export const MATCH_TIER_MULTIPLIERS = {
@@ -41,10 +57,14 @@ export const STACK_TYPE_CONFIG = {
 
 export function evaluateStackAdd(stackCards, selectedCard) {
   const pairs = getStackPairs(stackCards);
+  const candidates = [];
+
+  const sequence = findSequenceMatch(stackCards, selectedCard);
+  if (sequence) candidates.push(sequence);
 
   const addPair = pairs.find(({ a, b }) => a.card.value + b.card.value === selectedCard.value);
   if (addPair) {
-    return createMatch({
+    candidates.push(createMatch({
       type: MATCH_TYPES.ADD,
       label: "SUM CRUNCH",
       basePoints: SCORE_CONFIG.math,
@@ -57,14 +77,14 @@ export function evaluateStackAdd(stackCards, selectedCard) {
         result: selectedCard.value
       },
       cutinLabel: "SUM CRUNCH"
-    });
+    }));
   }
 
   const subtractPair = pairs.find(({ a, b }) => Math.abs(a.card.value - b.card.value) === selectedCard.value);
   if (subtractPair) {
     const left = Math.max(subtractPair.a.card.value, subtractPair.b.card.value);
     const right = Math.min(subtractPair.a.card.value, subtractPair.b.card.value);
-    return createMatch({
+    candidates.push(createMatch({
       type: MATCH_TYPES.SUBTRACT,
       label: "MINUS CRUNCH",
       basePoints: SCORE_CONFIG.math,
@@ -77,7 +97,7 @@ export function evaluateStackAdd(stackCards, selectedCard) {
         result: selectedCard.value
       },
       cutinLabel: "MINUS CRUNCH"
-    });
+    }));
   }
 
   const rankMatches = stackCards
@@ -86,8 +106,7 @@ export function evaluateStackAdd(stackCards, selectedCard) {
 
   if (rankMatches.length > 0) {
     const label = getNumberMatchLabel(rankMatches.length + 1);
-    const rankSuitMatches = rankMatches.filter((index) => stackCards[index].suit === selectedCard.suit);
-    return createMatch({
+    candidates.push(createMatch({
       type: MATCH_TYPES.RANK,
       label,
       basePoints: SCORE_CONFIG.rank,
@@ -99,16 +118,8 @@ export function evaluateStackAdd(stackCards, selectedCard) {
         right: selectedCard.rank,
         result: selectedCard.rank
       },
-      cutinLabel: label,
-      compoundMatch: rankSuitMatches.length > 0
-        ? {
-            type: "rank-suit",
-            label: "NUMBER + SUIT",
-            multiplier: 2,
-            matchedIndexes: rankSuitMatches
-          }
-        : null
-    });
+      cutinLabel: label
+    }));
   }
 
   const suitMatches = stackCards
@@ -117,7 +128,7 @@ export function evaluateStackAdd(stackCards, selectedCard) {
 
   if (suitMatches.length > 0) {
     const label = getSuitMatchLabel(suitMatches.length + 1);
-    return createMatch({
+    candidates.push(createMatch({
       type: MATCH_TYPES.SUIT,
       label,
       basePoints: SCORE_CONFIG.suit,
@@ -130,7 +141,20 @@ export function evaluateStackAdd(stackCards, selectedCard) {
         result: selectedCard.suitSymbol
       },
       cutinLabel: label
-    });
+    }));
+  }
+
+  if (candidates.length > 0) {
+    const primary = candidates[0];
+    const secondaryMatches = candidates
+      .slice(1)
+      .filter((candidate) => !isIntrinsicSequenceMath(primary, candidate))
+      .map((candidate) => createSecondaryMatch(primary, candidate));
+    return {
+      ...primary,
+      secondaryMatches,
+      compoundMatch: secondaryMatches[0] ?? null
+    };
   }
 
   return {
@@ -184,8 +208,11 @@ export function createStackEntry(card, match) {
     matchedIndexes: match.matchedIndexes,
     label: match.label,
     equation: match.equation,
+    sequenceValues: match.sequenceValues ?? null,
+    sequenceRanks: match.sequenceRanks ?? null,
     cutinLabel: match.cutinLabel,
-    compoundMatch: match.compoundMatch ?? null
+    compoundMatch: match.compoundMatch ?? null,
+    secondaryMatches: match.secondaryMatches ?? []
   };
 }
 
@@ -209,7 +236,7 @@ export function calculateCrunchScore({
   const awardedPoints = presentationEntries.map((entry, index) => (
     displayPoints[index]
       * getEntryMatchTierMultiplier(entry)
-      * getCompoundMatchMultiplier(entry)
+      * getSecondaryMatchMultiplier(entry)
       * getEntryPowerMultiplier(entry)
   ));
   const storedBase = awardedPoints.reduce((sum, points) => sum + points, 0);
@@ -288,6 +315,8 @@ export function calculateCrunchScore({
         matchedIndexes: entry.matchedIndexes,
         selectedIndexes: entry.selectedIndexes,
         equation: entry.equation,
+        sequenceValues: entry.sequenceValues,
+        sequenceRanks: entry.sequenceRanks,
         label: entry.cutinLabel ?? entry.label,
         isDouble: entry.matchedCards.length > 1 && (entry.matchType === MATCH_TYPES.RANK || entry.matchType === MATCH_TYPES.SUIT),
         multiplier: entry.matchedCards.length > 1 && (entry.matchType === MATCH_TYPES.RANK || entry.matchType === MATCH_TYPES.SUIT) ? 2 : 1,
@@ -343,18 +372,30 @@ function getMatchTierMultiplier(matchCount = 2) {
   return MATCH_TIER_MULTIPLIERS[6] + (matchCount - 6) * 12;
 }
 
+function getSequenceTierMultiplier(matchCount = 3) {
+  if (matchCount <= 3) return SEQUENCE_TIER_MULTIPLIERS[3];
+  if (SEQUENCE_TIER_MULTIPLIERS[matchCount]) return SEQUENCE_TIER_MULTIPLIERS[matchCount];
+  return SEQUENCE_TIER_MULTIPLIERS[6] + (matchCount - 6) * 2;
+}
+
+function getEntrySecondaryMatches(entry) {
+  if (Array.isArray(entry.secondaryMatches)) return entry.secondaryMatches;
+  return entry.compoundMatch ? [entry.compoundMatch] : [];
+}
+
 function getEntryMatchTierMultiplier(entry) {
   if (entry.powerType === "wild") return 1;
+  if (entry.matchType === MATCH_TYPES.SEQUENCE) return getSequenceTierMultiplier(entry.matchCount);
   if (entry.matchType !== MATCH_TYPES.RANK && entry.matchType !== MATCH_TYPES.SUIT) return 1;
   return getMatchTierMultiplier(entry.matchCount);
 }
 
-function getCompoundMatchMultiplier(entry) {
+function getSecondaryMatchMultiplier(entry) {
   if (entry.powerType === "wild") return 1;
-  if (entry.matchType !== MATCH_TYPES.RANK || entry.matchCount !== 2) return 1;
-  return entry.compoundMatch?.type === "rank-suit"
-    ? Math.max(1, Number(entry.compoundMatch.multiplier) || 1)
-    : 1;
+  return getEntrySecondaryMatches(entry).reduce(
+    (product, match) => product * Math.max(1, Number(match.multiplier) || 1),
+    1
+  );
 }
 
 function getEntryPowerMultiplier(entry) {
@@ -374,23 +415,21 @@ function createPowerCardBonus(entry) {
 }
 
 function createCompoundMatchBonus(entry) {
-  const multiplier = getCompoundMatchMultiplier(entry);
-  if (multiplier <= 1) return [];
-  return [{
-    label: entry.compoundMatch.label,
-    value: `x${multiplier}`,
-    tone: "double",
+  return getEntrySecondaryMatches(entry).map((match) => ({
+    label: match.label,
+    value: `x${formatMultiplier(match.multiplier)}`,
+    tone: match.tone ?? "double",
     kind: "entry-multiplier",
-    multiplier
-  }];
+    multiplier: match.multiplier
+  }));
 }
 
 function createMatchTierBonus(entry) {
-  if (entry.matchType !== MATCH_TYPES.RANK && entry.matchType !== MATCH_TYPES.SUIT) return [];
+  if (entry.matchType !== MATCH_TYPES.SEQUENCE && entry.matchType !== MATCH_TYPES.RANK && entry.matchType !== MATCH_TYPES.SUIT) return [];
   const multiplier = getEntryMatchTierMultiplier(entry);
   if (multiplier <= 1) return [];
   return [{
-    label: entry.cutinLabel ?? entry.label,
+    label: entry.matchType === MATCH_TYPES.SEQUENCE ? `${entry.matchCount}-CARD RUN` : entry.cutinLabel ?? entry.label,
     value: `x${multiplier}`,
     tone: entry.matchType,
     kind: "entry-multiplier",
@@ -413,11 +452,13 @@ function buildCrunchPresentationEntries(history) {
     const memberIndexes = key ? groups.get(key) : [index];
     if (memberIndexes.length > 1 && index !== memberIndexes.at(-1)) return [];
 
-    const finalEntry = memberIndexes.length > 1 ? history[memberIndexes.at(-1)] : entry;
+    const groupedEntries = memberIndexes.map((memberIndex) => history[memberIndex]);
+    const finalEntry = memberIndexes.length > 1 ? groupedEntries.at(-1) : entry;
     const matchedCards = uniqueCards(finalEntry.matchedCards);
     return [{
       ...finalEntry,
       matchedCards,
+      secondaryMatches: mergeSecondaryMatches(groupedEntries),
       selectedIndexes: [...memberIndexes],
       matchCount: uniqueCards([...matchedCards, finalEntry.card]).length
     }];
@@ -426,9 +467,89 @@ function buildCrunchPresentationEntries(history) {
 
 function getGrowingMatchKey(entry) {
   if (entry.powerType) return null;
+  if (entry.matchType === MATCH_TYPES.SEQUENCE) return "sequence";
   if (entry.matchType === MATCH_TYPES.SUIT) return `suit:${entry.card.suit}`;
   if (entry.matchType === MATCH_TYPES.RANK) return `rank:${entry.card.value}`;
   return null;
+}
+
+function findSequenceMatch(stackCards, selectedCard) {
+  const selectedValue = Number(selectedCard?.value);
+  if (!Number.isInteger(selectedValue)) return null;
+
+  const cardsByValue = new Map();
+  stackCards.forEach((card, index) => {
+    const value = Number(card?.value);
+    if (Number.isInteger(value) && !cardsByValue.has(value)) cardsByValue.set(value, { card, index });
+  });
+  // A duplicate rank is a Number Match; a sequence must extend or fill a run.
+  if (cardsByValue.has(selectedValue)) return null;
+
+  const values = new Set([...cardsByValue.keys(), selectedValue]);
+  let low = selectedValue;
+  let high = selectedValue;
+  while (values.has(low - 1)) low -= 1;
+  while (values.has(high + 1)) high += 1;
+  if (high - low + 1 < 3) return null;
+
+  const sequenceValues = Array.from({ length: high - low + 1 }, (_, index) => low + index);
+  const matched = sequenceValues
+    .filter((value) => value !== selectedValue)
+    .map((value) => cardsByValue.get(value))
+    .filter(Boolean);
+  const rankByValue = new Map(matched.map(({ card }) => [Number(card.value), card.rank]));
+  rankByValue.set(selectedValue, selectedCard.rank);
+
+  return createMatch({
+    type: MATCH_TYPES.SEQUENCE,
+    label: "SEQUENCE CRUNCH",
+    basePoints: SCORE_CONFIG.sequence,
+    matchedIndexes: matched.map(({ index }) => index),
+    matchedCards: matched.map(({ card }) => card),
+    equation: null,
+    sequenceValues,
+    sequenceRanks: sequenceValues.map((value) => rankByValue.get(value) ?? String(value)),
+    cutinLabel: "SEQUENCE CRUNCH"
+  });
+}
+
+function isIntrinsicSequenceMath(primary, candidate) {
+  if (primary.type !== MATCH_TYPES.SEQUENCE) return false;
+  if (candidate.type !== MATCH_TYPES.ADD && candidate.type !== MATCH_TYPES.SUBTRACT) return false;
+  const sequenceCardIds = new Set(primary.matchedCards.map((card) => card.id));
+  return candidate.matchedCards.every((card) => sequenceCardIds.has(card.id));
+}
+
+function createSecondaryMatch(primary, candidate) {
+  const sharedIndexes = candidate.matchedIndexes.filter((index) => primary.matchedIndexes.includes(index));
+  const isExactNumberAndSuit = primary.type === MATCH_TYPES.RANK
+    && candidate.type === MATCH_TYPES.SUIT
+    && sharedIndexes.length > 0;
+  const labels = {
+    [MATCH_TYPES.ADD]: "SUM BONUS",
+    [MATCH_TYPES.SUBTRACT]: "MINUS BONUS",
+    [MATCH_TYPES.RANK]: "NUMBER MATCH",
+    [MATCH_TYPES.SUIT]: "SUIT MATCH"
+  };
+  return {
+    type: isExactNumberAndSuit ? "rank-suit" : candidate.type,
+    label: isExactNumberAndSuit ? "NUMBER + SUIT" : labels[candidate.type] ?? candidate.label,
+    multiplier: isExactNumberAndSuit ? 2 : SECONDARY_MATCH_MULTIPLIERS[candidate.type] ?? 1,
+    tone: isExactNumberAndSuit ? "double" : candidate.type === MATCH_TYPES.ADD || candidate.type === MATCH_TYPES.SUBTRACT ? "math" : candidate.type,
+    matchedCards: candidate.matchedCards,
+    matchedIndexes: candidate.matchedIndexes
+  };
+}
+
+function mergeSecondaryMatches(entries) {
+  const matches = entries.flatMap((entry) => getEntrySecondaryMatches(entry));
+  const seen = new Set();
+  return matches.filter((match) => {
+    const key = match.type;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function uniqueCards(cards) {
@@ -537,6 +658,24 @@ export function runScoringSelfTests() {
     timeLeft: 3,
     streak: 0
   });
+  const plainSequence = calculateCrunchScore({
+    baseStack: [card(2, "diamonds"), card(3, "spades")],
+    selectedCards: [card("A", "clubs", 1)],
+    timeLeft: 3,
+    streak: 0
+  });
+  const sequenceWithSuit = calculateCrunchScore({
+    baseStack: [card(2, "hearts"), card(3, "spades")],
+    selectedCards: [card("A", "hearts", 1)],
+    timeLeft: 3,
+    streak: 0
+  });
+  const growingSequence = calculateCrunchScore({
+    baseStack: [card(2, "hearts"), card(3, "spades")],
+    selectedCards: [card("A", "hearts", 1), card(4, "clubs"), card(5, "diamonds")],
+    timeLeft: 3,
+    streak: 0
+  });
 
   const cases = [
     { name: "success sequence", pass: success.success && success.resolution.history.length === 2 },
@@ -566,6 +705,29 @@ export function runScoringSelfTests() {
     { name: "full cutscene awards equal total", pass: fullHandFever.cutscene.entries.reduce((sum, entry) => sum + entry.bankPoints, 0) === fullHandFever.total },
     { name: "cutscene bonuses are inline", pass: success.cutscene.entries.every((entry) => Array.isArray(entry.inlineBonuses)) },
     {
+      name: "three-card sequence outranks its intrinsic subtraction",
+      pass: plainSequence.success
+        && plainSequence.cutscene.entries[0].matchType === MATCH_TYPES.SEQUENCE
+        && plainSequence.cutscene.entries[0].sequenceRanks.join(",") === "A,2,3"
+        && plainSequence.storedBase === SCORE_CONFIG.sequence
+        && !plainSequence.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "MINUS BONUS")
+    },
+    {
+      name: "sequence keeps a separate suit truth as a modifier",
+      pass: sequenceWithSuit.success
+        && sequenceWithSuit.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "SUIT MATCH" && bonus.value === "x1.5")
+        && sequenceWithSuit.storedBase === SCORE_CONFIG.sequence * 1.5
+    },
+    {
+      name: "growing sequence consolidates into its longest run",
+      pass: growingSequence.success
+        && growingSequence.cutscene.entries.length === 1
+        && growingSequence.cutscene.entries[0].selectedIndexes.length === 3
+        && growingSequence.cutscene.entries[0].sequenceRanks.join(",") === "A,2,3,4,5"
+        && growingSequence.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "5-CARD RUN" && bonus.value === "x4")
+        && growingSequence.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "SUIT MATCH")
+    },
+    {
       name: "triple rank reacts inline",
       pass: tripleRank.cutscene.entries[0].matchCount === 3
         && tripleRank.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "TRIPLE MATCH" && bonus.value === "x6")
@@ -594,8 +756,8 @@ export function runScoringSelfTests() {
   return cases.map((test) => ({ ...test, result: test.name.includes("fail") ? fail : success }));
 }
 
-function createMatch({ type, label, basePoints, matchedIndexes, matchedCards, equation, cutinLabel, compoundMatch = null }) {
-  return { valid: true, type, label, basePoints, matchedIndexes, matchedCards, equation, cutinLabel, compoundMatch };
+function createMatch({ type, label, basePoints, matchedIndexes, matchedCards, equation, sequenceValues = null, sequenceRanks = null, cutinLabel, compoundMatch = null }) {
+  return { valid: true, type, label, basePoints, matchedIndexes, matchedCards, equation, sequenceValues, sequenceRanks, cutinLabel, compoundMatch };
 }
 
 function getNumberMatchLabel(matchCount) {
