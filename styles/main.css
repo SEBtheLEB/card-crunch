@@ -10459,3 +10459,66 @@ body.is-entry-score-surge-active .crunch-cutscene-overlay .cutin-stage {
   min-height: 54px;
   box-shadow: inset 0 0 0 2px #ffe97d, 0 5px 0 #3d2605;
 }
+
+/* Build 155: scalable Pot challenge catalog */
+.pot-chapter-heading {
+  position: relative;
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 11px 0 1px;
+  padding: 8px 10px 7px 12px;
+  border: 2px solid #06101a;
+  border-left: 5px solid #f4c54f;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .025) 0 5px, transparent 5px 10px),
+    #0b1d2b;
+  box-shadow: inset 0 0 0 1px rgba(244, 197, 79, .18), 2px 3px 0 rgba(2, 5, 10, .7);
+}
+
+.pot-chapter-heading:first-child {
+  margin-top: 1px;
+}
+
+.pot-chapter-heading span {
+  color: #fff0a5;
+  font: 400 clamp(.52rem, 2.3vw, .66rem) / 1 var(--font-pixel);
+  text-transform: uppercase;
+}
+
+.pot-chapter-heading small {
+  color: #7fc8d5;
+  font: 400 clamp(.36rem, 1.6vw, .46rem) / 1 var(--font-pixel);
+  text-transform: uppercase;
+}
+
+.pot-rule-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pot-rule-facts span {
+  display: inline-flex;
+  min-height: 23px;
+  align-items: center;
+  padding: 5px 6px 4px;
+  border: 1px solid color-mix(in srgb, var(--pot-accent) 58%, #07101a);
+  background: color-mix(in srgb, var(--pot-accent) 11%, #071522);
+  color: #d9ece9;
+  font: 400 clamp(.35rem, 1.5vw, .44rem) / 1 var(--font-pixel);
+  text-transform: uppercase;
+}
+
+@media (max-width: 390px) {
+  .pot-chapter-heading {
+    margin-top: 8px;
+    padding-inline: 9px;
+  }
+
+  .pot-card-title-line {
+    flex-wrap: wrap;
+  }
+}

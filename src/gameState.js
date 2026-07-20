@@ -1,5 +1,5 @@
-import { drawCards, shuffle, createDeck } from "./deck.js?v=154";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=154";
+import { drawCards, shuffle, createDeck } from "./deck.js?v=155";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=155";
 import {
   ARCADE_CONFIG,
   ARCADE_MODE,
@@ -9,24 +9,24 @@ import {
   isArcadeMode,
   isPowerCard,
   resolveArcadeCrunch
-} from "./arcadeMode.js?v=154";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=154";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=154";
-import { ensurePlayableHand } from "./handSafety.js?v=154";
-import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=154";
-import { formatCompactNumber } from "./format.js?v=154";
-import { adManager } from "./ads.js?v=154";
-import { submitBestScore } from "./playGames.js?v=154";
-import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=154";
-import { purchaseManager } from "./purchases.js?v=154";
-import { getRoundDealDuration } from "./dealTiming.js?v=154";
+} from "./arcadeMode.js?v=155";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=155";
+import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=155";
+import { ensurePlayableRound } from "./handSafety.js?v=155";
+import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=155";
+import { formatCompactNumber } from "./format.js?v=155";
+import { adManager } from "./ads.js?v=155";
+import { submitBestScore } from "./playGames.js?v=155";
+import { calculateRunCoinReward, ECONOMY_CONFIG, economy } from "./economy.js?v=155";
+import { purchaseManager } from "./purchases.js?v=155";
+import { getRoundDealDuration } from "./dealTiming.js?v=155";
 import {
   animateBust,
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
   spawnSparkBurst
-} from "./animations.js?v=154";
+} from "./animations.js?v=155";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -130,6 +130,7 @@ export function createGame(ui) {
     tutorialSession = null;
     state.isTutorial = false;
     state.gameMode = gameMode;
+    state.activePot = pot ?? null;
     state.tutorialBankStep = false;
     state.tutorialExpectedIndexes = [];
     state.tutorialGuideStackByStep = [];
@@ -137,7 +138,7 @@ export function createGame(ui) {
     state.discard = [];
     state.stack = drawCards(state, state.baseStackCount);
     state.hand = drawCards(state, 4);
-    ensurePlayableHand(state);
+    if (gameMode !== ARCADE_MODE) ensurePlayableRound(state);
     state.selectedHandIndexes = [];
     state.arcadePlayedCards = [];
     state.arcadeCardsCrunchedThisRun = 0;
@@ -149,15 +150,14 @@ export function createGame(ui) {
       ? ARCADE_CONFIG.maxLives
       : Math.max(1, Number(pot?.gameplayModifier?.maxLives ?? 3));
     state.level = pot?.id ?? 0;
-    state.activePot = pot ?? null;
     state.replayingCompletedPot = Boolean(pot?.complete);
     state.target = pot?.target ?? getTargetForLevel(1);
     state.turnSeconds = gameMode === ARCADE_MODE
       ? ARCADE_CONFIG.turnSeconds
       : Math.max(3, Number(pot?.gameplayModifier?.turnSeconds ?? 10));
     state.fever = false;
-    state.bankMultiplier = 1;
-    state.bestRunMultiplier = 1;
+    state.bankMultiplier = getStartingRunMultiplier(state);
+    state.bestRunMultiplier = state.bankMultiplier;
     state.bestRunStreak = 0;
     state.bankedThisRun = 0;
     state.lastBankDeposit = 0;
@@ -317,6 +317,11 @@ export function createGame(ui) {
     if (state.selectedHandIndexes.includes(handIndex)) {
       state.selectedHandIndexes = state.selectedHandIndexes.filter((index) => index !== handIndex);
     } else {
+      const maxSelection = getMaximumSelection(state);
+      if (state.selectedHandIndexes.length >= maxSelection) {
+        ui.setMessage(`This Pot allows ${maxSelection} card${maxSelection === 1 ? "" : "s"} per Crunch`, "bad", 1200);
+        return;
+      }
       state.selectedHandIndexes.push(handIndex);
     }
     ui.render(state, handlers);
@@ -353,7 +358,8 @@ export function createGame(ui) {
   async function onCrunch() {
     const arcadeRun = isArcadeMode(state);
     const selectedCount = arcadeRun ? state.arcadePlayedCards.length : state.selectedHandIndexes.length;
-    if (state.locked || state.status !== "playing" || selectedCount === 0) return;
+    const preview = getCrunchPreview(state);
+    if (state.locked || state.status !== "playing" || !preview.canCrunch || selectedCount === 0) return;
     state.locked = true;
     state.status = "crunching";
     stopTimer();
@@ -527,8 +533,12 @@ export function createGame(ui) {
   }
 
   function raiseBankMultiplier(selectedCount) {
-    const step = RUN_MULTIPLIER_BASE_STEP + RUN_MULTIPLIER_COMBO_STEP * Math.max(0, selectedCount - 1);
-    state.bankMultiplier = Math.min(RUN_MULTIPLIER_MAX, Math.round((state.bankMultiplier + step) * 10) / 10);
+    const modifier = state.activePot?.gameplayModifier;
+    const step = RUN_MULTIPLIER_BASE_STEP
+      + RUN_MULTIPLIER_COMBO_STEP * Math.max(0, selectedCount - 1)
+      + Math.max(0, Number(modifier?.multiplierStepBonus ?? 0));
+    const maximum = Math.max(1, Number(modifier?.multiplierMax ?? RUN_MULTIPLIER_MAX));
+    state.bankMultiplier = Math.min(maximum, Math.round((state.bankMultiplier + step) * 10) / 10);
     state.bestRunMultiplier = Math.max(state.bestRunMultiplier, state.bankMultiplier);
   }
 
@@ -538,7 +548,8 @@ export function createGame(ui) {
       return;
     }
     const minimumBankStreak = Number(state.activePot?.gameplayModifier?.minBankStreak ?? 0);
-    if (state.locked || state.status !== "playing" || !state.activePot || state.score <= 0 || state.streak < minimumBankStreak) return;
+    const minimumBankCash = Number(state.activePot?.gameplayModifier?.minimumBankCash ?? 0);
+    if (state.locked || state.status !== "playing" || !state.activePot || state.score <= 0 || state.streak < minimumBankStreak || state.score < minimumBankCash) return;
     state.locked = true;
     stopTimer();
     ui.hideBonusBankOffer();
@@ -549,10 +560,10 @@ export function createGame(ui) {
     state.lastBankDeposit = amount;
     state.bonusBankAdUsedForLastDeposit = false;
     state.score = 0;
-    state.bankMultiplier = 1;
+    state.bankMultiplier = getStartingRunMultiplier(state);
 
     playSfx("bank");
-    ui.setMessage(`BANKED $${formatCompactNumber(amount)}! Multi reset to x1`, "good");
+    ui.setMessage(`BANKED $${formatCompactNumber(amount)}! Multi reset to x${formatRunMultiplier(state.bankMultiplier)}`, "good");
     ui.playBankJuice(amount);
     ui.render(state, handlers);
     await sleep(620);
@@ -652,7 +663,7 @@ export function createGame(ui) {
     ui.render(state, handlers);
     startTimer();
     if (earned) {
-      const hintIndex = state.hand.findIndex((card) => card && evaluateStackAdd(state.stack, card).valid);
+      const hintIndex = state.hand.findIndex((card) => card && evaluateStackAdd(state.stack, card, state.activePot?.gameplayModifier).valid);
       if (hintIndex >= 0) {
         ui.setMessage("This card crunches!", "good");
         ui.flashHint(hintIndex);
@@ -1133,7 +1144,7 @@ export function createGame(ui) {
       }
     }
 
-    ensurePlayableHand(state, {
+    ensurePlayableRound(state, {
       allowedIndexes: replacementIndexes,
       replaceOccupied: allowOccupiedSafety
     });
@@ -1184,11 +1195,31 @@ export function createGame(ui) {
 export function getCrunchPreview(state) {
   const arcadeRun = isArcadeMode(state);
   const selectedCount = arcadeRun ? state.arcadePlayedCards.length : state.selectedHandIndexes.length;
+  const modifier = arcadeRun ? null : state.activePot?.gameplayModifier;
+  const minimumSelection = Math.max(1, Math.min(4, Number(modifier?.minSelection ?? 1)));
+  const maximumSelection = arcadeRun ? Infinity : getMaximumSelection(state);
+  const canCrunch = selectedCount >= minimumSelection && selectedCount <= maximumSelection;
+  let idleLabel = "SELECT CARDS";
+  if (minimumSelection > 1) idleLabel = `SELECT ${minimumSelection} CARDS`;
+  else if (Number.isFinite(maximumSelection) && maximumSelection < 4) idleLabel = `SELECT UP TO ${maximumSelection}`;
   return {
-    canCrunch: selectedCount > 0,
+    canCrunch,
     selectedCount,
+    minimumSelection,
+    maximumSelection,
+    idleLabel,
     selectionMultiplier: arcadeRun ? getArcadeStackMultiplier(selectedCount) : getSelectionMultiplier(selectedCount)
   };
+}
+
+function getMaximumSelection(state) {
+  if (isArcadeMode(state)) return Infinity;
+  return Math.max(1, Math.min(4, Number(state.activePot?.gameplayModifier?.maxSelection ?? 4)));
+}
+
+function getStartingRunMultiplier(state) {
+  if (isArcadeMode(state)) return 1;
+  return Math.max(1, Number(state.activePot?.gameplayModifier?.startingRunMultiplier ?? 1));
 }
 
 export function formatRunMultiplier(value) {

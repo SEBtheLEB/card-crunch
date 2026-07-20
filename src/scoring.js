@@ -55,7 +55,10 @@ export const STACK_TYPE_CONFIG = {
   greedCrunch: { minSelectedCards: 3, flatBonus: 500 }
 };
 
-export function evaluateStackAdd(stackCards, selectedCard) {
+export function evaluateStackAdd(stackCards, selectedCard, gameplayModifier = null) {
+  const cardRuleFailure = getCardRuleFailure(selectedCard, gameplayModifier);
+  if (cardRuleFailure) return createMiss(cardRuleFailure);
+
   const pairs = getStackPairs(stackCards);
   const candidates = [];
 
@@ -144,9 +147,11 @@ export function evaluateStackAdd(stackCards, selectedCard) {
     }));
   }
 
-  if (candidates.length > 0) {
-    const primary = candidates[0];
-    const secondaryMatches = candidates
+  const permittedCandidates = candidates.filter((candidate) => isMatchTypeAllowed(candidate.type, gameplayModifier));
+
+  if (permittedCandidates.length > 0) {
+    const primary = permittedCandidates[0];
+    const secondaryMatches = permittedCandidates
       .slice(1)
       .filter((candidate) => !isIntrinsicSequenceMath(primary, candidate))
       .map((candidate) => createSecondaryMatch(primary, candidate));
@@ -157,23 +162,77 @@ export function evaluateStackAdd(stackCards, selectedCard) {
     };
   }
 
+  return createMiss(candidates.length > 0 ? "That match type is disabled in this Pot." : "No valid connection was found.");
+}
+
+export function isCardAllowedByPotRule(card, gameplayModifier = null) {
+  return !getCardRuleFailure(card, gameplayModifier);
+}
+
+function getCardRuleFailure(card, gameplayModifier) {
+  if (!card) return "No card was selected.";
+  const allowedSuits = gameplayModifier?.allowedSuits;
+  if (Array.isArray(allowedSuits) && allowedSuits.length > 0 && !allowedSuits.includes(card.suit)) {
+    return `Only ${allowedSuits.map(capitalize).join(" or ")} cards can be crunched in this Pot.`;
+  }
+
+  const blockedSuits = gameplayModifier?.blockedSuits;
+  if (Array.isArray(blockedSuits) && blockedSuits.includes(card.suit)) {
+    return `${capitalize(card.suit)} cards are blocked in this Pot.`;
+  }
+
+  const allowedColors = gameplayModifier?.allowedColors;
+  if (Array.isArray(allowedColors) && allowedColors.length > 0 && !allowedColors.includes(card.color)) {
+    return `Only ${allowedColors.map(capitalize).join(" or ")} cards can be crunched in this Pot.`;
+  }
+
+  const cardValue = Number(card.value);
+  if (gameplayModifier?.valueParity === "odd" && (!Number.isInteger(cardValue) || cardValue % 2 === 0)) {
+    return "Only odd-valued cards can be crunched in this Pot.";
+  }
+  if (gameplayModifier?.valueParity === "even" && (!Number.isInteger(cardValue) || cardValue % 2 !== 0)) {
+    return "Only even-valued cards can be crunched in this Pot.";
+  }
+  if (Number.isFinite(gameplayModifier?.minCardValue) && cardValue < Number(gameplayModifier.minCardValue)) {
+    return `Cards below ${gameplayModifier.minCardValue} are blocked in this Pot.`;
+  }
+  if (Number.isFinite(gameplayModifier?.maxCardValue) && cardValue > Number(gameplayModifier.maxCardValue)) {
+    return `Cards above ${gameplayModifier.maxCardValue} are blocked in this Pot.`;
+  }
+  return null;
+}
+
+function isMatchTypeAllowed(type, gameplayModifier) {
+  const allowed = gameplayModifier?.allowedMatchTypes;
+  if (Array.isArray(allowed) && allowed.length > 0 && !allowed.includes(type)) return false;
+  const blocked = gameplayModifier?.blockedMatchTypes;
+  return !Array.isArray(blocked) || !blocked.includes(type);
+}
+
+function createMiss(reason) {
   return {
     valid: false,
     type: MATCH_TYPES.MISS,
     label: "BUST",
+    reason,
     basePoints: 0,
     matchedIndexes: [],
     matchedCards: []
   };
 }
 
-export function resolveSelectedCrunch(baseStack, selectedCards) {
+function capitalize(value) {
+  const text = String(value ?? "");
+  return text ? `${text[0].toUpperCase()}${text.slice(1)}` : text;
+}
+
+export function resolveSelectedCrunch(baseStack, selectedCards, gameplayModifier = null) {
   const activeStack = [...baseStack];
   const history = [];
 
   for (let i = 0; i < selectedCards.length; i += 1) {
     const card = selectedCards[i];
-    const match = evaluateStackAdd(activeStack, card);
+    const match = evaluateStackAdd(activeStack, card, gameplayModifier);
     if (!match.valid) {
       return {
         success: false,
@@ -228,7 +287,7 @@ export function calculateCrunchScore({
   selectionLabel = "HAND",
   enableFullHand = true
 }) {
-  const resolution = resolutionOverride ?? resolveSelectedCrunch(baseStack, selectedCards);
+  const resolution = resolutionOverride ?? resolveSelectedCrunch(baseStack, selectedCards, gameplayModifier);
   if (!resolution.success) return { success: false, resolution };
 
   const presentationEntries = buildCrunchPresentationEntries(resolution.history);
@@ -360,10 +419,15 @@ function allocateCutsceneAwards({ awardedPoints, total, multiplier }) {
 }
 
 function getRuleAdjustedDisplayPoints(entry, gameplayModifier) {
-  const suitMultiplier = entry.matchType === MATCH_TYPES.SUIT
-    ? Number(gameplayModifier?.suitMatchMultiplier ?? 1)
-    : 1;
-  return Math.round(entry.basePoints * Math.max(1, suitMultiplier));
+  const multiplierByType = {
+    [MATCH_TYPES.SUIT]: gameplayModifier?.suitMatchMultiplier,
+    [MATCH_TYPES.RANK]: gameplayModifier?.rankMatchMultiplier,
+    [MATCH_TYPES.ADD]: gameplayModifier?.mathMatchMultiplier,
+    [MATCH_TYPES.SUBTRACT]: gameplayModifier?.mathMatchMultiplier,
+    [MATCH_TYPES.SEQUENCE]: gameplayModifier?.sequenceMatchMultiplier
+  };
+  const ruleMultiplier = Math.max(1, Number(multiplierByType[entry.matchType] ?? 1));
+  return Math.round(entry.basePoints * ruleMultiplier);
 }
 
 function getMatchTierMultiplier(matchCount = 2) {
@@ -609,7 +673,14 @@ export function detectStackTypes(stackCards, history, selectedCount, { enableFul
 }
 
 export function runScoringSelfTests() {
-  const card = (rank, suit, value = rank) => ({ id: `${rank}-${suit}`, rank: String(rank), value, suit, suitSymbol: "", color: "red" });
+  const card = (rank, suit, value = rank) => ({
+    id: `${rank}-${suit}`,
+    rank: String(rank),
+    value,
+    suit,
+    suitSymbol: "",
+    color: suit === "hearts" || suit === "diamonds" ? "red" : "black"
+  });
   const base = [card(3, "diamonds"), card(5, "spades")];
   const success = calculateCrunchScore({ baseStack: base, selectedCards: [card(8, "hearts"), card("K", "spades", 13)], timeLeft: 7, streak: 0 });
   const fail = calculateCrunchScore({ baseStack: base, selectedCards: [card(8, "hearts"), card("Q", "clubs", 12)], timeLeft: 7, streak: 0 });
@@ -676,6 +747,41 @@ export function runScoringSelfTests() {
     timeLeft: 3,
     streak: 0
   });
+  const heartLockSuccess = calculateCrunchScore({
+    baseStack: base,
+    selectedCards: [card(8, "hearts")],
+    timeLeft: 3,
+    streak: 0,
+    gameplayModifier: { allowedSuits: ["hearts"] }
+  });
+  const heartLockFail = calculateCrunchScore({
+    baseStack: base,
+    selectedCards: [card("K", "diamonds", 13)],
+    timeLeft: 3,
+    streak: 0,
+    gameplayModifier: { allowedSuits: ["hearts"] }
+  });
+  const sumOnlySuccess = calculateCrunchScore({
+    baseStack: base,
+    selectedCards: [card(8, "hearts")],
+    timeLeft: 3,
+    streak: 0,
+    gameplayModifier: { allowedMatchTypes: [MATCH_TYPES.ADD] }
+  });
+  const sumOnlyFail = calculateCrunchScore({
+    baseStack: base,
+    selectedCards: [card("K", "diamonds", 13)],
+    timeLeft: 3,
+    streak: 0,
+    gameplayModifier: { allowedMatchTypes: [MATCH_TYPES.ADD] }
+  });
+  const rankJackpot = calculateCrunchScore({
+    baseStack: [card(7, "clubs"), card(2, "diamonds")],
+    selectedCards: [card(7, "hearts")],
+    timeLeft: 3,
+    streak: 0,
+    gameplayModifier: { rankMatchMultiplier: 2.5 }
+  });
 
   const cases = [
     { name: "success sequence", pass: success.success && success.resolution.history.length === 2 },
@@ -685,6 +791,11 @@ export function runScoringSelfTests() {
     { name: "speed bonus", pass: success.speedBonus.multiplier === 2 },
     { name: "math base ignores match tiers", pass: success.cutscene.entries[0].points === SCORE_CONFIG.math },
     { name: "suit surge modifier", pass: suitSurge.success && suitSurge.storedBase === 200 },
+    { name: "heart lock accepts hearts", pass: heartLockSuccess.success },
+    { name: "heart lock rejects other suits", pass: !heartLockFail.success && /Hearts/.test(heartLockFail.resolution.match.reason) },
+    { name: "sum-only pot accepts sums", pass: sumOnlySuccess.success && sumOnlySuccess.resolution.history[0].matchType === MATCH_TYPES.ADD },
+    { name: "sum-only pot rejects plain suits", pass: !sumOnlyFail.success },
+    { name: "rank jackpot adjusts base cash", pass: rankJackpot.success && rankJackpot.storedBase === 750 },
     {
       name: "plain number match has no duplicate pair bonus",
       pass: plainNumberMatch.success

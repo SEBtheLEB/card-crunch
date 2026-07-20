@@ -1,12 +1,12 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=154";
-import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=154";
-import { isPotUnlocked } from "./progression.js?v=154";
-import { formatCompactNumber } from "./format.js?v=154";
-import { hasShieldToken } from "./save.js?v=154";
-import { bindInstantAction } from "./input.js?v=154";
-import { ECONOMY_CONFIG, economy } from "./economy.js?v=154";
-import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=154";
-import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=154";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=155";
+import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=155";
+import { isPotUnlocked } from "./progression.js?v=155";
+import { formatCompactNumber } from "./format.js?v=155";
+import { hasShieldToken } from "./save.js?v=155";
+import { bindInstantAction } from "./input.js?v=155";
+import { ECONOMY_CONFIG, economy } from "./economy.js?v=155";
+import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=155";
+import { applyCardSkinPresentation, getCardSkinClass } from "./cardSkins.js?v=155";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -502,8 +502,16 @@ function renderPotMap(elements, pots, handlers, mapState) {
   mapState.generation += 1;
   mapState.selectedId = null;
   elements.levelMap.replaceChildren();
+  let activeChapter = null;
 
   for (let index = 0; index < pots.length; index += 1) {
+    if (pots[index].chapter !== activeChapter) {
+      activeChapter = pots[index].chapter;
+      const chapter = document.createElement("header");
+      chapter.className = "pot-chapter-heading";
+      chapter.innerHTML = `<span>${activeChapter}</span><small>Pots ${pots[index].id}-${getChapterEndId(pots, index)}</small>`;
+      elements.levelMap.appendChild(chapter);
+    }
     const row = document.createElement("div");
     row.className = "pot-grid-row";
     row.dataset.potRow = String(index);
@@ -619,6 +627,7 @@ function createPotDetailPanel(pot, handlers) {
   const shell = document.createElement("div");
   const progress = pot.target > 0 ? Math.min(1, pot.progress / pot.target) : 0;
   const turnSeconds = Number(pot.gameplayModifier?.turnSeconds ?? 10);
+  const ruleFacts = getPotRuleFacts(pot.gameplayModifier);
   const actionLabel = pot.complete ? "Replay Pot" : pot.progress > 0 ? "Continue Pot" : "Start Pot";
   shell.className = "pot-detail-shell";
   shell.style.setProperty("--pot-accent", pot.accent);
@@ -635,6 +644,9 @@ function createPotDetailPanel(pot, handlers) {
           <i aria-hidden="true">${pot.icon}</i>
           <div><strong>${pot.ruleLabel}</strong><p>${pot.detail}</p></div>
         </div>
+        <div class="pot-rule-facts" aria-label="Challenge rules">
+          ${ruleFacts.map((fact) => `<span>${fact}</span>`).join("")}
+        </div>
         <div class="pot-detail-stats">
           <article><span>Timer</span><strong>${turnSeconds} seconds</strong></article>
           <article><span>Target</span><strong>${formatCompactNumber(pot.target)}</strong></article>
@@ -650,6 +662,45 @@ function createPotDetailPanel(pot, handlers) {
   `;
   bindInstantAction(shell.querySelector(".pot-play-button"), () => handlers.onLevelSelect(pot.id));
   return shell;
+}
+
+function getChapterEndId(pots, startIndex) {
+  const chapter = pots[startIndex]?.chapter;
+  let endId = pots[startIndex]?.id ?? 0;
+  for (let index = startIndex + 1; index < pots.length && pots[index].chapter === chapter; index += 1) {
+    endId = pots[index].id;
+  }
+  return endId;
+}
+
+function getPotRuleFacts(modifier = {}) {
+  const facts = [];
+  if (modifier.allowedSuits?.length) facts.push(`${modifier.allowedSuits.map(capitalizeRule).join(" / ")} only`);
+  if (modifier.allowedColors?.length) facts.push(`${modifier.allowedColors.map(capitalizeRule).join(" / ")} cards`);
+  if (modifier.valueParity) facts.push(`${capitalizeRule(modifier.valueParity)} values`);
+  if (Number.isFinite(modifier.minCardValue) || Number.isFinite(modifier.maxCardValue)) {
+    const low = Number.isFinite(modifier.minCardValue) ? modifier.minCardValue : "A";
+    const high = Number.isFinite(modifier.maxCardValue) ? modifier.maxCardValue : "K";
+    facts.push(`Values ${low}-${high}`);
+  }
+  if (modifier.allowedMatchTypes?.length) facts.push(`${modifier.allowedMatchTypes.map(formatMatchRule).join(" / ")} only`);
+  if (modifier.blockedMatchTypes?.length) facts.push(`No ${modifier.blockedMatchTypes.map(formatMatchRule).join(" / ")}`);
+  if (Number.isFinite(modifier.maxSelection)) facts.push(`Max ${modifier.maxSelection} cards`);
+  if (Number.isFinite(modifier.maxLives)) facts.push(`${modifier.maxLives} ${modifier.maxLives === 1 ? "life" : "lives"}`);
+  if (Number.isFinite(modifier.minBankStreak)) facts.push(`Bank at streak ${modifier.minBankStreak}`);
+  if (Number.isFinite(modifier.minimumBankCash)) facts.push(`Bank at $${formatCompactNumber(modifier.minimumBankCash)}`);
+  if (Number.isFinite(modifier.startingRunMultiplier)) facts.push(`Start x${modifier.startingRunMultiplier}`);
+  return facts.length > 0 ? facts : ["Standard scoring", "3 lives", "Bank anytime"];
+}
+
+function formatMatchRule(type) {
+  const labels = { suit: "Suit", rank: "Number", add: "Sum", subtract: "Minus", sequence: "Sequence" };
+  return labels[type] ?? capitalizeRule(type);
+}
+
+function capitalizeRule(value) {
+  const text = String(value ?? "");
+  return text ? `${text[0].toUpperCase()}${text.slice(1)}` : text;
 }
 
 function keepPotPanelVisible(panel) {
@@ -817,7 +868,10 @@ function renderCrunch(elements, state, handlers) {
   elements.multiPanel.classList.toggle("multi-hot", (state.bankMultiplier ?? 1) >= 4);
 
   const minimumBankStreak = Number(state.activePot?.gameplayModifier?.minBankStreak ?? 0);
-  const bankRuleReady = state.streak >= minimumBankStreak;
+  const minimumBankCash = Number(state.activePot?.gameplayModifier?.minimumBankCash ?? 0);
+  const bankStreakReady = state.streak >= minimumBankStreak;
+  const bankCashReady = state.score >= minimumBankCash;
+  const bankRuleReady = bankStreakReady && bankCashReady;
   const canBank = !arcadeRun && playing && (Boolean(state.activePot) || Boolean(state.tutorialBankStep)) && state.score > 0 && bankRuleReady;
   if (cache.canBank !== canBank) {
     cache.canBank = canBank;
@@ -858,7 +912,9 @@ function renderCrunch(elements, state, handlers) {
       ? `${preview.selectedCount} cards currently staged in Endless Arcade.`
       : bankRuleReady
       ? "Bank run cash into the pot. Resets multiplier."
-      : `Bank unlocks at a ${minimumBankStreak}-Crunch streak.`
+      : !bankStreakReady
+      ? `Bank unlocks at a ${minimumBankStreak}-Crunch streak.`
+      : `Bank unlocks at ${formatCompactNumber(minimumBankCash)} Run Cash.`
   );
 
   const bonusBankOffer = elements._bonusBankOffer;
@@ -873,15 +929,15 @@ function renderCrunch(elements, state, handlers) {
   }
   const crunchContentKey = showBonusBankOffer
     ? `ad:${bonusBankOffer.bonusAmount}:${bonusBankOffer.completesPot}`
-    : preview.canCrunch ? `crunch:${preview.selectedCount}` : "select";
+    : preview.canCrunch ? `crunch:${preview.selectedCount}` : `select:${preview.idleLabel}`;
   if (cache.crunchContent !== crunchContentKey) {
     cache.crunchContent = crunchContentKey;
     if (showBonusBankOffer) {
       renderBonusBankAction(elements, bonusBankOffer);
     } else {
       elements.crunchButton.dataset.action = "crunch";
-      elements.crunchButton.textContent = preview.canCrunch ? `CRUNCH ${preview.selectedCount}` : "SELECT CARDS";
-      elements.crunchButton.setAttribute("aria-label", preview.canCrunch ? `Crunch ${preview.selectedCount} selected cards` : "Select cards to Crunch");
+      elements.crunchButton.textContent = preview.canCrunch ? `CRUNCH ${preview.selectedCount}` : preview.idleLabel;
+      elements.crunchButton.setAttribute("aria-label", preview.canCrunch ? `Crunch ${preview.selectedCount} selected cards` : preview.idleLabel);
     }
   }
   elements.crunchButton.classList.toggle("crunch-ready", preview.canCrunch);

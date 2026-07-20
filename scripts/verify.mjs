@@ -70,11 +70,37 @@ if (!Array.isArray(arcadeResults) || arcadeResults.some((result) => result.pass 
 }
 const progressionModule = await import(`../src/progression.js?verify=${Date.now()}`);
 const challengePots = progressionModule.createDefaultPots();
-if (challengePots.length !== 6
+if (challengePots.length !== 56
   || challengePots.some((pot) => !pot.title || !pot.description || !pot.icon || !pot.difficulty || !pot.gameplayModifier)
+  || new Set(challengePots.map((pot) => pot.id)).size !== 56
+  || challengePots.some((pot) => !Number.isFinite(pot.target) || pot.target <= 0)
+  || new Set(challengePots.map((pot) => pot.chapter)).size < 6
   || challengePots[1].gameplayModifier.suitMatchMultiplier !== 2
-  || challengePots[2].gameplayModifier.turnSeconds !== 8) {
+  || challengePots[2].gameplayModifier.turnSeconds !== 8
+  || challengePots[6].gameplayModifier.allowedSuits?.[0] !== "hearts"
+  || challengePots[20].gameplayModifier.allowedMatchTypes?.[0] !== "add"
+  || challengePots[55].gameplayModifier.scoreMultiplier !== 6) {
   throw new Error("Data-driven pot challenge definitions are incomplete");
+}
+const deckModule = await import(`../src/deck.js?verify=${Date.now()}`);
+const handSafetyModule = await import(`../src/handSafety.js?verify=${Date.now()}`);
+for (const pot of challengePots) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const safetyState = {
+      deck: deckModule.shuffle(deckModule.createDeck()),
+      discard: [],
+      stack: [],
+      hand: [],
+      baseStackCount: 2,
+      activePot: pot
+    };
+    safetyState.stack = deckModule.drawCards(safetyState, 2);
+    safetyState.hand = deckModule.drawCards(safetyState, 4);
+    if (!handSafetyModule.ensurePlayableRound(safetyState)
+      || !handSafetyModule.hasPlayableCard(safetyState.stack, safetyState.hand, pot.gameplayModifier)) {
+      throw new Error(`Pot ${pot.id} can create an unwinnable opening`);
+    }
+  }
 }
 
 const { formatCompactNumber } = await import(`../src/format.js?verify=${Date.now()}`);
@@ -541,14 +567,19 @@ if (!gameStateSource.includes("ui.syncResolvedHud(state)")
   throw new Error("Round dealing must not replay score juice or animate HUD resets");
 }
 if (!uiSource.includes("pot-grid-row")
+  || !uiSource.includes("pot-chapter-heading")
+  || !uiSource.includes("getPotRuleFacts")
   || !uiSource.includes("createPotDetailPanel")
   || !uiSource.includes("selectingSamePot")
   || !uiSource.includes("dataset.potState")
   || !uiSource.includes("pot-lock-summary")
   || !css.includes(".pot-detail-shell.is-open")
   || !css.includes("Build 154: readable Pot challenge states")
+  || !css.includes("Build 155: scalable Pot challenge catalog")
   || !gameStateSource.includes("gameplayModifier: state.activePot?.gameplayModifier")
-  || !gameStateSource.includes("minimumBankStreak")) {
+  || !gameStateSource.includes("minimumBankStreak")
+  || !gameStateSource.includes("minimumBankCash")
+  || !gameStateSource.includes("ensurePlayableRound")) {
   throw new Error("Expandable challenge pots or their gameplay modifiers are missing");
 }
 if (!uiSource.includes("(state.dealHandCount ?? 0) + index") || !cardGestureSource.includes('zone === "table"')) {
