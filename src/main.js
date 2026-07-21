@@ -1,5 +1,5 @@
-import { createGame } from "./gameState.js?v=167";
-import { createUI } from "./ui.js?v=166";
+import { createGame } from "./gameState.js?v=169";
+import { createUI } from "./ui.js?v=169";
 import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=164";
 import { adManager } from "./ads.js?v=164";
 import { grantShieldToken, hasShieldToken } from "./save.js?v=164";
@@ -11,10 +11,11 @@ import { installFullscreenControls } from "./fullscreen.js?v=168";
 import { bindThemePicker, initializeTheme } from "./themes.js?v=164";
 import { initializeCardCollection } from "./cardCollection.js?v=167";
 import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=167";
-import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=167";
+import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=169";
 import { initializeStore } from "./store.js?v=167";
 import { initializeTutorial } from "./tutorial.js?v=164";
 import { initializeSTLAccount } from "./stlAccount.js?v=167";
+import { initializeMultiplayer } from "./multiplayer.js?v=169";
 
 initializeTheme();
 initializeCardCollection();
@@ -72,6 +73,7 @@ bindThemePicker(bindInstantAction);
 bindCardSkinPicker(bindInstantAction);
 initializeCardCollectionUI(bindInstantAction);
 initializeStore({ bindAction: bindInstantAction, showMenuPage: ui.showMenuPage });
+initializeMultiplayer({ game, bindAction: bindInstantAction });
 installRainbowCardTrail();
 loadSettings();
 game.refreshEconomy();

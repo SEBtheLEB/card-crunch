@@ -127,6 +127,29 @@ export function applyCardSkinPresentation(element, card) {
   return skinId;
 }
 
+/* Matchmaking previews cycle through Store skins without changing the deck the
+   player has equipped. Gameplay cards continue to use collection ownership. */
+export function applyPreviewCardSkinPresentation(element, card, requestedSkinId = "classic") {
+  if (!element) return "classic";
+  const skinId = CARD_SKINS[requestedSkinId] ? requestedSkinId : "classic";
+  [...element.classList]
+    .filter((className) => className.startsWith(SKIN_CLASS_PREFIX))
+    .forEach((className) => element.classList.remove(className));
+  element.classList.add(`${SKIN_CLASS_PREFIX}${skinId}`);
+  element.dataset.previewSkin = skinId;
+  element.dataset.equippedSkin = skinId;
+  const assetUrl = getCardSkinAssetUrl(card, skinId);
+  if (assetUrl) {
+    element.style.setProperty("--card-art-image", `url("${assetUrl}")`);
+    mountCardSkinArt(element, assetUrl);
+  } else {
+    element.style.removeProperty("--card-art-image");
+    element.classList.remove("card-art-ready");
+    element.querySelector(":scope > .card-skin-art")?.remove();
+  }
+  return skinId;
+}
+
 /* A real image node is more reliable than using a CSS custom property as the
    only renderer. The built-in rank/suit face stays underneath until the PNG
    has decoded, so a slow mobile connection can never produce a blank card. */

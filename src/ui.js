@@ -1,4 +1,4 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=164";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=169";
 import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=164";
 import { isPotUnlocked } from "./progression.js?v=164";
 import { formatCompactNumber } from "./format.js?v=164";
@@ -6,8 +6,9 @@ import { hasShieldToken } from "./save.js?v=164";
 import { bindInstantAction } from "./input.js?v=164";
 import { ECONOMY_CONFIG, economy } from "./economy.js?v=164";
 import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=164";
-import { applyCardSkinPresentation, getCardSkinClass, getCardVisualColorClass } from "./cardSkins.js?v=164";
+import { applyCardSkinPresentation, getCardSkinClass, getCardVisualColorClass } from "./cardSkins.js?v=169";
 import { getPotRuleFacts, renderPotInfo } from "./potInfo.js?v=164";
+import { isMultiplayerMode } from "./multiplayerMode.js?v=169";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -29,6 +30,7 @@ export function createUI() {
     scoreValue: document.querySelector("#scoreValue"),
     streakValue: document.querySelector("#streakValue"),
     timerValue: document.querySelector("#timerValue"),
+    timerCopy: document.querySelector(".timer-copy"),
     timerRing: document.querySelector("#timerRing"),
     timerShell: document.querySelector("#timerShell"),
     levelValue: document.querySelector("#levelValue"),
@@ -43,6 +45,7 @@ export function createUI() {
     multiPanel: document.querySelector("#multiPanel"),
     multiValue: document.querySelector("#multiValue"),
     missValue: document.querySelector("#missValue"),
+    missLabel: document.querySelector("#missValue")?.previousElementSibling,
     comboLabel: document.querySelector("#comboLabel"),
     startScreen: document.querySelector("#startScreen"),
     mapScreen: document.querySelector("#mapScreen"),
@@ -115,6 +118,7 @@ export function createUI() {
     render(state, handlers) {
       elements.shell.classList.toggle("tutorial-mode", Boolean(state.isTutorial));
       elements.shell.classList.toggle("arcade-mode", isArcadeMode(state));
+      elements.shell.classList.toggle("multiplayer-mode", isMultiplayerMode(state));
       renderHud(elements, state);
       const stackSignature = getStackSignature(state);
       if (renderCache.stack !== stackSignature) {
@@ -136,7 +140,12 @@ export function createUI() {
         && (state.status === "playing" || state.status === "pausedInfo");
       elements.potInfoButton.hidden = !potInfoAvailable;
       elements.potInfoButton.disabled = !potInfoAvailable || state.locked || state.status !== "playing";
+      elements.exitLevelButton.textContent = isMultiplayerMode(state) ? "Forfeit" : "Exit";
+      elements.exitLevelButton.setAttribute("aria-label", isMultiplayerMode(state) ? "Forfeit online duel" : "Exit current pot");
       elements.shell.classList.toggle("is-locked", state.locked);
+    },
+    renderMatchHud(state) {
+      renderHud(elements, state);
     },
     syncResolvedHud(state) {
       syncHudCountersWithoutMotion(elements, state);
@@ -439,33 +448,41 @@ function renderHud(elements, state) {
   const previousCounters = elements._counterCache ?? null;
   const isEndless = !state.activePot && state.level === 0;
   const arcadeRun = isArcadeMode(state);
+  const multiplayerRun = isMultiplayerMode(state);
+  const opponent = state.multiplayer?.opponent ?? {};
   const potProgress = state.activePot
     ? {
         progress: Math.min(1, state.activePot.progress / state.activePot.target),
         remaining: Math.max(0, state.activePot.target - state.activePot.progress)
       }
     : {
-        progress: arcadeRun ? Math.min(1, state.arcadePlayedCards.length / 8) : 0,
+        progress: multiplayerRun
+          ? (state.score + (Number(opponent.score) || 0) > 0 ? state.score / (state.score + (Number(opponent.score) || 0)) : .5)
+          : arcadeRun ? Math.min(1, state.arcadePlayedCards.length / 8) : 0,
         remaining: isEndless ? "Endless" : 0
       };
 
   setText(elements.scoreValue, formatCompactNumber(state.score), cache, "score");
   setText(
     elements.scoreLabel,
-    state.isTutorial ? "Practice Cash \u00b7 Unbanked" : arcadeRun ? "Endless Arcade Score" : "Run Cash \u00b7 Unbanked",
+    state.isTutorial ? "Practice Cash \u00b7 Unbanked" : multiplayerRun ? "Your Duel Score" : arcadeRun ? "Endless Arcade Score" : "Run Cash \u00b7 Unbanked",
     cache,
     "scoreLabel"
   );
   setText(elements.streakValue, String(state.streak ?? 0), cache, "streak");
-  setText(elements.timerValue, String(Math.ceil(state.timeLeft)), cache, "timer");
+  setText(elements.timerValue, multiplayerRun ? formatMatchTime(state.timeLeft) : String(Math.ceil(state.timeLeft)), cache, "timer");
+  setText(elements.timerCopy, multiplayerRun ? "Match" : "Turn", cache, "timerCopy");
   const livesLeft = Math.max(0, (state.maxMisses ?? 3) - (state.misses ?? 0));
-  setText(elements.missValue, "\u2665".repeat(livesLeft) + "\u2661".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft)), cache, "lives");
-  setText(elements.levelLabel, arcadeRun ? "Mode" : "Pot", cache, "levelLabel");
-  setText(elements.targetLabel, arcadeRun ? "Stack" : "Left", cache, "targetLabel");
-  setText(elements.levelValue, arcadeRun ? "Arcade" : isEndless ? "\u221e" : String(state.level ?? 1), cache, "level");
+  setText(elements.missLabel, multiplayerRun ? "Duel" : "Lives", cache, "missLabel");
+  setText(elements.missValue, multiplayerRun ? "\u25cf LIVE" : "\u2665".repeat(livesLeft) + "\u2661".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft)), cache, "lives");
+  setText(elements.levelLabel, multiplayerRun ? "Rival" : arcadeRun ? "Mode" : "Pot", cache, "levelLabel");
+  setText(elements.targetLabel, multiplayerRun ? "Score" : arcadeRun ? "Stack" : "Left", cache, "targetLabel");
+  setText(elements.levelValue, multiplayerRun ? String(opponent.displayName || "Opponent") : arcadeRun ? "Arcade" : isEndless ? "\u221e" : String(state.level ?? 1), cache, "level");
   setText(
     elements.targetValue,
-    arcadeRun
+    multiplayerRun
+      ? formatCompactNumber(opponent.score || 0)
+      : arcadeRun
       ? `${state.arcadePlayedCards.length} ${state.arcadePlayedCards.length === 1 ? "card" : "cards"}`
       : typeof potProgress.remaining === "number" ? formatCompactNumber(potProgress.remaining) : potProgress.remaining,
     cache,
@@ -477,7 +494,7 @@ function renderHud(elements, state) {
     cache.targetProgress = targetValue;
     elements.targetFill.style.setProperty("--target-progress", targetValue);
   }
-  const timerValue = (state.timeLeft / state.turnSeconds).toFixed(3);
+  const timerValue = (state.timeLeft / Math.max(1, state.turnSeconds)).toFixed(3);
   if (cache.timerProgress !== timerValue) {
     cache.timerProgress = timerValue;
     elements.timerRing.style.setProperty("--timer-progress", timerValue);
@@ -519,7 +536,9 @@ function syncHudCountersWithoutMotion(elements, state) {
   const score = formatCompactNumber(state.score ?? 0);
   const streak = String(state.streak ?? 0);
   const livesLeft = Math.max(0, (state.maxMisses ?? 3) - (state.misses ?? 0));
-  const lives = "\u2665".repeat(livesLeft) + "\u2661".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft));
+  const lives = isMultiplayerMode(state)
+    ? "\u25cf LIVE"
+    : "\u2665".repeat(livesLeft) + "\u2661".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft));
 
   elements.scoreValue.textContent = score;
   elements.streakValue.textContent = streak;
@@ -560,6 +579,11 @@ function showMenuPage(elements, pageName = "home") {
   window.dispatchEvent(new CustomEvent("card-crunch-menu-page-change", {
     detail: { pageName }
   }));
+}
+
+function formatMatchTime(seconds) {
+  const total = Math.max(0, Math.ceil(Number(seconds) || 0));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
 function renderPotMap(elements, pots, handlers, mapState) {
@@ -933,6 +957,7 @@ function renderCrunch(elements, state, handlers) {
   const preview = getCrunchPreview(state);
   const playing = !state.locked && state.status === "playing";
   const arcadeRun = isArcadeMode(state);
+  const multiplayerRun = isMultiplayerMode(state);
 
   // The handlers object is created once per game, so bind exactly once
   // instead of re-assigning listeners on every 100ms render tick.
@@ -957,24 +982,26 @@ function renderCrunch(elements, state, handlers) {
   const bankStreakReady = state.streak >= minimumBankStreak;
   const bankCashReady = state.score >= minimumBankCash;
   const bankRuleReady = bankStreakReady && bankCashReady;
-  const canBank = !arcadeRun && playing && (Boolean(state.activePot) || Boolean(state.tutorialBankStep)) && state.score > 0 && bankRuleReady;
+  const canBank = !arcadeRun && !multiplayerRun && playing && (Boolean(state.activePot) || Boolean(state.tutorialBankStep)) && state.score > 0 && bankRuleReady;
   if (cache.canBank !== canBank) {
     cache.canBank = canBank;
     elements.bankButton.disabled = !canBank;
     elements.bankButton.classList.toggle("bank-ready", canBank);
   }
   const bankLabel = elements.bankButton.querySelector(":scope > span");
-  setText(bankLabel, arcadeRun ? "Stacked" : "Bank", cache, "bankLabel");
+  setText(bankLabel, multiplayerRun ? "Rival" : arcadeRun ? "Stacked" : "Bank", cache, "bankLabel");
   setText(
     elements.bankAmountValue,
-    arcadeRun ? `${preview.selectedCount} ${preview.selectedCount === 1 ? "card" : "cards"}` : `$${formatCompactNumber(state.score ?? 0)}`,
+    multiplayerRun
+      ? formatCompactNumber(state.multiplayer?.opponent?.score ?? 0)
+      : arcadeRun ? `${preview.selectedCount} ${preview.selectedCount === 1 ? "card" : "cards"}` : `$${formatCompactNumber(state.score ?? 0)}`,
     cache,
     "bankAmount"
   );
   elements.bankButton.classList.toggle("arcade-stack-meter", arcadeRun);
 
   if (elements.hintAdButton) {
-    const hintHidden = arcadeRun || (!state.isTutorial && (state.hintAdUsedThisRun || state.status === "menu"));
+    const hintHidden = arcadeRun || multiplayerRun || (!state.isTutorial && (state.hintAdUsedThisRun || state.status === "menu"));
     const hintDisabled = !playing || (!state.isTutorial && state.hintAdUsedThisRun);
     if (cache.hintHidden !== hintHidden) {
       cache.hintHidden = hintHidden;
@@ -993,7 +1020,9 @@ function renderCrunch(elements, state, handlers) {
   elements.bankButton.classList.toggle("bank-rule-locked", playing && state.score > 0 && !bankRuleReady);
   elements.bankButton.setAttribute(
     "aria-label",
-    arcadeRun
+    multiplayerRun
+      ? `Opponent score ${formatCompactNumber(state.multiplayer?.opponent?.score ?? 0)}.`
+      : arcadeRun
       ? `${preview.selectedCount} cards currently staged in Endless Arcade.`
       : bankRuleReady
       ? "Bank run cash into the pot. Resets multiplier."
@@ -1367,7 +1396,7 @@ function getRunEndCopy(summary, potComplete) {
   return "No unbanked cash was lost. Shuffle up and start another run.";
 }
 
-function createCard(card, options = {}) {
+export function createCardElement(card, options = {}) {
   const element = document.createElement(options.isButton ? "button" : "div");
   const skinClass = getCardSkinClass(card);
   const visualColorClass = getCardVisualColorClass(card);
@@ -1418,6 +1447,8 @@ function createCard(card, options = {}) {
 
   return element;
 }
+
+const createCard = createCardElement;
 
 function getStackSignature(state) {
   return state.stack.map((card) => card.id).join("|");

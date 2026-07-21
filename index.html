@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="styles/main.css?v=167">
   <link rel="stylesheet" href="styles/collection.css?v=167">
   <link rel="stylesheet" href="styles/store.css?v=167">
+  <link rel="stylesheet" href="styles/multiplayer.css?v=169">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -184,6 +185,11 @@
               <span aria-hidden="true">&#9889;</span>
               <strong>ENDLESS ARCADE</strong>
               <small>10 seconds &bull; instant refills &bull; rare power cards</small>
+            </button>
+            <button class="online-duel-button" id="onlineDuelButton" type="button">
+              <span class="online-duel-icon" aria-hidden="true">&#9876;</span>
+              <span><strong>ONLINE DUEL</strong><small>1 minute &bull; highest score wins</small></span>
+              <em><i aria-hidden="true"></i>Online</em>
             </button>
             <p class="play-subcopy">Shuffle up &amp; deal</p>
 
@@ -424,6 +430,38 @@
       </div>
     </section>
 
+    <section class="matchmaking-screen" id="matchmakingScreen" aria-hidden="true" aria-labelledby="matchmakingStatus">
+      <div class="matchmaking-ambient" aria-hidden="true"><i>&spades;</i><i>&hearts;</i><i>&diams;</i><i>&clubs;</i></div>
+      <article class="matchmaking-shell">
+        <p class="matchmaking-kicker">Online Duel</p>
+        <h2 id="matchmakingStatus">Searching for an opponent</h2>
+        <p class="matchmaking-elapsed" id="matchmakingElapsed">0s in queue</p>
+        <div class="matchmaking-card-stage" id="matchmakingCardStage" aria-label="Tap the waiting card three times to crunch it"></div>
+        <p class="matchmaking-card-hint" id="matchmakingCardHint">Tap the card three times while you wait</p>
+        <div class="matchmaking-versus" id="matchmakingVersus" hidden>
+          <div><span>You</span><strong id="matchmakingYouName">Player</strong></div>
+          <b>VS</b>
+          <div><span>Rival</span><strong id="matchmakingOpponentName">Opponent</strong></div>
+          <em id="matchmakingCountdown">3</em>
+        </div>
+        <button class="matchmaking-cancel-button" id="matchmakingCancelButton" type="button">Cancel Search</button>
+      </article>
+    </section>
+
+    <section class="multiplayer-result-screen" id="multiplayerResultScreen" aria-hidden="true" aria-labelledby="multiplayerResultTitle">
+      <article class="multiplayer-result-card">
+        <p id="multiplayerResultKicker">Match Complete</p>
+        <h2 id="multiplayerResultTitle">YOU WIN!</h2>
+        <div class="multiplayer-scoreboard">
+          <section><span>You</span><strong id="multiplayerYourScore">0</strong></section>
+          <b>VS</b>
+          <section><span id="multiplayerResultOpponentName">Rival</span><strong id="multiplayerOpponentScore">0</strong></section>
+        </div>
+        <button class="multiplayer-rematch-button" id="multiplayerRematchButton" type="button">Find Rematch</button>
+        <button class="multiplayer-home-button" id="multiplayerHomeButton" type="button">Back Home</button>
+      </article>
+    </section>
+
     <section class="pack-opening-overlay" id="packOpeningOverlay" aria-labelledby="packOpeningTitle" aria-hidden="true" hidden>
       <div class="pack-opening-stage">
         <p class="pack-opening-eyebrow" id="packOpeningPrompt">Tap the pack to reveal one new card</p>
@@ -455,6 +493,6 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-  <script type="module" src="src/main.js?v=168"></script>
+  <script type="module" src="src/main.js?v=169"></script>
   </body>
 </html>

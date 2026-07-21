@@ -21,6 +21,11 @@ const required = [
   "src/store.js",
   "src/storeProducts.js",
   "src/storeState.js",
+  "src/multiplayer.js",
+  "src/multiplayerMode.js",
+  "api/matchmaking.js",
+  "api/_matchmakingCore.js",
+  "api/_redis.js",
   "src/potInfo.js",
   "src/tutorial.js",
   "src/economy.js",
@@ -37,6 +42,7 @@ const required = [
   "styles/main.css",
   "styles/collection.css",
   "styles/store.css",
+  "styles/multiplayer.css",
   "capacitor.config.json"
 ];
 
@@ -73,6 +79,59 @@ const arcadeModeModule = await import(`../src/arcadeMode.js?verify=${Date.now()}
 const arcadeResults = arcadeModeModule.runArcadeModeSelfTests();
 if (!Array.isArray(arcadeResults) || arcadeResults.some((result) => result.pass === false)) {
   throw new Error("Endless Arcade and power-card self-tests failed");
+}
+const matchmakingModule = await import(`../api/_matchmakingCore.js?verify=${Date.now()}`);
+const matchmakingStore = new matchmakingModule.MemoryMatchmakingStore();
+const matchNow = Date.now();
+const firstJoin = await matchmakingModule.handleMatchmakingAction(matchmakingStore, "join", {
+  displayName: "Player One",
+  skinId: "classic"
+}, matchNow);
+const secondJoin = await matchmakingModule.handleMatchmakingAction(matchmakingStore, "join", {
+  displayName: "Player Two",
+  skinId: "rainbow"
+}, matchNow + 20);
+const firstMatched = await matchmakingModule.handleMatchmakingAction(matchmakingStore, "poll", {
+  ...firstJoin.session
+}, matchNow + 40);
+if (firstJoin.state !== "waiting"
+  || secondJoin.state !== "matched"
+  || firstMatched.match?.id !== secondJoin.match?.id
+  || firstMatched.match?.opponent?.displayName !== "Player Two"
+  || secondJoin.match?.opponent?.displayName !== "Player One"
+  || secondJoin.match.endsAt - secondJoin.match.startsAt !== 60_000) {
+  throw new Error("Two waiting players were not paired into the same one-minute match");
+}
+await matchmakingModule.handleMatchmakingAction(matchmakingStore, "score", {
+  ...firstJoin.session,
+  score: 1200
+}, secondJoin.match.startsAt + 1000);
+await matchmakingModule.handleMatchmakingAction(matchmakingStore, "score", {
+  ...secondJoin.session,
+  score: 900
+}, secondJoin.match.startsAt + 1100);
+const settledMatch = await matchmakingModule.handleMatchmakingAction(matchmakingStore, "poll", {
+  ...firstJoin.session
+}, secondJoin.match.endsAt + 1);
+if (settledMatch.state !== "complete"
+  || settledMatch.match.winner !== "you"
+  || settledMatch.match.you.score !== 1200
+  || settledMatch.match.opponent.score !== 900) {
+  throw new Error("Multiplayer score comparison or server-timed result settlement failed");
+}
+const fairnessStore = new matchmakingModule.MemoryMatchmakingStore();
+const fairnessNow = matchNow + 100_000;
+const patientJoin = await matchmakingModule.handleMatchmakingAction(fairnessStore, "join", {
+  displayName: "Patient Player"
+}, fairnessNow);
+await matchmakingModule.handleMatchmakingAction(fairnessStore, "poll", {
+  ...patientJoin.session
+}, fairnessNow + 10_000);
+const laterJoin = await matchmakingModule.handleMatchmakingAction(fairnessStore, "join", {
+  displayName: "Later Player"
+}, fairnessNow + 19_000);
+if (laterJoin.state !== "matched" || laterJoin.match.opponent.displayName !== "Patient Player") {
+  throw new Error("Active waiting players must retain queue priority after heartbeat polling");
 }
 const progressionModule = await import(`../src/progression.js?verify=${Date.now()}`);
 const challengePots = progressionModule.createDefaultPots();
@@ -174,6 +233,11 @@ if (!html.includes("tutorialStartButton") || !html.includes("tutorialCoach") || 
 if (!html.includes('id="endlessArcadeButton"') || !html.includes("ENDLESS ARCADE")) {
   throw new Error("Endless Arcade menu action is missing");
 }
+if (!html.includes('id="onlineDuelButton"')
+  || !html.includes('id="matchmakingScreen"')
+  || !html.includes('id="multiplayerResultScreen"')) {
+  throw new Error("Online Duel menu, matchmaking, or result UI hooks are missing");
+}
 if (!html.includes('data-page="account"') || !html.includes('id="stlGoogleSignInButton"')) {
   throw new Error("Shared STL Account UI hooks are missing");
 }
@@ -254,7 +318,7 @@ if (!cardSkinModule.getCardSkinAssetUrl({ rank: "A", suit: "hearts" }, "pink_arc
   throw new Error("Pink Arcade rank and suit asset mapping is incorrect");
 }
 
-const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollectionSource, cardCollectionUiSource, cardGestureSource, dealTimingSource, gameStateSource, uiSource, storeSource, css, collectionCss, storeCss] = await Promise.all([
+const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollectionSource, cardCollectionUiSource, cardGestureSource, dealTimingSource, gameStateSource, uiSource, storeSource, multiplayerSource, matchmakingSource, css, collectionCss, storeCss, multiplayerCss] = await Promise.all([
   readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
   readFile(resolve(root, "src/animations.js"), "utf8"),
   readFile(resolve(root, "src/themes.js"), "utf8"),
@@ -266,9 +330,12 @@ const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollec
   readFile(resolve(root, "src/gameState.js"), "utf8"),
   readFile(resolve(root, "src/ui.js"), "utf8"),
   readFile(resolve(root, "src/store.js"), "utf8"),
+  readFile(resolve(root, "src/multiplayer.js"), "utf8"),
+  readFile(resolve(root, "api/_matchmakingCore.js"), "utf8"),
   readFile(resolve(root, "styles/main.css"), "utf8"),
   readFile(resolve(root, "styles/collection.css"), "utf8"),
-  readFile(resolve(root, "styles/store.css"), "utf8")
+  readFile(resolve(root, "styles/store.css"), "utf8"),
+  readFile(resolve(root, "styles/multiplayer.css"), "utf8")
 ]);
 const mainSource = await readFile(resolve(root, "src/main.js"), "utf8");
 const tutorialSource = await readFile(resolve(root, "src/tutorial.js"), "utf8");
@@ -277,6 +344,17 @@ const hapticsSource = await readFile(resolve(root, "src/haptics.js"), "utf8");
 const scoringSource = await readFile(resolve(root, "src/scoring.js"), "utf8");
 const scoreSurgeSource = await readFile(resolve(root, "src/scoreSurge.js"), "utf8");
 const arcadeModeSource = await readFile(resolve(root, "src/arcadeMode.js"), "utf8");
+if (!mainSource.includes("initializeMultiplayer")
+  || !gameStateSource.includes("startMultiplayerMatch")
+  || !gameStateSource.includes("updateMultiplayerClock")
+  || !multiplayerSource.includes("hitWaitingCard")
+  || !multiplayerSource.includes("breakWaitingCard")
+  || !matchmakingSource.includes("WAITING_TTL_MS")
+  || !matchmakingSource.includes("settleMatch")
+  || !multiplayerCss.includes("waitingShardVacuum")
+  || !multiplayerCss.includes("multiplayer-scoreboard")) {
+  throw new Error("Online Duel matchmaking, waiting-card toy, live clock, or result presentation is incomplete");
+}
 if (!html.includes("main-menu-screen is-visible is-home-page")
   || !uiSource.includes('classList.toggle("is-home-page"')
   || !css.includes(".main-menu-screen.is-home-page")

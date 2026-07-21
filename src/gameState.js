@@ -22,6 +22,7 @@ import { purchaseManager } from "./purchases.js?v=166";
 import { mergeCardCollectionSnapshot } from "./cardCollection.js?v=167";
 import { storeState } from "./storeState.js?v=167";
 import { getRoundDealDuration } from "./dealTiming.js?v=164";
+import { MULTIPLAYER_MATCH_SECONDS, MULTIPLAYER_MODE, isMultiplayerMode } from "./multiplayerMode.js?v=169";
 import {
   animateBust,
   animateSelectionResolve,
@@ -51,6 +52,7 @@ export function createGame(ui) {
     hand: [],
     selectedHandIndexes: [],
     gameMode: "menu",
+    multiplayer: null,
     arcadePlayedCards: [],
     arcadeCardsCrunchedThisRun: 0,
     arcadePowerCardsUsedThisRun: 0,
@@ -122,12 +124,12 @@ export function createGame(ui) {
     requestNewRun(pot);
   }
 
-  function requestNewRun(pot = null, gameMode = pot ? "pot" : "endless") {
-    start(pot, { gameMode });
+  function requestNewRun(pot = null, gameMode = pot ? "pot" : "endless", multiplayer = null) {
+    start(pot, { gameMode, multiplayer });
     return true;
   }
 
-  function start(pot = state.pots.find((item) => !item.complete) ?? state.pots[0], { gameMode = pot ? "pot" : "endless" } = {}) {
+  function start(pot = state.pots.find((item) => !item.complete) ?? state.pots[0], { gameMode = pot ? "pot" : "endless", multiplayer = null } = {}) {
     stopTimer();
     ui.hidePotInfo({ immediate: true });
     ui.hideBonusBankOffer();
@@ -135,6 +137,7 @@ export function createGame(ui) {
     tutorialSession = null;
     state.isTutorial = false;
     state.gameMode = gameMode;
+    state.multiplayer = gameMode === MULTIPLAYER_MODE ? createMultiplayerState(multiplayer) : null;
     state.activePot = pot ?? null;
     state.tutorialBankStep = false;
     state.tutorialExpectedIndexes = [];
@@ -151,13 +154,17 @@ export function createGame(ui) {
     state.score = 0;
     state.streak = 0;
     state.misses = 0;
-    state.maxMisses = gameMode === ARCADE_MODE
+    state.maxMisses = gameMode === MULTIPLAYER_MODE
+      ? 3
+      : gameMode === ARCADE_MODE
       ? ARCADE_CONFIG.maxLives
       : Math.max(1, Number(pot?.gameplayModifier?.maxLives ?? 3));
     state.level = pot?.id ?? 0;
     state.replayingCompletedPot = Boolean(pot?.complete);
     state.target = pot?.target ?? getTargetForLevel(1);
-    state.turnSeconds = gameMode === ARCADE_MODE
+    state.turnSeconds = gameMode === MULTIPLAYER_MODE
+      ? MULTIPLAYER_MATCH_SECONDS
+      : gameMode === ARCADE_MODE
       ? ARCADE_CONFIG.turnSeconds
       : Math.max(3, Number(pot?.gameplayModifier?.turnSeconds ?? 10));
     state.fever = false;
@@ -201,6 +208,11 @@ export function createGame(ui) {
   function startEndlessArcade() {
     clearRunSave();
     requestNewRun(null, ARCADE_MODE);
+  }
+
+  function startMultiplayerMatch(multiplayer) {
+    clearRunSave();
+    requestNewRun(null, MULTIPLAYER_MODE, multiplayer);
   }
 
   function startTutorial(lessons, hooks = {}) {
@@ -363,12 +375,13 @@ export function createGame(ui) {
 
   async function onCrunch() {
     const arcadeRun = isArcadeMode(state);
+    const multiplayerRun = isMultiplayerMode(state);
     const selectedCount = arcadeRun ? state.arcadePlayedCards.length : state.selectedHandIndexes.length;
     const preview = getCrunchPreview(state);
     if (state.locked || state.status !== "playing" || !preview.canCrunch || selectedCount === 0) return;
     state.locked = true;
     state.status = "crunching";
-    stopTimer();
+    if (!multiplayerRun) stopTimer();
     ui.hideBonusBankOffer();
     ui.clearMessage();
     resetCrunchSkipRequest();
@@ -395,6 +408,11 @@ export function createGame(ui) {
     const retainedTableCards = crunch.success
       ? getUncrunchedTableCards(crunch.resolution)
       : [];
+
+    if (multiplayerRun) {
+      const previewPoints = crunch.success ? crunch.total : crunch.partial?.success ? crunch.partial.total : 0;
+      if (previewPoints > 0) state.multiplayer?.callbacks?.onScorePreview?.(state.score + previewPoints);
+    }
 
     playSfx("crunch_start");
 
@@ -444,6 +462,7 @@ export function createGame(ui) {
         state.bestScore = Math.max(state.bestScore, state.score);
         localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
         ui.syncResolvedHud(state);
+        state.multiplayer?.callbacks?.onScoreChange?.(state.score);
       }
       await playBustCutin({
         failedCard: crunch.resolution.failedCard,
@@ -513,8 +532,10 @@ export function createGame(ui) {
 
     recordCrunchedCards(selectedCards.length);
     state.bestScore = Math.max(state.bestScore, state.score);
+    state.multiplayer?.callbacks?.onScoreChange?.(state.score);
     localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
     localStorage.setItem("cardCrunchBestStreak", String(Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak)));
+    if (completeMultiplayerIfPending()) return;
     startNewRound({ retainedTableCards });
   }
 
@@ -729,16 +750,17 @@ export function createGame(ui) {
   }
 
   async function bust(message, failedSelectionIndex = -1, resolvedCardElements = null) {
+    const multiplayerRun = isMultiplayerMode(state);
     state.locked = true;
     state.status = "busted";
-    stopTimer();
+    if (!multiplayerRun) stopTimer();
     ui.hideBonusBankOffer();
     if (state.fever) playSfx("fever_end");
     playSfx("bust");
     state.misses += 1;
     state.streak = 0;
     state.fever = false;
-    if (isArcadeMode(state)) state.bankMultiplier = 1;
+    if (isArcadeMode(state) || multiplayerRun) state.bankMultiplier = 1;
     ui.setMessage(message, "bad");
     ui.render(state, handlers);
     await animateBust({
@@ -750,11 +772,12 @@ export function createGame(ui) {
       protectedBust: false
     });
     discardSelectedCards();
-    if (state.misses >= state.maxMisses) {
+    if (!multiplayerRun && state.misses >= state.maxMisses) {
       refillHand();
       endRun();
       return;
     }
+    if (completeMultiplayerIfPending()) return;
     startNewRound();
   }
 
@@ -1054,6 +1077,13 @@ export function createGame(ui) {
       return;
     }
     if (state.status !== "playing") return;
+    if (isMultiplayerMode(state)) {
+      state.locked = true;
+      state.status = "multiplayerEnded";
+      ui.render(state, handlers);
+      state.multiplayer?.callbacks?.onForfeit?.();
+      return;
+    }
     const returnHome = isArcadeMode(state);
     stopTimer();
     ui.hidePotInfo({ immediate: true });
@@ -1070,7 +1100,8 @@ export function createGame(ui) {
   }
 
   function startNewRound({ retainedTableCards = [] } = {}) {
-    stopTimer();
+    const multiplayerRun = isMultiplayerMode(state);
+    if (!multiplayerRun) stopTimer();
     ui.clearMessage();
     if (isArcadeMode(state)) {
       const tableDealCount = dealNextTable(retainedTableCards);
@@ -1091,7 +1122,7 @@ export function createGame(ui) {
     const tableDealCount = dealNextTable(retainedTableCards);
     refillHand({ allowOccupiedSafety: !hasReplacementSlots });
     state.selectedHandIndexes = [];
-    state.timeLeft = state.turnSeconds;
+    if (!multiplayerRun) state.timeLeft = state.turnSeconds;
     state.status = "playing";
     state.dealHandCount = replacementCount;
     state.dealTableCount = tableDealCount;
@@ -1099,6 +1130,67 @@ export function createGame(ui) {
     ui.beginRoundHandoff(state);
     ui.render(state, handlers);
     finishHandDeal(replacementCount, { tableDealCount, announceReady: true });
+  }
+
+  function updateMultiplayerClock(seconds) {
+    if (!isMultiplayerMode(state) || !state.multiplayer) return;
+    state.timeLeft = Math.max(0, Math.min(MULTIPLAYER_MATCH_SECONDS, Number(seconds) || 0));
+    if (state.timeLeft <= 0) state.multiplayer.timeExpired = true;
+    ui.renderMatchHud?.(state);
+  }
+
+  function updateMultiplayerOpponent(opponent = {}) {
+    if (!isMultiplayerMode(state) || !state.multiplayer) return;
+    state.multiplayer.opponent = {
+      ...state.multiplayer.opponent,
+      ...opponent,
+      score: Math.max(Number(state.multiplayer.opponent?.score) || 0, Number(opponent.score) || 0)
+    };
+    ui.renderMatchHud?.(state);
+  }
+
+  function finishMultiplayerMatch(match = null) {
+    if (!isMultiplayerMode(state) || !state.multiplayer) return true;
+    state.timeLeft = 0;
+    state.multiplayer.timeExpired = true;
+    if (match?.opponent) updateMultiplayerOpponent(match.opponent);
+    if (match?.status !== "complete") {
+      if (state.status === "playing") {
+        state.locked = true;
+        state.status = "multiplayerWaitingResult";
+        ui.setMessage("TIME! Confirming scores...", "good", 0);
+        ui.render(state, handlers);
+      }
+      return false;
+    }
+    state.multiplayer.pendingResult = match;
+    if (state.status === "crunching" || state.status === "busted") return false;
+    state.locked = true;
+    state.status = "multiplayerEnded";
+    stopTimer();
+    ui.clearMessage();
+    ui.render(state, handlers);
+    state.multiplayer.callbacks?.onResultReady?.(match);
+    return true;
+  }
+
+  function completeMultiplayerIfPending() {
+    if (!isMultiplayerMode(state) || !state.multiplayer?.pendingResult) return false;
+    return finishMultiplayerMatch(state.multiplayer.pendingResult);
+  }
+
+  function returnFromMultiplayer() {
+    if (!isMultiplayerMode(state) && state.status !== "multiplayerEnded" && state.status !== "multiplayerWaitingResult") return;
+    stopTimer();
+    ui.clearMessage();
+    clearRunSave();
+    resetRunSession();
+    ui.render(state, handlers);
+    ui.renderMenuStats(state);
+    ui.showGameOver(false);
+    ui.showStart(true);
+    ui.showMenuPage("home");
+    ui.showMap(false);
   }
 
   function finishHandDeal(replacementCount, { tableDealCount = state.baseStackCount, announceReady = false } = {}) {
@@ -1113,7 +1205,7 @@ export function createGame(ui) {
       ui.render(state, handlers);
       ui.finishRoundHandoff();
       if (announceReady) ui.playInitialReadyPulse();
-      startTimer();
+      if (!isMultiplayerMode(state)) startTimer();
     }, dealDuration);
   }
 
@@ -1141,6 +1233,7 @@ export function createGame(ui) {
   }
 
   function startTimer({ resume = false } = {}) {
+    if (isMultiplayerMode(state)) return;
     stopTimer();
     const token = state.timerToken;
     const startedAt = performance.now();
@@ -1202,6 +1295,7 @@ export function createGame(ui) {
     state.hand = [];
     state.selectedHandIndexes = [];
     state.gameMode = "menu";
+    state.multiplayer = null;
     state.arcadePlayedCards = [];
     state.arcadeCardsCrunchedThisRun = 0;
     state.arcadePowerCardsUsedThisRun = 0;
@@ -1307,12 +1401,17 @@ export function createGame(ui) {
     start,
     startEndless,
     startEndlessArcade,
+    startMultiplayerMatch,
     startTutorial,
     showMap,
     enterLevel,
     returnToMap,
     playAgain,
     exitRun,
+    updateMultiplayerClock,
+    updateMultiplayerOpponent,
+    finishMultiplayerMatch,
+    returnFromMultiplayer,
     openPotInfo,
     closePotInfo,
     onCardSelect,
@@ -1357,6 +1456,26 @@ function getMaximumSelection(state) {
 function getStartingRunMultiplier(state) {
   if (isArcadeMode(state)) return 1;
   return Math.max(1, Number(state.activePot?.gameplayModifier?.startingRunMultiplier ?? 1));
+}
+
+function createMultiplayerState(options = {}) {
+  const match = options?.match || {};
+  return {
+    matchId: String(match.id || ""),
+    startsAt: Number(match.startsAt) || 0,
+    endsAt: Number(match.endsAt) || 0,
+    serverOffsetMs: Number(options.serverOffsetMs) || 0,
+    you: { ...(match.you || {}), score: 0 },
+    opponent: { ...(match.opponent || {}), score: Number(match.opponent?.score) || 0 },
+    timeExpired: false,
+    pendingResult: null,
+    callbacks: {
+      onScorePreview: typeof options.onScorePreview === "function" ? options.onScorePreview : null,
+      onScoreChange: typeof options.onScoreChange === "function" ? options.onScoreChange : null,
+      onForfeit: typeof options.onForfeit === "function" ? options.onForfeit : null,
+      onResultReady: typeof options.onResultReady === "function" ? options.onResultReady : null
+    }
+  };
 }
 
 export function formatRunMultiplier(value) {
