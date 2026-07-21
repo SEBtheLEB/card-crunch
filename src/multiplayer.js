@@ -1,9 +1,10 @@
 import { createDeck } from "./deck.js?v=164";
 import { formatCompactNumber } from "./format.js?v=164";
 import { haptic } from "./haptics.js?v=164";
-import { playGameSfx } from "./audio.js?v=164";
 import { createCardElement } from "./ui.js?v=169";
 import { applyPreviewCardSkinPresentation } from "./cardSkins.js?v=169";
+import { animateCardDealIn } from "./cardGestures.js?v=173";
+import { createCardCrunchInteraction } from "./crunchCutscene.js?v=173";
 
 const SESSION_STORAGE_KEY = "cardCrunchMatchmakingSessionV1";
 const DEFAULT_API_ORIGIN = "https://card-crunch.vercel.app";
@@ -32,6 +33,7 @@ class MultiplayerController {
       elapsed: document.querySelector("#matchmakingElapsed"),
       cancelButton: document.querySelector("#matchmakingCancelButton"),
       waitingCardStage: document.querySelector("#matchmakingCardStage"),
+      vacuumTarget: document.querySelector("#matchmakingVacuumTarget"),
       waitingHint: document.querySelector("#matchmakingCardHint"),
       versus: document.querySelector("#matchmakingVersus"),
       youName: document.querySelector("#matchmakingYouName"),
@@ -55,6 +57,7 @@ class MultiplayerController {
     this.waitingCard = null;
     this.waitingCardHits = 0;
     this.waitingCardLocked = false;
+    this.waitingCrunch = null;
     this.match = null;
     this.activeMatchId = "";
     this.serverOffsetMs = 0;
@@ -131,6 +134,7 @@ class MultiplayerController {
   hideWaitingScreen() {
     this.elements.screen.classList.remove("is-visible", "match-found", "match-error");
     this.elements.screen.setAttribute("aria-hidden", "true");
+    this.cleanupWaitingCard();
     this.elements.waitingCardStage.replaceChildren();
     this.waitingCard = null;
   }
@@ -153,34 +157,52 @@ class MultiplayerController {
 
   dealWaitingCard() {
     if (!this.elements.waitingCardStage || !this.elements.screen.classList.contains("is-visible")) return;
+    this.cleanupWaitingCard();
     this.waitingCardHits = 0;
     this.waitingCardLocked = false;
     const deck = createDeck();
     const card = deck[Math.floor(Math.random() * deck.length)];
     const skinId = nextWaitingSkin(this.waitingCard?.dataset.previewSkin);
     const element = createCardElement(card, { isButton: false });
-    element.classList.add("matchmaking-card", "matchmaking-card-deal");
+    element.classList.add("matchmaking-card", "card-deal-pending");
     element.dataset.previewSkin = skinId;
     applyPreviewCardSkinPresentation(element, card, skinId);
     element.setAttribute("aria-hidden", "true");
     this.elements.waitingCardStage.replaceChildren(element);
     this.waitingCard = element;
-    playGameSfx("card_deal");
+    animateCardDealIn(element, 0, { zone: "table", fromSide: "left" });
+  }
+
+  prepareWaitingCrunch(element = this.waitingCard) {
+    if (!element?.isConnected || element !== this.waitingCard) return null;
+    this.waitingCrunch = createCardCrunchInteraction({
+      stage: this.elements.waitingCardStage,
+      cards: [element],
+      targetEl: this.elements.vacuumTarget,
+      onComplete: () => {
+        if (this.elements.screen.classList.contains("is-visible") && this.elements.versus.hidden) this.dealWaitingCard();
+      }
+    });
+    return this.waitingCrunch;
   }
 
   hitWaitingCard() {
     if (!this.waitingCard || this.waitingCardLocked || this.elements.versus.hidden === false) return;
-    this.waitingCardHits += 1;
-    this.waitingCard.classList.remove("waiting-hit-one", "waiting-hit-two");
-    this.waitingCard.classList.add(this.waitingCardHits === 1 ? "waiting-hit-one" : "waiting-hit-two");
-    playGameSfx(`crunch_hit_${Math.min(3, this.waitingCardHits)}`);
-    haptic(this.waitingCardHits >= 3 ? "crunch" : "tap");
-    spawnWaitingCrumbs(this.waitingCard, 7 + this.waitingCardHits * 3);
-    if (this.waitingCardHits < 3) return;
-    this.waitingCardLocked = true;
-    breakWaitingCard(this.waitingCard).finally(() => {
-      if (this.elements.screen.classList.contains("is-visible") && this.elements.versus.hidden) this.dealWaitingCard();
-    });
+    if (!this.waitingCrunch) this.prepareWaitingCrunch();
+    if (!this.waitingCrunch) return;
+    const result = this.waitingCrunch.hit();
+    this.waitingCardHits = result.hit;
+    this.waitingCardLocked = result.complete;
+    this.elements.waitingHint.textContent = result.complete
+      ? "CRUNCHED! Dealing another card..."
+      : `Crunch again ${result.hit}/3`;
+    haptic(result.complete ? "crunch" : "tap");
+  }
+
+  cleanupWaitingCard() {
+    this.waitingCrunch?.destroy?.();
+    this.waitingCrunch = null;
+    this.waitingCardLocked = false;
   }
 
   async handleServerResponse(response, generation) {
@@ -391,55 +413,6 @@ function getGuestName() {
 function nextWaitingSkin(previous = "") {
   const choices = WAITING_SKINS.filter((skin) => skin !== previous);
   return choices[Math.floor(Math.random() * choices.length)];
-}
-
-async function breakWaitingCard(card) {
-  const rect = card.getBoundingClientRect();
-  const stage = card.parentElement;
-  card.classList.add("waiting-card-broken");
-  const fragments = [];
-  for (let row = 0; row < 4; row += 1) {
-    for (let column = 0; column < 3; column += 1) {
-      const shard = card.cloneNode(true);
-      shard.className = card.className;
-      shard.classList.remove("waiting-card-broken", "waiting-hit-one", "waiting-hit-two", "matchmaking-card-deal");
-      shard.classList.add("waiting-card-shard");
-      shard.style.left = `${card.offsetLeft}px`;
-      shard.style.top = `${card.offsetTop}px`;
-      shard.style.width = `${rect.width}px`;
-      shard.style.height = `${rect.height}px`;
-      shard.style.clipPath = `inset(${row * 25}% ${(2 - column) * 33.333}% ${(3 - row) * 25}% ${column * 33.333}%)`;
-      shard.style.setProperty("--shard-x", `${(column - 1) * (16 + Math.random() * 18)}px`);
-      shard.style.setProperty("--shard-final-x", `${(column - 1) * (4 + Math.random() * 5)}px`);
-      shard.style.setProperty("--shard-y", `${-window.innerHeight * .55 - row * 24}px`);
-      shard.style.setProperty("--shard-r", `${(Math.random() - .5) * 34}deg`);
-      shard.style.setProperty("--shard-final-r", `${(Math.random() - .5) * 68}deg`);
-      shard.style.animationDelay = `${row * 34 + column * 12}ms`;
-      stage.appendChild(shard);
-      fragments.push(shard);
-    }
-  }
-  playGameSfx("crunch_vacuum");
-  await new Promise((resolve) => window.setTimeout(resolve, 720));
-  fragments.forEach((fragment) => fragment.remove());
-  card.remove();
-}
-
-function spawnWaitingCrumbs(card, amount) {
-  const rect = card.getBoundingClientRect();
-  const fragment = document.createDocumentFragment();
-  for (let index = 0; index < amount; index += 1) {
-    const crumb = document.createElement("i");
-    crumb.className = "matchmaking-crumb";
-    crumb.style.left = `${rect.left + rect.width * (.2 + Math.random() * .6)}px`;
-    crumb.style.top = `${rect.top + rect.height * (.2 + Math.random() * .6)}px`;
-    crumb.style.setProperty("--crumb-x", `${(Math.random() - .5) * 120}px`);
-    crumb.style.setProperty("--crumb-y", `${30 + Math.random() * 110}px`);
-    crumb.style.setProperty("--crumb-r", `${(Math.random() - .5) * 260}deg`);
-    crumb.addEventListener("animationend", () => crumb.remove(), { once: true });
-    fragment.appendChild(crumb);
-  }
-  document.body.appendChild(fragment);
 }
 
 function readJson(key, fallback) {

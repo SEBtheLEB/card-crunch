@@ -348,10 +348,13 @@ if (!mainSource.includes("initializeMultiplayer")
   || !gameStateSource.includes("startMultiplayerMatch")
   || !gameStateSource.includes("updateMultiplayerClock")
   || !multiplayerSource.includes("hitWaitingCard")
-  || !multiplayerSource.includes("breakWaitingCard")
+  || !multiplayerSource.includes("createCardCrunchInteraction")
+  || !multiplayerSource.includes("animateCardDealIn")
+  || !cutsceneSource.includes("export function createCardCrunchInteraction")
   || !matchmakingSource.includes("WAITING_TTL_MS")
   || !matchmakingSource.includes("settleMatch")
-  || !multiplayerCss.includes("waitingShardVacuum")
+  || multiplayerSource.includes("waiting-card-shard")
+  || multiplayerCss.includes("waitingShardVacuum")
   || !multiplayerCss.includes("multiplayer-scoreboard")) {
   throw new Error("Online Duel matchmaking, waiting-card toy, live clock, or result presentation is incomplete");
 }

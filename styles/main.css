@@ -4390,21 +4390,25 @@ h2 {
 }
 
 .crunch-cutscene-overlay[data-crunch-hit="1"] .is-crunch-shaking,
-.cutin-stage[data-crunch-hit="1"] .is-crunch-shaking {
+.cutin-stage[data-crunch-hit="1"] .is-crunch-shaking,
+.crunch-interaction-stage[data-crunch-hit="1"] .is-crunch-shaking {
   animation: cutinCrunchHitOne var(--crunch-shake-duration, 340ms) cubic-bezier(.16, 1.18, .24, 1) var(--crunch-shake-delay, 0ms) both !important;
 }
 
 .crunch-cutscene-overlay[data-crunch-hit="2"] .is-crunch-shaking,
-.cutin-stage[data-crunch-hit="2"] .is-crunch-shaking {
+.cutin-stage[data-crunch-hit="2"] .is-crunch-shaking,
+.crunch-interaction-stage[data-crunch-hit="2"] .is-crunch-shaking {
   animation: cutinCrunchHitTwo var(--crunch-shake-duration, 380ms) cubic-bezier(.14, 1.16, .22, 1) var(--crunch-shake-delay, 0ms) both !important;
 }
 
 .crunch-cutscene-overlay[data-crunch-hit="3"] .is-crunch-shaking,
-.cutin-stage[data-crunch-hit="3"] .is-crunch-shaking {
+.cutin-stage[data-crunch-hit="3"] .is-crunch-shaking,
+.crunch-interaction-stage[data-crunch-hit="3"] .is-crunch-shaking {
   animation: cutinCrunchHitThree var(--crunch-shake-duration, 420ms) cubic-bezier(.12, 1.12, .2, 1) var(--crunch-shake-delay, 0ms) both !important;
 }
 
-.crunch-cutscene-overlay .is-crunch-shaking {
+.crunch-cutscene-overlay .is-crunch-shaking,
+.crunch-interaction-stage .is-crunch-shaking {
   transform-origin: 50% 50% !important;
   transform-box: border-box;
   backface-visibility: hidden;
@@ -6143,10 +6147,13 @@ h2 {
    Crunch Bank while the displayed value rolls upward. */
 .cutin-card.is-shattering,
 .cutin-live-card.is-shattering,
+.crunch-reusable-card.is-shattering,
 .cutin-card.is-precut-source,
 .cutin-live-card.is-precut-source,
+.crunch-reusable-card.is-precut-source,
 .cutin-card.is-consumed-after-shatter,
-.cutin-live-card.is-consumed-after-shatter {
+.cutin-live-card.is-consumed-after-shatter,
+.crunch-reusable-card.is-consumed-after-shatter {
   opacity: 0 !important;
   visibility: hidden;
   animation: none !important;

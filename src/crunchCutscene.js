@@ -106,6 +106,99 @@ export function hideCrunchSkipText() {
   if (skipTextLocks === 0) removeCrunchSkipText();
 }
 
+/* Reusable three-hit Crunch interaction for non-gameplay surfaces such as
+   matchmaking. It intentionally drives the same damage map, pixel shards,
+   debris emitter, scatter physics, vacuum, sounds, and impact callbacks used
+   by the score cut-ins instead of maintaining a second visual implementation. */
+export function createCardCrunchInteraction({
+  stage,
+  cards = [],
+  targetEl,
+  onImpact = null,
+  onComplete = null
+} = {}) {
+  const activeCards = cards.filter((card) => card?.isConnected);
+  if (!stage?.isConnected || !targetEl?.isConnected || !activeCards.length) return null;
+
+  stage.classList.add("crunch-interaction-stage");
+  activeCards.forEach((card) => card.classList.add("crunch-reusable-card"));
+  const shardGrid = getShardGrid(activeCards.length);
+  activeCards.forEach((card) => createCardFractureMap(card, shardGrid));
+  const prepared = prepareCutinCardShards(activeCards, targetEl, shardGrid);
+  if (!prepared) {
+    cleanupReusableCrunchStage(stage, activeCards);
+    return null;
+  }
+
+  let hitCount = 0;
+  let complete = false;
+  let disposed = false;
+  let completionPromise = Promise.resolve();
+
+  const cleanup = () => {
+    cleanupReusableCrunchStage(stage, activeCards);
+    stage.querySelector(".cutin-crunch-debris-canvas")?.remove();
+  };
+
+  return {
+    get hitCount() { return hitCount; },
+    get complete() { return complete; },
+    get completion() { return completionPromise; },
+    hit() {
+      if (disposed || complete) return { hit: hitCount, complete, completion: completionPromise };
+      hitCount = Math.min(CUTSCENE_CONFIG.interactiveCrunchHits, hitCount + 1);
+      assignCrunchShakeVectors(activeCards, hitCount);
+      stage.dataset.crunchHit = String(hitCount);
+      activeCards.forEach((card) => { card.dataset.crunchDamage = String(hitCount); });
+      showPreparedCardAssembly(prepared, hitCount);
+      playGameSfx(`crunch_hit_${hitCount}`);
+      spawnCrunchDamageBurst(stage, activeCards, hitCount);
+
+      if (hitCount === CUTSCENE_CONFIG.interactiveCrunchHits) {
+        complete = true;
+        prepared.active = true;
+        prepared.onImpact = onImpact;
+        prepared.cards.forEach((card) => card.classList.add("is-shattering", "is-consumed-after-shatter"));
+        beginBankFeed(prepared);
+        startPreparedShardPhysics(prepared);
+        requestPreparedShardVacuum(prepared);
+        completionPromise = prepared.physicsPromise
+          .catch(() => {})
+          .then(() => {
+            if (disposed) return;
+            discardPreparedShardSet(prepared);
+            cleanup();
+            onComplete?.();
+          });
+      }
+
+      return { hit: hitCount, complete, completion: completionPromise };
+    },
+    destroy() {
+      if (disposed) return;
+      disposed = true;
+      discardPreparedShardSet(prepared);
+      cleanup();
+    }
+  };
+}
+
+function cleanupReusableCrunchStage(stage, cards) {
+  stage?.removeAttribute("data-crunch-hit");
+  stage?.classList.remove("crunch-interaction-stage");
+  cards.forEach((card) => {
+    card.classList.remove(
+      "crunch-reusable-card",
+      "is-crunch-shaking",
+      "is-shattering",
+      "is-precut-source",
+      "is-consumed-after-shatter"
+    );
+    card.removeAttribute("data-crunch-damage");
+    card.querySelectorAll(".cutin-fracture-map").forEach((layer) => layer.remove());
+  });
+}
+
 function ensureCrunchSkipText() {
   if (skipTextElement?.isConnected) return skipTextElement;
   skipTextElement = document.createElement("button");
@@ -1471,7 +1564,11 @@ function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
       "cutin-live-card",
       "cutin-shared-card-flight",
       "cutin-shared-target",
-      "cutin-layout-proxy"
+      "cutin-layout-proxy",
+      "card-deal-pending",
+      "card-deal-landed",
+      "card-in-flight",
+      "card-layout-moving"
     );
     shardTemplate.removeAttribute("data-crunch-damage");
     shardTemplate.removeAttribute("aria-label");
