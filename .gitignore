@@ -9,3 +9,8 @@ android/keystore/
 android/app/build/
 *.jks
 *.keystore
+
+.env.local
+.env.*.local
+.agents/
+skills-lock.json
