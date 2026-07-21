@@ -3,8 +3,8 @@ import { formatCompactNumber } from "./format.js?v=164";
 import { haptic } from "./haptics.js?v=164";
 import { createCardElement } from "./ui.js?v=169";
 import { applyPreviewCardSkinPresentation } from "./cardSkins.js?v=169";
-import { animateCardDealIn } from "./cardGestures.js?v=173";
-import { createCardCrunchInteraction } from "./crunchCutscene.js?v=173";
+import { animateCardDealIn } from "./cardGestures.js?v=175";
+import { createCardCrunchInteraction } from "./crunchCutscene.js?v=175";
 
 const SESSION_STORAGE_KEY = "cardCrunchMatchmakingSessionV1";
 const DEFAULT_API_ORIGIN = "https://card-crunch.vercel.app";
@@ -17,7 +17,10 @@ export function initializeMultiplayer({ game, bindAction }) {
   bindAction(controller.elements.cancelButton, () => controller.cancelSearch());
   bindAction(controller.elements.rematchButton, () => controller.rematch());
   bindAction(controller.elements.homeButton, () => controller.returnHome());
-  controller.elements.waitingCardStage?.addEventListener("pointerdown", () => controller.hitWaitingCard());
+  controller.elements.screen?.addEventListener("pointerdown", (event) => {
+    if (event.target?.closest?.("button")) return;
+    controller.hitWaitingCard();
+  });
   window.addEventListener("pagehide", () => controller.leaveSilently());
   window.addEventListener("beforeunload", () => controller.leaveSilently());
   return controller;
@@ -34,7 +37,6 @@ class MultiplayerController {
       cancelButton: document.querySelector("#matchmakingCancelButton"),
       waitingCardStage: document.querySelector("#matchmakingCardStage"),
       vacuumTarget: document.querySelector("#matchmakingVacuumTarget"),
-      waitingHint: document.querySelector("#matchmakingCardHint"),
       versus: document.querySelector("#matchmakingVersus"),
       youName: document.querySelector("#matchmakingYouName"),
       opponentName: document.querySelector("#matchmakingOpponentName"),
@@ -126,7 +128,6 @@ class MultiplayerController {
     this.elements.versus.hidden = true;
     this.elements.waitingCardStage.hidden = false;
     this.elements.status.textContent = "Searching for an opponent";
-    this.elements.waitingHint.textContent = "Tap the card three times while you wait";
     this.elements.cancelButton.textContent = "Cancel Search";
     this.elements.cancelButton.disabled = false;
   }
@@ -144,7 +145,6 @@ class MultiplayerController {
     this.elements.screen.classList.add("match-error");
     this.elements.status.textContent = message;
     this.elements.elapsed.textContent = "Please try again in a moment.";
-    this.elements.waitingHint.textContent = "Your game and collection are safe.";
     this.elements.cancelButton.textContent = "Back Home";
   }
 
@@ -193,9 +193,6 @@ class MultiplayerController {
     const result = this.waitingCrunch.hit();
     this.waitingCardHits = result.hit;
     this.waitingCardLocked = result.complete;
-    this.elements.waitingHint.textContent = result.complete
-      ? "CRUNCHED! Dealing another card..."
-      : `Crunch again ${result.hit}/3`;
     haptic(result.complete ? "crunch" : "tap");
   }
 
