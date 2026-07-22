@@ -113,7 +113,6 @@
 .matchmaking-versus span { color: #6ee9ff; font: 900 .58rem/1 "Press Start 2P", monospace; text-transform: uppercase; }
 .matchmaking-versus strong { overflow: hidden; color: #fff4bd; font: 900 clamp(.62rem, 2.5vw, .82rem)/1.35 Nunito, sans-serif; text-overflow: ellipsis; white-space: nowrap; }
 .matchmaking-versus > b { color: #ffbd37; font: 900 clamp(1.4rem, 8vw, 2.5rem)/1 "Press Start 2P", monospace; text-shadow: 3px 3px #472908; }
-.matchmaking-versus > em { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, 48px); color: #fff; font: 900 clamp(2.2rem, 14vw, 4rem)/1 "Press Start 2P", monospace; text-shadow: 0 0 18px #4ce7ff; }
 .match-found .matchmaking-elapsed,
 .match-found .matchmaking-cancel-button { visibility: hidden; }
 

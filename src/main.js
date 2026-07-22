@@ -1,4 +1,4 @@
-import { createGame } from "./gameState.js?v=175";
+import { createGame } from "./gameState.js?v=180";
 import { createUI } from "./ui.js?v=169";
 import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=164";
 import { adManager } from "./ads.js?v=164";
@@ -15,7 +15,7 @@ import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from 
 import { initializeStore } from "./store.js?v=167";
 import { initializeTutorial } from "./tutorial.js?v=164";
 import { initializeSupabaseAccount } from "./supabaseAccount.js?v=179";
-import { initializeMultiplayer } from "./multiplayer.js?v=178";
+import { initializeMultiplayer } from "./multiplayer.js?v=180";
 
 initializeTheme();
 initializeCardCollection();

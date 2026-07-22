@@ -115,7 +115,9 @@ export function createCardCrunchInteraction({
   cards = [],
   targetEl,
   onImpact = null,
-  onComplete = null
+  onComplete = null,
+  instantVacuum = false,
+  removeCardsOnComplete = false
 } = {}) {
   const activeCards = cards.filter((card) => card?.isConnected);
   if (!stage?.isConnected || !targetEl?.isConnected || !activeCards.length) return null;
@@ -140,39 +142,48 @@ export function createCardCrunchInteraction({
     stage.querySelector(".cutin-crunch-debris-canvas")?.remove();
   };
 
+  const applyHit = (nextHit) => {
+    if (disposed || complete) return { hit: hitCount, complete, completion: completionPromise };
+    hitCount = Math.min(CUTSCENE_CONFIG.interactiveCrunchHits, Math.max(hitCount + 1, nextHit));
+    assignCrunchShakeVectors(activeCards, hitCount);
+    stage.dataset.crunchHit = String(hitCount);
+    activeCards.forEach((card) => { card.dataset.crunchDamage = String(hitCount); });
+    showPreparedCardAssembly(prepared, hitCount);
+    playGameSfx(`crunch_hit_${hitCount}`);
+    spawnCrunchDamageBurst(stage, activeCards, hitCount);
+
+    if (hitCount === CUTSCENE_CONFIG.interactiveCrunchHits) {
+      complete = true;
+      prepared.active = true;
+      prepared.instantVacuum = Boolean(instantVacuum);
+      prepared.onImpact = onImpact;
+      prepared.cards.forEach((card) => card.classList.add("is-shattering", "is-consumed-after-shatter"));
+      beginBankFeed(prepared);
+      startPreparedShardPhysics(prepared);
+      requestPreparedShardVacuum(prepared);
+      completionPromise = prepared.physicsPromise
+        .catch(() => {})
+        .then(() => {
+          if (disposed) return;
+          if (removeCardsOnComplete) activeCards.forEach((card) => card.remove());
+          discardPreparedShardSet(prepared);
+          cleanup();
+          onComplete?.();
+        });
+    }
+
+    return { hit: hitCount, complete, completion: completionPromise };
+  };
+
   return {
     get hitCount() { return hitCount; },
     get complete() { return complete; },
     get completion() { return completionPromise; },
     hit() {
-      if (disposed || complete) return { hit: hitCount, complete, completion: completionPromise };
-      hitCount = Math.min(CUTSCENE_CONFIG.interactiveCrunchHits, hitCount + 1);
-      assignCrunchShakeVectors(activeCards, hitCount);
-      stage.dataset.crunchHit = String(hitCount);
-      activeCards.forEach((card) => { card.dataset.crunchDamage = String(hitCount); });
-      showPreparedCardAssembly(prepared, hitCount);
-      playGameSfx(`crunch_hit_${hitCount}`);
-      spawnCrunchDamageBurst(stage, activeCards, hitCount);
-
-      if (hitCount === CUTSCENE_CONFIG.interactiveCrunchHits) {
-        complete = true;
-        prepared.active = true;
-        prepared.onImpact = onImpact;
-        prepared.cards.forEach((card) => card.classList.add("is-shattering", "is-consumed-after-shatter"));
-        beginBankFeed(prepared);
-        startPreparedShardPhysics(prepared);
-        requestPreparedShardVacuum(prepared);
-        completionPromise = prepared.physicsPromise
-          .catch(() => {})
-          .then(() => {
-            if (disposed) return;
-            discardPreparedShardSet(prepared);
-            cleanup();
-            onComplete?.();
-          });
-      }
-
-      return { hit: hitCount, complete, completion: completionPromise };
+      return applyHit(hitCount + 1);
+    },
+    crunch() {
+      return applyHit(CUTSCENE_CONFIG.interactiveCrunchHits);
     },
     destroy() {
       if (disposed) return;
@@ -1765,17 +1776,20 @@ function requestPreparedShardVacuum(prepared) {
   if (!prepared || prepared.vacuumRequested || prepared.disposed) return;
   prepared.vacuumRequested = true;
   prepared.vacuumRequestedAt = performance.now();
+  const settleDelay = prepared.instantVacuum ? 42 : SHARD_PHYSICS_CONFIG.forceSettleAfter;
+  const hoverDelay = prepared.instantVacuum ? 0 : SHARD_PHYSICS_CONFIG.hoverBeforeVacuum;
   prepared.vacuumStartAt = Math.max(
-    prepared.physicsStartedAt + SHARD_PHYSICS_CONFIG.forceSettleAfter,
-    prepared.vacuumRequestedAt + SHARD_PHYSICS_CONFIG.hoverBeforeVacuum
+    prepared.physicsStartedAt + settleDelay,
+    prepared.vacuumRequestedAt + hoverDelay
   );
 
   const byDistance = [...prepared.shardStates]
     .sort((a, b) => getShardDistanceToBank(a, prepared) - getShardDistanceToBank(b, prepared));
+  const stagger = prepared.instantVacuum ? 110 : SHARD_PHYSICS_CONFIG.vacuumStagger;
   byDistance.forEach((state, index) => {
     state.vacuumDelay = byDistance.length <= 1
       ? 0
-      : index / (byDistance.length - 1) * SHARD_PHYSICS_CONFIG.vacuumStagger;
+      : index / (byDistance.length - 1) * stagger;
     state.vacuumDistance = Math.max(1, getShardDistanceToBank(state, prepared));
   });
 }
@@ -1786,7 +1800,8 @@ function stepPreparedShardPhysics(prepared, now) {
   prepared.lastPhysicsFrame = now;
   const elapsed = now - prepared.physicsStartedAt;
   const vacuumElapsed = prepared.vacuumRequested ? now - prepared.vacuumStartAt : -1;
-  const vacuumRamp = Math.max(0, Math.min(1, vacuumElapsed / SHARD_PHYSICS_CONFIG.vacuumRampDuration));
+  const vacuumRampDuration = prepared.instantVacuum ? 210 : SHARD_PHYSICS_CONFIG.vacuumRampDuration;
+  const vacuumRamp = Math.max(0, Math.min(1, vacuumElapsed / vacuumRampDuration));
   let remaining = 0;
 
   if (vacuumElapsed >= 0 && !prepared.vacuumSoundStarted) {
@@ -1811,7 +1826,7 @@ function stepPreparedShardPhysics(prepared, now) {
       continue;
     }
 
-    if (elapsed >= SHARD_PHYSICS_CONFIG.maxDuration) {
+    if (elapsed >= (prepared.instantVacuum ? 950 : SHARD_PHYSICS_CONFIG.maxDuration)) {
       registerShardBankImpact(prepared, state, 0);
       remaining -= 1;
       continue;
@@ -1893,18 +1908,20 @@ function updateVacuumShard(state, prepared, deltaSeconds, vacuumRamp) {
   const dx = prepared.targetX - centerX;
   const dy = prepared.targetY - centerY;
   const distance = Math.max(1, Math.hypot(dx, dy));
-  const force = SHARD_PHYSICS_CONFIG.vacuumBaseForce
-    + SHARD_PHYSICS_CONFIG.vacuumRampForce * vacuumRamp * vacuumRamp
-    + Math.min(1050, distance * SHARD_PHYSICS_CONFIG.vacuumSpring);
-  const funnelStrength = 1.4 + vacuumRamp * 5.2;
+  const speedScale = prepared.instantVacuum ? 2.35 : 1;
+  const force = SHARD_PHYSICS_CONFIG.vacuumBaseForce * speedScale
+    + SHARD_PHYSICS_CONFIG.vacuumRampForce * speedScale * vacuumRamp * vacuumRamp
+    + Math.min(prepared.instantVacuum ? 2200 : 1050, distance * SHARD_PHYSICS_CONFIG.vacuumSpring * speedScale);
+  const funnelStrength = (1.4 + vacuumRamp * 5.2) * speedScale;
   state.vx += (dx / distance * force + dx * funnelStrength) * deltaSeconds;
   state.vy += (dy / distance * force) * deltaSeconds;
   const drag = Math.pow(.988 - vacuumRamp * .006, deltaSeconds * 60);
   state.vx *= drag;
   state.vy *= drag;
   const speed = Math.hypot(state.vx, state.vy);
-  if (speed > SHARD_PHYSICS_CONFIG.vacuumMaxSpeed) {
-    const scale = SHARD_PHYSICS_CONFIG.vacuumMaxSpeed / speed;
+  const maximumSpeed = SHARD_PHYSICS_CONFIG.vacuumMaxSpeed * (prepared.instantVacuum ? 1.75 : 1);
+  if (speed > maximumSpeed) {
+    const scale = maximumSpeed / speed;
     state.vx *= scale;
     state.vy *= scale;
   }

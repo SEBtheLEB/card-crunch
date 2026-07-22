@@ -11,7 +11,7 @@ import {
   resolveArcadeCrunch
 } from "./arcadeMode.js?v=164";
 import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=164";
-import { createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=175";
+import { createCardCrunchInteraction, createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=180";
 import { ensurePlayableRound } from "./handSafety.js?v=164";
 import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=164";
 import { formatCompactNumber } from "./format.js?v=164";
@@ -23,6 +23,7 @@ import { mergeCardCollectionSnapshot } from "./cardCollection.js?v=167";
 import { storeState } from "./storeState.js?v=167";
 import { getRoundDealDuration } from "./dealTiming.js?v=164";
 import { MULTIPLAYER_MATCH_SECONDS, MULTIPLAYER_MODE, isMultiplayerMode } from "./multiplayerMode.js?v=169";
+import { haptic } from "./haptics.js?v=164";
 import {
   animateBust,
   animateSelectionResolve,
@@ -198,7 +199,7 @@ export function createGame(ui) {
     ui.clearMessage();
     if (state.safeBankShieldActive) ui.setMessage("Shield armed: busting out auto-banks 25%", "good");
     ui.render(state, handlers);
-    finishHandDeal(4, { announceReady: Boolean(pot) });
+    finishHandDeal(4, { announceReady: Boolean(pot) || gameMode === MULTIPLAYER_MODE });
   }
 
   function startEndless() {
@@ -423,34 +424,45 @@ export function createGame(ui) {
 
     if (!crunch.success) {
       const partial = crunch.partial?.success ? crunch.partial : null;
-      const partialBank = partial ? createActiveCrunchBankCounter() : null;
-      try {
-        await animateSelectionResolve({
-          selectedHandCards: selectedCardElements,
-          baseStackCards: ui.getAllStackCardElements(),
-          resolution: crunch.resolution,
-          fail: true,
-          presentationEntries: partial?.cutscene.entries ?? null,
-          onEntryResolved: async (entry, _index, transition) => {
-            await playCrunchEntryExplanation({
-              entry: partial ? entry : createCutsceneEntry(entry),
-              tier: partial?.cutscene.tier ?? "normal",
-              bank: partialBank,
-              sourceCards: transition?.sourceCards
-            });
-          }
-        });
-        if (partialBank) {
-          await playCrunchTotalExplanation({
-            total: partial.cutscene.total,
-            scoreEl: ui.elements.scoreValue,
-            tier: partial.cutscene.tier,
-            bank: partialBank
+      if (multiplayerRun) {
+        if (partial) {
+          await playInstantMultiplayerCrunch({
+            cutscene: partial.cutscene,
+            resolution: crunch.resolution,
+            selectedCardElements,
+            baseStackCards: ui.getAllStackCardElements()
           });
         }
-      } catch (error) {
-        partialBank?.remove();
-        throw error;
+      } else {
+        const partialBank = partial ? createActiveCrunchBankCounter() : null;
+        try {
+          await animateSelectionResolve({
+            selectedHandCards: selectedCardElements,
+            baseStackCards: ui.getAllStackCardElements(),
+            resolution: crunch.resolution,
+            fail: true,
+            presentationEntries: partial?.cutscene.entries ?? null,
+            onEntryResolved: async (entry, _index, transition) => {
+              await playCrunchEntryExplanation({
+                entry: partial ? entry : createCutsceneEntry(entry),
+                tier: partial?.cutscene.tier ?? "normal",
+                bank: partialBank,
+                sourceCards: transition?.sourceCards
+              });
+            }
+          });
+          if (partialBank) {
+            await playCrunchTotalExplanation({
+              total: partial.cutscene.total,
+              scoreEl: ui.elements.scoreValue,
+              tier: partial.cutscene.tier,
+              bank: partialBank
+            });
+          }
+        } catch (error) {
+          partialBank?.remove();
+          throw error;
+        }
       }
 
       if (partial) {
@@ -464,52 +476,64 @@ export function createGame(ui) {
         ui.syncResolvedHud(state);
         state.multiplayer?.callbacks?.onScoreChange?.(state.score);
       }
-      await playBustCutin({
-        failedCard: crunch.resolution.failedCard,
-        activeStack: crunch.resolution.activeStack
-      });
+      if (!multiplayerRun) {
+        await playBustCutin({
+          failedCard: crunch.resolution.failedCard,
+          activeStack: crunch.resolution.activeStack
+        });
+      }
       await bust("BUST!", crunch.resolution.failedIndex, selectedCardElements);
       return;
     }
 
-    const crunchBank = createActiveCrunchBankCounter();
-    try {
-      await animateSelectionResolve({
-        selectedHandCards: selectedCardElements,
-        baseStackCards: ui.getAllStackCardElements(),
+    if (multiplayerRun) {
+      await playInstantMultiplayerCrunch({
+        cutscene: crunch.cutscene,
         resolution: crunch.resolution,
-        fail: false,
-        presentationEntries: crunch.cutscene.entries,
-        fullHand: crunch.cutscene.fullHand,
-        fullHandCards: selectedCards,
-        onFullHandResolved: async (transition) => {
-          await playFullHandPrelude({
-            cards: selectedCards,
-            fullHand: crunch.cutscene.fullHand,
-            sourceCards: transition?.sourceCards,
-            bank: crunchBank
-          });
-        },
-        onEntryResolved: async (entry, _index, transition) => {
-          await playCrunchEntryExplanation({
-            entry,
-            tier: crunch.cutscene.tier,
-            bank: crunchBank,
-            sourceCards: transition?.sourceCards
-          });
-        }
-      });
-
-      await playCrunchTotalExplanation({
-        total: crunch.cutscene.total,
-        scoreEl: ui.elements.scoreValue,
-        tier: crunch.cutscene.tier,
-        bank: crunchBank
+        selectedCardElements,
+        baseStackCards: ui.getAllStackCardElements()
       });
       ui.setMessage(`+${formatCompactNumber(crunch.total)} Crunch`, "good");
-    } catch (error) {
-      crunchBank.remove();
-      throw error;
+    } else {
+      const crunchBank = createActiveCrunchBankCounter();
+      try {
+        await animateSelectionResolve({
+          selectedHandCards: selectedCardElements,
+          baseStackCards: ui.getAllStackCardElements(),
+          resolution: crunch.resolution,
+          fail: false,
+          presentationEntries: crunch.cutscene.entries,
+          fullHand: crunch.cutscene.fullHand,
+          fullHandCards: selectedCards,
+          onFullHandResolved: async (transition) => {
+            await playFullHandPrelude({
+              cards: selectedCards,
+              fullHand: crunch.cutscene.fullHand,
+              sourceCards: transition?.sourceCards,
+              bank: crunchBank
+            });
+          },
+          onEntryResolved: async (entry, _index, transition) => {
+            await playCrunchEntryExplanation({
+              entry,
+              tier: crunch.cutscene.tier,
+              bank: crunchBank,
+              sourceCards: transition?.sourceCards
+            });
+          }
+        });
+
+        await playCrunchTotalExplanation({
+          total: crunch.cutscene.total,
+          scoreEl: ui.elements.scoreValue,
+          tier: crunch.cutscene.tier,
+          bank: crunchBank
+        });
+        ui.setMessage(`+${formatCompactNumber(crunch.total)} Crunch`, "good");
+      } catch (error) {
+        crunchBank.remove();
+        throw error;
+      }
     }
 
     // Money stays as unbanked Run Money - the pot only fills when banking.
@@ -537,6 +561,61 @@ export function createGame(ui) {
     localStorage.setItem("cardCrunchBestStreak", String(Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak)));
     if (completeMultiplayerIfPending()) return;
     startNewRound({ retainedTableCards });
+  }
+
+  async function playInstantMultiplayerCrunch({
+    cutscene,
+    resolution,
+    selectedCardElements = [],
+    baseStackCards = []
+  }) {
+    const elementByCardId = new Map();
+    resolution.activeStack.slice(0, baseStackCards.length).forEach((card, index) => {
+      if (card?.id && baseStackCards[index]) elementByCardId.set(card.id, baseStackCards[index]);
+    });
+    resolution.history.forEach((entry, index) => {
+      if (entry.card?.id && selectedCardElements[index]) elementByCardId.set(entry.card.id, selectedCardElements[index]);
+    });
+
+    const consumedElements = new Set();
+    for (const entry of cutscene?.entries ?? []) {
+      const selectedIndexes = entry.selectedIndexes?.length ? entry.selectedIndexes : [];
+      const orderedCards = entry.orderedCards?.length
+        ? entry.orderedCards
+        : [...(entry.matchedCards ?? []), entry.card];
+      const involvedElements = [...new Set([
+        ...orderedCards.map((card) => elementByCardId.get(card?.id)),
+        ...selectedIndexes.map((index) => selectedCardElements[index])
+      ].filter((element) => element?.isConnected && !consumedElements.has(element)))];
+      if (!involvedElements.length) continue;
+
+      involvedElements.forEach((card) => card.classList.add("card-match-glow", "is-vibrating"));
+      involvedElements.forEach((card) => {
+        const rect = card.getBoundingClientRect();
+        spawnSparkBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, 7, entry.matchType === "suit" ? "suit" : "impact");
+      });
+      await sleep(80);
+      involvedElements.forEach((card) => card.classList.remove("card-match-glow", "is-vibrating"));
+
+      const interaction = createCardCrunchInteraction({
+        stage: ui.elements.shell,
+        cards: involvedElements,
+        targetEl: ui.elements.scorePanel,
+        instantVacuum: true,
+        removeCardsOnComplete: true
+      });
+      if (!interaction) {
+        involvedElements.forEach((card) => card.remove());
+        continue;
+      }
+      haptic("crunch");
+      const result = interaction.crunch();
+      await result.completion;
+      involvedElements.forEach((card) => consumedElements.add(card));
+    }
+
+    ui.elements.scorePanel.classList.add("score-bump");
+    window.setTimeout(() => ui.elements.scorePanel.classList.remove("score-bump"), 220);
   }
 
   function createActiveCrunchBankCounter() {
@@ -1197,6 +1276,10 @@ export function createGame(ui) {
     const dealToken = state.timerToken;
     const reducedMotion = document.documentElement.classList.contains("reduce-motion");
     const dealDuration = getRoundDealDuration(replacementCount, tableDealCount, reducedMotion);
+    const multiplayerStartDelay = isMultiplayerMode(state)
+      ? Math.max(0, Number(state.multiplayer?.startsAt || 0) - (Date.now() + Number(state.multiplayer?.serverOffsetMs || 0)))
+      : 0;
+    const readyDelay = Math.max(dealDuration, multiplayerStartDelay);
     window.setTimeout(() => {
       if (dealToken !== state.timerToken || state.status !== "playing") return;
       state.dealHandCount = 0;
@@ -1206,7 +1289,7 @@ export function createGame(ui) {
       ui.finishRoundHandoff();
       if (announceReady) ui.playInitialReadyPulse();
       if (!isMultiplayerMode(state)) startTimer();
-    }, dealDuration);
+    }, readyDelay);
   }
 
   function getUncrunchedTableCards(resolution) {

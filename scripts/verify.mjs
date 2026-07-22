@@ -265,6 +265,9 @@ if (!html.includes('id="onlineDuelButton"')
   || !html.includes('id="multiplayerResultScreen"')) {
   throw new Error("Online Duel menu, matchmaking, or result UI hooks are missing");
 }
+if (html.includes('id="matchmakingCountdown"')) {
+  throw new Error("Online Duel must open the dealt board without a separate countdown screen");
+}
 if (!html.includes('data-page="account"')
   || !html.includes('id="cardCrunchGoogleSignInButton"')
   || !html.includes('id="authDiagnostics"')
@@ -406,7 +409,10 @@ if (!mainSource.includes("initializeMultiplayer")
   || !multiplayerSource.includes('import { playGameSfx } from "./audio.js')
   || !multiplayerSource.includes('playGameSfx("target_clear")')
   || !multiplayerSource.includes("this.game.startMultiplayerMatch")
+  || !multiplayerSource.includes("this.hideWaitingScreen();")
   || !multiplayerSource.includes("this.startMatchClock(generation)")
+  || multiplayerSource.includes("matchmakingCountdown")
+  || multiplayerSource.includes("countdown.textContent")
   || !realtimeSource.includes("new WebSocket")
   || !realtimeSource.includes("reconnectRoom")
   || !cloudflareSource.includes("export class Matchmaker")
@@ -421,6 +427,14 @@ if (!mainSource.includes("initializeMultiplayer")
   || !multiplayerCss.includes("grid-template-rows: auto auto auto minmax(180px, 1fr) auto")
   || !multiplayerCss.includes("multiplayer-scoreboard")) {
   throw new Error("Online Duel matchmaking, waiting-card toy, live clock, or result presentation is incomplete");
+}
+if (!gameStateSource.includes("playInstantMultiplayerCrunch")
+  || !gameStateSource.includes("instantVacuum: true")
+  || !gameStateSource.includes("removeCardsOnComplete: true")
+  || !gameStateSource.includes("multiplayerStartDelay")
+  || !cutsceneSource.includes("crunch()")
+  || !cutsceneSource.includes("prepared.instantVacuum")) {
+  throw new Error("Online Duel must use the immediate one-hit Crunch and board-first start flow");
 }
 if (!html.includes("main-menu-screen is-visible is-home-page")
   || !uiSource.includes('classList.toggle("is-home-page"')
@@ -756,7 +770,7 @@ if (!uiSource.includes("syncHandInteractionState(elements, state)")
 if (!dealTimingSource.includes("getRoundDealDuration") || !gameStateSource.includes("dealToken !== state.timerToken") || !gameStateSource.includes("finishHandDeal(4,")) {
   throw new Error("The turn timer must wait for the hand deal to finish");
 }
-if (!gameStateSource.includes("finishHandDeal(4, { announceReady: Boolean(pot) })")
+if (!gameStateSource.includes("finishHandDeal(4, { announceReady: Boolean(pot) || gameMode === MULTIPLAYER_MODE })")
   || !gameStateSource.includes("if (announceReady) ui.playInitialReadyPulse()")
   || gameStateSource.indexOf("ui.playInitialReadyPulse()") > gameStateSource.indexOf("startTimer();", gameStateSource.indexOf("function finishHandDeal"))
   || !uiSource.includes("playInitialReadyPulse()")

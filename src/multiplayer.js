@@ -5,7 +5,7 @@ import { playGameSfx } from "./audio.js?v=164";
 import { createCardElement } from "./ui.js?v=169";
 import { applyPreviewCardSkinPresentation } from "./cardSkins.js?v=169";
 import { animateCardDealIn } from "./cardGestures.js?v=175";
-import { createCardCrunchInteraction } from "./crunchCutscene.js?v=175";
+import { createCardCrunchInteraction } from "./crunchCutscene.js?v=180";
 import { CardCrunchRealtimeTransport } from "./realtimeMultiplayer.js?v=177";
 
 const SESSION_STORAGE_KEY = "cardCrunchMatchmakingSessionV1";
@@ -42,7 +42,6 @@ class MultiplayerController {
       versus: document.querySelector("#matchmakingVersus"),
       youName: document.querySelector("#matchmakingYouName"),
       opponentName: document.querySelector("#matchmakingOpponentName"),
-      countdown: document.querySelector("#matchmakingCountdown"),
       resultScreen: document.querySelector("#multiplayerResultScreen"),
       resultKicker: document.querySelector("#multiplayerResultKicker"),
       resultTitle: document.querySelector("#multiplayerResultTitle"),
@@ -271,9 +270,6 @@ class MultiplayerController {
     if (this.activeMatchId !== match.id) {
       this.activeMatchId = match.id;
       window.clearTimeout(this.elapsedTimer);
-      this.elements.screen.classList.add("match-found");
-      this.elements.versus.hidden = false;
-      this.elements.waitingCardStage.hidden = true;
       this.elements.status.textContent = "Opponent found!";
       this.elements.youName.textContent = match.you.displayName;
       this.elements.opponentName.textContent = match.opponent.displayName;
@@ -287,6 +283,7 @@ class MultiplayerController {
         onForfeit: () => this.forfeit(),
         onResultReady: () => this.showResult(this.resultPending || this.match)
       });
+      this.hideWaitingScreen();
       this.startMatchClock(generation);
     } else {
       this.game.updateMultiplayerOpponent?.(match.opponent);
@@ -316,14 +313,8 @@ class MultiplayerController {
       const serverNow = Date.now() + this.serverOffsetMs;
       const untilStart = this.match.startsAt - serverNow;
       if (untilStart > 0) {
-        const count = Math.max(1, Math.ceil(untilStart / 1000));
-        this.elements.countdown.textContent = String(count);
         this.game.updateMultiplayerClock?.(60);
       } else {
-        if (this.elements.screen.classList.contains("is-visible")) {
-          this.elements.countdown.textContent = "GO!";
-          window.setTimeout(() => this.hideWaitingScreen(), 220);
-        }
         const remaining = Math.max(0, (this.match.endsAt - serverNow) / 1000);
         this.game.updateMultiplayerClock?.(remaining);
         if (remaining <= 0) {
