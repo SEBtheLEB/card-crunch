@@ -7353,12 +7353,12 @@ html[data-theme="knight-deck"] .cutin-title {
   color: #ffe786;
 }
 
-/* Build 165: shared STL player identity */
-.stl-account-page {
+/* Build 179: dedicated Card Crunch player identity */
+.card-crunch-account-page {
   gap: 12px;
 }
 
-.stl-account-kicker {
+.card-crunch-account-kicker {
   margin: 4px 0 -6px;
   color: #76dfff;
   font: 400 clamp(.46rem, 2vw, .58rem) / 1.4 var(--font-pixel);
@@ -7366,7 +7366,7 @@ html[data-theme="knight-deck"] .cutin-title {
   text-transform: uppercase;
 }
 
-.stl-account-panel {
+.card-crunch-account-panel {
   position: relative;
   overflow: hidden;
   padding: clamp(18px, 5vw, 28px);
@@ -7378,20 +7378,20 @@ html[data-theme="knight-deck"] .cutin-title {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 18px 42px rgba(0, 0, 0, .36);
 }
 
-.stl-account-panel h3 {
+.card-crunch-account-panel h3 {
   margin: 14px 0 8px;
   color: #fff6d8;
   font: 400 clamp(1.1rem, 5vw, 1.55rem) / 1.15 var(--font-display);
   text-transform: uppercase;
 }
 
-.stl-account-panel p,
-.stl-account-fineprint {
+.card-crunch-account-panel p,
+.card-crunch-account-fineprint {
   color: #a9bdc8;
   line-height: 1.65;
 }
 
-.stl-account-mark {
+.card-crunch-account-mark {
   display: grid;
   width: 68px;
   height: 68px;
@@ -7405,7 +7405,7 @@ html[data-theme="knight-deck"] .cutin-title {
   transform: rotate(-3deg);
 }
 
-.stl-google-button {
+.card-crunch-google-button {
   display: grid;
   width: 100%;
   min-height: 60px;
@@ -7423,29 +7423,29 @@ html[data-theme="knight-deck"] .cutin-title {
   box-shadow: 0 7px 0 #a9bdc8, 0 16px 28px rgba(0, 0, 0, .35);
 }
 
-.stl-google-button b {
+.card-crunch-google-button b {
   color: #4285f4;
   font-size: 1.2rem;
 }
 
-.stl-google-button i {
+.card-crunch-google-button i {
   font-style: normal;
   font-size: 1.6rem;
 }
 
-.stl-google-button:active {
+.card-crunch-google-button:active {
   transform: translateY(4px);
   box-shadow: 0 3px 0 #a9bdc8, 0 8px 18px rgba(0, 0, 0, .35);
 }
 
-.stl-account-identity {
+.card-crunch-account-identity {
   display: grid;
   grid-template-columns: 76px minmax(0, 1fr);
   align-items: center;
   gap: 14px;
 }
 
-.stl-account-avatar {
+.card-crunch-account-avatar {
   position: relative;
   display: grid;
   width: 76px;
@@ -7459,7 +7459,7 @@ html[data-theme="knight-deck"] .cutin-title {
   font: 400 .7rem / 1 var(--font-pixel);
 }
 
-.stl-account-avatar img {
+.card-crunch-account-avatar img {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -7467,19 +7467,19 @@ html[data-theme="knight-deck"] .cutin-title {
   object-fit: cover;
 }
 
-.stl-account-identity > span:last-child {
+.card-crunch-account-identity > span:last-child {
   display: grid;
   min-width: 0;
   gap: 5px;
 }
 
-.stl-account-identity small {
+.card-crunch-account-identity small {
   color: #76dfff;
   font: 400 .43rem / 1.2 var(--font-pixel);
   text-transform: uppercase;
 }
 
-.stl-account-identity strong {
+.card-crunch-account-identity strong {
   overflow: hidden;
   color: #fff6d8;
   font: 400 clamp(1rem, 4vw, 1.35rem) / 1.1 var(--font-display);
@@ -7487,7 +7487,7 @@ html[data-theme="knight-deck"] .cutin-title {
   white-space: nowrap;
 }
 
-.stl-account-identity em {
+.card-crunch-account-identity em {
   overflow: hidden;
   color: #a9bdc8;
   font-style: normal;
@@ -7495,14 +7495,14 @@ html[data-theme="knight-deck"] .cutin-title {
   white-space: nowrap;
 }
 
-.stl-account-benefits {
+.card-crunch-account-benefits {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
   margin: 18px 0;
 }
 
-.stl-account-benefits span {
+.card-crunch-account-benefits span {
   display: grid;
   min-height: 56px;
   place-items: center;
@@ -7515,19 +7515,19 @@ html[data-theme="knight-deck"] .cutin-title {
   text-align: center;
 }
 
-.stl-account-benefits b {
+.card-crunch-account-benefits b {
   color: #8ff0ae;
 }
 
-.stl-account-actions {
+.card-crunch-account-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-top: 16px;
 }
 
-.stl-account-actions button,
-.stl-account-actions a {
+.card-crunch-account-actions button,
+.card-crunch-account-actions a {
   display: grid;
   min-height: 48px;
   place-items: center;
@@ -7542,13 +7542,13 @@ html[data-theme="knight-deck"] .cutin-title {
   text-transform: uppercase;
 }
 
-.stl-account-actions #stlSignOutButton {
+.card-crunch-account-actions #cardCrunchSignOutButton {
   grid-column: 1 / -1;
   border-color: rgba(255, 119, 109, .35);
   color: #ffb8b2;
 }
 
-.stl-account-status {
+.card-crunch-account-status {
   min-height: 44px;
   margin: 0;
   padding: 11px 13px;
@@ -7558,13 +7558,33 @@ html[data-theme="knight-deck"] .cutin-title {
   line-height: 1.45;
 }
 
-.stl-account-status[data-tone="good"] { border-color: #8ff0ae; color: #b9f3c9; }
-.stl-account-status[data-tone="bad"] { border-color: #ff776d; color: #ffb8b2; }
-.stl-account-fineprint { margin: 0; font-size: .72rem; text-align: center; }
+.card-crunch-account-status[data-tone="good"] { border-color: #8ff0ae; color: #b9f3c9; }
+.card-crunch-account-status[data-tone="bad"] { border-color: #ff776d; color: #ffb8b2; }
+.card-crunch-account-fineprint { margin: 0; font-size: .72rem; text-align: center; }
+
+.auth-diagnostics {
+  padding: 12px;
+  border: 1px solid rgba(118, 223, 255, .28);
+  background: rgba(2, 16, 25, .72);
+  color: #b9dce6;
+  font-size: .7rem;
+}
+
+.auth-diagnostics summary {
+  cursor: pointer;
+  color: #8ee9ff;
+  font: 400 .5rem/1.4 var(--font-pixel);
+  text-transform: uppercase;
+}
+
+.auth-diagnostics dl { display: grid; gap: 8px; margin: 12px 0 0; }
+.auth-diagnostics dl div { display: grid; gap: 3px; }
+.auth-diagnostics dt { color: #ffe786; font-weight: 900; text-transform: uppercase; }
+.auth-diagnostics dd { margin: 0; overflow-wrap: anywhere; }
 
 @media (max-width: 390px) {
-  .stl-account-benefits { grid-template-columns: 1fr; }
-  .stl-account-benefits span { grid-template-columns: auto 1fr; min-height: 42px; justify-content: start; text-align: left; }
+  .card-crunch-account-benefits { grid-template-columns: 1fr; }
+  .card-crunch-account-benefits span { grid-template-columns: auto 1fr; min-height: 42px; justify-content: start; text-align: left; }
 }
 
 /* Build 162: fixed Pot controls with a dedicated challenge scroller. */

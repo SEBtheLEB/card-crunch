@@ -1,4 +1,4 @@
-package com.sebtheleb.cardcrunch;
+package com.stlproductionz.cardcrunch;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;

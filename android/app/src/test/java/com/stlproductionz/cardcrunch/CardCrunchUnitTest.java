@@ -1,4 +1,4 @@
-package com.sebtheleb.cardcrunch;
+package com.stlproductionz.cardcrunch;
 
 import static org.junit.Assert.assertEquals;
 

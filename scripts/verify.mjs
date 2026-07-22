@@ -4,8 +4,11 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const required = [
   "index.html",
+  ".env.example",
+  "auth-config.js",
   "src/main.js",
-  "src/stlAccount.js",
+  "src/authConfig.js",
+  "src/supabaseAccount.js",
   "src/audio.js",
   "src/haptics.js",
   "src/input.js",
@@ -262,8 +265,12 @@ if (!html.includes('id="onlineDuelButton"')
   || !html.includes('id="multiplayerResultScreen"')) {
   throw new Error("Online Duel menu, matchmaking, or result UI hooks are missing");
 }
-if (!html.includes('data-page="account"') || !html.includes('id="stlGoogleSignInButton"')) {
-  throw new Error("Shared STL Account UI hooks are missing");
+if (!html.includes('data-page="account"')
+  || !html.includes('id="cardCrunchGoogleSignInButton"')
+  || !html.includes('id="authDiagnostics"')
+  || html.includes("STL Account")
+  || html.includes("Bit Crush Core")) {
+  throw new Error("Dedicated Card Crunch Supabase account UI hooks are missing or copied account branding remains");
 }
 if (!html.includes("Each pot is a different challenge.")
   || !html.includes("pot-state-legend")
@@ -276,27 +283,44 @@ if (html.includes('id="tutorialPage"')) {
 
 const economyModule = await import(`../src/economy.js?verify=${Date.now()}`);
 
-const accountModule = await import(`../src/stlAccount.js?verify=${Date.now()}`);
-const accountStorage = new Map([
-  ["cardCrunchBestScore", "1250000"],
-  ["cardCrunchBestStreak", "12"],
-  ["cardCrunchTotalCrunches", "345"],
-  ["cardCrunchCoins", "890"],
-  ["cardCrunchStoreV1", JSON.stringify({ dailyClaims: { "daily-free-pack": "2026-07-20" } })],
-  ["cardCrunchCardCollectionV1", JSON.stringify({ owned: { gold: ["9|hearts"] } })]
-]);
-const accountSnapshot = accountModule.buildCardCrunchProgressSnapshot({
-  state: { pots: Array.from({ length: 12 }, (_, index) => ({ id: index + 1, progress: 100, target: 100, complete: true })) },
-  storage: { getItem: (key) => accountStorage.get(key) ?? null }
+const authConfigModule = await import(`../src/authConfig.js?verify=${Date.now()}`);
+const accountModule = await import(`../src/supabaseAccount.js?verify=${Date.now()}`);
+const dedicatedAuthConfig = authConfigModule.readAuthConfig({
+  supabaseUrl: "https://cardcrunchtest.supabase.co/",
+  supabaseAnonKey: "sb_publishable_card_crunch_test",
+  appUrl: "https://card-crunch.vercel.app/"
 });
-if (accountModule.STL_ACCOUNT_API_BASE !== "https://stlproductionz.io/api/games"
-  || accountSnapshot.stats.bestScore !== 1250000
-  || accountSnapshot.stats.potsCleared !== 12
-  || accountSnapshot.totals.achievements !== 4
-  || !accountSnapshot.achievements["million-run"].unlocked
-  || accountSnapshot.progress.store.dailyClaims["daily-free-pack"] !== "2026-07-20"
-  || accountSnapshot.progress.cardCollection.owned.gold[0] !== "9|hearts") {
-  throw new Error("Card Crunch shared-account progress mapping is incomplete");
+authConfigModule.validateAuthConfig(dedicatedAuthConfig);
+const authDiagnostics = authConfigModule.getAuthDiagnostics(dedicatedAuthConfig, {
+  origin: "https://card-crunch.vercel.app",
+  hostname: "card-crunch.vercel.app"
+});
+if (authDiagnostics.projectRef !== "cardcrunchtest"
+  || authDiagnostics.callback !== "https://card-crunch.vercel.app/auth/callback"
+  || !Object.values(authDiagnostics.variables).every(Boolean)
+  || accountModule.CARD_CRUNCH_NATIVE_CALLBACK !== "cardcrunch://auth/callback"
+  || accountModule.CARD_CRUNCH_AUTH_STORAGE_KEY !== "card-crunch-auth-v1") {
+  throw new Error("Dedicated Card Crunch Supabase configuration or callback mapping is incomplete");
+}
+let missingAuthConfigRejected = false;
+try { authConfigModule.validateAuthConfig(authConfigModule.readAuthConfig({})); } catch (error) {
+  missingAuthConfigRejected = error?.name === "AuthConfigurationError";
+}
+if (!missingAuthConfigRejected) throw new Error("Missing Card Crunch auth variables must fail validation");
+let capturedAuthClientArgs = null;
+globalThis.supabase = {
+  createClient: (...args) => {
+    capturedAuthClientArgs = args;
+    return { auth: {} };
+  }
+};
+accountModule.createCardCrunchSupabaseClient(dedicatedAuthConfig);
+delete globalThis.supabase;
+if (capturedAuthClientArgs?.[0] !== "https://cardcrunchtest.supabase.co"
+  || capturedAuthClientArgs?.[1] !== "sb_publishable_card_crunch_test"
+  || capturedAuthClientArgs?.[2]?.auth?.storageKey !== "card-crunch-auth-v1"
+  || capturedAuthClientArgs?.[2]?.auth?.flowType !== "pkce") {
+  throw new Error("Supabase client must use only validated Card Crunch PKCE configuration");
 }
 const lowReward = economyModule.calculateRunCoinReward({ grossCash: 100_000, bestStreak: 2 });
 const highReward = economyModule.calculateRunCoinReward({ grossCash: 1_000_000, bestStreak: 8, potCleared: true });
@@ -371,6 +395,7 @@ const scoringSource = await readFile(resolve(root, "src/scoring.js"), "utf8");
 const scoreSurgeSource = await readFile(resolve(root, "src/scoreSurge.js"), "utf8");
 const arcadeModeSource = await readFile(resolve(root, "src/arcadeMode.js"), "utf8");
 if (!mainSource.includes("initializeMultiplayer")
+  || !mainSource.includes("initializeSupabaseAccount")
   || !gameStateSource.includes("startMultiplayerMatch")
   || !gameStateSource.includes("updateMultiplayerClock")
   || !multiplayerSource.includes("hitWaitingCard")

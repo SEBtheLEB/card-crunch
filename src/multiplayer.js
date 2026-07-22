@@ -399,9 +399,10 @@ class MultiplayerController {
   }
 
   playerIdentity() {
-    const account = readJson("stl_account_session_v1", null);
-    const user = account?.user || {};
-    const displayName = user.displayName || user.display_name || user.email?.split("@")[0] || getGuestName();
+    const profile = globalThis.cardCrunchAuth?.user
+      ? publicAuthProfile(globalThis.cardCrunchAuth.user)
+      : readJson("cardCrunchAuthenticatedProfileV1", null) || {};
+    const displayName = profile.displayName || profile.email?.split("@")[0] || getGuestName();
     return {
       displayName,
       skinId: document.documentElement.dataset.cardSkin || "classic"
@@ -443,6 +444,14 @@ class MultiplayerController {
     this.elapsedTimer = 0;
     this.clockFrame = 0;
   }
+}
+
+function publicAuthProfile(user) {
+  const metadata = user?.user_metadata || {};
+  return {
+    displayName: metadata.full_name || metadata.name || "",
+    email: user?.email || ""
+  };
 }
 
 function getMatchmakingEndpoint() {

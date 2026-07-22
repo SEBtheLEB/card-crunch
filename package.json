@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build-web.mjs",
+    "dev": "npm run build && node scripts/dev-server.mjs",
     "cloudflare:dev": "wrangler dev --config cloudflare/wrangler.jsonc",
     "cloudflare:deploy": "wrangler deploy --config cloudflare/wrangler.jsonc",
     "cloudflare:secret": "wrangler secret put SESSION_SECRET --config cloudflare/wrangler.jsonc",
@@ -19,8 +20,11 @@
   },
   "dependencies": {
     "@capacitor/android": "8.4.2",
+    "@capacitor/app": "8.1.1",
+    "@capacitor/browser": "8.0.4",
     "@capacitor/core": "8.4.2",
-    "@capacitor/haptics": "8.0.2"
+    "@capacitor/haptics": "8.0.2",
+    "@supabase/supabase-js": "2.110.8"
   },
   "devDependencies": {
     "@capacitor/cli": "8.4.2",

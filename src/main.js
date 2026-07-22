@@ -14,7 +14,7 @@ import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=167";
 import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=169";
 import { initializeStore } from "./store.js?v=167";
 import { initializeTutorial } from "./tutorial.js?v=164";
-import { initializeSTLAccount } from "./stlAccount.js?v=167";
+import { initializeSupabaseAccount } from "./supabaseAccount.js?v=179";
 import { initializeMultiplayer } from "./multiplayer.js?v=178";
 
 initializeTheme();
@@ -23,10 +23,9 @@ initializeCardSkin();
 const ui = createUI();
 const game = createGame(ui);
 initializeTutorial({ game });
-initializeSTLAccount({
-  getState: () => game.state,
-  applyCloudProgress: game.applyCloudProgress,
-  bindAction: bindInstantAction
+initializeSupabaseAccount({
+  bindAction: bindInstantAction,
+  showPage: ui.showMenuPage
 });
 installAudioUnlock();
 initializePlayGames();

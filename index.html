@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/main.css?v=175">
+  <link rel="stylesheet" href="styles/main.css?v=179">
   <link rel="stylesheet" href="styles/collection.css?v=167">
   <link rel="stylesheet" href="styles/store.css?v=167">
   <link rel="stylesheet" href="styles/multiplayer.css?v=175">
@@ -197,42 +197,48 @@
             <section class="menu-tile-grid" aria-label="More modes">
               <button data-menu-page="shop" type="button"><span aria-hidden="true">&#9670;</span><strong>Store</strong><small>Coins &amp; boosts</small></button>
               <button data-menu-page="themes" type="button"><span aria-hidden="true">&spades;</span><strong>Collection</strong><small>Cards &amp; tables</small></button>
-              <button data-menu-page="account" type="button"><span aria-hidden="true">&#9733;</span><strong>STL Account</strong><small>Profile &amp; cloud progress</small></button>
+              <button data-menu-page="account" type="button"><span aria-hidden="true">&#9733;</span><strong>Card Crunch Account</strong><small>Google sign-in</small></button>
               <button class="tutorial-menu-tile" id="tutorialStartButton" type="button"><span aria-hidden="true">?</span><strong>Tutorial</strong><small>Learn every Crunch</small></button>
             </section>
           </section>
 
-          <section class="menu-page stl-account-page" data-page="account" aria-labelledby="stlAccountTitle">
+          <section class="menu-page card-crunch-account-page" data-page="account" aria-labelledby="cardCrunchAccountTitle">
             <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
-            <p class="stl-account-kicker">One identity. Every STL game.</p>
-            <h2 id="stlAccountTitle">STL Account</h2>
-            <div class="stl-account-panel">
-              <div id="stlAccountSignedOut">
-                <div class="stl-account-mark" aria-hidden="true">STL</div>
-                <h3>Connect Card Crunch</h3>
-                <p>Use the same Google account as the STL Productionz website and Bit Crush Core. Your game, achievements, and profile will stay together.</p>
-                <button class="stl-google-button" id="stlGoogleSignInButton" type="button"><b>G</b><span>Continue with Google</span><i aria-hidden="true">&rsaquo;</i></button>
+            <p class="card-crunch-account-kicker">Dedicated player identity</p>
+            <h2 id="cardCrunchAccountTitle">Card Crunch Account</h2>
+            <div class="card-crunch-account-panel">
+              <div id="cardCrunchAccountSignedOut">
+                <div class="card-crunch-account-mark" aria-hidden="true">CC</div>
+                <h3>Save Your Player Identity</h3>
+                <p>Sign in with Google through Card Crunch's dedicated Supabase project. This account is separate from every other application.</p>
+                <button class="card-crunch-google-button" id="cardCrunchGoogleSignInButton" type="button"><b>G</b><span>Continue with Google</span><i aria-hidden="true">&rsaquo;</i></button>
               </div>
-              <div id="stlAccountSignedIn" hidden>
-                <div class="stl-account-identity">
-                  <span class="stl-account-avatar"><span id="stlAccountInitials">STL</span><img id="stlAccountAvatar" alt="STL profile" hidden></span>
-                  <span><small>Connected player</small><strong id="stlAccountName">STL Player</strong><em id="stlAccountEmail">Shared STL Account</em></span>
+              <div id="cardCrunchAccountSignedIn" hidden>
+                <div class="card-crunch-account-identity">
+                  <span class="card-crunch-account-avatar"><span id="cardCrunchAccountInitials">CC</span><img id="cardCrunchAccountAvatar" alt="Card Crunch profile" hidden></span>
+                  <span><small>Connected player</small><strong id="cardCrunchAccountName">Card Crunch Player</strong><em id="cardCrunchAccountEmail">Google account connected</em></span>
                 </div>
-                <div class="stl-account-benefits" aria-label="Connected account benefits">
-                  <span><b>&#10003;</b> Shared profile</span>
-                  <span><b>&#10003;</b> Achievements</span>
-                  <span><b>&#10003;</b> Cloud progress</span>
+                <div class="card-crunch-account-benefits" aria-label="Connected account benefits">
+                  <span><b>&#10003;</b> Dedicated identity</span>
+                  <span><b>&#10003;</b> Secure session</span>
+                  <span><b>&#10003;</b> Google sign-in</span>
                 </div>
-                <p id="stlAccountSyncTime">Ready to sync</p>
-                <div class="stl-account-actions">
-                  <button id="stlSyncButton" type="button">Sync Now</button>
-                  <a href="https://stlproductionz.io/profile" target="_blank" rel="noopener">View Profile</a>
-                  <button id="stlSignOutButton" type="button">Sign Out</button>
+                <div class="card-crunch-account-actions">
+                  <button id="cardCrunchSignOutButton" type="button">Sign Out</button>
                 </div>
               </div>
             </div>
-            <p class="stl-account-status" id="stlAccountStatus" aria-live="polite">Sign in once and Card Crunch will appear on your STL profile.</p>
-            <p class="stl-account-fineprint">STL Productionz handles the account. Card Crunch never receives your Google password.</p>
+            <p class="card-crunch-account-status" id="cardCrunchAccountStatus" aria-live="polite">Checking Card Crunch authentication...</p>
+            <p class="card-crunch-account-fineprint">Google authentication is handled by this app's dedicated Supabase project. Card Crunch never receives your Google password.</p>
+            <details class="auth-diagnostics" id="authDiagnostics" hidden>
+              <summary>Authentication diagnostics</summary>
+              <dl>
+                <div><dt>Origin</dt><dd id="authDiagnosticOrigin">Unavailable</dd></div>
+                <div><dt>Callback</dt><dd id="authDiagnosticCallback">Unavailable</dd></div>
+                <div><dt>Project ref</dt><dd id="authDiagnosticProjectRef">Unavailable</dd></div>
+                <div><dt>Variables</dt><dd id="authDiagnosticVariables">Unavailable</dd></div>
+              </dl>
+            </details>
           </section>
 
           <section class="menu-page" data-page="leaderboard" aria-labelledby="leaderboardTitle">
@@ -494,6 +500,8 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-  <script type="module" src="src/main.js?v=178"></script>
+  <script src="assets/vendor/supabase.js"></script>
+  <script src="auth-config.js"></script>
+  <script type="module" src="src/main.js?v=179"></script>
   </body>
 </html>
