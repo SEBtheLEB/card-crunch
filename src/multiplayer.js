@@ -1,6 +1,7 @@
 import { createDeck } from "./deck.js?v=164";
 import { formatCompactNumber } from "./format.js?v=164";
 import { haptic } from "./haptics.js?v=164";
+import { playGameSfx } from "./audio.js?v=164";
 import { createCardElement } from "./ui.js?v=169";
 import { applyPreviewCardSkinPresentation } from "./cardSkins.js?v=169";
 import { animateCardDealIn } from "./cardGestures.js?v=175";

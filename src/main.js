@@ -15,7 +15,7 @@ import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from 
 import { initializeStore } from "./store.js?v=167";
 import { initializeTutorial } from "./tutorial.js?v=164";
 import { initializeSTLAccount } from "./stlAccount.js?v=167";
-import { initializeMultiplayer } from "./multiplayer.js?v=177";
+import { initializeMultiplayer } from "./multiplayer.js?v=178";
 
 initializeTheme();
 initializeCardCollection();
