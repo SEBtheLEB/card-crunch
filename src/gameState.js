@@ -11,7 +11,7 @@ import {
   resolveArcadeCrunch
 } from "./arcadeMode.js?v=164";
 import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=164";
-import { createCardCrunchInteraction, createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=180";
+import { createCardCrunchInteraction, createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=181";
 import { ensurePlayableRound } from "./handSafety.js?v=164";
 import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=164";
 import { formatCompactNumber } from "./format.js?v=164";

@@ -350,9 +350,14 @@ if (milestoneReward.milestones !== 3 || milestoneReward.coins !== 30) {
 }
 const scoreSurgeModule = await import(`../src/scoreSurge.js?verify=${Date.now()}`);
 const millionSurge = scoreSurgeModule.createScoreSurgePlan(1_000_000);
+const hugeSurgeMilestones = scoreSurgeModule.buildScoreSurgeMilestones(1_000_000_000);
 if (scoreSurgeModule.getScoreSurgeTier(9_999).tier !== 0
   || scoreSurgeModule.getScoreSurgeTier(10_000).tier !== 1
   || millionSurge.tier !== 6
+  || millionSurge.milestones.length !== 100
+  || millionSurge.milestones.some((milestone, index) => milestone !== (index + 1) * 10_000)
+  || hugeSurgeMilestones.length > scoreSurgeModule.SCORE_SURGE_CONFIG.maximumVisibleMilestones
+  || hugeSurgeMilestones.at(-1) !== 1_000_000_000
   || ![10_000, 20_000, 30_000, 50_000, 80_000, 120_000, 1_000_000]
     .every((milestone) => millionSurge.milestones.includes(milestone))) {
   throw new Error("Value-driven Crunch surge tiers or milestone ramp are incomplete");
@@ -681,7 +686,11 @@ if (!cutsceneSource.includes("createCrunchScoreSurge")
   || !cutsceneSource.includes("crunch-collectible-coin")
   || !cutsceneSource.includes("coinRewards.award")
   || !scoreSurgeSource.includes("buildScoreSurgeMilestones")
-  || !css.includes("is-entry-score-surge-centered")
+  || !cutsceneSource.includes("BANK_ROLL_MILESTONE_PAUSE_MS")
+  || !cutsceneSource.includes("BANK_MILESTONE_PARTICLE_CAP")
+  || !css.includes("is-entry-score-surge-anchored")
+  || css.includes("is-entry-score-surge-centered")
+  || css.includes(".score-panel.is-hud-bank-floating.is-major-score-ramp-active {\n  top: 50%")
   || !css.includes("entry-score-surge-skip")
   || !css.includes("crunch-coin-reward-toast")
   || !css.includes("crunch-coin-collection")
@@ -689,7 +698,7 @@ if (!cutsceneSource.includes("createCrunchScoreSurge")
   || !audioSource.includes("score_ramp_tick")
   || !audioSource.includes("coin_milestone")
   || !audioSource.includes("coin_collect")) {
-  throw new Error("Exact Crunch Bank rolling, centered surges, or collectible milestone coins are missing");
+  throw new Error("Exact 10K Crunch Bank rolls, anchored surges, or milestone coin showers are missing");
 }
 if (!cutsceneSource.includes("forceSettleAfter: 620")
   || !cutsceneSource.includes("vacuumRampDuration: 1120")

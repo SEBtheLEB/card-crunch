@@ -2393,10 +2393,10 @@ button.is-pressing:not(:disabled) {
 }
 
 .score-panel.is-hud-bank-floating.is-major-score-ramp-active {
-  top: 50%;
-  width: min(calc(100vw - 24px - var(--safe-left) - var(--safe-right)), 680px);
-  height: clamp(126px, 18dvh, 188px);
-  transform: translate3d(-50%, -50%, 0) scale(1.04);
+  top: var(--bank-top);
+  width: min(var(--bank-width), calc(100vw - 24px - var(--safe-left) - var(--safe-right)));
+  height: var(--bank-height);
+  transform: translate3d(-50%, 0, 0) scale(1.04);
   border-color: #ffe98a;
   background:
     radial-gradient(circle at 50% 40%, rgba(255, 229, 138, .3), transparent 58%),
@@ -10389,11 +10389,7 @@ html[data-card-skin="rainbow"] .cutin-card {
    ========================================================================== */
 
 .score-panel.is-hud-bank-floating.is-entry-score-surge {
-  --entry-surge-top: 50%;
   --entry-surge-scale: 1.035;
-  --entry-surge-height: clamp(90px, 12dvh, 122px);
-  --entry-surge-width: min(calc(100vw - 28px - var(--safe-left) - var(--safe-right)), 600px);
-  --entry-surge-move: 420ms;
   --entry-surge-glow: 32px;
   border-color: rgba(255, 222, 111, .88);
   box-shadow:
@@ -10401,48 +10397,29 @@ html[data-card-skin="rainbow"] .cutin-card {
     0 0 24px rgba(255, 197, 61, .48),
     inset 0 0 24px rgba(255, 229, 138, .13);
   transition:
-    top var(--entry-surge-move) cubic-bezier(.16, 1, .3, 1),
-    width var(--entry-surge-move) cubic-bezier(.16, 1, .3, 1),
-    height var(--entry-surge-move) cubic-bezier(.16, 1, .3, 1),
-    transform var(--entry-surge-move) cubic-bezier(.16, 1, .3, 1),
     border-color 120ms steps(3, end),
     box-shadow 120ms steps(3, end);
 }
 
-.score-panel.is-entry-score-surge[data-score-surge-tier="2"] {
-  --entry-surge-scale: 1.055;
-  --entry-surge-height: clamp(98px, 13dvh, 134px);
-}
+.score-panel.is-entry-score-surge[data-score-surge-tier="2"] { --entry-surge-scale: 1.055; }
 
-.score-panel.is-entry-score-surge[data-score-surge-tier="3"] {
-  --entry-surge-scale: 1.075;
-  --entry-surge-height: clamp(108px, 14dvh, 148px);
-}
+.score-panel.is-entry-score-surge[data-score-surge-tier="3"] { --entry-surge-scale: 1.075; }
 
-.score-panel.is-entry-score-surge[data-score-surge-tier="4"] {
-  --entry-surge-scale: 1.1;
-  --entry-surge-height: clamp(118px, 16dvh, 164px);
-}
+.score-panel.is-entry-score-surge[data-score-surge-tier="4"] { --entry-surge-scale: 1.1; }
 
-.score-panel.is-entry-score-surge[data-score-surge-tier="5"] {
-  --entry-surge-scale: 1.13;
-  --entry-surge-height: clamp(128px, 17dvh, 178px);
-}
+.score-panel.is-entry-score-surge[data-score-surge-tier="5"] { --entry-surge-scale: 1.13; }
 
-.score-panel.is-entry-score-surge[data-score-surge-tier="6"] {
-  --entry-surge-scale: 1.16;
-  --entry-surge-height: clamp(138px, 19dvh, 194px);
-}
+.score-panel.is-entry-score-surge[data-score-surge-tier="6"] { --entry-surge-scale: 1.16; }
 
 .score-panel.is-hud-bank-floating.is-entry-score-surge-peak {
   z-index: 98;
 }
 
-.score-panel.is-hud-bank-floating.is-entry-score-surge-centered {
-  top: var(--entry-surge-top);
-  width: var(--entry-surge-width);
-  height: var(--entry-surge-height);
-  transform: translate3d(-50%, -50%, 0) scale(var(--entry-surge-scale));
+.score-panel.is-hud-bank-floating.is-entry-score-surge-anchored {
+  top: var(--bank-top);
+  width: min(var(--bank-width), calc(100vw - 24px - var(--safe-left) - var(--safe-right)));
+  height: var(--bank-height);
+  transform: translate3d(-50%, 0, 0) scale(var(--entry-surge-scale));
   border-color: #fff1a0;
   background:
     radial-gradient(circle at 50% 38%, rgba(255, 235, 151, .34), transparent 58%),
@@ -10461,12 +10438,12 @@ html[data-card-skin="rainbow"] .cutin-card {
 .score-panel.is-entry-score-surge[data-score-surge-tier="5"] { --entry-surge-glow: 60px; }
 .score-panel.is-entry-score-surge[data-score-surge-tier="6"] { --entry-surge-glow: 67px; }
 
-.score-panel.is-entry-score-surge-centered .hud-label {
+.score-panel.is-entry-score-surge-anchored .hud-label {
   color: #fff1a0;
   font-size: clamp(.7rem, 3vw, 1.06rem);
 }
 
-.score-panel.is-entry-score-surge-centered strong {
+.score-panel.is-entry-score-surge-anchored strong {
   color: #fffbd7;
   max-width: 96%;
   overflow: hidden;
@@ -10498,7 +10475,7 @@ html[data-card-skin="rainbow"] .cutin-card {
   touch-action: manipulation;
   opacity: 0;
   background:
-    radial-gradient(circle at 50% var(--entry-surge-top, 36%), rgba(255, 194, 54, .22), transparent 34%),
+    radial-gradient(circle at 50% var(--entry-surge-origin-y, 90px), rgba(255, 194, 54, .22), transparent 34%),
     rgba(1, 5, 12, .74);
   transition: opacity 130ms steps(4, end);
 }

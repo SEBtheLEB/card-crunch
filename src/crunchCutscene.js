@@ -2,7 +2,7 @@ import { formatCompactNumber } from "./format.js?v=164";
 import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=164";
 import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle, getCardVisualColorClass } from "./cardSkins.js?v=164";
 import { getPowerCardDetails } from "./arcadeMode.js?v=164";
-import { createScoreSurgePlan } from "./scoreSurge.js?v=164";
+import { createScoreSurgePlan, SCORE_SURGE_CONFIG } from "./scoreSurge.js?v=181";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -70,6 +70,8 @@ const MAJOR_SCORE_RAMP_CONFIG = {
   maxParticles: 150,
   devicePixelRatioCap: 1.25
 };
+const BANK_ROLL_MILESTONE_PAUSE_MS = 54;
+const BANK_MILESTONE_PARTICLE_CAP = 280;
 const tapBounceTimers = new WeakMap();
 const preparedShardSets = new WeakMap();
 const crunchDebrisEmitters = new WeakMap();
@@ -352,6 +354,7 @@ export function createCrunchBankCounter({
         bankEl: element,
         valueEl: counterValueEl,
         amount,
+        bankValueBefore: previous,
         cashBefore: startingValue + previous,
         onCashProgress: awardCoinsThrough,
         queueMilestoneBeat
@@ -410,6 +413,7 @@ export function createCrunchBankCounter({
         bankEl: element,
         valueEl: counterValueEl,
         amount: Math.max(0, value - previous),
+        bankValueBefore: previous,
         cashBefore: startingValue + previous,
         onCashProgress: awardCoinsThrough,
         queueMilestoneBeat
@@ -430,6 +434,7 @@ export function createCrunchBankCounter({
         bankEl: element,
         valueEl: counterValueEl,
         amount: Math.max(0, value - previous),
+        bankValueBefore: previous,
         cashBefore: startingValue + previous,
         onCashProgress: awardCoinsThrough,
         queueMilestoneBeat
@@ -2194,11 +2199,19 @@ function createCrunchScoreSurge({
   bankEl,
   valueEl,
   amount,
+  bankValueBefore = 0,
   cashBefore,
   onCashProgress,
   queueMilestoneBeat = (effect) => effect()
 }) {
-  const plan = createScoreSurgePlan(amount);
+  const safeBankValueBefore = Math.max(0, Math.round(Number(bankValueBefore) || 0));
+  const amountPlan = createScoreSurgePlan(amount);
+  const endingBankValue = safeBankValueBefore + amountPlan.score;
+  const plan = {
+    ...amountPlan,
+    milestones: createScoreSurgePlan(endingBankValue).milestones
+      .filter((milestone) => milestone > safeBankValueBefore)
+  };
   let credited = 0;
   let milestoneIndex = 0;
   let finished = false;
@@ -2223,7 +2236,8 @@ function createCrunchScoreSurge({
   return {
     update(nextCredited) {
       credited = Math.max(credited, Math.min(plan.score, Math.round(Number(nextCredited) || 0)));
-      while (milestoneIndex < plan.milestones.length && credited >= plan.milestones[milestoneIndex]) {
+      while (milestoneIndex < plan.milestones.length
+        && safeBankValueBefore + credited >= plan.milestones[milestoneIndex]) {
         const milestone = plan.milestones[milestoneIndex];
         const milestoneTier = createScoreSurgePlan(milestone).tier;
         if (bankEl) bankEl.dataset.scoreSurgeTier = String(milestoneTier);
@@ -2267,15 +2281,13 @@ function createScoreSurgeStage(bankEl, valueEl, plan) {
   backdrop.className = "entry-score-surge-backdrop";
   backdrop.dataset.tier = String(plan.tier);
   backdrop.innerHTML = `
-    <div class="entry-score-surge-callout">
-      <strong>0</strong>
-      <span>${plan.name}</span>
-    </div>
     <div class="entry-score-surge-skip">Tap to skip surge</div>
   `;
+  const bankRect = bankEl.getBoundingClientRect();
+  backdrop.style.setProperty("--entry-surge-origin-y", `${bankRect.bottom}px`);
   document.body.appendChild(backdrop);
   document.body.classList.add("is-entry-score-surge-active");
-  bankEl.classList.add("is-entry-score-surge", "is-entry-score-surge-peak");
+  bankEl.classList.add("is-entry-score-surge", "is-entry-score-surge-peak", "is-entry-score-surge-anchored");
   bankEl.dataset.scoreSurgeTier = String(plan.tier);
   if (labelEl) labelEl.textContent = plan.name;
 
@@ -2302,8 +2314,7 @@ function createScoreSurgeStage(bankEl, valueEl, plan) {
   const entered = nextPaint().then(async () => {
     if (closed) return;
     backdrop.classList.add("is-active");
-    bankEl.classList.add("is-entry-score-surge-centered");
-    await sleep(440);
+    await sleep(120);
   });
 
   return {
@@ -2314,10 +2325,7 @@ function createScoreSurgeStage(bankEl, valueEl, plan) {
     },
     requestSkip,
     setCallout(value, label = plan.name) {
-      const valueNode = backdrop.querySelector(".entry-score-surge-callout strong");
-      const labelNode = backdrop.querySelector(".entry-score-surge-callout span");
-      if (valueNode) valueNode.textContent = String(value);
-      if (labelNode) labelNode.textContent = label;
+      if (labelEl) labelEl.textContent = label;
     },
     wait(ms) {
       if (skipped || isCrunchSkipRequested()) return Promise.resolve();
@@ -2339,10 +2347,9 @@ function createScoreSurgeStage(bankEl, valueEl, plan) {
       if (closed) return;
       closed = true;
       backdrop.classList.add("is-leaving");
-      bankEl.classList.remove("is-entry-score-surge-centered");
-      await sleep(skipped ? 90 : 380);
+      await sleep(skipped ? 70 : 180);
       if (labelEl) labelEl.innerHTML = originalLabel;
-      bankEl.classList.remove("is-entry-score-surge-peak", "is-entry-score-surge-centered");
+      bankEl.classList.remove("is-entry-score-surge-peak", "is-entry-score-surge-anchored");
       document.body.classList.remove("is-entry-score-surge-active");
       backdrop.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener(CRUNCH_SKIP_EVENT, onSkipAll);
@@ -2358,39 +2365,24 @@ async function playScoreSurgeMilestone(bankEl, valueEl, milestone, tier, paceTie
   await stage?.entered;
   if (stage?.skipped) return;
   const bankRect = bankEl.getBoundingClientRect();
-  const duration = Math.max(440, 700 - paceTier * 35);
+  const duration = Math.max(210, 285 - paceTier * 10);
+  const beatDelay = Math.max(42, 66 - paceTier * 4);
   playGameSfx("score_ramp_tick");
   stage?.setCallout(formatRollingBankNumber(milestone), `Milestone ${formatCompactNumber(milestone)}`);
-
-  const marker = document.createElement("strong");
-  marker.className = "entry-score-surge-milestone";
-  marker.dataset.tier = String(tier);
-  marker.innerHTML = `<span>MILESTONE</span>${formatRollingBankNumber(milestone)}`;
-  marker.style.left = `${bankRect.left + bankRect.width / 2}px`;
-  marker.style.top = `${bankRect.bottom + 12}px`;
-  document.body.appendChild(marker);
-  const markerAnimation = marker.animate?.([
-    { opacity: 0, transform: "translate3d(-50%, 10px, 0) scale(.62)" },
-    { opacity: 1, transform: "translate3d(-50%, -2px, 0) scale(1.18)", offset: .28 },
-    { opacity: 1, transform: "translate3d(-50%, -2px, 0) scale(1)", offset: .76 },
-    { opacity: 0, transform: "translate3d(-50%, -18px, 0) scale(.96)" }
-  ], { duration, easing: "steps(7, end)" });
-  const centeredTransform = bankEl.classList.contains("is-entry-score-surge-centered")
-    ? "translate3d(-50%, -50%, 0)"
-    : "translate3d(-50%, 0, 0)";
+  const anchoredTransform = "translate3d(-50%, 0, 0)";
   const bankAnimation = bankEl.animate?.([
-    { transform: `${centeredTransform} scale(1)`, filter: "brightness(1)" },
+    { transform: `${anchoredTransform} scale(1)`, filter: "brightness(1)" },
     {
-      transform: `${centeredTransform} scale(${1.055 + tier * .014})`,
+      transform: `${anchoredTransform} scale(${1.055 + tier * .014})`,
       filter: `brightness(${1.28 + tier * .1}) drop-shadow(0 0 ${10 + tier * 4}px rgba(255, 205, 65, .78))`,
       offset: .25
     },
     {
-      transform: `${centeredTransform} scale(1.025)`,
+      transform: `${anchoredTransform} scale(1.025)`,
       filter: "brightness(1.22) drop-shadow(0 0 16px rgba(255, 205, 65, .62))",
       offset: .72
     },
-    { transform: `${centeredTransform} scale(1)`, filter: "brightness(1)" }
+    { transform: `${anchoredTransform} scale(1)`, filter: "brightness(1)" }
   ], { duration, easing: "cubic-bezier(.16, 1, .3, 1)" });
   const valueAnimation = valueEl?.animate?.([
     { scale: "1" },
@@ -2399,13 +2391,12 @@ async function playScoreSurgeMilestone(bankEl, valueEl, milestone, tier, paceTie
     { scale: "1" }
   ], { duration, easing: "steps(6, end)" });
 
-  await (stage?.wait(Math.round(duration * .3)) ?? sleep(Math.round(duration * .3)));
+  await (stage?.wait(Math.round(beatDelay * .42)) ?? sleep(Math.round(beatDelay * .42)));
   spawnScoreMilestoneCoinSpill(bankEl.getBoundingClientRect(), tier);
-  await (stage?.wait(Math.round(duration * .7)) ?? sleep(Math.round(duration * .7)));
-  [bankAnimation, valueAnimation, markerAnimation].forEach((animation) => {
+  await (stage?.wait(Math.round(beatDelay * .58)) ?? sleep(Math.round(beatDelay * .58)));
+  window.setTimeout(() => [bankAnimation, valueAnimation].forEach((animation) => {
     try { animation?.finish?.(); } catch {}
-  });
-  marker.remove();
+  }), Math.max(0, duration - beatDelay));
 }
 
 async function playCrunchScoreSurgePeak(bankEl, valueEl, plan, stage) {
@@ -2415,7 +2406,7 @@ async function playCrunchScoreSurgePeak(bankEl, valueEl, plan, stage) {
     await stage.entered;
     stage.setCallout(`+${formatRollingBankNumber(plan.score)}`, plan.name || "Coin Milestone");
     playGameSfx(tier >= 4 ? "score_ramp_peak" : "score_total");
-    await stage.wait(1250 + tier * 130);
+    await stage.wait(260 + tier * 42);
     valueEl?.animate?.([
       { scale: "1", filter: "brightness(1)" },
       { scale: String(1.12 + tier * .025), filter: "brightness(1.8)" },
@@ -2544,14 +2535,12 @@ async function playCrunchCoinReward(bankEl, reward, stage = null) {
   stage?.setCallout(`+${formatRollingBankNumber(reward.coins)}`, "Coin Burst");
   const collection = spawnCrunchCoinReward(rect, reward);
   if (!collection) return;
-  const centeredTransform = bankEl.classList.contains("is-entry-score-surge-centered")
-    ? "translate3d(-50%, -50%, 0)"
-    : "translate3d(-50%, 0, 0)";
+  const anchoredTransform = "translate3d(-50%, 0, 0)";
   const animation = bankEl.animate?.([
-    { transform: `${centeredTransform} scale(1)`, filter: "brightness(1)" },
-    { transform: `${centeredTransform} scale(1.12)`, filter: "brightness(1.9)", offset: .24 },
-    { transform: `${centeredTransform} scale(1.045)`, filter: "brightness(1.4)", offset: .74 },
-    { transform: `${centeredTransform} scale(1)`, filter: "brightness(1)" }
+    { transform: `${anchoredTransform} scale(1)`, filter: "brightness(1)" },
+    { transform: `${anchoredTransform} scale(1.12)`, filter: "brightness(1.9)", offset: .24 },
+    { transform: `${anchoredTransform} scale(1.045)`, filter: "brightness(1.4)", offset: .74 },
+    { transform: `${anchoredTransform} scale(1)`, filter: "brightness(1)" }
   ], { duration: 980, easing: "cubic-bezier(.16, 1, .3, 1)" });
   try {
     await Promise.race([
@@ -2602,7 +2591,8 @@ function spawnScoreMilestoneCoinSpill(bankRect, tier = 1) {
   if (!emitter) return;
   const originX = bankRect.left + bankRect.width / 2;
   const originY = bankRect.bottom - 8;
-  const amount = Math.min(28, 8 + tier * 3);
+  const available = Math.max(0, BANK_MILESTONE_PARTICLE_CAP - emitter.particles.length);
+  const amount = Math.min(available, 32, 12 + tier * 4);
   for (let index = 0; index < amount; index += 1) {
     const direction = index % 2 === 0 ? -1 : 1;
     emitter.particles.push({
@@ -2873,6 +2863,7 @@ function createRollingBankDisplay(valueEl) {
   let target = 0;
   let frameId = 0;
   let lastFrame = 0;
+  let milestonePauseUntil = 0;
   const settleWaiters = new Set();
 
   const render = (value) => {
@@ -2889,6 +2880,10 @@ function createRollingBankDisplay(valueEl) {
 
   const tick = (now) => {
     frameId = 0;
+    if (now < milestonePauseUntil) {
+      frameId = window.requestAnimationFrame(tick);
+      return;
+    }
     const deltaMs = lastFrame ? Math.min(34, now - lastFrame) : 16;
     lastFrame = now;
     const difference = target - displayed;
@@ -2902,7 +2897,20 @@ function createRollingBankDisplay(valueEl) {
     const responsiveness = Math.min(.34, .14 + deltaMs / 150);
     const minimumStep = Math.abs(difference) > 100000 ? 97 : 7;
     const step = Math.sign(difference) * Math.max(minimumStep, Math.ceil(Math.abs(difference) * responsiveness));
-    displayed += Math.abs(step) > Math.abs(difference) ? difference : step;
+    const nextDisplayed = displayed + (Math.abs(step) > Math.abs(difference) ? difference : step);
+    const nextMilestone = (Math.floor(displayed / SCORE_SURGE_CONFIG.milestoneStep) + 1)
+      * SCORE_SURGE_CONFIG.milestoneStep;
+    if (displayed < nextMilestone && nextDisplayed >= nextMilestone && nextMilestone <= target) {
+      displayed = nextMilestone;
+      milestonePauseUntil = now + BANK_ROLL_MILESTONE_PAUSE_MS;
+      valueEl?.animate?.([
+        { scale: "1", filter: "brightness(1)" },
+        { scale: "1.16", filter: "brightness(2) drop-shadow(0 0 14px #ffd65c)" },
+        { scale: "1", filter: "brightness(1)" }
+      ], { duration: 180, easing: "steps(5, end)" });
+    } else {
+      displayed = nextDisplayed;
+    }
     render(displayed);
     frameId = window.requestAnimationFrame(tick);
   };
