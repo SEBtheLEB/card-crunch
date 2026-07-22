@@ -875,6 +875,13 @@ if (!roundStartSource.includes("dealNextTable(retainedTableCards)")
 if (!uiSource.includes("animateSummaryNumber") || !css.includes("Arcade run summary")) {
   throw new Error("Arcade run summary counters or styles are missing");
 }
+if (!html.includes('id="heroLogoCardFan"')
+  || html.includes('<i class="hero-card')
+  || !uiSource.includes("renderHeroLogoCards(elements.heroLogoCardFan)")
+  || !uiSource.includes('element.classList.add("hero-logo-card")')
+  || !css.includes("heroLogoCardWobble")) {
+  throw new Error("The home logo must render a randomized, skin-aware fan of gameplay cards");
+}
 
 const fullscreenSource = await readFile(resolve(root, "src/fullscreen.js"), "utf8");
 if (!fullscreenSource.includes("requestFullscreen") || !fullscreenSource.includes("exitFullscreen")) {

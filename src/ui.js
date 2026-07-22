@@ -88,6 +88,7 @@ export function createUI() {
     restartButton: document.querySelector("#restartButton"),
     returnToPotsButton: document.querySelector("#returnToPotsButton"),
     startButton: document.querySelector("#startButton"),
+    heroLogoCardFan: document.querySelector("#heroLogoCardFan"),
     potsModeButton: document.querySelector("#potsModeButton"),
     endlessArcadeButton: document.querySelector("#endlessArcadeButton"),
     hamburgerButton: document.querySelector("#hamburgerButton"),
@@ -113,6 +114,8 @@ export function createUI() {
     motionToggle: document.querySelector("#motionToggle"),
     resetSaveButton: document.querySelector("#resetSaveButton")
   };
+
+  renderHeroLogoCards(elements.heroLogoCardFan);
 
   const ui = {
     elements,
@@ -612,6 +615,43 @@ function renderModeAlbumArt() {
       return element;
     }));
   });
+}
+
+function renderHeroLogoCards(stage) {
+  if (!stage) return;
+
+  const ranks = [
+    { rank: "A", value: 1 },
+    ...Array.from({ length: 9 }, (_, index) => ({ rank: String(index + 2), value: index + 2 })),
+    { rank: "J", value: 11 },
+    { rank: "Q", value: 12 },
+    { rank: "K", value: 13 }
+  ];
+  const suits = [
+    { suit: "hearts", suitSymbol: "\u2665", color: "red" },
+    { suit: "diamonds", suitSymbol: "\u2666", color: "red" },
+    { suit: "clubs", suitSymbol: "\u2663", color: "black" },
+    { suit: "spades", suitSymbol: "\u2660", color: "black" }
+  ];
+  const deck = suits.flatMap((suit) => ranks.map((rank) => ({
+    id: `hero-${rank.rank.toLowerCase()}-${suit.suit}`,
+    ...rank,
+    ...suit
+  })));
+
+  for (let index = deck.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [deck[index], deck[swapIndex]] = [deck[swapIndex], deck[index]];
+  }
+
+  stage.replaceChildren(...deck.slice(0, 5).map((card, index) => {
+    const element = createCardElement(card);
+    element.classList.add("hero-logo-card");
+    element.tabIndex = -1;
+    element.style.setProperty("--hero-delay", `${(-index * .73).toFixed(2)}s`);
+    element.style.setProperty("--hero-duration", `${(4.6 + Math.random() * 1.8).toFixed(2)}s`);
+    return element;
+  }));
 }
 
 function formatMatchTime(seconds) {

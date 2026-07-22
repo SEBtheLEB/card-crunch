@@ -2853,58 +2853,60 @@ h2 {
 .hero-card-fan {
   position: relative;
   z-index: 0;
-  display: flex;
-  justify-content: center;
+  width: min(76vw, 310px);
+  height: clamp(86px, 14dvh, 126px);
   margin-bottom: clamp(-30px, -3.4dvh, -18px);
-  animation: heroFloat 3.2s ease-in-out infinite alternate;
+  perspective: 700px;
 }
 
-.hero-card {
-  position: relative;
-  display: grid;
-  width: clamp(62px, 18vw, 88px);
-  aspect-ratio: .72;
-  margin-inline: clamp(-26px, -6.5vw, -18px);
-  place-items: center;
-  align-content: center;
-  gap: 2px;
-  border: 3px solid var(--card-edge);
-  border-radius: 11px;
-  background:
-    radial-gradient(90% 60% at 24% 12%, rgba(255, 255, 255, .55), transparent 42%),
-    linear-gradient(150deg, var(--card-face), var(--card-face-warm));
-  box-shadow: 0 10px 0 rgba(4, 5, 13, .85), 0 14px 24px rgba(0, 0, 0, .4), 0 0 24px rgba(255, 229, 138, .18);
-  color: var(--ink);
-  font-style: normal;
+.hero-card-fan .hero-logo-card {
+  --hero-angle: 0deg;
+  --hero-lift: 0px;
+  --hero-drift: 1px;
+  --hero-wobble: 1deg;
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: clamp(58px, 17vw, 82px);
+  margin: 0;
+  border-width: 3px;
+  border-radius: 5px;
+  box-shadow: 4px 6px 0 #070812, 0 0 17px rgba(255, 218, 110, .18);
+  cursor: default;
+  pointer-events: none;
   transform-origin: 50% 120%;
+  animation: heroLogoCardWobble var(--hero-duration, 5.2s) ease-in-out infinite alternate;
+  animation-delay: var(--hero-delay, 0s);
+  will-change: transform;
 }
 
-.hero-card b {
-  font-family: var(--font-display);
-  font-weight: 400;
-  font-size: clamp(1.1rem, 4.8vw, 1.6rem);
-  line-height: .9;
+.hero-card-fan .hero-logo-card::before {
+  inset: 4px;
+  border-radius: 3px;
 }
 
-.hero-card span {
-  font-size: clamp(1rem, 4.4vw, 1.4rem);
-  line-height: .9;
+.hero-card-fan .hero-logo-card .card-corner {
+  font-size: clamp(.42rem, 1.8vw, .61rem);
 }
 
-.hero-card.card-red {
-  color: var(--suit-red);
+.hero-card-fan .hero-logo-card .card-corner-top {
+  top: 5px;
+  left: 4px;
 }
 
-/* Held-hand fan: 10-J-Q-K-A, ace on top */
-.hero-card:nth-child(1) { z-index: 1; transform: rotate(-26deg) translateY(12px); }
-.hero-card:nth-child(2) { z-index: 2; transform: rotate(-13deg) translateY(3px); }
-.hero-card:nth-child(3) { z-index: 3; transform: translateY(0); }
-.hero-card:nth-child(4) { z-index: 4; transform: rotate(13deg) translateY(3px); }
-.hero-card:nth-child(5) {
-  z-index: 5;
-  transform: rotate(26deg) translateY(12px);
-  animation: heroCardTilt 3.2s ease-in-out infinite alternate;
+.hero-card-fan .hero-logo-card .card-corner-bottom {
+  right: 4px;
+  bottom: 5px;
 }
+
+.hero-card-fan .hero-logo-card .card-rank { font-size: clamp(.95rem, 4.1vw, 1.35rem); }
+.hero-card-fan .hero-logo-card .card-pips { font-size: clamp(.9rem, 3.8vw, 1.25rem); }
+
+.hero-card-fan .hero-logo-card:nth-child(1) { z-index: 1; left: 22%; --hero-angle: -26deg; --hero-lift: 12px; --hero-drift: -2px; --hero-wobble: -1.2deg; }
+.hero-card-fan .hero-logo-card:nth-child(2) { z-index: 2; left: 36%; --hero-angle: -13deg; --hero-lift: 3px; --hero-drift: 1px; --hero-wobble: .8deg; }
+.hero-card-fan .hero-logo-card:nth-child(3) { z-index: 3; left: 50%; --hero-angle: 0deg; --hero-lift: 0px; --hero-drift: -1px; --hero-wobble: 1deg; }
+.hero-card-fan .hero-logo-card:nth-child(4) { z-index: 4; left: 64%; --hero-angle: 13deg; --hero-lift: 3px; --hero-drift: 2px; --hero-wobble: -1deg; }
+.hero-card-fan .hero-logo-card:nth-child(5) { z-index: 5; left: 78%; --hero-angle: 26deg; --hero-lift: 12px; --hero-drift: -1px; --hero-wobble: 1.3deg; }
 
 .menu-hero h1 {
   position: relative;
@@ -3571,6 +3573,18 @@ h2 {
 @keyframes heroCardTilt {
   from { transform: rotate(26deg) translateY(12px); }
   to { transform: rotate(29deg) translateY(7px); }
+}
+
+@keyframes heroLogoCardWobble {
+  0% {
+    transform: translate3d(-50%, var(--hero-lift), 0) rotate(var(--hero-angle));
+  }
+  48% {
+    transform: translate3d(calc(-50% + var(--hero-drift)), calc(var(--hero-lift) - 5px), 0) rotate(calc(var(--hero-angle) + var(--hero-wobble)));
+  }
+  100% {
+    transform: translate3d(calc(-50% - var(--hero-drift)), calc(var(--hero-lift) - 2px), 0) rotate(calc(var(--hero-angle) - var(--hero-wobble)));
+  }
 }
 
 @keyframes menuRise {
@@ -5681,21 +5695,13 @@ h2 {
   animation: none;
 }
 
-.hero-card {
+.hero-card-fan .hero-logo-card {
   border-width: 3px;
   border-radius: 3px;
-  background:
-    repeating-conic-gradient(from 45deg, rgba(89, 55, 9, .035) 0 25%, transparent 0 50%) 0 0 / 6px 6px,
-    #fff1cc;
   box-shadow: 4px 6px 0 #070812;
 }
 
-.hero-card b {
-  font-family: var(--font-pixel);
-  font-size: clamp(.68rem, 3vw, .94rem);
-}
-
-.hero-card:nth-child(5) {
+html.reduce-motion .hero-card-fan .hero-logo-card {
   animation: none;
 }
 
