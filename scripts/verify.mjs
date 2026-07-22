@@ -25,6 +25,7 @@ const required = [
   "src/storeProducts.js",
   "src/storeState.js",
   "src/multiplayer.js",
+  "src/multiplayerBot.js",
   "src/realtimeMultiplayer.js",
   "src/multiplayerMode.js",
   "api/matchmaking.js",
@@ -91,6 +92,34 @@ const arcadeModeModule = await import(`../src/arcadeMode.js?verify=${Date.now()}
 const arcadeResults = arcadeModeModule.runArcadeModeSelfTests();
 if (!Array.isArray(arcadeResults) || arcadeResults.some((result) => result.pass === false)) {
   throw new Error("Endless Arcade and power-card self-tests failed");
+}
+const botModule = await import(`../src/multiplayerBot.js?verify=${Date.now()}`);
+const botA = botModule.createBotDuelBrain({ seed: "verification-bot", rating: 1 });
+const botB = botModule.createBotDuelBrain({ seed: "verification-bot", rating: 1 });
+const botScoresA = [];
+const botScoresB = [];
+for (let elapsed = 0; elapsed <= botModule.BOT_MATCH_DURATION_MS; elapsed += 500) {
+  botScoresA.push(botA.advance(elapsed, elapsed * 3).score);
+  botScoresB.push(botB.advance(elapsed, elapsed * 3).score);
+}
+if (botScoresA.at(-1) <= 0
+  || botScoresA.at(-1) !== botScoresB.at(-1)
+  || botScoresA.some((score, index) => index > 0 && score < botScoresA[index - 1])
+  || botA.snapshot().actions < 30) {
+  throw new Error("House Bot scoring must be deterministic, active, and monotonically increasing");
+}
+const botFixture = botModule.createBotDuelMatch({
+  player: { displayName: "Verifier", skinId: "classic" },
+  rating: 1,
+  now: 10_000,
+  seed: "match-fixture"
+});
+const settledBotFixture = botModule.settleBotDuelMatch(botFixture.match, 12_000, 9_000);
+if (!botFixture.match.opponent.isBot
+  || botFixture.match.endsAt - botFixture.match.startsAt !== 60_000
+  || settledBotFixture.winner !== "you"
+  || settledBotFixture.status !== "complete") {
+  throw new Error("House Bot matches must use the full one-minute multiplayer result contract");
 }
 const matchmakingModule = await import(`../api/_matchmakingCore.js?verify=${Date.now()}`);
 const matchmakingStore = new matchmakingModule.MemoryMatchmakingStore();
@@ -422,6 +451,9 @@ if (!mainSource.includes("initializeMultiplayer")
   || !multiplayerSource.includes("createCardCrunchInteraction")
   || !multiplayerSource.includes("animateCardDealIn")
   || !multiplayerSource.includes("CardCrunchRealtimeTransport")
+  || !multiplayerSource.includes("createBotDuelMatch")
+  || !multiplayerSource.includes("startBotMatch")
+  || !multiplayerSource.includes('this.transportMode === "bot"')
   || !multiplayerSource.includes('import { playGameSfx } from "./audio.js')
   || !multiplayerSource.includes('playGameSfx("target_clear")')
   || !multiplayerSource.includes("this.game.startMultiplayerMatch")
@@ -438,10 +470,12 @@ if (!mainSource.includes("initializeMultiplayer")
   || !matchmakingSource.includes("WAITING_TTL_MS")
   || !matchmakingSource.includes("settleMatch")
   || multiplayerSource.includes("waiting-card-shard")
+  || !html.includes('id="matchmakingBotButton"')
   || html.includes("matchmakingCardHint")
   || multiplayerCss.includes("waitingShardVacuum")
   || !multiplayerCss.includes("grid-template-rows: auto auto auto minmax(180px, 1fr) auto")
-  || !multiplayerCss.includes("multiplayer-scoreboard")) {
+  || !multiplayerCss.includes("multiplayer-scoreboard")
+  || !multiplayerCss.includes(".matchmaking-bot-button")) {
   throw new Error("Online Duel matchmaking, waiting-card toy, live clock, or result presentation is incomplete");
 }
 if (!gameStateSource.includes("playInstantMultiplayerCrunch")

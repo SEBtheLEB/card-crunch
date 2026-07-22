@@ -153,6 +153,8 @@ export function createUI() {
     },
     renderMatchHud(state) {
       renderHud(elements, state);
+      const matchHandlers = elements._crunchCache?.handlers;
+      if (matchHandlers) renderCrunch(elements, state, matchHandlers);
     },
     syncResolvedHud(state) {
       syncHudCountersWithoutMotion(elements, state);

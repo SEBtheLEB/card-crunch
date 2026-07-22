@@ -7,8 +7,10 @@ import { applyPreviewCardSkinPresentation } from "./cardSkins.js?v=169";
 import { animateCardDealIn } from "./cardGestures.js?v=175";
 import { createCardCrunchInteraction } from "./crunchCutscene.js?v=186";
 import { CardCrunchRealtimeTransport } from "./realtimeMultiplayer.js?v=177";
+import { createBotDuelMatch, settleBotDuelMatch } from "./multiplayerBot.js?v=187";
 
 const SESSION_STORAGE_KEY = "cardCrunchMatchmakingSessionV1";
+const BOT_RATING_STORAGE_KEY = "cardCrunchBotDuelRatingV1";
 const DEFAULT_API_ORIGIN = "https://card-crunch.vercel.app";
 const POLL_MS = 800;
 const WAITING_SKINS = ["classic", "dark", "pink", "gold", "rainbow", "pink_arcade"];
@@ -16,6 +18,7 @@ const WAITING_SKINS = ["classic", "dark", "pink", "gold", "rainbow", "pink_arcad
 export function initializeMultiplayer({ game, bindAction }) {
   const controller = new MultiplayerController({ game });
   bindAction(controller.elements.onlineButton, () => controller.search());
+  bindAction(controller.elements.botButton, () => controller.startBotMatch());
   bindAction(controller.elements.cancelButton, () => controller.cancelSearch());
   bindAction(controller.elements.rematchButton, () => controller.rematch());
   bindAction(controller.elements.homeButton, () => controller.returnHome());
@@ -36,6 +39,7 @@ class MultiplayerController {
       screen: document.querySelector("#matchmakingScreen"),
       status: document.querySelector("#matchmakingStatus"),
       elapsed: document.querySelector("#matchmakingElapsed"),
+      botButton: document.querySelector("#matchmakingBotButton"),
       cancelButton: document.querySelector("#matchmakingCancelButton"),
       waitingCardStage: document.querySelector("#matchmakingCardStage"),
       vacuumTarget: document.querySelector("#matchmakingVacuumTarget"),
@@ -66,6 +70,8 @@ class MultiplayerController {
     this.serverOffsetMs = 0;
     this.resultPending = null;
     this.scoreRequest = Promise.resolve();
+    this.botBrain = null;
+    this.botRating = readBotRating();
     this.transportMode = "";
     this.realtime = new CardCrunchRealtimeTransport({
       onMessage: (payload) => this.handleRealtimeMessage(payload),
@@ -80,6 +86,7 @@ class MultiplayerController {
     this.activeMatchId = "";
     this.resultPending = null;
     this.transportMode = "";
+    this.botBrain = null;
     this.searchStartedAt = Date.now();
     this.showWaitingScreen();
     this.dealWaitingCard();
@@ -114,6 +121,7 @@ class MultiplayerController {
     if (!this.elements.screen?.classList.contains("is-visible")) return;
     const generation = ++this.generation;
     this.clearTimers();
+    this.botBrain = null;
     this.elements.cancelButton.disabled = true;
     if (this.transportMode === "realtime") this.realtime.leave();
     else await this.send("leave").catch(() => {});
@@ -121,6 +129,33 @@ class MultiplayerController {
     this.hideWaitingScreen();
     if (this.game.state?.gameMode === "onlineDuel") this.game.returnFromMultiplayer?.();
     this.elements.cancelButton.disabled = false;
+  }
+
+  startBotMatch() {
+    if (!this.elements.screen?.classList.contains("is-visible") || this.elements.botButton?.disabled) return;
+    const generation = ++this.generation;
+    this.clearTimers();
+    this.elements.botButton.disabled = true;
+    this.elements.cancelButton.disabled = true;
+    this.elements.status.textContent = "House Bot ready!";
+    this.elements.elapsed.textContent = "Starting an instant 60-second duel";
+
+    if (this.transportMode === "realtime") {
+      this.realtime.leave();
+      this.realtime.close();
+    } else if (this.transportMode === "http") {
+      void this.send("leave").catch(() => {});
+    }
+
+    const identity = this.playerIdentity();
+    const localBot = createBotDuelMatch({
+      player: identity,
+      rating: this.botRating,
+      seed: `${identity.displayName}-${Date.now()}-${Math.random()}`
+    });
+    this.transportMode = "bot";
+    this.botBrain = localBot.brain;
+    void this.handleMatch(localBot.match, generation);
   }
 
   async rematch() {
@@ -133,12 +168,14 @@ class MultiplayerController {
     ++this.generation;
     this.clearTimers();
     this.realtime.close();
+    this.botBrain = null;
     this.elements.resultScreen?.classList.remove("is-visible");
     this.elements.resultScreen?.setAttribute("aria-hidden", "true");
     this.game.returnFromMultiplayer?.();
   }
 
   leaveSilently() {
+    if (this.transportMode === "bot") return;
     if (this.transportMode === "realtime") {
       this.realtime.leave();
       return;
@@ -156,6 +193,7 @@ class MultiplayerController {
     this.elements.versus.hidden = true;
     this.elements.waitingCardStage.hidden = false;
     this.elements.status.textContent = "Searching for an opponent";
+    this.elements.botButton.disabled = false;
     this.elements.cancelButton.textContent = "Cancel Search";
     this.elements.cancelButton.disabled = false;
   }
@@ -288,7 +326,7 @@ class MultiplayerController {
     } else {
       this.game.updateMultiplayerOpponent?.(match.opponent);
     }
-    if (this.transportMode !== "realtime") this.schedulePoll(generation);
+    if (this.transportMode === "http") this.schedulePoll(generation);
   }
 
   schedulePoll(generation) {
@@ -316,8 +354,13 @@ class MultiplayerController {
         this.game.updateMultiplayerClock?.(60);
       } else {
         const remaining = Math.max(0, (this.match.endsAt - serverNow) / 1000);
+        if (this.transportMode === "bot") this.updateBotProgress(serverNow);
         this.game.updateMultiplayerClock?.(remaining);
         if (remaining <= 0) {
+          if (this.transportMode === "bot") {
+            this.finishBotMatch();
+            return;
+          }
           this.game.finishMultiplayerMatch?.(this.match);
           void this.reportScore(this.game.state.score, { immediate: true });
           return;
@@ -330,6 +373,10 @@ class MultiplayerController {
 
   reportScore(score, { immediate = false } = {}) {
     const safeScore = Math.max(0, Math.floor(Number(score) || 0));
+    if (this.transportMode === "bot") {
+      if (this.match) this.match.you = { ...this.match.you, score: safeScore };
+      return immediate ? Promise.resolve() : undefined;
+    }
     if (this.transportMode === "realtime") {
       this.realtime.sendScore(safeScore);
       return immediate ? Promise.resolve() : undefined;
@@ -355,6 +402,11 @@ class MultiplayerController {
   async forfeit() {
     ++this.generation;
     this.clearTimers();
+    if (this.transportMode === "bot") {
+      this.botBrain = null;
+      this.returnHome();
+      return;
+    }
     if (this.transportMode === "realtime") {
       this.realtime.leave();
       this.returnHome();
@@ -372,6 +424,10 @@ class MultiplayerController {
     this.hideWaitingScreen();
     const won = match.winner === "you";
     const draw = match.winner === "draw";
+    if (match.isBotMatch) {
+      this.botRating = updateBotRating(this.botRating, won, draw);
+      this.botBrain = null;
+    }
     this.elements.resultKicker.textContent = draw ? "Dead Heat" : won ? "Winner" : "Match Complete";
     this.elements.resultTitle.textContent = draw ? "DRAW!" : won ? "YOU WIN!" : "RIVAL WINS";
     this.elements.resultTitle.dataset.result = draw ? "draw" : won ? "win" : "loss";
@@ -387,6 +443,30 @@ class MultiplayerController {
   updateClockOffset(serverNow) {
     if (!Number.isFinite(Number(serverNow))) return;
     this.serverOffsetMs = Number(serverNow) - Date.now();
+  }
+
+  updateBotProgress(serverNow) {
+    if (!this.botBrain || !this.match) return;
+    const elapsed = Math.max(0, serverNow - this.match.startsAt);
+    const snapshot = this.botBrain.advance(elapsed, this.game.state?.score || 0);
+    if (!snapshot.changed) return;
+    this.match.opponent = { ...this.match.opponent, score: snapshot.score };
+    this.game.updateMultiplayerOpponent?.(this.match.opponent);
+  }
+
+  finishBotMatch() {
+    if (!this.match || this.match.status === "complete") return;
+    const finalBot = this.botBrain?.advance(this.match.endsAt - this.match.startsAt, this.game.state?.score || 0);
+    const completeMatch = settleBotDuelMatch(
+      this.match,
+      this.game.state?.score || this.match.you?.score || 0,
+      finalBot?.score || this.match.opponent?.score || 0
+    );
+    this.match = completeMatch;
+    this.resultPending = completeMatch;
+    this.game.updateMultiplayerOpponent?.(completeMatch.opponent);
+    const ready = this.game.finishMultiplayerMatch?.(completeMatch);
+    if (ready !== false) this.showResult(completeMatch);
   }
 
   playerIdentity() {
@@ -471,4 +551,18 @@ function readJson(key, fallback) {
 
 function writeJson(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
+function readBotRating() {
+  try {
+    return Math.min(1.22, Math.max(.82, Number(localStorage.getItem(BOT_RATING_STORAGE_KEY)) || 1));
+  } catch {
+    return 1;
+  }
+}
+
+function updateBotRating(current, won, draw) {
+  const next = Math.min(1.22, Math.max(.82, current + (draw ? .005 : won ? .03 : -.018)));
+  try { localStorage.setItem(BOT_RATING_STORAGE_KEY, next.toFixed(3)); } catch {}
+  return next;
 }
