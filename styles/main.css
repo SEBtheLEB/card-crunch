@@ -1416,6 +1416,41 @@ button.is-pressing:not(:disabled) {
 .stored-pop.score-tone-math { color: #d9a9ff; }
 .stored-pop.score-tone-red { color: #ff8d9a; }
 
+.multiplayer-crunch-reward {
+  position: fixed;
+  z-index: 115;
+  display: grid;
+  min-width: min(58vw, 230px);
+  gap: 5px;
+  place-items: center;
+  color: #fff0a4;
+  pointer-events: none;
+  text-align: center;
+  text-transform: uppercase;
+  transform-origin: center;
+  contain: layout paint style;
+  will-change: transform, opacity;
+}
+
+.multiplayer-crunch-reward span {
+  max-width: min(76vw, 310px);
+  color: currentColor;
+  font: 900 clamp(.78rem, 3.6vw, 1.05rem)/1.2 var(--font-display);
+  text-shadow: 2px 2px 0 #071015, 0 0 10px currentColor;
+  text-wrap: balance;
+}
+
+.multiplayer-crunch-reward strong {
+  color: #fff8c9;
+  font: 900 clamp(1.3rem, 7vw, 2.45rem)/.9 var(--font-display);
+  text-shadow: 3px 3px 0 #071015, 0 0 8px #fff, 0 0 18px currentColor;
+}
+
+.multiplayer-crunch-reward.reward-tone-suit { color: #70d7ff; }
+.multiplayer-crunch-reward.reward-tone-rank { color: #ffd65c; }
+.multiplayer-crunch-reward.reward-tone-math { color: #d58cff; }
+.multiplayer-crunch-reward.reward-tone-run { color: #55ecff; }
+
 .score-step-pop {
   animation: scoreStepPop .26s cubic-bezier(.18, 1.4, .3, 1) both;
 }

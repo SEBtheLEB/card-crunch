@@ -29,8 +29,9 @@ import {
   animateSelectionResolve,
   animateTargetClear,
   playSfx,
+  spawnMultiplayerCrunchReward,
   spawnSparkBurst
-} from "./animations.js?v=175";
+} from "./animations.js?v=182";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -578,7 +579,7 @@ export function createGame(ui) {
     });
 
     const consumedElements = new Set();
-    for (const entry of cutscene?.entries ?? []) {
+    for (const [entryIndex, entry] of (cutscene?.entries ?? []).entries()) {
       const selectedIndexes = entry.selectedIndexes?.length ? entry.selectedIndexes : [];
       const orderedCards = entry.orderedCards?.length
         ? entry.orderedCards
@@ -609,6 +610,13 @@ export function createGame(ui) {
         continue;
       }
       haptic("crunch");
+      spawnMultiplayerCrunchReward({
+        sourceElements: involvedElements,
+        label: entry.label,
+        points: entry.bankPoints ?? entry.points,
+        matchType: entry.matchType,
+        sequenceIndex: entryIndex
+      });
       const result = interaction.crunch();
       await result.completion;
       involvedElements.forEach((card) => consumedElements.add(card));
