@@ -47,6 +47,10 @@ const required = [
   "assets/card-sets/pink_arcade/card-set.json",
   "assets/card-sets/pink_arcade/backs/default_back.png",
   "assets/card-sets/pink_arcade/previews/full-deck-preview.png",
+  "assets/icons/suits/heart.svg",
+  "assets/icons/suits/diamond.svg",
+  "assets/icons/suits/club.svg",
+  "assets/icons/suits/spade.svg",
   "styles/main.css",
   "styles/collection.css",
   "styles/store.css",
@@ -881,6 +885,14 @@ if (!html.includes('id="heroLogoCardFan"')
   || !uiSource.includes('element.classList.add("hero-logo-card")')
   || !css.includes("heroLogoCardWobble")) {
   throw new Error("The home logo must render a randomized, skin-aware fan of gameplay cards");
+}
+if (!html.includes('id="heroSuitAccents"')
+  || !html.includes('id="menuSuitAmbience"')
+  || !uiSource.includes("renderMenuSuitDecorations")
+  || !uiSource.includes("pickLaunchSuitPair")
+  || !css.includes("menuSuitDrift")
+  || css.includes("Decorative poker chips flanking the hero")) {
+  throw new Error("The home menu must use randomized suit assets instead of poker chips");
 }
 
 const fullscreenSource = await readFile(resolve(root, "src/fullscreen.js"), "utf8");

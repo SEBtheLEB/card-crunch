@@ -89,6 +89,8 @@ export function createUI() {
     returnToPotsButton: document.querySelector("#returnToPotsButton"),
     startButton: document.querySelector("#startButton"),
     heroLogoCardFan: document.querySelector("#heroLogoCardFan"),
+    heroSuitAccents: document.querySelector("#heroSuitAccents"),
+    menuSuitAmbience: document.querySelector("#menuSuitAmbience"),
     potsModeButton: document.querySelector("#potsModeButton"),
     endlessArcadeButton: document.querySelector("#endlessArcadeButton"),
     hamburgerButton: document.querySelector("#hamburgerButton"),
@@ -116,6 +118,7 @@ export function createUI() {
   };
 
   renderHeroLogoCards(elements.heroLogoCardFan);
+  renderMenuSuitDecorations(elements.heroSuitAccents, elements.menuSuitAmbience);
 
   const ui = {
     elements,
@@ -652,6 +655,66 @@ function renderHeroLogoCards(stage) {
     element.style.setProperty("--hero-duration", `${(4.6 + Math.random() * 1.8).toFixed(2)}s`);
     return element;
   }));
+}
+
+const MENU_SUITS = ["hearts", "diamonds", "clubs", "spades"];
+
+function renderMenuSuitDecorations(accentStage, ambienceStage) {
+  if (!accentStage || !ambienceStage) return;
+
+  const pair = pickLaunchSuitPair();
+  accentStage.replaceChildren(...pair.map((suit, index) => {
+    const icon = createMenuSuitIcon(suit, "hero-suit-accent");
+    icon.style.setProperty("--suit-delay", `${index * -3.7}s`);
+    return icon;
+  }));
+
+  const ambience = Array.from({ length: 10 }, (_, index) => {
+    const suit = MENU_SUITS[Math.floor(Math.random() * MENU_SUITS.length)];
+    const icon = createMenuSuitIcon(suit, "menu-ambient-suit");
+    icon.style.setProperty("--suit-left", `${4 + Math.random() * 92}%`);
+    icon.style.setProperty("--suit-top", `${3 + Math.random() * 92}%`);
+    icon.style.setProperty("--suit-size", `${26 + Math.random() * 38}px`);
+    icon.style.setProperty("--suit-opacity", `${(.055 + Math.random() * .055).toFixed(3)}`);
+    icon.style.setProperty("--suit-rotation", `${Math.round(-28 + Math.random() * 56)}deg`);
+    icon.style.setProperty("--suit-drift", `${Math.round(8 + Math.random() * 16)}px`);
+    icon.style.setProperty("--suit-duration", `${(15 + Math.random() * 11).toFixed(2)}s`);
+    icon.style.setProperty("--suit-delay", `${(-index * 1.9 - Math.random() * 5).toFixed(2)}s`);
+    return icon;
+  });
+  ambienceStage.replaceChildren(...ambience);
+}
+
+function createMenuSuitIcon(suit, className) {
+  const icon = document.createElement("span");
+  icon.className = `menu-suit-icon ${className}`;
+  icon.dataset.suit = suit;
+  return icon;
+}
+
+function pickLaunchSuitPair() {
+  const pairs = [];
+  for (let left = 0; left < MENU_SUITS.length; left += 1) {
+    for (let right = left + 1; right < MENU_SUITS.length; right += 1) {
+      pairs.push([MENU_SUITS[left], MENU_SUITS[right]]);
+    }
+  }
+
+  let previous = "";
+  try {
+    previous = window.localStorage.getItem("card-crunch-menu-suit-pair") ?? "";
+  } catch {
+    previous = "";
+  }
+  const choices = pairs.filter((pair) => [...pair].sort().join("|") !== previous);
+  const pair = choices[Math.floor(Math.random() * choices.length)] ?? pairs[0];
+  if (Math.random() < .5) pair.reverse();
+  try {
+    window.localStorage.setItem("card-crunch-menu-suit-pair", [...pair].sort().join("|"));
+  } catch {
+    // Decorative variation should never prevent the menu from loading.
+  }
+  return pair;
 }
 
 function formatMatchTime(seconds) {
