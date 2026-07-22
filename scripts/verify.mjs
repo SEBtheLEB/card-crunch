@@ -265,6 +265,13 @@ if (!html.includes('id="onlineDuelButton"')
   || !html.includes('id="multiplayerResultScreen"')) {
   throw new Error("Online Duel menu, matchmaking, or result UI hooks are missing");
 }
+if (!html.includes('data-page="modes"')
+  || !html.includes('id="potsModeButton"')
+  || !html.includes('data-mode-card-art="pots"')
+  || !html.includes('data-mode-card-art="arcade"')
+  || !html.includes('data-mode-card-art="duel"')) {
+  throw new Error("PLAY must open the album-style Pots, Endless Arcade, and Online Duel selector");
+}
 if (html.includes('id="matchmakingCountdown"')) {
   throw new Error("Online Duel must open the dealt board without a separate countdown screen");
 }

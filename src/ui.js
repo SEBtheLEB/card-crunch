@@ -88,6 +88,7 @@ export function createUI() {
     restartButton: document.querySelector("#restartButton"),
     returnToPotsButton: document.querySelector("#returnToPotsButton"),
     startButton: document.querySelector("#startButton"),
+    potsModeButton: document.querySelector("#potsModeButton"),
     endlessArcadeButton: document.querySelector("#endlessArcadeButton"),
     hamburgerButton: document.querySelector("#hamburgerButton"),
     shieldAdButton: document.querySelector("#shieldAdButton"),
@@ -566,7 +567,9 @@ function setText(element, value, cache, key) {
 
 function showMenuPage(elements, pageName = "home") {
   const isHomePage = pageName === "home";
+  if (pageName === "modes") renderModeAlbumArt();
   elements.startScreen.classList.toggle("is-home-page", isHomePage);
+  elements.startScreen.classList.toggle("is-modes-page", pageName === "modes");
   elements.startScreen.classList.toggle("is-pots-page", pageName === "pots");
   elements.startScreen.classList.toggle("is-store-page", pageName === "shop");
   if (isHomePage) elements.startScreen.scrollTop = 0;
@@ -579,6 +582,36 @@ function showMenuPage(elements, pageName = "home") {
   window.dispatchEvent(new CustomEvent("card-crunch-menu-page-change", {
     detail: { pageName }
   }));
+}
+
+function renderModeAlbumArt() {
+  const cardSets = {
+    pots: [
+      { id: "mode-pots-5h", rank: "5", value: 5, suit: "hearts", suitSymbol: "\u2665", color: "red" },
+      { id: "mode-pots-3d", rank: "3", value: 3, suit: "diamonds", suitSymbol: "\u2666", color: "red" },
+      { id: "mode-pots-8s", rank: "8", value: 8, suit: "spades", suitSymbol: "\u2660", color: "black" }
+    ],
+    arcade: [
+      { id: "mode-arcade-ah", rank: "A", value: 1, suit: "hearts", suitSymbol: "\u2665", color: "red" },
+      { id: "mode-arcade-qs", rank: "Q", value: 12, suit: "spades", suitSymbol: "\u2660", color: "black" },
+      { id: "mode-arcade-7c", rank: "7", value: 7, suit: "clubs", suitSymbol: "\u2663", color: "black" }
+    ],
+    duel: [
+      { id: "mode-duel-10h", rank: "10", value: 10, suit: "hearts", suitSymbol: "\u2665", color: "red" },
+      { id: "mode-duel-kc", rank: "K", value: 13, suit: "clubs", suitSymbol: "\u2663", color: "black" },
+      { id: "mode-duel-ad", rank: "A", value: 1, suit: "diamonds", suitSymbol: "\u2666", color: "red" },
+      { id: "mode-duel-js", rank: "J", value: 11, suit: "spades", suitSymbol: "\u2660", color: "black" }
+    ]
+  };
+
+  document.querySelectorAll("[data-mode-card-art]").forEach((stage) => {
+    const cards = cardSets[stage.dataset.modeCardArt] ?? [];
+    stage.replaceChildren(...cards.map((card) => {
+      const element = createCardElement(card);
+      element.setAttribute("aria-hidden", "true");
+      return element;
+    }));
+  });
 }
 
 function formatMatchTime(seconds) {

@@ -1,5 +1,5 @@
-import { createGame } from "./gameState.js?v=182";
-import { createUI } from "./ui.js?v=169";
+import { createGame } from "./gameState.js?v=183";
+import { createUI } from "./ui.js?v=183";
 import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=164";
 import { adManager } from "./ads.js?v=164";
 import { grantShieldToken, hasShieldToken } from "./save.js?v=164";
@@ -30,7 +30,8 @@ initializeSupabaseAccount({
 installAudioUnlock();
 initializePlayGames();
 installFullscreenControls(bindInstantAction);
-bindInstantAction(ui.elements.startButton, () => ui.showMenuPage("pots"));
+bindInstantAction(ui.elements.startButton, () => ui.showMenuPage("modes"));
+bindInstantAction(ui.elements.potsModeButton, () => ui.showMenuPage("pots"));
 bindInstantAction(ui.elements.endlessArcadeButton, game.startEndlessArcade);
 bindInstantAction(ui.elements.backToMenuButton, () => {
   ui.showMap(false);
@@ -144,7 +145,7 @@ function installReactivePressFeedback() {
 }
 
 function isPrimaryJuiceButton(target) {
-  return target.matches(".play-button, .crunch-button, .bank-button, .primary-button, .map-pot");
+  return target.matches(".play-button, .mode-album-button, .crunch-button, .bank-button, .primary-button, .map-pot");
 }
 
 function bindMenuNavigation() {

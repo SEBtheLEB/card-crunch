@@ -1059,7 +1059,7 @@ export function createGame(ui) {
       exitTutorial();
       return;
     }
-    const returnHome = isArcadeMode(state);
+    const returnToModeSelect = isArcadeMode(state);
     finalizeRunLoss();
     stopTimer();
     ui.hideBonusBankOffer();
@@ -1072,7 +1072,7 @@ export function createGame(ui) {
     ui.showGameOver(false);
     ui.showStart(true);
     ui.showMap(false);
-    if (returnHome) ui.showMenuPage("home");
+    if (returnToModeSelect) ui.showMenuPage("modes");
   }
 
   async function onCoinAd() {
@@ -1171,7 +1171,7 @@ export function createGame(ui) {
       state.multiplayer?.callbacks?.onForfeit?.();
       return;
     }
-    const returnHome = isArcadeMode(state);
+    const returnToModeSelect = isArcadeMode(state);
     stopTimer();
     ui.hidePotInfo({ immediate: true });
     ui.hideBonusBankOffer();
@@ -1182,7 +1182,7 @@ export function createGame(ui) {
     ui.renderMap(state.pots, handlers);
     ui.renderMenuStats(state);
     ui.showStart(true);
-    ui.showMenuPage(returnHome ? "home" : "pots");
+    ui.showMenuPage(returnToModeSelect ? "modes" : "pots");
     ui.showMap(false);
   }
 
@@ -1276,7 +1276,7 @@ export function createGame(ui) {
     ui.renderMenuStats(state);
     ui.showGameOver(false);
     ui.showStart(true);
-    ui.showMenuPage("home");
+    ui.showMenuPage("modes");
     ui.showMap(false);
   }
 
