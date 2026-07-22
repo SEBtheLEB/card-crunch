@@ -10518,44 +10518,12 @@ html[data-card-skin="rainbow"] .cutin-card {
   z-index: 98;
 }
 
-.score-panel.is-hud-bank-floating.is-entry-score-surge-anchored {
-  top: var(--bank-top);
-  width: min(var(--bank-width), calc(100vw - 24px - var(--safe-left) - var(--safe-right)));
-  height: var(--bank-height);
-  transform: translate3d(-50%, 0, 0) scale(var(--entry-surge-scale));
-  border-color: #fff1a0;
-  background:
-    radial-gradient(circle at 50% 38%, rgba(255, 235, 151, .34), transparent 58%),
-    linear-gradient(180deg, rgba(34, 37, 65, .99), rgba(9, 12, 29, .99));
-  box-shadow:
-    0 0 0 3px rgba(102, 58, 5, .72),
-    0 0 var(--entry-surge-glow) rgba(255, 204, 65, .82),
-    0 0 100px rgba(255, 126, 25, .34),
-    inset 0 0 34px rgba(255, 239, 172, .2);
-}
-
 .score-panel.is-entry-score-surge[data-score-surge-tier="1"] { --entry-surge-glow: 32px; }
 .score-panel.is-entry-score-surge[data-score-surge-tier="2"] { --entry-surge-glow: 39px; }
 .score-panel.is-entry-score-surge[data-score-surge-tier="3"] { --entry-surge-glow: 46px; }
 .score-panel.is-entry-score-surge[data-score-surge-tier="4"] { --entry-surge-glow: 53px; }
 .score-panel.is-entry-score-surge[data-score-surge-tier="5"] { --entry-surge-glow: 60px; }
 .score-panel.is-entry-score-surge[data-score-surge-tier="6"] { --entry-surge-glow: 67px; }
-
-.score-panel.is-entry-score-surge-anchored .hud-label {
-  color: #fff1a0;
-  font-size: clamp(.7rem, 3vw, 1.06rem);
-}
-
-.score-panel.is-entry-score-surge-anchored strong {
-  color: #fffbd7;
-  max-width: 96%;
-  overflow: hidden;
-  font-size: clamp(1.7rem, 9.4vw, 5rem);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  line-height: .84;
-  text-shadow: 3px 3px 0 #704000, 0 0 20px #fff3a4, 0 0 48px rgba(255, 176, 35, .9);
-}
 
 .score-panel.is-crunch-bank strong,
 .cutin-bank-counter strong {
@@ -10566,114 +10534,7 @@ html[data-card-skin="rainbow"] .cutin-card {
 }
 
 .is-bank-number-rolling {
-  animation: exactBankRoll 100ms steps(2, end) infinite alternate;
-}
-
-.entry-score-surge-backdrop {
-  position: fixed;
-  z-index: 87;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: auto;
-  touch-action: manipulation;
-  opacity: 0;
-  background:
-    radial-gradient(circle at 50% var(--entry-surge-origin-y, 90px), rgba(255, 194, 54, .22), transparent 34%),
-    rgba(1, 5, 12, .74);
-  transition: opacity 130ms steps(4, end);
-}
-
-.entry-score-surge-backdrop::before {
-  content: "";
-  position: absolute;
-  inset: -45%;
-  background: repeating-conic-gradient(
-    from 0deg at 50% 50%,
-    transparent 0 12deg,
-    rgba(255, 221, 111, .18) 13deg 15deg,
-    transparent 16deg 31deg
-  );
-  animation: majorScoreLightSpin 3.2s steps(40, end) infinite;
-}
-
-.entry-score-surge-backdrop.is-active { opacity: 1; }
-.entry-score-surge-backdrop.is-leaving { opacity: 0; }
-.entry-score-surge-backdrop.is-skipping { cursor: progress; }
-
-.entry-score-surge-callout {
-  position: absolute;
-  z-index: 1;
-  left: 50%;
-  top: min(calc(50% + clamp(105px, 17dvh, 160px)), calc(100% - 128px - var(--safe-bottom)));
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-  width: min(92vw, 620px);
-  transform: translate3d(-50%, 0, 0);
-  color: #fff5bb;
-  font-family: var(--font-pixel);
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.entry-score-surge-callout strong {
-  max-width: 96vw;
-  overflow: hidden;
-  font-size: clamp(1.6rem, 8.6vw, 4.5rem);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  line-height: .86;
-  text-shadow: 4px 4px 0 #683900, 0 0 18px #fff1a0, 0 0 38px #ff9b27;
-}
-
-.entry-score-surge-callout span {
-  color: #ffd65c;
-  font-size: clamp(.68rem, 3.2vw, 1.18rem);
-  text-shadow: 2px 2px 0 #4c2700, 0 0 12px rgba(255, 197, 61, .8);
-}
-
-.entry-score-surge-skip {
-  position: absolute;
-  z-index: 3;
-  right: max(18px, calc(var(--safe-right) + 12px));
-  bottom: max(20px, calc(var(--safe-bottom) + 14px));
-  color: #fff0a0;
-  font-family: var(--font-pixel);
-  font-size: clamp(.58rem, 2.8vw, .9rem);
-  line-height: 1;
-  text-transform: uppercase;
-  text-shadow: 2px 2px 0 #422700, 0 0 12px rgba(255, 205, 65, .72);
-  pointer-events: none;
-  animation: surgeSkipPulse 1s steps(2, end) infinite;
-}
-
-.entry-score-surge-milestone {
-  position: fixed;
-  z-index: 100;
-  color: #fff4a4;
-  font-family: var(--font-pixel);
-  font-size: clamp(.78rem, 4.2vw, 1.48rem);
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-  line-height: 1;
-  text-shadow: 2px 2px 0 #5e3200, 0 0 13px #ffc53d;
-  pointer-events: none;
-  white-space: nowrap;
-}
-
-.entry-score-surge-milestone span {
-  color: #7ee8ff;
-  font-size: .48em;
-  text-shadow: 2px 2px 0 #07334c, 0 0 10px rgba(87, 220, 255, .74);
-}
-
-.entry-score-surge-milestone[data-tier="4"],
-.entry-score-surge-milestone[data-tier="5"],
-.entry-score-surge-milestone[data-tier="6"] {
-  color: white;
-  font-size: clamp(.9rem, 5vw, 1.8rem);
-  text-shadow: 3px 3px 0 #7b3200, 0 0 18px #fff29a, 0 0 30px #ff7a1a;
+  animation: exactBankRoll 360ms ease-in-out infinite alternate;
 }
 
 .crunch-coin-reward-toast {
@@ -10788,41 +10649,21 @@ html[data-card-skin="rainbow"] .cutin-card {
   animation: collectibleCoinBreak 250ms steps(5, end) both;
 }
 
-body.is-entry-score-surge-active .crunch-cutscene-overlay .cutin-stage {
-  opacity: .2;
-  filter: brightness(.45);
-  transition: opacity 120ms steps(3, end), filter 120ms steps(3, end);
-}
-
-@media (max-height: 760px) {
-  .entry-score-surge-callout {
-    top: min(calc(50% + 112px), calc(100% - 94px - var(--safe-bottom)));
-  }
-}
-
-.reduce-motion .score-panel.is-hud-bank-floating.is-entry-score-surge,
-.reduce-motion .entry-score-surge-backdrop,
-.reduce-motion .entry-score-surge-backdrop::before {
+.reduce-motion .score-panel.is-hud-bank-floating.is-entry-score-surge {
   transition-duration: .01ms !important;
   animation-duration: .01ms !important;
 }
 
 .reduce-motion .crunch-collectible-coin,
 .reduce-motion .crunch-coin-reward-toast,
-.reduce-motion .is-bank-number-rolling,
-.reduce-motion .entry-score-surge-skip {
+.reduce-motion .is-bank-number-rolling {
   animation-duration: .01ms !important;
   animation-iteration-count: 1 !important;
 }
 
 @keyframes exactBankRoll {
-  from { filter: brightness(1); transform: translateY(0) scale(1); }
-  to { filter: brightness(1.24); transform: translateY(-1px) scale(1.018); }
-}
-
-@keyframes surgeSkipPulse {
-  from { opacity: .62; transform: scale(1); }
-  to { opacity: 1; transform: scale(1.035); }
+  from { filter: brightness(1); }
+  to { filter: brightness(1.22) drop-shadow(0 0 8px rgba(255, 213, 75, .42)); }
 }
 
 @keyframes coinRewardToastHold {

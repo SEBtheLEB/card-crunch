@@ -690,30 +690,34 @@ if (!fullHandPreludeSource.includes("playInteractiveCardCrunch")
   || !selectionResolveSource.includes("onFullHandResolved")) {
   throw new Error("Full Hand must highlight, hand off the live cards, complete three hits, and vacuum into the bank");
 }
+const smoothCoinRewardSource = cutsceneSource.slice(
+  cutsceneSource.indexOf("async function playCrunchCoinReward"),
+  cutsceneSource.indexOf("function spawnCollectibleCoinBreak")
+);
 if (!cutsceneSource.includes("createCrunchScoreSurge")
   || !cutsceneSource.includes("playScoreSurgeMilestone")
   || !cutsceneSource.includes("queueMilestoneBeat")
   || !cutsceneSource.includes("spawnScoreMilestoneCoinSpill")
-  || !cutsceneSource.includes("spawnCrunchCoinReward")
   || !cutsceneSource.includes("createRollingBankDisplay")
   || !cutsceneSource.includes("formatRollingBankNumber")
-  || !cutsceneSource.includes("spawnCollectibleCoinBreak")
-  || !cutsceneSource.includes("crunch-collectible-coin")
   || !cutsceneSource.includes("coinRewards.award")
   || !scoreSurgeSource.includes("buildScoreSurgeMilestones")
   || !cutsceneSource.includes("BANK_ROLL_MILESTONE_PAUSE_MS")
   || !cutsceneSource.includes("BANK_MILESTONE_PARTICLE_CAP")
-  || !css.includes("is-entry-score-surge-anchored")
+  || !cutsceneSource.includes('kind: "card-bit"')
+  || !cutsceneSource.includes('is-auto-awarded')
+  || smoothCoinRewardSource.includes("spawnCrunchCoinReward")
+  || cutsceneSource.includes('backdrop.className = "entry-score-surge-backdrop"')
+  || cutsceneSource.includes('document.body.classList.add("is-entry-score-surge-active")')
+  || css.includes(".entry-score-surge-backdrop")
+  || css.includes("body.is-entry-score-surge-active")
+  || css.includes("is-entry-score-surge-anchored")
   || css.includes("is-entry-score-surge-centered")
   || css.includes(".score-panel.is-hud-bank-floating.is-major-score-ramp-active {\n  top: 50%")
-  || !css.includes("entry-score-surge-skip")
   || !css.includes("crunch-coin-reward-toast")
-  || !css.includes("crunch-coin-collection")
-  || !css.includes("crunch-collectible-coin")
   || !audioSource.includes("score_ramp_tick")
-  || !audioSource.includes("coin_milestone")
-  || !audioSource.includes("coin_collect")) {
-  throw new Error("Exact 10K Crunch Bank rolls, anchored surges, or milestone coin showers are missing");
+  || !audioSource.includes("coin_milestone")) {
+  throw new Error("Exact 10K bank rolls must stay anchored, uninterrupted, and shower coins with card crumbs");
 }
 if (!cutsceneSource.includes("forceSettleAfter: 620")
   || !cutsceneSource.includes("vacuumRampDuration: 1120")

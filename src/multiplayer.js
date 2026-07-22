@@ -5,7 +5,7 @@ import { playGameSfx } from "./audio.js?v=164";
 import { createCardElement } from "./ui.js?v=169";
 import { applyPreviewCardSkinPresentation } from "./cardSkins.js?v=169";
 import { animateCardDealIn } from "./cardGestures.js?v=175";
-import { createCardCrunchInteraction } from "./crunchCutscene.js?v=181";
+import { createCardCrunchInteraction } from "./crunchCutscene.js?v=186";
 import { CardCrunchRealtimeTransport } from "./realtimeMultiplayer.js?v=177";
 
 const SESSION_STORAGE_KEY = "cardCrunchMatchmakingSessionV1";

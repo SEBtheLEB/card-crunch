@@ -1,4 +1,4 @@
-import { createGame } from "./gameState.js?v=183";
+import { createGame } from "./gameState.js?v=186";
 import { createUI } from "./ui.js?v=185";
 import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=164";
 import { adManager } from "./ads.js?v=164";
