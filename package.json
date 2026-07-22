@@ -6,6 +6,11 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build-web.mjs",
+    "cloudflare:dev": "wrangler dev --config cloudflare/wrangler.jsonc",
+    "cloudflare:deploy": "wrangler deploy --config cloudflare/wrangler.jsonc",
+    "cloudflare:secret": "wrangler secret put SESSION_SECRET --config cloudflare/wrangler.jsonc",
+    "cloudflare:test-live": "node scripts/verify-cloudflare-realtime.mjs",
+    "cloudflare:whoami": "wrangler whoami",
     "android:sync": "npm run build && cap sync android",
     "android:debug": "npm run android:sync && cd android && gradlew.bat assembleDebug",
     "android:bundle": "npm run android:sync && cd android && gradlew.bat bundleRelease",
@@ -18,6 +23,7 @@
     "@capacitor/haptics": "8.0.2"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.4.2"
+    "@capacitor/cli": "8.4.2",
+    "wrangler": "4.113.0"
   }
 }

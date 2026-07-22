@@ -5,6 +5,7 @@ import { createCardElement } from "./ui.js?v=169";
 import { applyPreviewCardSkinPresentation } from "./cardSkins.js?v=169";
 import { animateCardDealIn } from "./cardGestures.js?v=175";
 import { createCardCrunchInteraction } from "./crunchCutscene.js?v=175";
+import { CardCrunchRealtimeTransport } from "./realtimeMultiplayer.js?v=177";
 
 const SESSION_STORAGE_KEY = "cardCrunchMatchmakingSessionV1";
 const DEFAULT_API_ORIGIN = "https://card-crunch.vercel.app";
@@ -65,6 +66,11 @@ class MultiplayerController {
     this.serverOffsetMs = 0;
     this.resultPending = null;
     this.scoreRequest = Promise.resolve();
+    this.transportMode = "";
+    this.realtime = new CardCrunchRealtimeTransport({
+      onMessage: (payload) => this.handleRealtimeMessage(payload),
+      onConnectionState: (status) => this.handleRealtimeConnectionState(status)
+    });
   }
 
   async search() {
@@ -73,12 +79,28 @@ class MultiplayerController {
     this.match = null;
     this.activeMatchId = "";
     this.resultPending = null;
+    this.transportMode = "";
     this.searchStartedAt = Date.now();
     this.showWaitingScreen();
     this.dealWaitingCard();
     this.updateElapsed(generation);
 
+    if (this.realtime.configured) {
+      try {
+        this.transportMode = "realtime";
+        await this.realtime.start(this.playerIdentity());
+        if (generation !== this.generation) this.realtime.close();
+        return;
+      } catch (error) {
+        this.realtime.close();
+        this.transportMode = "";
+        if (generation !== this.generation) return;
+        this.elements.status.textContent = "Connecting through backup network...";
+      }
+    }
+
     try {
+      this.transportMode = "http";
       const response = await this.requestWithSession("join", this.playerIdentity());
       if (generation !== this.generation) return;
       await this.handleServerResponse(response, generation);
@@ -93,7 +115,8 @@ class MultiplayerController {
     const generation = ++this.generation;
     this.clearTimers();
     this.elements.cancelButton.disabled = true;
-    await this.send("leave").catch(() => {});
+    if (this.transportMode === "realtime") this.realtime.leave();
+    else await this.send("leave").catch(() => {});
     if (generation !== this.generation) return;
     this.hideWaitingScreen();
     if (this.game.state?.gameMode === "onlineDuel") this.game.returnFromMultiplayer?.();
@@ -109,12 +132,17 @@ class MultiplayerController {
   returnHome() {
     ++this.generation;
     this.clearTimers();
+    this.realtime.close();
     this.elements.resultScreen?.classList.remove("is-visible");
     this.elements.resultScreen?.setAttribute("aria-hidden", "true");
     this.game.returnFromMultiplayer?.();
   }
 
   leaveSilently() {
+    if (this.transportMode === "realtime") {
+      this.realtime.leave();
+      return;
+    }
     if (!this.session) return;
     const endpoint = getMatchmakingEndpoint();
     const body = JSON.stringify({ action: "leave", ...this.session });
@@ -216,6 +244,20 @@ class MultiplayerController {
     if (response.match) await this.handleMatch(response.match, generation);
   }
 
+  async handleRealtimeMessage(payload) {
+    const generation = this.generation;
+    if (!payload || this.transportMode !== "realtime") return;
+    this.updateClockOffset(payload.serverNow);
+    if (payload.type === "waiting") return;
+    if (payload.match) await this.handleMatch(payload.match, generation);
+  }
+
+  handleRealtimeConnectionState(status) {
+    if (this.transportMode !== "realtime") return;
+    if (status === "reconnecting") this.elements.status.textContent = "Reconnecting...";
+    if (status === "failed") this.elements.status.textContent = "Connection lost. Return home and try again.";
+  }
+
   async handleMatch(match, generation) {
     this.match = match;
     if (match.status === "complete") {
@@ -248,7 +290,7 @@ class MultiplayerController {
     } else {
       this.game.updateMultiplayerOpponent?.(match.opponent);
     }
-    this.schedulePoll(generation);
+    if (this.transportMode !== "realtime") this.schedulePoll(generation);
   }
 
   schedulePoll(generation) {
@@ -296,6 +338,10 @@ class MultiplayerController {
 
   reportScore(score, { immediate = false } = {}) {
     const safeScore = Math.max(0, Math.floor(Number(score) || 0));
+    if (this.transportMode === "realtime") {
+      this.realtime.sendScore(safeScore);
+      return immediate ? Promise.resolve() : undefined;
+    }
     this.scoreRequest = this.scoreRequest
       .catch(() => {})
       .then(() => this.send("score", { score: safeScore }))
@@ -317,6 +363,11 @@ class MultiplayerController {
   async forfeit() {
     ++this.generation;
     this.clearTimers();
+    if (this.transportMode === "realtime") {
+      this.realtime.leave();
+      this.returnHome();
+      return;
+    }
     const response = await this.send("leave").catch(() => null);
     if (response?.match) this.showResult(response.match);
     else this.returnHome();
@@ -325,6 +376,7 @@ class MultiplayerController {
   showResult(match) {
     if (!match || this.elements.resultScreen.classList.contains("is-visible")) return;
     this.clearTimers();
+    this.realtime.close();
     this.hideWaitingScreen();
     const won = match.winner === "you";
     const draw = match.winner === "draw";

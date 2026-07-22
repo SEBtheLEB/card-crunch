@@ -22,10 +22,15 @@ const required = [
   "src/storeProducts.js",
   "src/storeState.js",
   "src/multiplayer.js",
+  "src/realtimeMultiplayer.js",
   "src/multiplayerMode.js",
   "api/matchmaking.js",
   "api/_matchmakingCore.js",
   "api/_redis.js",
+  "cloudflare/wrangler.jsonc",
+  "cloudflare/src/index.js",
+  "cloudflare/src/protocol.js",
+  "cloudflare/src/session.js",
   "src/potInfo.js",
   "src/tutorial.js",
   "src/economy.js",
@@ -132,6 +137,25 @@ const laterJoin = await matchmakingModule.handleMatchmakingAction(fairnessStore,
 }, fairnessNow + 19_000);
 if (laterJoin.state !== "matched" || laterJoin.match.opponent.displayName !== "Patient Player") {
   throw new Error("Active waiting players must retain queue priority after heartbeat polling");
+}
+
+const realtimeProtocol = await import(`../cloudflare/src/protocol.js?verify=${Date.now()}`);
+const realtimeNow = matchNow + 200_000;
+const realtimeMatch = realtimeProtocol.createMatchRecord({
+  id: "11111111-1111-4111-8111-111111111111",
+  playerA: { id: "22222222-2222-4222-8222-222222222222", displayName: "Socket One", skinId: "classic" },
+  playerB: { id: "33333333-3333-4333-8333-333333333333", displayName: "Socket Two", skinId: "pink" },
+  now: realtimeNow
+});
+realtimeMatch.scoreA = 4200;
+realtimeMatch.scoreB = 3900;
+realtimeProtocol.settleMatch(realtimeMatch, realtimeMatch.endsAt + 1);
+const realtimeView = realtimeProtocol.buildMatchView(realtimeMatch, realtimeMatch.playerA.id, realtimeMatch.endsAt + 1);
+if (realtimeView?.winner !== "you"
+  || realtimeView.you.score !== 4200
+  || realtimeView.opponent.score !== 3900
+  || realtimeMatch.endsAt - realtimeMatch.startsAt !== 60_000) {
+  throw new Error("Cloudflare realtime match protocol did not settle a one-minute duel correctly");
 }
 const progressionModule = await import(`../src/progression.js?verify=${Date.now()}`);
 const challengePots = progressionModule.createDefaultPots();
@@ -318,7 +342,7 @@ if (!cardSkinModule.getCardSkinAssetUrl({ rank: "A", suit: "hearts" }, "pink_arc
   throw new Error("Pink Arcade rank and suit asset mapping is incorrect");
 }
 
-const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollectionSource, cardCollectionUiSource, cardGestureSource, dealTimingSource, gameStateSource, uiSource, storeSource, multiplayerSource, matchmakingSource, css, collectionCss, storeCss, multiplayerCss] = await Promise.all([
+const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollectionSource, cardCollectionUiSource, cardGestureSource, dealTimingSource, gameStateSource, uiSource, storeSource, multiplayerSource, realtimeSource, matchmakingSource, cloudflareSource, css, collectionCss, storeCss, multiplayerCss] = await Promise.all([
   readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
   readFile(resolve(root, "src/animations.js"), "utf8"),
   readFile(resolve(root, "src/themes.js"), "utf8"),
@@ -331,7 +355,9 @@ const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollec
   readFile(resolve(root, "src/ui.js"), "utf8"),
   readFile(resolve(root, "src/store.js"), "utf8"),
   readFile(resolve(root, "src/multiplayer.js"), "utf8"),
+  readFile(resolve(root, "src/realtimeMultiplayer.js"), "utf8"),
   readFile(resolve(root, "api/_matchmakingCore.js"), "utf8"),
+  readFile(resolve(root, "cloudflare/src/index.js"), "utf8"),
   readFile(resolve(root, "styles/main.css"), "utf8"),
   readFile(resolve(root, "styles/collection.css"), "utf8"),
   readFile(resolve(root, "styles/store.css"), "utf8"),
@@ -351,6 +377,12 @@ if (!mainSource.includes("initializeMultiplayer")
   || !multiplayerSource.includes('elements.screen?.addEventListener("pointerdown"')
   || !multiplayerSource.includes("createCardCrunchInteraction")
   || !multiplayerSource.includes("animateCardDealIn")
+  || !multiplayerSource.includes("CardCrunchRealtimeTransport")
+  || !realtimeSource.includes("new WebSocket")
+  || !realtimeSource.includes("reconnectRoom")
+  || !cloudflareSource.includes("export class Matchmaker")
+  || !cloudflareSource.includes("export class MatchRoom")
+  || !cloudflareSource.includes("acceptWebSocket")
   || !cutsceneSource.includes("export function createCardCrunchInteraction")
   || !matchmakingSource.includes("WAITING_TTL_MS")
   || !matchmakingSource.includes("settleMatch")
