@@ -1,5 +1,10 @@
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import {
+  CARD_CRUNCH_STL_BASE_URL,
+  normalizeSTLPlatformBaseUrl,
+  validateSTLPlatformConfig
+} from "../src/stlPlatformConfig.js";
 
 const root = resolve(import.meta.dirname, "..");
 const output = resolve(root, "dist");
@@ -19,20 +24,17 @@ for (const entry of entries) {
 }
 
 const platformConfig = Object.freeze({
-  baseUrl: String(process.env.VITE_STL_PLATFORM_URL || "").trim(),
+  baseUrl: normalizeSTLPlatformBaseUrl(process.env.VITE_STL_PLATFORM_URL || CARD_CRUNCH_STL_BASE_URL),
   clientId: String(process.env.VITE_STL_CLIENT_ID || "card-crunch-mobile").trim(),
   gameId: String(process.env.VITE_STL_GAME_ID || "c32010e4-b054-4b59-a636-aa2c5a991d64").trim(),
   developmentRedirectUri: String(process.env.VITE_STL_REDIRECT_URI_DEV || "cardcrunch-dev://auth/callback").trim(),
   productionRedirectUri: String(process.env.VITE_STL_REDIRECT_URI_PROD || "cardcrunch://auth/callback").trim()
 });
+validateSTLPlatformConfig(platformConfig, { hostname: "card-crunch.vercel.app" });
 await writeFile(
   resolve(output, "platform-config.js"),
   `globalThis.__CARD_CRUNCH_STL_CONFIG__ = Object.freeze(${JSON.stringify(platformConfig)});\n`,
   "utf8"
 );
-
-if (!platformConfig.baseUrl || !platformConfig.clientId || !platformConfig.gameId) {
-  console.warn("Card Crunch STL Platform build is missing one or more VITE_STL_PLATFORM_URL, VITE_STL_CLIENT_ID, or VITE_STL_GAME_ID values.");
-}
 
 console.log(`Built Card Crunch web assets in ${output}`);

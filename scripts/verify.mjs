@@ -334,7 +334,7 @@ const stlConfigModule = await import(`../src/stlPlatformConfig.js?verify=${Date.
 const stlClientModule = await import(`../src/stlPlatformClient.js?verify=${Date.now()}`);
 const stlCloudModule = await import(`../src/stlCloudSave.js?verify=${Date.now()}`);
 const stlConfig = stlConfigModule.readSTLPlatformConfig({
-  baseUrl: "https://accounts.stlproductions.io",
+  baseUrl: "https://accounts.stlproductionz.io",
   clientId: "card-crunch-mobile",
   gameId: "c32010e4-b054-4b59-a636-aa2c5a991d64",
   developmentRedirectUri: "cardcrunch-dev://auth/callback",
@@ -350,6 +350,15 @@ if (stlDiagnostics.clientId !== "card-crunch-mobile"
   || !Object.values(stlDiagnostics.variables).every(Boolean)) {
   throw new Error("Card Crunch STL Platform diagnostics are incomplete");
 }
+if (stlConfigModule.getRuntimeRedirectUri(
+  stlConfig,
+  { hostname: "localhost" },
+  { isNativePlatform: () => true, getPlatform: () => "android" }
+) !== "cardcrunch://auth/callback"
+  || stlConfigModule.getRuntimeRedirectUri(stlConfig, { hostname: "localhost" }, null)
+    !== "cardcrunch-dev://auth/callback") {
+  throw new Error("Installed Card Crunch builds must use the production callback even inside Capacitor localhost");
+}
 let missingSTLConfigRejected = false;
 try { stlConfigModule.validateSTLPlatformConfig(stlConfigModule.readSTLPlatformConfig({ baseUrl: "" })); } catch (error) {
   missingSTLConfigRejected = error?.name === "STLPlatformConfigurationError";
@@ -357,8 +366,192 @@ try { stlConfigModule.validateSTLPlatformConfig(stlConfigModule.readSTLPlatformC
 if (!missingSTLConfigRejected) throw new Error("Missing STL Platform variables must fail validation");
 if (stlConfigModule.isAllowedCardCrunchCallback("bitcrushcore://auth/callback")
   || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback")
-  || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch-dev://auth/callback")) {
+  || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch-dev://auth/callback")
+  || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback?code=test&state=test")
+  || stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback-evil?code=test")
+  || stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback#code=leaked")) {
   throw new Error("Card Crunch callback allowlist is not isolated");
+}
+if (stlConfigModule.normalizeSTLPlatformBaseUrl("https://accounts.stlproductions.io")
+    !== "https://accounts.stlproductionz.io") {
+  throw new Error("The legacy voice-mode spelling must resolve to the canonical STL Productionz account host");
+}
+let foreignSTLHostRejected = false;
+try {
+  stlConfigModule.validateSTLPlatformConfig(
+    stlConfigModule.readSTLPlatformConfig({
+      ...stlConfig,
+      baseUrl: "https://accounts.another-product.example"
+    }),
+    { hostname: "card-crunch.vercel.app" }
+  );
+} catch (error) {
+  foreignSTLHostRejected = error?.name === "STLPlatformConfigurationError";
+}
+if (!foreignSTLHostRejected) throw new Error("Card Crunch must reject non-STL Platform account hosts");
+
+const createMemoryStorage = () => {
+  const values = new Map();
+  return {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, String(value)),
+    removeItem: (key) => values.delete(key)
+  };
+};
+Object.defineProperty(globalThis, "sessionStorage", {
+  value: createMemoryStorage(),
+  configurable: true
+});
+Object.defineProperty(globalThis, "localStorage", {
+  value: createMemoryStorage(),
+  configurable: true
+});
+Object.defineProperty(globalThis, "navigator", {
+  value: { onLine: true, userAgent: "Card Crunch verifier" },
+  configurable: true
+});
+Object.defineProperty(globalThis, "window", {
+  value: globalThis,
+  configurable: true
+});
+
+const authRequests = [];
+const originalFetch = globalThis.fetch;
+const durableDeviceId = "78711b16-dad0-4f34-9870-30765ee988a6";
+globalThis.fetch = async (url, init = {}) => {
+  authRequests.push({
+    url: String(url),
+    body: init.body ? JSON.parse(init.body) : undefined
+  });
+  if (String(url).endsWith("/api/v1/auth/token")) {
+    return new Response(JSON.stringify({
+      accessToken: "card-crunch-access-token",
+      refreshToken: "card-crunch-refresh-token",
+      tokenType: "Bearer",
+      expiresAt: "2099-01-01T00:00:00.000Z",
+      refreshExpiresAt: "2099-02-01T00:00:00.000Z",
+      scopes: stlClientModule.defaultScopes(),
+      sessionId: "4d4afc0e-2f6a-4ae0-94e2-619511539921",
+      deviceId: durableDeviceId,
+      userId: "1c5cedc2-156c-46eb-b01b-ea1e9b6fc8c1"
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  }
+  return new Response(JSON.stringify({ deviceId: durableDeviceId }), {
+    status: 200,
+    headers: { "content-type": "application/json" }
+  });
+};
+
+const authClient = new stlClientModule.CardCrunchSTLClient(stlConfig);
+const rawInstallDeviceId = "2d2d79b7-3c4c-4ef9-a03f-69f9bf53dc48";
+const pendingSignIn = await authClient.beginSignIn();
+const authorizationUrl = new URL(pendingSignIn.authorizationUrl);
+if (authorizationUrl.origin !== "https://accounts.stlproductionz.io"
+  || authorizationUrl.searchParams.has("prompt")
+  || authorizationUrl.searchParams.get("code_challenge_method") !== "S256"
+  || authorizationUrl.searchParams.get("redirect_uri") !== "cardcrunch://auth/callback") {
+  throw new Error("Card Crunch sign-in must use canonical STL PKCE without unsupported OAuth parameters");
+}
+let mismatchedRuntimeCallbackRejected = false;
+try {
+  await authClient.completeSignIn(
+    `cardcrunch-dev://auth/callback?code=dev-code&state=${pendingSignIn.state}`,
+    { device: { deviceId: rawInstallDeviceId } }
+  );
+} catch (error) {
+  mismatchedRuntimeCallbackRejected = error?.code === "INVALID_REDIRECT_URI";
+}
+if (!mismatchedRuntimeCallbackRejected) {
+  throw new Error("A production Card Crunch auth transaction must reject the development callback");
+}
+const session = await authClient.completeSignIn(
+  `cardcrunch://auth/callback?code=production-code&state=${pendingSignIn.state}`,
+  { device: { deviceId: rawInstallDeviceId } }
+);
+if (session.deviceId !== durableDeviceId
+  || authRequests[0]?.body?.device?.deviceId !== rawInstallDeviceId) {
+  throw new Error("Card Crunch must exchange the raw install identifier for a durable STL device");
+}
+await authClient.registerDevice({
+  deviceId: rawInstallDeviceId,
+  friendlyName: "Verifier",
+  platform: "android",
+  gameId: stlConfig.gameId
+});
+if (authRequests[1]?.body?.deviceId !== durableDeviceId) {
+  throw new Error("Authenticated Card Crunch requests must use the durable STL device ID");
+}
+globalThis.navigator.onLine = false;
+let offlineMutationQueued = false;
+try {
+  await authClient.startPlaySession({
+    gameId: stlConfig.gameId,
+    deviceId: rawInstallDeviceId,
+    platform: "android",
+    gameBuild: "verify",
+    startedAt: "2026-07-23T00:00:00.000Z"
+  }, { idempotencyKey: "verify-offline-session", queueWhenOffline: true });
+} catch (error) {
+  offlineMutationQueued = error?.code === "OFFLINE_QUEUED";
+}
+const queuedOperations = JSON.parse(globalThis.localStorage.getItem("cardCrunchStlOfflineQueueV1") || "[]");
+if (!offlineMutationQueued
+  || queuedOperations.length !== 1
+  || queuedOperations[0]?.userId !== session.userId
+  || queuedOperations[0]?.clientId !== "card-crunch-mobile"
+  || queuedOperations[0]?.body?.deviceId !== durableDeviceId) {
+  throw new Error("Offline STL operations must stay bound to the authenticated player and durable device");
+}
+globalThis.navigator.onLine = true;
+const flushedOperations = await authClient.flushOfflineQueue();
+if (flushedOperations.completed !== 1
+  || JSON.parse(globalThis.localStorage.getItem("cardCrunchStlOfflineQueueV1") || "[]").length !== 0) {
+  throw new Error("The authenticated player must be able to flush only their own STL operations");
+}
+const otherPlayerId = "91ff8a0e-c8d2-4b86-bc74-67840028f1ef";
+globalThis.localStorage.setItem("cardCrunchStlOfflineQueueV1", JSON.stringify([
+  {
+    path: "/devices",
+    method: "POST",
+    body: { deviceId: durableDeviceId },
+    idempotencyKey: "other-player-operation",
+    userId: otherPlayerId,
+    clientId: "card-crunch-mobile",
+    createdAt: "2026-07-23T00:00:00.000Z"
+  },
+  {
+    path: "/devices",
+    method: "POST",
+    body: { deviceId: rawInstallDeviceId },
+    idempotencyKey: "legacy-unscoped-operation",
+    createdAt: "2026-07-23T00:00:00.000Z"
+  }
+]));
+const requestCountBeforeIsolationCheck = authRequests.length;
+const isolatedFlush = await authClient.flushOfflineQueue();
+const isolatedQueue = JSON.parse(globalThis.localStorage.getItem("cardCrunchStlOfflineQueueV1") || "[]");
+if (isolatedFlush.completed !== 0
+  || isolatedQueue.length !== 1
+  || isolatedQueue[0]?.userId !== otherPlayerId
+  || authRequests.length !== requestCountBeforeIsolationCheck) {
+  throw new Error("Card Crunch must never flush another STL player's or an unscoped legacy operation");
+}
+globalThis.localStorage.removeItem("cardCrunchStlOfflineQueueV1");
+globalThis.fetch = originalFetch;
+
+const androidManifest = await readFile(resolve(root, "android/app/src/main/AndroidManifest.xml"), "utf8");
+const stlIntegrationSource = await readFile(resolve(root, "src/stlPlatform.js"), "utf8");
+if (!androidManifest.includes('android:scheme="cardcrunch"')
+  || !androidManifest.includes('android:scheme="cardcrunch-dev"')
+  || (androidManifest.match(/android:path="\/callback"/g) ?? []).length !== 2
+  || androidManifest.includes('android:pathPrefix="/callback"')) {
+  throw new Error("Android must route both exact registered Card Crunch STL callbacks");
+}
+if (!stlIntegrationSource.includes("this.installDeviceId = null")
+  || !stlIntegrationSource.includes("deviceId: this.installDeviceId || await getOrCreateDeviceId()")
+  || !stlIntegrationSource.includes("this.deviceId = session.deviceId")
+  || !stlIntegrationSource.includes("this.deviceId = null")) {
+  throw new Error("Card Crunch must keep the install identifier separate from the durable STL device ID");
 }
 const saveUpload = await stlCloudModule.createCardCrunchSaveUpload({
   state: { pots: [{ id: 1, progress: 500, target: 1000, complete: false }], bestScore: 900, bestRunStreak: 4, runStartedAt: Date.now() },
@@ -654,7 +847,7 @@ if (!sharedHandoffSource.includes("await waitForPaint()")
 if (sharedHandoffSource.includes('classList.remove("cutin-shared-source-hidden")')
   || !sharedHandoffSource.includes("target.remove()")
   || !selectionResolveSource.includes('emphasizedCards.forEach')
-  || !css.includes(".cutin-shared-source-hidden {\n  opacity: 0 !important;")) {
+  || !/\.cutin-shared-source-hidden \{\r?\n  opacity: 0 !important;/.test(css)) {
   throw new Error("Consumed hand and table cards must stay absent behind the Crunch cutscene");
 }
 const animationsCutsceneVersion = animationsSource.match(/from "\.\/crunchCutscene\.js\?v=(\d+)"/)?.[1];
@@ -768,7 +961,7 @@ if (!cutsceneSource.includes("createCrunchScoreSurge")
   || css.includes("body.is-entry-score-surge-active")
   || css.includes("is-entry-score-surge-anchored")
   || css.includes("is-entry-score-surge-centered")
-  || css.includes(".score-panel.is-hud-bank-floating.is-major-score-ramp-active {\n  top: 50%")
+  || /\.score-panel\.is-hud-bank-floating\.is-major-score-ramp-active \{\r?\n  top: 50%/.test(css)
   || !css.includes("crunch-coin-reward-toast")
   || !audioSource.includes("score_ramp_tick")
   || !audioSource.includes("coin_milestone")) {
@@ -959,4 +1152,4 @@ if (!fullscreenSource.includes("requestFullscreen") || !fullscreenSource.include
   throw new Error("Fullscreen API hooks are missing");
 }
 
-console.log(`Verified ${results.length} scoring cases, ${arcadeResults.length} Endless Arcade and power-card cases, unlimited play, economy rewards, arcade run summary, round message cleanup, selectable themes and card skins, fullscreen controls, release UI hooks, and card-shard VFX.`);
+console.log(`Verified ${results.length} scoring cases, ${arcadeResults.length} Endless Arcade and power-card cases, STL PKCE/device/account isolation, unlimited play, economy rewards, arcade run summary, round message cleanup, selectable themes and card skins, fullscreen controls, release UI hooks, and card-shard VFX.`);

@@ -29,7 +29,8 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="cardcrunch" android:host="auth" android:pathPrefix="/callback" />
+                <data android:scheme="cardcrunch" android:host="auth" android:path="/callback" />
+                <data android:scheme="cardcrunch-dev" android:host="auth" android:path="/callback" />
             </intent-filter>
         </activity>
 

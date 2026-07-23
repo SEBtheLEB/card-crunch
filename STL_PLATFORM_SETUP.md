@@ -2,6 +2,8 @@
 
 Card Crunch is a separate product and repository. It integrates with the standalone STL Platform through a public OAuth client and `@stlproductionz/account-sdk`-compatible browser/mobile adapter.
 
+The canonical production domain is always `stlproductionz.io`; the account authority is `https://accounts.stlproductionz.io`.
+
 ## Application registration
 
 - Game title: `Card Crunch`
@@ -20,7 +22,7 @@ Card Crunch is a separate product and repository. It integrates with the standal
 Create these locally and in the Card Crunch Vercel project:
 
 ```env
-VITE_STL_PLATFORM_URL=https://accounts.stlproductions.io
+VITE_STL_PLATFORM_URL=https://accounts.stlproductionz.io
 VITE_STL_CLIENT_ID=card-crunch-mobile
 VITE_STL_GAME_ID=c32010e4-b054-4b59-a636-aa2c5a991d64
 VITE_STL_REDIRECT_URI_DEV=cardcrunch-dev://auth/callback
@@ -38,8 +40,10 @@ Never add STL Platform service-role keys, Google OAuth secrets, Supabase keys, o
    - exact redirect URI
    - S256 code challenge
    - permanent STL user ID
+   - durable STL device ID returned by the token exchange
+   - the Card Crunch `user_games` registration used by the STL Productionz profile
 4. Set Google Authorized JavaScript origins for the STL Platform account web app, for example:
-   - `https://accounts.stlproductions.io`
+   - `https://accounts.stlproductionz.io`
    - `http://localhost:3000`
 5. Set Google Authorized Redirect URIs to the platform Supabase callback:
    - `https://<STL_PLATFORM_PROJECT_REF>.supabase.co/auth/v1/callback`
@@ -48,6 +52,7 @@ Never add STL Platform service-role keys, Google OAuth secrets, Supabase keys, o
 
 ## Save, achievement, and playtime mapping
 
+- Profile/library registration: the platform atomically records Card Crunch for the player after a successful game-bound OAuth exchange. The game never writes profile tables directly.
 - Cloud save slot: `card-crunch-primary`
 - Save format: `card-crunch-save-v1`
 - Saved systems: pots, coins/economy, card collection, store purchases, shield token, theme, card skin, best score, best streak, total crunches

@@ -1,6 +1,6 @@
 import {
+  callbackMatchesRedirect,
   getRuntimeRedirectUri,
-  isAllowedCardCrunchCallback,
   readSTLPlatformConfig,
   validateSTLPlatformConfig
 } from "./stlPlatformConfig.js?v=189";
@@ -38,7 +38,7 @@ export class CardCrunchSTLClient {
     return this.sessionStore.security;
   }
 
-  async beginSignIn({ scopes = defaultScopes(), prompt } = {}) {
+  async beginSignIn({ scopes = defaultScopes() } = {}) {
     const verifier = createVerifier();
     const challenge = await sha256Base64Url(verifier);
     const state = randomBase64Url(32);
@@ -54,13 +54,17 @@ export class CardCrunchSTLClient {
     url.searchParams.set("code_challenge", challenge);
     url.searchParams.set("code_challenge_method", "S256");
     url.searchParams.set("scope", [...new Set(scopes)].join(" "));
-    if (prompt) url.searchParams.set("prompt", prompt);
     return { authorizationUrl: url.toString(), state, expiresAt };
   }
 
   async completeSignIn(callbackUrl, { device } = {}) {
-    const callback = new URL(callbackUrl);
-    if (!isAllowedCardCrunchCallback(`${callback.protocol}//${callback.hostname}${callback.pathname}`)) {
+    let callback;
+    try {
+      callback = new URL(callbackUrl);
+    } catch {
+      throw new STLClientError("The STL sign-in callback is invalid.", "INVALID_REQUEST");
+    }
+    if (!callbackMatchesRedirect(callbackUrl, this.redirectUri)) {
       throw new STLClientError("The callback does not belong to Card Crunch.", "INVALID_REDIRECT_URI");
     }
     const code = callback.searchParams.get("code");
@@ -95,6 +99,12 @@ export class CardCrunchSTLClient {
   async restoreSession() {
     const session = await this.sessionStore.load();
     if (!session) return null;
+    try {
+      validateSession(session);
+    } catch {
+      await this.sessionStore.clear();
+      return null;
+    }
     if (Date.parse(session.expiresAt) > Date.now() + 60_000) return session;
     if (!session.refreshToken || (session.refreshExpiresAt && Date.parse(session.refreshExpiresAt) <= Date.now())) {
       await this.sessionStore.clear();
@@ -195,7 +205,17 @@ export class CardCrunchSTLClient {
 
   async mutate(path, body, { queueWhenOffline = true, idempotencyKey = crypto.randomUUID(), method = "POST" } = {}) {
     if (!navigator.onLine && queueWhenOffline) {
-      await this.enqueue({ path, method, body, idempotencyKey, createdAt: new Date().toISOString() });
+      const session = await this.restoreSession();
+      if (!session) throw new STLClientError("Sign in to STL Platform first.", "SESSION_MISSING");
+      await this.enqueue({
+        path,
+        method,
+        body: bindAuthenticatedDevice(body, session.deviceId),
+        idempotencyKey,
+        userId: session.userId,
+        clientId: this.config.clientId,
+        createdAt: new Date().toISOString()
+      });
       throw new STLClientError("Queued while STL Platform is offline.", "OFFLINE_QUEUED");
     }
     return this.request(path, { method, body, idempotencyKey });
@@ -203,10 +223,17 @@ export class CardCrunchSTLClient {
 
   async flushOfflineQueue() {
     if (!navigator.onLine) return { completed: 0, remaining: await this.queueSize() };
+    const session = await this.restoreSession();
+    if (!session) return { completed: 0, remaining: await this.queueSize() };
     const queue = await this.queueStore.load();
     const remaining = [];
     let completed = 0;
     for (const item of queue) {
+      if (!isUuid(item?.userId) || item.clientId !== this.config.clientId) continue;
+      if (item.userId !== session.userId) {
+        remaining.push(item);
+        continue;
+      }
       try {
         await this.request(item.path, { method: item.method, body: item.body, idempotencyKey: item.idempotencyKey });
         completed += 1;
@@ -224,13 +251,18 @@ export class CardCrunchSTLClient {
 
   async enqueue(item) {
     const queue = await this.queueStore.load();
-    if (!queue.some((entry) => entry.idempotencyKey === item.idempotencyKey)) queue.push(item);
+    if (!queue.some((entry) => entry.userId === item.userId
+      && entry.clientId === item.clientId
+      && entry.idempotencyKey === item.idempotencyKey)) {
+      queue.push(item);
+    }
     await this.queueStore.save(queue.slice(-100));
   }
 
   async request(path, { method = "GET", body, authenticated = true, idempotencyKey, timeoutMs = 12_000 } = {}) {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+    let requestBody = body;
     const headers = {
       accept: "application/json",
       "x-stl-client-id": this.config.clientId
@@ -241,13 +273,14 @@ export class CardCrunchSTLClient {
       const session = await this.restoreSession();
       if (!session) throw new STLClientError("Sign in to STL Platform first.", "SESSION_MISSING");
       headers.authorization = `${session.tokenType || "Bearer"} ${session.accessToken}`;
+      requestBody = bindAuthenticatedDevice(requestBody, session.deviceId);
     }
     try {
       const response = await fetch(new URL(`/api/v1${path}`, this.config.baseUrl), {
         method,
         headers,
         signal: controller.signal,
-        ...(body === undefined ? {} : { body: JSON.stringify(body) })
+        ...(requestBody === undefined ? {} : { body: JSON.stringify(requestBody) })
       });
       const text = await response.text();
       const data = text ? JSON.parse(text) : undefined;
@@ -276,6 +309,13 @@ export async function getOrCreateDeviceId() {
 
 export function defaultScopes() {
   return ["openid", "profile", "games:read", "devices:manage", "saves:read", "saves:write", "achievements:read", "achievements:write", "playtime:write"];
+}
+
+export function bindAuthenticatedDevice(value, deviceId) {
+  if (!value || typeof value !== "object" || Array.isArray(value) || !Object.hasOwn(value, "deviceId")) {
+    return value;
+  }
+  return { ...value, deviceId };
 }
 
 export async function sha256Hex(bytesOrString) {
@@ -364,7 +404,16 @@ function createProtectedSessionStore() {
 }
 
 function validateSession(session) {
-  if (!session || typeof session !== "object" || !isUuid(session.userId) || !isUuid(session.sessionId) || !session.accessToken) {
+  if (!session
+    || typeof session !== "object"
+    || !isUuid(session.userId)
+    || !isUuid(session.sessionId)
+    || !isUuid(session.deviceId)
+    || session.tokenType !== "Bearer"
+    || typeof session.accessToken !== "string"
+    || session.accessToken.length < 16
+    || !Array.isArray(session.scopes)
+    || !Number.isFinite(Date.parse(session.expiresAt))) {
     throw new STLClientError("STL Platform returned an invalid session.", "INVALID_SESSION");
   }
 }

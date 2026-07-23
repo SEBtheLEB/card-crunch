@@ -2,6 +2,7 @@ import { formatCompactNumber } from "./format.js?v=164";
 import {
   CARD_CRUNCH_STL_GAME_ID,
   getSTLPlatformDiagnostics,
+  isAllowedCardCrunchCallback,
   readSTLPlatformConfig,
   shouldShowSTLDiagnostics,
   validateSTLPlatformConfig
@@ -71,6 +72,7 @@ class STLPlatformIntegration {
     this.game = game;
     this.elements = elements;
     this.showPage = showPage;
+    this.installDeviceId = null;
     this.deviceId = null;
     this.profile = readProfile();
     this.status = readStatus();
@@ -85,17 +87,22 @@ class STLPlatformIntegration {
     setBusy(this.elements, true);
     renderProfile(this.elements, this.profile);
     try {
-      this.deviceId = await getOrCreateDeviceId();
+      this.installDeviceId = await getOrCreateDeviceId();
       const session = await this.client.restoreSession();
       if (!session) {
+        this.profile = null;
+        persistProfile(null);
+        renderProfile(this.elements, null);
         this.setStatus("Sign in with STL Platform to sync Card Crunch.", "");
         setBusy(this.elements, false);
         return;
       }
-      await this.afterSessionRestored();
+      await this.afterSessionRestored(session);
     } catch (error) {
       this.setStatus(toUserMessage(error), "bad");
+      this.profile = null;
       persistProfile(null);
+      renderProfile(this.elements, null);
     } finally {
       setBusy(this.elements, false);
     }
@@ -105,7 +112,7 @@ class STLPlatformIntegration {
     setBusy(this.elements, true);
     this.setStatus("Opening STL Platform sign-in...");
     try {
-      const { authorizationUrl } = await this.client.beginSignIn({ prompt: "select_account" });
+      const { authorizationUrl } = await this.client.beginSignIn();
       await openSystemBrowser(authorizationUrl);
     } catch (error) {
       this.setStatus(toUserMessage(error), "bad");
@@ -116,10 +123,13 @@ class STLPlatformIntegration {
   async completeSignIn(callbackUrl) {
     setBusy(this.elements, true);
     try {
-      await this.client.completeSignIn(callbackUrl, {
-        device: { deviceId: this.deviceId || await getOrCreateDeviceId(), friendlyName: getDeviceName() }
+      const session = await this.client.completeSignIn(callbackUrl, {
+        device: {
+          deviceId: this.installDeviceId || await getOrCreateDeviceId(),
+          friendlyName: getDeviceName()
+        }
       });
-      await this.afterSessionRestored();
+      await this.afterSessionRestored(session);
       this.showPage?.("account");
     } catch (error) {
       this.setStatus(toUserMessage(error), "bad");
@@ -129,8 +139,8 @@ class STLPlatformIntegration {
     }
   }
 
-  async afterSessionRestored() {
-    this.deviceId = this.deviceId || await getOrCreateDeviceId();
+  async afterSessionRestored(session) {
+    this.deviceId = session.deviceId;
     await this.registerDevice();
     await this.refreshPlayer();
     await this.client.flushOfflineQueue().catch(() => null);
@@ -140,15 +150,24 @@ class STLPlatformIntegration {
 
   async signOut() {
     setBusy(this.elements, true);
+    let remoteError = null;
     try {
       await this.endPlaySession("quit");
-      await this.client.signOut();
+      try {
+        await this.client.signOut();
+      } catch (error) {
+        remoteError = error;
+      }
       this.profile = null;
+      this.deviceId = null;
       persistProfile(null);
-      this.setStatus("Signed out of STL Platform.");
+      this.setStatus(
+        remoteError
+          ? "Signed out on this device. Remote session cleanup could not be confirmed."
+          : "Signed out of STL Platform.",
+        remoteError ? "bad" : ""
+      );
       renderProfile(this.elements, null);
-    } catch (error) {
-      this.setStatus(toUserMessage(error), "bad");
     } finally {
       setBusy(this.elements, false);
     }
@@ -317,7 +336,7 @@ export function installSTLCallbackListener() {
   const appPlugin = globalThis.Capacitor?.Plugins?.App;
   if (appPlugin?.addListener) {
     appPlugin.addListener("appUrlOpen", ({ url }) => {
-      if (url?.startsWith("cardcrunch://auth/callback") || url?.startsWith("cardcrunch-dev://auth/callback")) {
+      if (isAllowedCardCrunchCallback(url)) {
         void integration?.completeSignIn(url);
       }
     });

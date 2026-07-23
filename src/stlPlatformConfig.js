@@ -1,5 +1,6 @@
 export const CARD_CRUNCH_STL_GAME_ID = "c32010e4-b054-4b59-a636-aa2c5a991d64";
 export const CARD_CRUNCH_STL_CLIENT_ID = "card-crunch-mobile";
+export const CARD_CRUNCH_STL_BASE_URL = "https://accounts.stlproductionz.io";
 export const CARD_CRUNCH_DEV_CALLBACK = "cardcrunch-dev://auth/callback";
 export const CARD_CRUNCH_PROD_CALLBACK = "cardcrunch://auth/callback";
 export const CARD_CRUNCH_SAVE_SLOT_KEY = "card-crunch-primary";
@@ -27,7 +28,7 @@ export class STLPlatformConfigurationError extends Error {
 
 export function readSTLPlatformConfig(source = globalThis.__CARD_CRUNCH_STL_CONFIG__) {
   return Object.freeze({
-    baseUrl: String(source?.baseUrl || "").trim().replace(/\/+$/, ""),
+    baseUrl: normalizeSTLPlatformBaseUrl(source?.baseUrl),
     clientId: String(source?.clientId || CARD_CRUNCH_STL_CLIENT_ID).trim(),
     gameId: String(source?.gameId || CARD_CRUNCH_STL_GAME_ID).trim(),
     developmentRedirectUri: String(source?.developmentRedirectUri || CARD_CRUNCH_DEV_CALLBACK).trim(),
@@ -35,7 +36,15 @@ export function readSTLPlatformConfig(source = globalThis.__CARD_CRUNCH_STL_CONF
   });
 }
 
-export function getRuntimeRedirectUri(config = readSTLPlatformConfig(), locationLike = globalThis.location) {
+export function getRuntimeRedirectUri(
+  config = readSTLPlatformConfig(),
+  locationLike = globalThis.location,
+  capacitorLike = globalThis.Capacitor
+) {
+  const nativePlatform = String(capacitorLike?.getPlatform?.() || "").toLowerCase();
+  if (capacitorLike?.isNativePlatform?.() || nativePlatform === "android" || nativePlatform === "ios") {
+    return config.productionRedirectUri;
+  }
   const host = String(locationLike?.hostname || "").toLowerCase();
   const local = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
   return local ? config.developmentRedirectUri : config.productionRedirectUri;
@@ -50,7 +59,7 @@ export function validateSTLPlatformConfig(config = readSTLPlatformConfig(), loca
   if (!config.developmentRedirectUri) missing.push(STL_ENV_NAMES.developmentRedirectUri);
   if (!config.productionRedirectUri) missing.push(STL_ENV_NAMES.productionRedirectUri);
 
-  if (config.baseUrl && !isHttpsOrLoopback(config.baseUrl)) invalid.push(STL_ENV_NAMES.baseUrl);
+  if (config.baseUrl && !isAllowedSTLPlatformBaseUrl(config.baseUrl)) invalid.push(STL_ENV_NAMES.baseUrl);
   if (config.clientId && !/^[a-z][a-z0-9._-]{2,127}$/.test(config.clientId)) invalid.push(STL_ENV_NAMES.clientId);
   if (config.gameId && !isUuid(config.gameId)) invalid.push(STL_ENV_NAMES.gameId);
   if (config.developmentRedirectUri && config.developmentRedirectUri !== CARD_CRUNCH_DEV_CALLBACK) invalid.push(STL_ENV_NAMES.developmentRedirectUri);
@@ -64,7 +73,38 @@ export function validateSTLPlatformConfig(config = readSTLPlatformConfig(), loca
 }
 
 export function isAllowedCardCrunchCallback(value) {
-  return value === CARD_CRUNCH_DEV_CALLBACK || value === CARD_CRUNCH_PROD_CALLBACK;
+  return callbackMatchesRedirect(value, CARD_CRUNCH_DEV_CALLBACK)
+    || callbackMatchesRedirect(value, CARD_CRUNCH_PROD_CALLBACK);
+}
+
+export function callbackMatchesRedirect(value, expectedRedirectUri) {
+  try {
+    const callback = new URL(value);
+    const expected = new URL(expectedRedirectUri);
+    return !callback.username
+      && !callback.password
+      && !callback.hash
+      && callback.protocol === expected.protocol
+      && callback.hostname === expected.hostname
+      && callback.port === expected.port
+      && callback.pathname === expected.pathname;
+  } catch {
+    return false;
+  }
+}
+
+export function normalizeSTLPlatformBaseUrl(value) {
+  const raw = String(value === undefined || value === null ? CARD_CRUNCH_STL_BASE_URL : value)
+    .trim()
+    .replace(/\/+$/, "");
+  try {
+    const url = new URL(raw);
+    if (url.hostname.toLowerCase() === "accounts.stlproductions.io") {
+      url.hostname = "accounts.stlproductionz.io";
+      return url.toString().replace(/\/+$/, "");
+    }
+  } catch {}
+  return raw;
 }
 
 export function getSTLPlatformDiagnostics(config = readSTLPlatformConfig(), locationLike = globalThis.location) {
@@ -93,11 +133,13 @@ function isUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function isHttpsOrLoopback(value) {
+function isAllowedSTLPlatformBaseUrl(value) {
   try {
     const url = new URL(value);
-    if (url.protocol === "https:") return true;
-    return url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+    if (url.username || url.password || url.search || url.hash || (url.pathname && url.pathname !== "/")) return false;
+    if (url.origin === CARD_CRUNCH_STL_BASE_URL) return true;
+    const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
+    return loopback && (url.protocol === "http:" || url.protocol === "https:");
   } catch {
     return false;
   }
