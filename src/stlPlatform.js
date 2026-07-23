@@ -6,8 +6,8 @@ import {
   readSTLPlatformConfig,
   shouldShowSTLDiagnostics,
   validateSTLPlatformConfig
-} from "./stlPlatformConfig.js?v=189";
-import { createCardCrunchSTLClient, getOrCreateDeviceId, STLClientError } from "./stlPlatformClient.js?v=189";
+} from "./stlPlatformConfig.js?v=190";
+import { createCardCrunchSTLClient, getOrCreateDeviceId, STLClientError } from "./stlPlatformClient.js?v=190";
 import {
   applyCloudSaveSnapshot,
   createCardCrunchSaveUpload,
@@ -85,7 +85,7 @@ class STLPlatformIntegration {
 
   async boot() {
     setBusy(this.elements, true);
-    renderProfile(this.elements, this.profile);
+    renderProfile(this.elements, null);
     try {
       this.installDeviceId = await getOrCreateDeviceId();
       const session = await this.client.restoreSession();

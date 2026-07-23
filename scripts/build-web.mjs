@@ -1,5 +1,6 @@
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { build } from "esbuild";
 import {
   CARD_CRUNCH_STL_BASE_URL,
   normalizeSTLPlatformBaseUrl,
@@ -22,6 +23,18 @@ await mkdir(output, { recursive: true });
 for (const entry of entries) {
   await cp(resolve(root, entry), resolve(output, entry), { recursive: true });
 }
+
+await mkdir(resolve(output, "src/vendor"), { recursive: true });
+await build({
+  entryPoints: [resolve(root, "scripts/capacitor-secure-storage-entry.mjs")],
+  bundle: true,
+  format: "esm",
+  legalComments: "none",
+  minify: true,
+  outfile: resolve(output, "src/vendor/capacitor-secure-storage.js"),
+  platform: "browser",
+  target: "es2022"
+});
 
 const platformConfig = Object.freeze({
   baseUrl: normalizeSTLPlatformBaseUrl(process.env.VITE_STL_PLATFORM_URL || CARD_CRUNCH_STL_BASE_URL),

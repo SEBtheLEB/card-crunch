@@ -1,3 +1,4 @@
+import "./vendor/capacitor-secure-storage.js?v=190";
 import { createGame } from "./gameState.js?v=189";
 import { createUI } from "./ui.js?v=189";
 import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=164";
@@ -14,7 +15,7 @@ import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=167";
 import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=169";
 import { initializeStore } from "./store.js?v=167";
 import { initializeTutorial } from "./tutorial.js?v=164";
-import { initializeSTLPlatformAccount, installSTLCallbackListener } from "./stlPlatform.js?v=189";
+import { initializeSTLPlatformAccount, installSTLCallbackListener } from "./stlPlatform.js?v=190";
 import { initializeMultiplayer } from "./multiplayer.js?v=189";
 
 initializeTheme();

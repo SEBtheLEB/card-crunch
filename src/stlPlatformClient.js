@@ -3,7 +3,7 @@ import {
   getRuntimeRedirectUri,
   readSTLPlatformConfig,
   validateSTLPlatformConfig
-} from "./stlPlatformConfig.js?v=189";
+} from "./stlPlatformConfig.js?v=190";
 
 const AUTH_TRANSACTION_KEY = "cardCrunchStlAuthTransactionV1";
 const SESSION_KEY = "cardCrunchStlSessionV1";
@@ -29,9 +29,11 @@ export class CardCrunchSTLClient {
   constructor(config) {
     this.config = config;
     this.redirectUri = getRuntimeRedirectUri(config);
-    this.sessionStore = createProtectedSessionStore();
-    this.transactionStore = createJsonStore(sessionStorage, AUTH_TRANSACTION_KEY);
+    const persistence = createProtectedSessionPersistence();
+    this.sessionStore = persistence.sessionStore;
+    this.transactionStore = persistence.transactionStore;
     this.queueStore = createJsonStore(localStorage, QUEUE_KEY, []);
+    this.refreshInFlight = null;
   }
 
   get storageSecurity() {
@@ -69,7 +71,10 @@ export class CardCrunchSTLClient {
     }
     const code = callback.searchParams.get("code");
     const state = callback.searchParams.get("state");
-    if (callback.searchParams.get("error")) throw new STLClientError("STL sign-in was cancelled.", "AUTHORIZATION_DENIED");
+    if (callback.searchParams.get("error")) {
+      await this.transactionStore.clear();
+      throw new STLClientError("STL sign-in was cancelled.", "AUTHORIZATION_DENIED");
+    }
     if (!code || !state) throw new STLClientError("The sign-in callback is missing code or state.", "INVALID_REQUEST");
     const transaction = await this.transactionStore.load();
     if (!transaction || transaction.state !== state) throw new STLClientError("The sign-in state is invalid or already used.", "INVALID_STATE");
@@ -110,25 +115,39 @@ export class CardCrunchSTLClient {
       await this.sessionStore.clear();
       return null;
     }
-    return this.refreshSession(session.refreshToken);
+    if (!this.refreshInFlight) {
+      this.refreshInFlight = this.refreshSession(session.refreshToken)
+        .finally(() => { this.refreshInFlight = null; });
+    }
+    return this.refreshInFlight;
   }
 
   async refreshSession(refreshToken) {
-    const session = await this.request("/auth/refresh", {
-      method: "POST",
-      authenticated: false,
-      body: { grantType: "refresh_token", clientId: this.config.clientId, refreshToken }
-    });
-    validateSession(session);
-    await this.sessionStore.save(session);
-    return session;
+    try {
+      const session = await this.request("/auth/refresh", {
+        method: "POST",
+        authenticated: false,
+        body: { grantType: "refresh_token", clientId: this.config.clientId, refreshToken }
+      });
+      validateSession(session);
+      await this.sessionStore.save(session);
+      return session;
+    } catch (error) {
+      if (isPermanentRefreshFailure(error)) {
+        try { await this.sessionStore.clear(); } catch {}
+      }
+      throw error;
+    }
   }
 
   async signOut() {
     try {
       if (await this.sessionStore.load()) await this.request("/auth/sign-out", { method: "POST" });
     } finally {
-      await this.sessionStore.clear();
+      await Promise.all([
+        this.sessionStore.clear(),
+        this.transactionStore.clear()
+      ]);
     }
   }
 
@@ -373,34 +392,103 @@ function createJsonStore(storage, key, fallback = null) {
   };
 }
 
-function createProtectedSessionStore() {
-  const securePlugin = globalThis.Capacitor?.Plugins?.SecureStorage || globalThis.Capacitor?.Plugins?.SecureStoragePlugin;
-  if (securePlugin?.get && securePlugin?.set && securePlugin?.remove) {
+function createProtectedSessionPersistence() {
+  clearUnsafeBrowserSessionCopies();
+  const isNative = globalThis.Capacitor?.isNativePlatform?.() === true
+    || ["android", "ios"].includes(globalThis.Capacitor?.getPlatform?.());
+  if (isNative) {
+    const bridge = globalThis.__CARD_CRUNCH_CAPACITOR_SECURE_STORAGE__;
+    const secureStorage = bridge?.storage;
+    if (!secureStorage?.get || !secureStorage?.set || !secureStorage?.remove) {
+      const unavailable = createUnavailableSecureStore();
+      return { sessionStore: unavailable, transactionStore: unavailable };
+    }
+    const createNativeStore = (key) => createCapacitorSecureStore({
+      key,
+      secureStorage,
+      keychainAccess: bridge.whenUnlockedThisDeviceOnly
+    });
     return {
-      security: "os-protected",
-      async load() {
-        try {
-          const result = await securePlugin.get({ key: SESSION_KEY });
-          return result?.value ? JSON.parse(result.value) : null;
-        } catch {
-          return null;
-        }
-      },
-      async save(session) {
-        await securePlugin.set({ key: SESSION_KEY, value: JSON.stringify(session) });
-      },
-      async clear() {
-        try { await securePlugin.remove({ key: SESSION_KEY }); } catch {}
-      }
+      sessionStore: createNativeStore(SESSION_KEY),
+      transactionStore: createNativeStore(AUTH_TRANSACTION_KEY)
     };
   }
+
   let memorySession = null;
   return {
-    security: "memory-only",
-    async load() { return memorySession; },
-    async save(session) { memorySession = { ...session, refreshToken: undefined, refreshExpiresAt: undefined }; },
-    async clear() { memorySession = null; }
+    sessionStore: {
+      security: "memory-only",
+      async load() { return memorySession; },
+      async save(session) {
+        memorySession = { ...session, refreshToken: undefined, refreshExpiresAt: undefined };
+      },
+      async clear() { memorySession = null; }
+    },
+    transactionStore: createJsonStore(sessionStorage, AUTH_TRANSACTION_KEY)
   };
+}
+
+function createCapacitorSecureStore({ key, secureStorage, keychainAccess }) {
+  let initialization;
+  const initialize = () => {
+    initialization ||= Promise.all([
+      secureStorage.setSynchronize?.(false),
+      secureStorage.setDefaultKeychainAccess?.(keychainAccess)
+    ]);
+    return initialization;
+  };
+  return {
+    security: "os-protected",
+    async load() {
+      await initialize();
+      try {
+        return await secureStorage.get(key, false, false);
+      } catch (error) {
+        if (error?.code !== "invalidData") throw error;
+        await secureStorage.remove(key, false);
+        return null;
+      }
+    },
+    async save(value) {
+      await initialize();
+      await secureStorage.set(key, value, false, false, keychainAccess);
+    },
+    async clear() {
+      await initialize();
+      await secureStorage.remove(key, false);
+    }
+  };
+}
+
+function createUnavailableSecureStore() {
+  const unavailable = () => {
+    throw new STLClientError(
+      "Secure STL Account storage is unavailable in this installed build.",
+      "SECURE_STORAGE_UNAVAILABLE"
+    );
+  };
+  return {
+    security: "unavailable",
+    load: unavailable,
+    save: unavailable,
+    clear: unavailable
+  };
+}
+
+function clearUnsafeBrowserSessionCopies() {
+  for (const key of [
+    SESSION_KEY,
+    `cap_sec_${SESSION_KEY}`,
+    `capacitor-storage_${SESSION_KEY}`
+  ]) {
+    try { localStorage.removeItem(key); } catch {}
+  }
+}
+
+function isPermanentRefreshFailure(error) {
+  const status = Number(error?.details?.status);
+  if ([400, 401, 403].includes(status)) return true;
+  return /(?:INVALID|EXPIRED|REVOKED|REUSED|SESSION_MISSING)/i.test(String(error?.code || ""));
 }
 
 function validateSession(session) {
