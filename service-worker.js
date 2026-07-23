@@ -1,4 +1,4 @@
-const CACHE_NAME = "card-crunch-v187";
+const CACHE_NAME = "card-crunch-v188";
 const PINK_ARCADE_SUITS = ["hearts", "diamonds", "clubs", "spades"];
 const PINK_ARCADE_RANKS = ["ace", "02", "03", "04", "05", "06", "07", "08", "09", "10", "jack", "queen", "king"];
 const PINK_ARCADE_ASSETS = [

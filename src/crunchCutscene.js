@@ -1781,7 +1781,7 @@ function requestPreparedShardVacuum(prepared) {
   if (!prepared || prepared.vacuumRequested || prepared.disposed) return;
   prepared.vacuumRequested = true;
   prepared.vacuumRequestedAt = performance.now();
-  const settleDelay = prepared.instantVacuum ? 42 : SHARD_PHYSICS_CONFIG.forceSettleAfter;
+  const settleDelay = prepared.instantVacuum ? 18 : SHARD_PHYSICS_CONFIG.forceSettleAfter;
   const hoverDelay = prepared.instantVacuum ? 0 : SHARD_PHYSICS_CONFIG.hoverBeforeVacuum;
   prepared.vacuumStartAt = Math.max(
     prepared.physicsStartedAt + settleDelay,
@@ -1790,7 +1790,7 @@ function requestPreparedShardVacuum(prepared) {
 
   const byDistance = [...prepared.shardStates]
     .sort((a, b) => getShardDistanceToBank(a, prepared) - getShardDistanceToBank(b, prepared));
-  const stagger = prepared.instantVacuum ? 110 : SHARD_PHYSICS_CONFIG.vacuumStagger;
+  const stagger = prepared.instantVacuum ? 48 : SHARD_PHYSICS_CONFIG.vacuumStagger;
   byDistance.forEach((state, index) => {
     state.vacuumDelay = byDistance.length <= 1
       ? 0
@@ -1805,7 +1805,7 @@ function stepPreparedShardPhysics(prepared, now) {
   prepared.lastPhysicsFrame = now;
   const elapsed = now - prepared.physicsStartedAt;
   const vacuumElapsed = prepared.vacuumRequested ? now - prepared.vacuumStartAt : -1;
-  const vacuumRampDuration = prepared.instantVacuum ? 210 : SHARD_PHYSICS_CONFIG.vacuumRampDuration;
+  const vacuumRampDuration = prepared.instantVacuum ? 105 : SHARD_PHYSICS_CONFIG.vacuumRampDuration;
   const vacuumRamp = Math.max(0, Math.min(1, vacuumElapsed / vacuumRampDuration));
   let remaining = 0;
 
@@ -1831,7 +1831,7 @@ function stepPreparedShardPhysics(prepared, now) {
       continue;
     }
 
-    if (elapsed >= (prepared.instantVacuum ? 950 : SHARD_PHYSICS_CONFIG.maxDuration)) {
+    if (elapsed >= (prepared.instantVacuum ? 420 : SHARD_PHYSICS_CONFIG.maxDuration)) {
       registerShardBankImpact(prepared, state, 0);
       remaining -= 1;
       continue;
@@ -1913,10 +1913,10 @@ function updateVacuumShard(state, prepared, deltaSeconds, vacuumRamp) {
   const dx = prepared.targetX - centerX;
   const dy = prepared.targetY - centerY;
   const distance = Math.max(1, Math.hypot(dx, dy));
-  const speedScale = prepared.instantVacuum ? 2.35 : 1;
+  const speedScale = prepared.instantVacuum ? 3.45 : 1;
   const force = SHARD_PHYSICS_CONFIG.vacuumBaseForce * speedScale
     + SHARD_PHYSICS_CONFIG.vacuumRampForce * speedScale * vacuumRamp * vacuumRamp
-    + Math.min(prepared.instantVacuum ? 2200 : 1050, distance * SHARD_PHYSICS_CONFIG.vacuumSpring * speedScale);
+    + Math.min(prepared.instantVacuum ? 3200 : 1050, distance * SHARD_PHYSICS_CONFIG.vacuumSpring * speedScale);
   const funnelStrength = (1.4 + vacuumRamp * 5.2) * speedScale;
   state.vx += (dx / distance * force + dx * funnelStrength) * deltaSeconds;
   state.vy += (dy / distance * force) * deltaSeconds;
@@ -1924,7 +1924,7 @@ function updateVacuumShard(state, prepared, deltaSeconds, vacuumRamp) {
   state.vx *= drag;
   state.vy *= drag;
   const speed = Math.hypot(state.vx, state.vy);
-  const maximumSpeed = SHARD_PHYSICS_CONFIG.vacuumMaxSpeed * (prepared.instantVacuum ? 1.75 : 1);
+  const maximumSpeed = SHARD_PHYSICS_CONFIG.vacuumMaxSpeed * (prepared.instantVacuum ? 2.45 : 1);
   if (speed > maximumSpeed) {
     const scale = maximumSpeed / speed;
     state.vx *= scale;

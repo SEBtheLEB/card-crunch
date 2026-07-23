@@ -3,7 +3,7 @@ import {
   hideCrunchSkipText,
   isCrunchSkipRequested,
   showCrunchSkipText
-} from "./crunchCutscene.js?v=186";
+} from "./crunchCutscene.js?v=188";
 import { playGameSfx } from "./audio.js?v=164";
 import { formatCompactNumber } from "./format.js?v=164";
 
@@ -542,7 +542,8 @@ export function spawnMultiplayerCrunchReward({
 
   const sourceRect = getCombinedRect(visibleSources);
   const centerX = sourceRect.left + sourceRect.width / 2;
-  const centerY = sourceRect.top + sourceRect.height * .42;
+  const lane = sequenceIndex % 3 - 1;
+  const centerY = sourceRect.top + sourceRect.height * .38 - Math.abs(lane) * 8;
   const tone = matchType === "sequence"
     ? "run"
     : matchType === "add" || matchType === "subtract"
@@ -568,18 +569,20 @@ export function spawnMultiplayerCrunchReward({
     || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const direction = sequenceIndex % 2 === 0 ? 1 : -1;
   const drift = direction * Math.min(78, Math.max(42, sourceRect.width * .28));
-  const duration = reducedMotion ? 380 : 880;
+  const duration = reducedMotion ? 720 : 1650;
   const frames = reducedMotion
     ? [
         { opacity: 0, transform: "translate3d(-50%, -36%, 0) scale(.84)" },
-        { opacity: 1, transform: "translate3d(-50%, -58%, 0) scale(1)", offset: .2 },
-        { opacity: 0, transform: "translate3d(-50%, -82%, 0) scale(.94)" }
+        { opacity: 1, transform: "translate3d(-50%, -62%, 0) scale(1.12)", offset: .16 },
+        { opacity: 1, transform: "translate3d(-50%, -78%, 0) scale(1)", offset: .72 },
+        { opacity: 0, transform: "translate3d(-50%, -92%, 0) scale(.96)" }
       ]
     : [
-        { opacity: 0, transform: "translate3d(-50%, -20%, 0) scale(.56) rotate(-3deg)" },
-        { opacity: 1, transform: `translate3d(calc(-50% + ${drift * .12}px), calc(-50% - 38px), 0) scale(1.18) rotate(1deg)`, offset: .17 },
-        { opacity: 1, transform: `translate3d(calc(-50% + ${drift * .6}px), calc(-50% - 92px), 0) scale(1) rotate(${direction * 2}deg)`, offset: .56 },
-        { opacity: 0, transform: `translate3d(calc(-50% + ${drift}px), calc(-50% - 54px), 0) scale(.86) rotate(${direction * 4}deg)` }
+        { opacity: 0, transform: "translate3d(-50%, -12%, 0) scale(.46) rotate(-4deg)" },
+        { opacity: 1, transform: `translate3d(calc(-50% + ${drift * .1}px), calc(-50% - 42px), 0) scale(1.34) rotate(1deg)`, offset: .11 },
+        { opacity: 1, transform: `translate3d(calc(-50% + ${drift * .48}px), calc(-50% - 104px), 0) scale(1.08) rotate(${direction * 2}deg)`, offset: .64 },
+        { opacity: 1, transform: `translate3d(calc(-50% + ${drift * .72}px), calc(-50% - 118px), 0) scale(1.02) rotate(${direction * 3}deg)`, offset: .82 },
+        { opacity: 0, transform: `translate3d(calc(-50% + ${drift}px), calc(-50% - 138px), 0) scale(.9) rotate(${direction * 4}deg)` }
       ];
 
   playSfx("score_step");

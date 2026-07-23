@@ -485,10 +485,14 @@ if (!gameStateSource.includes("playInstantMultiplayerCrunch")
   || !animationsSource.includes("export function spawnMultiplayerCrunchReward")
   || !gameStateSource.includes("entry.bankPoints ?? entry.points")
   || !css.includes(".multiplayer-crunch-reward")
+  || !gameStateSource.includes("await sleep(34)")
+  || !animationsSource.includes("reducedMotion ? 720 : 1650")
+  || !cutsceneSource.includes("prepared.instantVacuum ? 420")
+  || !cutsceneSource.includes("prepared.instantVacuum ? 3.45")
   || !gameStateSource.includes("multiplayerStartDelay")
   || !cutsceneSource.includes("crunch()")
   || !cutsceneSource.includes("prepared.instantVacuum")) {
-  throw new Error("Online Duel must use the immediate one-hit Crunch and board-first start flow");
+  throw new Error("Online Duel must use the fast one-hit Crunch, persistent reward callouts, and board-first start flow");
 }
 if (!html.includes("main-menu-screen is-visible is-home-page")
   || !uiSource.includes('classList.toggle("is-home-page"')

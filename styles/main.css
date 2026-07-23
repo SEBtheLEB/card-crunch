@@ -1420,8 +1420,8 @@ button.is-pressing:not(:disabled) {
   position: fixed;
   z-index: 115;
   display: grid;
-  min-width: min(58vw, 230px);
-  gap: 5px;
+  min-width: min(70vw, 290px);
+  gap: 7px;
   place-items: center;
   color: #fff0a4;
   pointer-events: none;
@@ -1435,15 +1435,15 @@ button.is-pressing:not(:disabled) {
 .multiplayer-crunch-reward span {
   max-width: min(76vw, 310px);
   color: currentColor;
-  font: 900 clamp(.78rem, 3.6vw, 1.05rem)/1.2 var(--font-display);
-  text-shadow: 2px 2px 0 #071015, 0 0 10px currentColor;
+  font: 900 clamp(.9rem, 4.4vw, 1.3rem)/1.16 var(--font-display);
+  text-shadow: 3px 3px 0 #071015, 0 0 12px currentColor, 0 0 24px currentColor;
   text-wrap: balance;
 }
 
 .multiplayer-crunch-reward strong {
   color: #fff8c9;
-  font: 900 clamp(1.3rem, 7vw, 2.45rem)/.9 var(--font-display);
-  text-shadow: 3px 3px 0 #071015, 0 0 8px #fff, 0 0 18px currentColor;
+  font: 900 clamp(1.7rem, 9vw, 3.25rem)/.88 var(--font-display);
+  text-shadow: 4px 4px 0 #071015, 0 0 10px #fff, 0 0 24px currentColor, 0 0 38px currentColor;
 }
 
 .multiplayer-crunch-reward.reward-tone-suit { color: #70d7ff; }

@@ -11,7 +11,7 @@ import {
   resolveArcadeCrunch
 } from "./arcadeMode.js?v=164";
 import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=164";
-import { createCardCrunchInteraction, createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=186";
+import { createCardCrunchInteraction, createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=188";
 import { ensurePlayableRound } from "./handSafety.js?v=164";
 import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=164";
 import { formatCompactNumber } from "./format.js?v=164";
@@ -31,7 +31,7 @@ import {
   playSfx,
   spawnMultiplayerCrunchReward,
   spawnSparkBurst
-} from "./animations.js?v=182";
+} from "./animations.js?v=188";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -595,7 +595,7 @@ export function createGame(ui) {
         const rect = card.getBoundingClientRect();
         spawnSparkBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, 7, entry.matchType === "suit" ? "suit" : "impact");
       });
-      await sleep(80);
+      await sleep(34);
       involvedElements.forEach((card) => card.classList.remove("card-match-glow", "is-vibrating"));
 
       const interaction = createCardCrunchInteraction({
