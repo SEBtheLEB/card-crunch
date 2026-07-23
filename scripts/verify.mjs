@@ -5,10 +5,12 @@ const root = resolve(import.meta.dirname, "..");
 const required = [
   "index.html",
   ".env.example",
-  "auth-config.js",
+  "platform-config.js",
   "src/main.js",
-  "src/authConfig.js",
-  "src/supabaseAccount.js",
+  "src/stlPlatformConfig.js",
+  "src/stlPlatformClient.js",
+  "src/stlCloudSave.js",
+  "src/stlPlatform.js",
   "src/audio.js",
   "src/haptics.js",
   "src/input.js",
@@ -310,10 +312,12 @@ if (html.includes('id="matchmakingCountdown"')) {
 }
 if (!html.includes('data-page="account"')
   || !html.includes('id="cardCrunchGoogleSignInButton"')
+  || !html.includes('id="cardCrunchSyncButton"')
   || !html.includes('id="authDiagnostics"')
-  || html.includes("STL Account")
-  || html.includes("Bit Crush Core")) {
-  throw new Error("Dedicated Card Crunch Supabase account UI hooks are missing or copied account branding remains");
+  || !html.includes("STL Account")
+  || html.includes("Bit Crush Core")
+  || html.includes("Supabase")) {
+  throw new Error("Dedicated Card Crunch STL Platform account UI hooks are missing or copied account branding remains");
 }
 if (!html.includes("Each pot is a different challenge.")
   || !html.includes("pot-state-legend")
@@ -326,44 +330,57 @@ if (html.includes('id="tutorialPage"')) {
 
 const economyModule = await import(`../src/economy.js?verify=${Date.now()}`);
 
-const authConfigModule = await import(`../src/authConfig.js?verify=${Date.now()}`);
-const accountModule = await import(`../src/supabaseAccount.js?verify=${Date.now()}`);
-const dedicatedAuthConfig = authConfigModule.readAuthConfig({
-  supabaseUrl: "https://cardcrunchtest.supabase.co/",
-  supabaseAnonKey: "sb_publishable_card_crunch_test",
-  appUrl: "https://card-crunch.vercel.app/"
+const stlConfigModule = await import(`../src/stlPlatformConfig.js?verify=${Date.now()}`);
+const stlClientModule = await import(`../src/stlPlatformClient.js?verify=${Date.now()}`);
+const stlCloudModule = await import(`../src/stlCloudSave.js?verify=${Date.now()}`);
+const stlConfig = stlConfigModule.readSTLPlatformConfig({
+  baseUrl: "https://accounts.stlproductions.io",
+  clientId: "card-crunch-mobile",
+  gameId: "c32010e4-b054-4b59-a636-aa2c5a991d64",
+  developmentRedirectUri: "cardcrunch-dev://auth/callback",
+  productionRedirectUri: "cardcrunch://auth/callback"
 });
-authConfigModule.validateAuthConfig(dedicatedAuthConfig);
-const authDiagnostics = authConfigModule.getAuthDiagnostics(dedicatedAuthConfig, {
+stlConfigModule.validateSTLPlatformConfig(stlConfig, { hostname: "card-crunch.vercel.app" });
+const stlDiagnostics = stlConfigModule.getSTLPlatformDiagnostics(stlConfig, {
   origin: "https://card-crunch.vercel.app",
   hostname: "card-crunch.vercel.app"
 });
-if (authDiagnostics.projectRef !== "cardcrunchtest"
-  || authDiagnostics.callback !== "https://card-crunch.vercel.app/auth/callback"
-  || !Object.values(authDiagnostics.variables).every(Boolean)
-  || accountModule.CARD_CRUNCH_NATIVE_CALLBACK !== "cardcrunch://auth/callback"
-  || accountModule.CARD_CRUNCH_AUTH_STORAGE_KEY !== "card-crunch-auth-v1") {
-  throw new Error("Dedicated Card Crunch Supabase configuration or callback mapping is incomplete");
+if (stlDiagnostics.clientId !== "card-crunch-mobile"
+  || stlDiagnostics.redirectUri !== "cardcrunch://auth/callback"
+  || !Object.values(stlDiagnostics.variables).every(Boolean)) {
+  throw new Error("Card Crunch STL Platform diagnostics are incomplete");
 }
-let missingAuthConfigRejected = false;
-try { authConfigModule.validateAuthConfig(authConfigModule.readAuthConfig({})); } catch (error) {
-  missingAuthConfigRejected = error?.name === "AuthConfigurationError";
+let missingSTLConfigRejected = false;
+try { stlConfigModule.validateSTLPlatformConfig(stlConfigModule.readSTLPlatformConfig({ baseUrl: "" })); } catch (error) {
+  missingSTLConfigRejected = error?.name === "STLPlatformConfigurationError";
 }
-if (!missingAuthConfigRejected) throw new Error("Missing Card Crunch auth variables must fail validation");
-let capturedAuthClientArgs = null;
-globalThis.supabase = {
-  createClient: (...args) => {
-    capturedAuthClientArgs = args;
-    return { auth: {} };
-  }
-};
-accountModule.createCardCrunchSupabaseClient(dedicatedAuthConfig);
-delete globalThis.supabase;
-if (capturedAuthClientArgs?.[0] !== "https://cardcrunchtest.supabase.co"
-  || capturedAuthClientArgs?.[1] !== "sb_publishable_card_crunch_test"
-  || capturedAuthClientArgs?.[2]?.auth?.storageKey !== "card-crunch-auth-v1"
-  || capturedAuthClientArgs?.[2]?.auth?.flowType !== "pkce") {
-  throw new Error("Supabase client must use only validated Card Crunch PKCE configuration");
+if (!missingSTLConfigRejected) throw new Error("Missing STL Platform variables must fail validation");
+if (stlConfigModule.isAllowedCardCrunchCallback("bitcrushcore://auth/callback")
+  || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback")
+  || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch-dev://auth/callback")) {
+  throw new Error("Card Crunch callback allowlist is not isolated");
+}
+const saveUpload = await stlCloudModule.createCardCrunchSaveUpload({
+  state: { pots: [{ id: 1, progress: 500, target: 1000, complete: false }], bestScore: 900, bestRunStreak: 4, runStartedAt: Date.now() },
+  gameId: stlConfig.gameId,
+  deviceId: "2d2d79b7-3c4c-4ef9-a03f-69f9bf53dc48",
+  gameBuild: "verify"
+});
+if (saveUpload.saveFormatVersion !== "card-crunch-save-v1"
+  || saveUpload.slotKey !== "card-crunch-primary"
+  || !/^[0-9a-f]{64}$/.test(saveUpload.checksum)
+  || saveUpload.progressSummary.activePotId !== 1) {
+  throw new Error("Card Crunch STL cloud save upload must be versioned and checksummed");
+}
+const conflict = stlCloudModule.detectSaveConflict({
+  localSnapshot: { capturedAt: "2026-07-22T10:00:00.000Z" },
+  remoteVersion: { revision: 99, clientCreatedAt: "2026-07-21T10:00:00.000Z" }
+});
+if (!conflict.conflict) throw new Error("Cloud save conflict detection must preserve both advanced saves");
+if (!stlClientModule.defaultScopes().includes("saves:write")
+  || !stlClientModule.defaultScopes().includes("achievements:write")
+  || !stlClientModule.defaultScopes().includes("playtime:write")) {
+  throw new Error("STL Platform scopes must include save, achievement, and playtime mappings");
 }
 const lowReward = economyModule.calculateRunCoinReward({ grossCash: 100_000, bestStreak: 2 });
 const highReward = economyModule.calculateRunCoinReward({ grossCash: 1_000_000, bestStreak: 8, potCleared: true });
@@ -443,7 +460,7 @@ const scoringSource = await readFile(resolve(root, "src/scoring.js"), "utf8");
 const scoreSurgeSource = await readFile(resolve(root, "src/scoreSurge.js"), "utf8");
 const arcadeModeSource = await readFile(resolve(root, "src/arcadeMode.js"), "utf8");
 if (!mainSource.includes("initializeMultiplayer")
-  || !mainSource.includes("initializeSupabaseAccount")
+  || !mainSource.includes("initializeSTLPlatformAccount")
   || !gameStateSource.includes("startMultiplayerMatch")
   || !gameStateSource.includes("updateMultiplayerClock")
   || !multiplayerSource.includes("hitWaitingCard")

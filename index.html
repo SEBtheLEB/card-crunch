@@ -17,10 +17,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/main.css?v=188">
+  <link rel="stylesheet" href="styles/main.css?v=189">
   <link rel="stylesheet" href="styles/collection.css?v=167">
   <link rel="stylesheet" href="styles/store.css?v=167">
-  <link rel="stylesheet" href="styles/multiplayer.css?v=187">
+  <link rel="stylesheet" href="styles/multiplayer.css?v=189">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -183,7 +183,7 @@
             <section class="menu-tile-grid" aria-label="More modes">
               <button data-menu-page="shop" type="button"><span aria-hidden="true">&#9670;</span><strong>Store</strong><small>Coins &amp; boosts</small></button>
               <button data-menu-page="themes" type="button"><span aria-hidden="true">&spades;</span><strong>Collection</strong><small>Cards &amp; tables</small></button>
-              <button data-menu-page="account" type="button"><span aria-hidden="true">&#9733;</span><strong>Card Crunch Account</strong><small>Google sign-in</small></button>
+              <button data-menu-page="account" type="button"><span aria-hidden="true">&#9733;</span><strong>STL Account</strong><small>Cloud save</small></button>
               <button class="tutorial-menu-tile" id="tutorialStartButton" type="button"><span aria-hidden="true">?</span><strong>Tutorial</strong><small>Learn every Crunch</small></button>
             </section>
           </section>
@@ -239,14 +239,14 @@
 
           <section class="menu-page card-crunch-account-page" data-page="account" aria-labelledby="cardCrunchAccountTitle">
             <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
-            <p class="card-crunch-account-kicker">Dedicated player identity</p>
-            <h2 id="cardCrunchAccountTitle">Card Crunch Account</h2>
+            <p class="card-crunch-account-kicker">Standalone STL Platform identity</p>
+            <h2 id="cardCrunchAccountTitle">STL Account</h2>
             <div class="card-crunch-account-panel">
               <div id="cardCrunchAccountSignedOut">
                 <div class="card-crunch-account-mark" aria-hidden="true">CC</div>
-                <h3>Save Your Player Identity</h3>
-                <p>Sign in with Google through Card Crunch's dedicated Supabase project. This account is separate from every other application.</p>
-                <button class="card-crunch-google-button" id="cardCrunchGoogleSignInButton" type="button"><b>G</b><span>Continue with Google</span><i aria-hidden="true">&rsaquo;</i></button>
+                <h3>Sync With STL Platform</h3>
+                <p>Sign in through the standalone STL Platform to sync pots, coins, cards, achievements, and playtime using your permanent STL player ID.</p>
+                <button class="card-crunch-google-button" id="cardCrunchGoogleSignInButton" type="button"><b>STL</b><span>Continue with STL</span><i aria-hidden="true">&rsaquo;</i></button>
               </div>
               <div id="cardCrunchAccountSignedIn" hidden>
                 <div class="card-crunch-account-identity">
@@ -254,23 +254,25 @@
                   <span><small>Connected player</small><strong id="cardCrunchAccountName">Card Crunch Player</strong><em id="cardCrunchAccountEmail">Google account connected</em></span>
                 </div>
                 <div class="card-crunch-account-benefits" aria-label="Connected account benefits">
-                  <span><b>&#10003;</b> Dedicated identity</span>
-                  <span><b>&#10003;</b> Secure session</span>
-                  <span><b>&#10003;</b> Google sign-in</span>
+                  <span><b>&#10003;</b> Permanent STL ID</span>
+                  <span><b>&#10003;</b> Cloud saves</span>
+                  <span><b>&#10003;</b> Achievements</span>
                 </div>
                 <div class="card-crunch-account-actions">
+                  <button id="cardCrunchSyncButton" type="button">Sync Now</button>
                   <button id="cardCrunchSignOutButton" type="button">Sign Out</button>
                 </div>
+                <p class="card-crunch-account-status" id="cardCrunchSyncState">Cloud save: not synced</p>
               </div>
             </div>
-            <p class="card-crunch-account-status" id="cardCrunchAccountStatus" aria-live="polite">Checking Card Crunch authentication...</p>
-            <p class="card-crunch-account-fineprint">Google authentication is handled by this app's dedicated Supabase project. Card Crunch never receives your Google password.</p>
+            <p class="card-crunch-account-status" id="cardCrunchAccountStatus" aria-live="polite">Checking STL Platform...</p>
+            <p class="card-crunch-account-fineprint">Card Crunch uses a unique STL OAuth client and never uses your Google email as player identity.</p>
             <details class="auth-diagnostics" id="authDiagnostics" hidden>
-              <summary>Authentication diagnostics</summary>
+              <summary>STL diagnostics</summary>
               <dl>
                 <div><dt>Origin</dt><dd id="authDiagnosticOrigin">Unavailable</dd></div>
                 <div><dt>Callback</dt><dd id="authDiagnosticCallback">Unavailable</dd></div>
-                <div><dt>Project ref</dt><dd id="authDiagnosticProjectRef">Unavailable</dd></div>
+                <div><dt>Client</dt><dd id="authDiagnosticProjectRef">Unavailable</dd></div>
                 <div><dt>Variables</dt><dd id="authDiagnosticVariables">Unavailable</dd></div>
               </dl>
             </details>
@@ -541,8 +543,7 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-  <script src="assets/vendor/supabase.js"></script>
-  <script src="auth-config.js"></script>
-  <script type="module" src="src/main.js?v=188"></script>
+  <script src="platform-config.js"></script>
+  <script type="module" src="src/main.js?v=189"></script>
   </body>
 </html>

@@ -1,4 +1,4 @@
-const CACHE_NAME = "card-crunch-v188";
+const CACHE_NAME = "card-crunch-v189";
 const PINK_ARCADE_SUITS = ["hearts", "diamonds", "clubs", "spades"];
 const PINK_ARCADE_RANKS = ["ace", "02", "03", "04", "05", "06", "07", "08", "09", "10", "jack", "queen", "king"];
 const PINK_ARCADE_ASSETS = [
@@ -13,15 +13,17 @@ const PINK_ARCADE_ASSETS = [
 const ASSETS = [
   "./",
   "./index.html",
-  "./auth-config.js",
+  "./platform-config.js",
   "./privacy-policy.html",
   "./styles/main.css",
   "./styles/collection.css",
   "./styles/store.css",
   "./styles/multiplayer.css",
   "./src/main.js",
-  "./src/authConfig.js",
-  "./src/supabaseAccount.js",
+  "./src/stlPlatformConfig.js",
+  "./src/stlPlatformClient.js",
+  "./src/stlCloudSave.js",
+  "./src/stlPlatform.js",
   "./src/tutorial.js",
   "./src/audio.js",
   "./src/haptics.js",
@@ -64,7 +66,6 @@ const ASSETS = [
   "./assets/icons/suits/club.svg",
   "./assets/icons/suits/spade.svg",
   "./assets/fonts/press-start-2p.ttf",
-  "./assets/vendor/supabase.js",
   "./assets/sfx/playing-card.mp3",
   "./assets/sfx/deal-hand-1.mp3",
   "./assets/sfx/deal-hand-2.mp3",

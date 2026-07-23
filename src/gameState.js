@@ -11,7 +11,7 @@ import {
   resolveArcadeCrunch
 } from "./arcadeMode.js?v=164";
 import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=164";
-import { createCardCrunchInteraction, createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=188";
+import { createCardCrunchInteraction, createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=189";
 import { ensurePlayableRound } from "./handSafety.js?v=164";
 import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=164";
 import { formatCompactNumber } from "./format.js?v=164";
@@ -24,6 +24,7 @@ import { storeState } from "./storeState.js?v=167";
 import { getRoundDealDuration } from "./dealTiming.js?v=164";
 import { MULTIPLAYER_MATCH_SECONDS, MULTIPLAYER_MODE, isMultiplayerMode } from "./multiplayerMode.js?v=169";
 import { haptic } from "./haptics.js?v=164";
+import { notifySTLProgress } from "./stlPlatform.js?v=189";
 import {
   animateBust,
   animateSelectionResolve,
@@ -31,7 +32,7 @@ import {
   playSfx,
   spawnMultiplayerCrunchReward,
   spawnSparkBurst
-} from "./animations.js?v=188";
+} from "./animations.js?v=189";
 
 const RUN_MULTIPLIER_MAX = 10;
 const RUN_MULTIPLIER_BASE_STEP = 0.2;
@@ -200,6 +201,7 @@ export function createGame(ui) {
     ui.clearMessage();
     if (state.safeBankShieldActive) ui.setMessage("Shield armed: busting out auto-banks 25%", "good");
     ui.render(state, handlers);
+    notifySTLProgress("run-start", { mode: gameMode, potId: pot?.id ?? null });
     finishHandDeal(4, { announceReady: Boolean(pot) || gameMode === MULTIPLAYER_MODE });
   }
 
@@ -426,7 +428,7 @@ export function createGame(ui) {
     if (!crunch.success) {
       const partial = crunch.partial?.success ? crunch.partial : null;
       if (multiplayerRun) {
-        if (partial) {
+    if (partial) {
           await playInstantMultiplayerCrunch({
             cutscene: partial.cutscene,
             resolution: crunch.resolution,
@@ -476,6 +478,7 @@ export function createGame(ui) {
         localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
         ui.syncResolvedHud(state);
         state.multiplayer?.callbacks?.onScoreChange?.(state.score);
+        notifySTLProgress("crunch", { amount: partial.total, selectedCount: validCardCount, mode: state.gameMode });
       }
       if (!multiplayerRun) {
         await playBustCutin({
@@ -560,6 +563,7 @@ export function createGame(ui) {
     state.multiplayer?.callbacks?.onScoreChange?.(state.score);
     localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
     localStorage.setItem("cardCrunchBestStreak", String(Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak)));
+    notifySTLProgress("crunch", { amount: crunch.total, selectedCount: selectedCards.length, mode: state.gameMode });
     if (completeMultiplayerIfPending()) return;
     startNewRound({ retainedTableCards });
   }
@@ -724,6 +728,7 @@ export function createGame(ui) {
     ui.setMessage(`BANKED $${formatCompactNumber(amount)}! Multi reset to x${formatRunMultiplier(state.bankMultiplier)}`, "good");
     ui.playBankJuice(amount);
     ui.render(state, handlers);
+    notifySTLProgress("bank", { amount, potId: state.activePot?.id ?? null });
     await sleep(620);
 
     if (state.activePot.complete && !state.replayingCompletedPot) {
@@ -889,6 +894,7 @@ export function createGame(ui) {
     state.lostUnbankedMoney = 0;
     clearRunSave();
     submitBestScore(state.bestScore);
+    notifySTLProgress("run-end", { mode: state.gameMode, score: state.score, banked: state.bankedThisRun });
     grantRunCoins({ potCleared: true });
     ui.render(state, handlers);
     showRunSummary();
@@ -1019,6 +1025,7 @@ export function createGame(ui) {
     playSfx("bank");
     savePots(state.pots);
     if (state.activePot.complete) grantRunCoins({ potCleared: true });
+    notifySTLProgress("bank", { amount: recovered, recovered: true, potId: state.activePot?.id ?? null });
     showRunSummary();
   }
 
@@ -1169,6 +1176,7 @@ export function createGame(ui) {
       state.status = "multiplayerEnded";
       ui.render(state, handlers);
       state.multiplayer?.callbacks?.onForfeit?.();
+      notifySTLProgress("run-exit", { mode: state.gameMode });
       return;
     }
     const returnToModeSelect = isArcadeMode(state);
@@ -1178,6 +1186,7 @@ export function createGame(ui) {
     ui.clearMessage();
     clearRunSave();
     resetRunSession();
+    notifySTLProgress("run-exit", { mode: state.gameMode });
     ui.render(state, handlers);
     ui.renderMap(state.pots, handlers);
     ui.renderMenuStats(state);
@@ -1475,6 +1484,9 @@ export function createGame(ui) {
     state.activePot.progress = Math.min(state.activePot.target, state.activePot.progress + amount);
     state.activePot.complete = state.activePot.progress >= state.activePot.target;
     savePots(state.pots);
+    if (state.activePot.complete && before < state.activePot.target) {
+      notifySTLProgress("pot-clear", { potId: state.activePot.id, amount });
+    }
     return state.activePot.progress - before;
   }
 

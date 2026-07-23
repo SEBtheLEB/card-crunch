@@ -18,25 +18,21 @@ for (const entry of entries) {
   await cp(resolve(root, entry), resolve(output, entry), { recursive: true });
 }
 
-const authConfig = Object.freeze({
-  supabaseUrl: String(process.env.VITE_SUPABASE_URL || "").trim(),
-  supabaseAnonKey: String(process.env.VITE_SUPABASE_ANON_KEY || "").trim(),
-  appUrl: String(process.env.VITE_APP_URL || "").trim()
+const platformConfig = Object.freeze({
+  baseUrl: String(process.env.VITE_STL_PLATFORM_URL || "").trim(),
+  clientId: String(process.env.VITE_STL_CLIENT_ID || "card-crunch-mobile").trim(),
+  gameId: String(process.env.VITE_STL_GAME_ID || "c32010e4-b054-4b59-a636-aa2c5a991d64").trim(),
+  developmentRedirectUri: String(process.env.VITE_STL_REDIRECT_URI_DEV || "cardcrunch-dev://auth/callback").trim(),
+  productionRedirectUri: String(process.env.VITE_STL_REDIRECT_URI_PROD || "cardcrunch://auth/callback").trim()
 });
-const vendorDirectory = resolve(output, "assets", "vendor");
-await mkdir(vendorDirectory, { recursive: true });
-await cp(
-  resolve(root, "node_modules", "@supabase", "supabase-js", "dist", "umd", "supabase.js"),
-  resolve(vendorDirectory, "supabase.js")
-);
 await writeFile(
-  resolve(output, "auth-config.js"),
-  `globalThis.__CARD_CRUNCH_AUTH_CONFIG__ = Object.freeze(${JSON.stringify(authConfig)});\n`,
+  resolve(output, "platform-config.js"),
+  `globalThis.__CARD_CRUNCH_STL_CONFIG__ = Object.freeze(${JSON.stringify(platformConfig)});\n`,
   "utf8"
 );
 
-if (!authConfig.supabaseUrl || !authConfig.supabaseAnonKey || !authConfig.appUrl) {
-  console.warn("Card Crunch auth build is missing one or more VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, or VITE_APP_URL values.");
+if (!platformConfig.baseUrl || !platformConfig.clientId || !platformConfig.gameId) {
+  console.warn("Card Crunch STL Platform build is missing one or more VITE_STL_PLATFORM_URL, VITE_STL_CLIENT_ID, or VITE_STL_GAME_ID values.");
 }
 
 console.log(`Built Card Crunch web assets in ${output}`);

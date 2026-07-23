@@ -3,7 +3,7 @@ import {
   hideCrunchSkipText,
   isCrunchSkipRequested,
   showCrunchSkipText
-} from "./crunchCutscene.js?v=188";
+} from "./crunchCutscene.js?v=189";
 import { playGameSfx } from "./audio.js?v=164";
 import { formatCompactNumber } from "./format.js?v=164";
 

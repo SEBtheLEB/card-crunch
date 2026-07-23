@@ -1,5 +1,5 @@
-import { createGame } from "./gameState.js?v=188";
-import { createUI } from "./ui.js?v=187";
+import { createGame } from "./gameState.js?v=189";
+import { createUI } from "./ui.js?v=189";
 import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=164";
 import { adManager } from "./ads.js?v=164";
 import { grantShieldToken, hasShieldToken } from "./save.js?v=164";
@@ -14,8 +14,8 @@ import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=167";
 import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=169";
 import { initializeStore } from "./store.js?v=167";
 import { initializeTutorial } from "./tutorial.js?v=164";
-import { initializeSupabaseAccount } from "./supabaseAccount.js?v=179";
-import { initializeMultiplayer } from "./multiplayer.js?v=188";
+import { initializeSTLPlatformAccount, installSTLCallbackListener } from "./stlPlatform.js?v=189";
+import { initializeMultiplayer } from "./multiplayer.js?v=189";
 
 initializeTheme();
 initializeCardCollection();
@@ -23,10 +23,12 @@ initializeCardSkin();
 const ui = createUI();
 const game = createGame(ui);
 initializeTutorial({ game });
-initializeSupabaseAccount({
+initializeSTLPlatformAccount({
   bindAction: bindInstantAction,
-  showPage: ui.showMenuPage
+  showPage: ui.showMenuPage,
+  game
 });
+installSTLCallbackListener();
 installAudioUnlock();
 initializePlayGames();
 installFullscreenControls(bindInstantAction);
