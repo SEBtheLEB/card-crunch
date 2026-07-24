@@ -622,7 +622,7 @@ function renderModeAlbumArt() {
   });
 }
 
-function renderHeroLogoCards(stage) {
+export function renderHeroLogoCards(stage) {
   if (!stage) return;
 
   const ranks = [

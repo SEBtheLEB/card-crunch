@@ -8,6 +8,7 @@ const required = [
   "platform-config.js",
   "src/main.js",
   "src/appShell.js",
+  "src/launchGate.js",
   "src/stlPlatformConfig.js",
   "src/stlPlatformClient.js",
   "src/stlCloudSave.js",
@@ -344,7 +345,8 @@ const stlConfig = stlConfigModule.readSTLPlatformConfig({
   clientId: "card-crunch-mobile",
   gameId: "c32010e4-b054-4b59-a636-aa2c5a991d64",
   developmentRedirectUri: "cardcrunch-dev://auth/callback",
-  productionRedirectUri: "cardcrunch://auth/callback"
+  productionRedirectUri: "cardcrunch://auth/callback",
+  webRedirectUri: "https://card-crunch.vercel.app/auth/callback"
 });
 stlConfigModule.validateSTLPlatformConfig(stlConfig, { hostname: "card-crunch.vercel.app" });
 const stlDiagnostics = stlConfigModule.getSTLPlatformDiagnostics(stlConfig, {
@@ -352,7 +354,7 @@ const stlDiagnostics = stlConfigModule.getSTLPlatformDiagnostics(stlConfig, {
   hostname: "card-crunch.vercel.app"
 });
 if (stlDiagnostics.clientId !== "card-crunch-mobile"
-  || stlDiagnostics.redirectUri !== "cardcrunch://auth/callback"
+  || stlDiagnostics.redirectUri !== "https://card-crunch.vercel.app/auth/callback"
   || !Object.values(stlDiagnostics.variables).every(Boolean)) {
   throw new Error("Card Crunch STL Platform diagnostics are incomplete");
 }
@@ -360,10 +362,13 @@ if (stlConfigModule.getRuntimeRedirectUri(
   stlConfig,
   { hostname: "localhost" },
   { isNativePlatform: () => true, getPlatform: () => "android" }
-) !== "cardcrunch://auth/callback"
-  || stlConfigModule.getRuntimeRedirectUri(stlConfig, { hostname: "localhost" }, null)
-    !== "cardcrunch-dev://auth/callback") {
-  throw new Error("Installed Card Crunch builds must use the production callback even inside Capacitor localhost");
+  ) !== "cardcrunch://auth/callback"
+  || stlConfigModule.getRuntimeRedirectUri(
+    stlConfig,
+    { hostname: "localhost", origin: "http://localhost:4183" },
+    null
+  ) !== "http://localhost:4183/auth/callback") {
+  throw new Error("Card Crunch must isolate native callbacks from its browser callback");
 }
 let missingSTLConfigRejected = false;
 try { stlConfigModule.validateSTLPlatformConfig(stlConfigModule.readSTLPlatformConfig({ baseUrl: "" })); } catch (error) {
@@ -373,6 +378,8 @@ if (!missingSTLConfigRejected) throw new Error("Missing STL Platform variables m
 if (stlConfigModule.isAllowedCardCrunchCallback("bitcrushcore://auth/callback")
   || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback")
   || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch-dev://auth/callback")
+  || !stlConfigModule.isAllowedCardCrunchCallback("https://card-crunch.vercel.app/auth/callback?code=test&state=test")
+  || !stlConfigModule.isAllowedCardCrunchCallback("http://localhost:4183/auth/callback?code=test&state=test")
   || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback?code=test&state=test")
   || stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback-evil?code=test")
   || stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback#code=leaked")) {
@@ -455,7 +462,7 @@ const authorizationUrl = new URL(pendingSignIn.authorizationUrl);
 if (authorizationUrl.origin !== "https://accounts.stlproductionz.io"
   || authorizationUrl.searchParams.has("prompt")
   || authorizationUrl.searchParams.get("code_challenge_method") !== "S256"
-  || authorizationUrl.searchParams.get("redirect_uri") !== "cardcrunch://auth/callback") {
+  || authorizationUrl.searchParams.get("redirect_uri") !== "https://card-crunch.vercel.app/auth/callback") {
   throw new Error("Card Crunch sign-in must use canonical STL PKCE without unsupported OAuth parameters");
 }
 let mismatchedRuntimeCallbackRejected = false;
@@ -471,7 +478,7 @@ if (!mismatchedRuntimeCallbackRejected) {
   throw new Error("A production Card Crunch auth transaction must reject the development callback");
 }
 const session = await authClient.completeSignIn(
-  `cardcrunch://auth/callback?code=production-code&state=${pendingSignIn.state}`,
+  `https://card-crunch.vercel.app/auth/callback?code=production-code&state=${pendingSignIn.state}`,
   { device: { deviceId: rawInstallDeviceId } }
 );
 if (session.deviceId !== durableDeviceId
@@ -558,6 +565,10 @@ if (!stlIntegrationSource.includes("this.installDeviceId = null")
   || !stlIntegrationSource.includes("this.deviceId = session.deviceId")
   || !stlIntegrationSource.includes("this.deviceId = null")) {
   throw new Error("Card Crunch must keep the install identifier separate from the durable STL device ID");
+}
+if (!stlIntegrationSource.includes('nativePlatform === "android" || nativePlatform === "ios"')
+  || !stlIntegrationSource.includes("window.location.assign(url)")) {
+  throw new Error("Web STL sign-in must navigate in-page while native builds use the Capacitor system browser");
 }
 const saveUpload = await stlCloudModule.createCardCrunchSaveUpload({
   state: { pots: [{ id: 1, progress: 500, target: 1000, complete: false }], bestScore: 900, bestRunStreak: 4, runStartedAt: Date.now() },
@@ -653,6 +664,7 @@ const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollec
 ]);
 const mainSource = await readFile(resolve(root, "src/main.js"), "utf8");
 const appShellSource = await readFile(resolve(root, "src/appShell.js"), "utf8");
+const launchGateSource = await readFile(resolve(root, "src/launchGate.js"), "utf8");
 const appShellCss = await readFile(resolve(root, "styles/app-shell.css"), "utf8");
 const tutorialSource = await readFile(resolve(root, "src/tutorial.js"), "utf8");
 const audioSource = await readFile(resolve(root, "src/audio.js"), "utf8");
@@ -1094,6 +1106,14 @@ if (!html.includes("journey-page-header")
   || !appShellCss.includes(".journey-chapter > header")
   || !appShellCss.includes("position: sticky")) {
   throw new Error("Pot Journey controls, current-pot navigation, or details sheet are missing");
+}
+if (!html.includes('id="launchAuthGate"')
+  || !html.includes('id="launchGuestButton"')
+  || !html.includes('id="launchGoogleSignInButton"')
+  || !launchGateSource.includes("renderHeroLogoCards")
+  || !launchGateSource.includes("card-crunch-auth-ready")
+  || !mainSource.includes("initializeLaunchGate")) {
+  throw new Error("The branded Card Crunch guest and STL Google launch gate is incomplete");
 }
 if (!uiSource.includes("(state.dealHandCount ?? 0) + index") || !cardGestureSource.includes('zone === "table"')) {
   throw new Error("Table cards must deal after all replacement hand cards");

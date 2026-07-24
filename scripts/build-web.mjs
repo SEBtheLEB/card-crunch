@@ -41,7 +41,8 @@ const platformConfig = Object.freeze({
   clientId: String(process.env.VITE_STL_CLIENT_ID || "card-crunch-mobile").trim(),
   gameId: String(process.env.VITE_STL_GAME_ID || "c32010e4-b054-4b59-a636-aa2c5a991d64").trim(),
   developmentRedirectUri: String(process.env.VITE_STL_REDIRECT_URI_DEV || "cardcrunch-dev://auth/callback").trim(),
-  productionRedirectUri: String(process.env.VITE_STL_REDIRECT_URI_PROD || "cardcrunch://auth/callback").trim()
+  productionRedirectUri: String(process.env.VITE_STL_REDIRECT_URI_PROD || "cardcrunch://auth/callback").trim(),
+  webRedirectUri: String(process.env.VITE_STL_WEB_REDIRECT_URI || "https://card-crunch.vercel.app/auth/callback").trim()
 });
 validateSTLPlatformConfig(platformConfig, { hostname: "card-crunch.vercel.app" });
 await writeFile(

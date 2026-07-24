@@ -6,8 +6,8 @@ import {
   readSTLPlatformConfig,
   shouldShowSTLDiagnostics,
   validateSTLPlatformConfig
-} from "./stlPlatformConfig.js?v=190";
-import { createCardCrunchSTLClient, getOrCreateDeviceId, STLClientError } from "./stlPlatformClient.js?v=190";
+} from "./stlPlatformConfig.js?v=192";
+import { createCardCrunchSTLClient, getOrCreateDeviceId, STLClientError } from "./stlPlatformClient.js?v=192";
 import {
   applyCloudSaveSnapshot,
   createCardCrunchSaveUpload,
@@ -42,7 +42,7 @@ export function initializeSTLPlatformAccount({ bindAction, showPage, game } = {}
     validateSTLPlatformConfig(config);
     integration = new STLPlatformIntegration({ config, game, elements, showPage });
     globalThis.cardCrunchSTL = api;
-    bindAction?.(elements.google, () => integration.signIn());
+    elements.googleButtons.forEach((button) => bindAction?.(button, () => integration.signIn()));
     bindAction?.(elements.signOut, () => integration.signOut());
     bindAction?.(elements.sync, () => integration.syncCloudSave("manual"));
     void integration.boot();
@@ -105,6 +105,7 @@ class STLPlatformIntegration {
       renderProfile(this.elements, null);
     } finally {
       setBusy(this.elements, false);
+      dispatchAuthReady(this.profile);
     }
   }
 
@@ -113,6 +114,11 @@ class STLPlatformIntegration {
     this.setStatus("Opening secure Google sign-in…");
     try {
       const { authorizationUrl } = await this.client.beginSignIn();
+      this.setStatus("Continuing to STL Account…");
+      if (isDevHost()) {
+        const target = new URL(authorizationUrl);
+        console.info("[Card Crunch STL] OAuth handoff ready.", `${target.origin}${target.pathname}`);
+      }
       await openSystemBrowser(authorizationUrl);
     } catch (error) {
       this.setStatus(toUserMessage(error), "bad");
@@ -130,7 +136,7 @@ class STLPlatformIntegration {
         }
       });
       await this.afterSessionRestored(session);
-      this.showPage?.("account");
+      clearWebCallbackFromAddressBar();
     } catch (error) {
       this.setStatus(toUserMessage(error), "bad");
     } finally {
@@ -346,6 +352,11 @@ export function installSTLCallbackListener() {
       }
     });
   }
+
+  const currentUrl = String(globalThis.location?.href || "");
+  if (isWebCallbackUrl(currentUrl)) {
+    void integration?.completeSignIn(currentUrl);
+  }
 }
 
 function achievementsForEvent(eventName, payload, state = {}) {
@@ -368,13 +379,19 @@ function sanitizeEvidence(payload = {}) {
 }
 
 function getElements() {
+  const accountGoogle = document.querySelector("#cardCrunchGoogleSignInButton");
+  const launchGoogle = document.querySelector("#launchGoogleSignInButton");
+  const accountStatus = document.querySelector("#cardCrunchAccountStatus");
+  const launchStatus = document.querySelector("#launchAuthStatus");
   return {
     signedOut: document.querySelector("#cardCrunchAccountSignedOut"),
     signedIn: document.querySelector("#cardCrunchAccountSignedIn"),
-    google: document.querySelector("#cardCrunchGoogleSignInButton"),
+    google: accountGoogle,
+    googleButtons: [accountGoogle, launchGoogle].filter(Boolean),
     signOut: document.querySelector("#cardCrunchSignOutButton"),
     sync: document.querySelector("#cardCrunchSyncButton"),
-    status: document.querySelector("#cardCrunchAccountStatus"),
+    status: accountStatus,
+    statusElements: [accountStatus, launchStatus].filter(Boolean),
     avatar: document.querySelector("#cardCrunchAccountAvatar"),
     initials: document.querySelector("#cardCrunchAccountInitials"),
     name: document.querySelector("#cardCrunchAccountName"),
@@ -417,9 +434,10 @@ function renderDiagnostics(elements, diagnostics) {
 }
 
 function setStatus(elements, message, tone = "") {
-  if (!elements.status) return;
-  elements.status.textContent = message;
-  elements.status.dataset.tone = tone;
+  elements.statusElements.forEach((status) => {
+    status.textContent = message;
+    status.dataset.tone = tone;
+  });
 }
 
 function setSyncText(elements, status) {
@@ -435,15 +453,16 @@ function setSyncText(elements, status) {
 }
 
 function setBusy(elements, busy) {
-  [elements.google, elements.signOut, elements.sync].forEach((button) => {
+  [...elements.googleButtons, elements.signOut, elements.sync].forEach((button) => {
     if (button) button.disabled = Boolean(busy);
   });
-  const googleLabel = elements.google?.querySelector("span");
-  if (googleLabel) {
+  elements.googleButtons.forEach((button) => {
+    const googleLabel = button.querySelector("span");
+    if (!googleLabel) return;
     googleLabel.textContent = busy
       ? "Signing you in…"
-      : elements.google.dataset.idleLabel || "Continue with Google";
-  }
+      : button.dataset.idleLabel || "Continue with Google";
+  });
 }
 
 function persistProfile(profile) {
@@ -479,13 +498,54 @@ function stableIdempotency(...parts) {
 }
 
 async function openSystemBrowser(url) {
-  const browser = globalThis.Capacitor?.Plugins?.Browser;
-  if (browser?.open) return browser.open({ url, presentationStyle: "popover" });
-  window.location.assign(url);
+  const capacitor = globalThis.Capacitor;
+  const nativePlatform = String(capacitor?.getPlatform?.() || "").toLowerCase();
+  const isNative = capacitor?.isNativePlatform?.() || nativePlatform === "android" || nativePlatform === "ios";
+  const browser = capacitor?.Plugins?.Browser;
+  if (isDevHost()) console.info("[Card Crunch STL] Opening OAuth.", isNative ? `native:${nativePlatform || "unknown"}` : "web");
+  if (isNative && browser?.open) return browser.open({ url, presentationStyle: "popover" });
+  const handoff = document.createElement("a");
+  handoff.href = url;
+  handoff.target = "_self";
+  handoff.hidden = true;
+  handoff.setAttribute("aria-hidden", "true");
+  document.body.append(handoff);
+  handoff.click();
+  window.setTimeout(() => {
+    handoff.remove();
+    if (document.visibilityState === "visible") window.location.assign(url);
+  }, 80);
 }
 
 async function closeSystemBrowser() {
-  try { await globalThis.Capacitor?.Plugins?.Browser?.close?.(); } catch {}
+  const capacitor = globalThis.Capacitor;
+  const nativePlatform = String(capacitor?.getPlatform?.() || "").toLowerCase();
+  const isNative = capacitor?.isNativePlatform?.() || nativePlatform === "android" || nativePlatform === "ios";
+  if (!isNative) return;
+  try { await capacitor?.Plugins?.Browser?.close?.(); } catch {}
+}
+
+function isWebCallbackUrl(value) {
+  try {
+    const callback = new URL(value);
+    return callback.pathname === "/auth/callback"
+      && (callback.searchParams.has("code") || callback.searchParams.has("error"))
+      && callback.searchParams.has("state")
+      && isAllowedCardCrunchCallback(value);
+  } catch {
+    return false;
+  }
+}
+
+function clearWebCallbackFromAddressBar() {
+  if (globalThis.Capacitor?.isNativePlatform?.()) return;
+  try {
+    if (location.pathname === "/auth/callback") history.replaceState(null, "", "/");
+  } catch {}
+}
+
+function dispatchAuthReady(profile) {
+  globalThis.dispatchEvent?.(new CustomEvent("card-crunch-auth-ready", { detail: { profile } }));
 }
 
 function getPlatformKind() {

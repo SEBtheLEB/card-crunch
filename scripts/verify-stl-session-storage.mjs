@@ -49,7 +49,8 @@ const config = Object.freeze({
   clientId: "card-crunch-mobile",
   gameId: "c32010e4-b054-4b59-a636-aa2c5a991d64",
   developmentRedirectUri: "cardcrunch-dev://auth/callback",
-  productionRedirectUri: "cardcrunch://auth/callback"
+  productionRedirectUri: "cardcrunch://auth/callback",
+  webRedirectUri: "https://card-crunch.vercel.app/auth/callback"
 });
 const durableDeviceId = "78711b16-dad0-4f34-9870-30765ee988a6";
 const userId = "1c5cedc2-156c-46eb-b01b-ea1e9b6fc8c1";
@@ -131,7 +132,7 @@ const webClient = new CardCrunchSTLClient(config);
 assert.equal(webClient.storageSecurity, "memory-only");
 const webTransaction = await webClient.beginSignIn();
 await webClient.completeSignIn(
-  `cardcrunch://auth/callback?code=web-code&state=${webTransaction.state}`
+  `https://card-crunch.vercel.app/auth/callback?code=web-code&state=${webTransaction.state}`
 );
 assert.equal(webSecureStorageCalls, 0, "the secure-storage plugin's plaintext web adapter must never run");
 assert.equal(localStorage.getItem(SESSION_KEY), null);
