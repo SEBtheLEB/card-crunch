@@ -17,12 +17,14 @@ import { initializeStore } from "./store.js?v=167";
 import { initializeTutorial } from "./tutorial.js?v=164";
 import { initializeSTLPlatformAccount, installSTLCallbackListener } from "./stlPlatform.js?v=190";
 import { initializeMultiplayer } from "./multiplayer.js?v=189";
+import { initializeAppShell } from "./appShell.js?v=191";
 
 initializeTheme();
 initializeCardCollection();
 initializeCardSkin();
 const ui = createUI();
 const game = createGame(ui);
+initializeAppShell({ ui, game, bindAction: bindInstantAction });
 initializeTutorial({ game });
 initializeSTLPlatformAccount({
   bindAction: bindInstantAction,
@@ -34,7 +36,6 @@ installAudioUnlock();
 initializePlayGames();
 installFullscreenControls(bindInstantAction);
 bindInstantAction(ui.elements.startButton, () => ui.showMenuPage("modes"));
-bindInstantAction(ui.elements.potsModeButton, () => ui.showMenuPage("pots"));
 bindInstantAction(ui.elements.endlessArcadeButton, game.startEndlessArcade);
 bindInstantAction(ui.elements.backToMenuButton, () => {
   ui.showMap(false);

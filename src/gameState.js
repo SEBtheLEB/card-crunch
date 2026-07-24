@@ -1079,7 +1079,7 @@ export function createGame(ui) {
     ui.showGameOver(false);
     ui.showStart(true);
     ui.showMap(false);
-    if (returnToModeSelect) ui.showMenuPage("modes");
+    ui.showMenuPage(returnToModeSelect ? "modes" : "pots");
   }
 
   async function onCoinAd() {
