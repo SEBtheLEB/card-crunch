@@ -7,6 +7,7 @@ const required = [
   ".env.example",
   "platform-config.js",
   "src/main.js",
+  "src/appShell.js",
   "src/stlPlatformConfig.js",
   "src/stlPlatformClient.js",
   "src/stlCloudSave.js",
@@ -58,6 +59,7 @@ const required = [
   "styles/collection.css",
   "styles/store.css",
   "styles/multiplayer.css",
+  "styles/app-shell.css",
   "capacitor.config.json"
 ];
 
@@ -322,10 +324,11 @@ if (!html.includes('data-page="account"')
   || html.includes("Supabase")) {
   throw new Error("Dedicated Card Crunch STL Platform account UI hooks are missing or copied account branding remains");
 }
-if (!html.includes("Each pot is a different challenge.")
-  || !html.includes("pot-state-legend")
+if (!html.includes("Pot Journey")
+  || !html.includes("journey-scroll-region")
+  || !html.includes("potJourneySheet")
   || (html.match(/menu-chip-add/g) ?? []).length !== 1) {
-  throw new Error("Pot challenge copy or unified header actions are missing");
+  throw new Error("Pot Journey shell or unified header actions are missing");
 }
 if (html.includes('id="tutorialPage"')) {
   throw new Error("Tutorial must use the real game board, not a separate practice layout");
@@ -649,6 +652,8 @@ const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollec
   readFile(resolve(root, "styles/multiplayer.css"), "utf8")
 ]);
 const mainSource = await readFile(resolve(root, "src/main.js"), "utf8");
+const appShellSource = await readFile(resolve(root, "src/appShell.js"), "utf8");
+const appShellCss = await readFile(resolve(root, "styles/app-shell.css"), "utf8");
 const tutorialSource = await readFile(resolve(root, "src/tutorial.js"), "utf8");
 const audioSource = await readFile(resolve(root, "src/audio.js"), "utf8");
 const hapticsSource = await readFile(resolve(root, "src/haptics.js"), "utf8");
@@ -1082,15 +1087,13 @@ if (!uiSource.includes("pot-grid-row")
   || !gameStateSource.includes("ensurePlayableRound")) {
   throw new Error("Expandable challenge pots or their gameplay modifiers are missing");
 }
-if (!html.includes("pot-page-fixed")
-  || !html.includes("pot-scroll-region")
-  || !uiSource.includes('classList.toggle("is-pots-page"')
-  || !uiSource.includes("alignPotRowToTop")
-  || uiSource.includes("keepPotPanelVisible")
-  || !css.includes("Build 162: fixed Pot controls")
-  || !css.includes(".pot-scroll-region .pot-chapter-heading")
-  || !css.includes("position: sticky")) {
-  throw new Error("Pot controls must stay fixed while selected challenge rows align inside their own scroller");
+if (!html.includes("journey-page-header")
+  || !html.includes("journey-scroll-region")
+  || !appShellSource.includes("scrollToCurrentPot")
+  || !appShellSource.includes("openPotSheet")
+  || !appShellCss.includes(".journey-chapter > header")
+  || !appShellCss.includes("position: sticky")) {
+  throw new Error("Pot Journey controls, current-pot navigation, or details sheet are missing");
 }
 if (!uiSource.includes("(state.dealHandCount ?? 0) + index") || !cardGestureSource.includes('zone === "table"')) {
   throw new Error("Table cards must deal after all replacement hand cards");

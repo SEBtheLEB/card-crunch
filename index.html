@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="styles/collection.css?v=167">
   <link rel="stylesheet" href="styles/store.css?v=167">
   <link rel="stylesheet" href="styles/multiplayer.css?v=189">
+  <link rel="stylesheet" href="styles/app-shell.css?v=191">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -188,53 +189,90 @@
             </section>
           </section>
 
-          <section class="menu-page mode-select-page" data-page="modes" aria-labelledby="modeSelectTitle">
-            <div class="mode-select-heading">
-              <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
-              <span><small>Choose your table</small><h2 id="modeSelectTitle">Play Card Crunch</h2></span>
-            </div>
-            <p class="mode-select-copy">Three ways to turn a good hand into a huge score.</p>
+          <section class="menu-page mode-select-page play-hub-page" data-page="modes" aria-labelledby="modeSelectTitle">
+            <header class="shell-page-heading play-hub-heading">
+              <span><small>Play Hub</small><h2 id="modeSelectTitle">Choose Your Table</h2></span>
+              <button class="shell-header-action" id="playHubTutorialButton" type="button" aria-label="Open tutorial">?</button>
+            </header>
 
-            <div class="mode-album-grid" aria-label="Game modes">
-              <button class="mode-album-button mode-pots-button" id="potsModeButton" type="button">
-                <span class="mode-cover-art" aria-hidden="true">
-                  <span class="mode-card-stage" data-mode-card-art="pots"></span>
-                  <b class="mode-pot-token"><i>1</i><span>Pots</span></b>
+            <button class="play-hub-hero" id="potsModeButton" type="button">
+              <span class="journey-hero-stage" aria-hidden="true">
+                <span class="journey-pot-render">
+                  <i class="journey-pot-rim"></i>
+                  <i class="journey-pot-fill" id="playHubPotFill"></i>
+                  <span class="journey-pot-cards" data-mode-card-art="pots"></span>
+                  <b id="playHubPotNumber">1</b>
                 </span>
-                <span class="mode-album-copy">
-                  <small>Level Journey</small>
-                  <strong>Pot Runs</strong>
-                  <span>Fill pots, unlock rules, climb the table.</span>
-                </span>
-                <em>Choose a Pot &#8250;</em>
+                <span class="journey-scraps"><i></i><i></i><i></i></span>
+              </span>
+              <span class="play-hub-hero-copy">
+                <small id="playHubChapter">Table 1 &bull; Starter Tables</small>
+                <strong>Pot Journey</strong>
+                <span id="playHubPotTitle">Pot 1 &mdash; Classic Crunch</span>
+                <span class="hub-modifier" id="playHubModifier">Standard rules</span>
+              </span>
+              <span class="hub-progress-block">
+                <span><b id="playHubProgressLabel">0%</b><em id="playHubBestScore">Best 0</em></span>
+                <i><b id="playHubProgressFill"></b></i>
+              </span>
+              <span class="hub-continue-button" id="playHubContinueLabel">Continue Pot 1</span>
+            </button>
+
+            <div class="play-hub-secondary-grid" aria-label="More Card Crunch modes">
+              <button class="hub-mode-tile hub-duel-tile" id="onlineDuelButton" type="button">
+                <span class="hub-mode-art" data-mode-card-art="duel" aria-hidden="true"></span>
+                <i class="hub-versus" aria-hidden="true">VS</i>
+                <span><small><i class="mode-online-dot"></i> Live</small><strong>Online Duel</strong><em>Find Rival</em></span>
               </button>
-
-              <button class="mode-album-button mode-arcade-button" id="endlessArcadeButton" type="button">
-                <span class="mode-cover-art" aria-hidden="true">
-                  <span class="mode-card-stage" data-mode-card-art="arcade"></span>
-                  <b class="mode-bolt">&#9889;</b>
-                </span>
-                <span class="mode-album-copy">
-                  <small>Power Cards</small>
-                  <strong>ENDLESS ARCADE</strong>
-                  <span>Ten seconds. Instant refills. No ceiling.</span>
-                </span>
-                <em>Start Run &#8250;</em>
-              </button>
-
-              <button class="mode-album-button mode-duel-button" id="onlineDuelButton" type="button">
-                <span class="mode-cover-art" aria-hidden="true">
-                  <span class="mode-card-stage" data-mode-card-art="duel"></span>
-                  <b class="mode-versus">VS</b>
-                </span>
-                <span class="mode-album-copy">
-                  <small><i class="mode-online-dot"></i> Live Match</small>
-                  <strong>ONLINE DUEL</strong>
-                  <span>One minute. One rival. Highest score wins.</span>
-                </span>
-                <em>Find Rival &#8250;</em>
+              <button class="hub-mode-tile hub-arcade-tile" id="endlessArcadeButton" type="button">
+                <span class="hub-arcade-machine" aria-hidden="true"><i>Crunch</i><b>&#9889;</b></span>
+                <span class="shell-mode-art-contract" data-mode-card-art="arcade" aria-hidden="true"></span>
+                <span><small>Power Cards</small><strong>ENDLESS ARCADE</strong><em>Start Run</em></span>
               </button>
             </div>
+
+            <button class="play-hub-event-strip" data-app-tab-target="events" type="button">
+              <span class="event-strip-icon" aria-hidden="true">&#9733;</span>
+              <span><small>Daily Challenge</small><strong>Score 500K in any mode</strong></span>
+              <em>Reward 100 &#9670;</em>
+              <i aria-hidden="true">&#8250;</i>
+            </button>
+          </section>
+
+          <section class="menu-page shell-events-page" data-page="events" aria-labelledby="eventsTitle">
+            <header class="shell-page-heading">
+              <span><small>Fresh challenges</small><h2 id="eventsTitle">Events</h2></span>
+              <span class="event-reset-badge">&#9201; 23h 38m</span>
+            </header>
+            <div class="events-feature-list">
+              <article class="event-feature-card event-daily-card">
+                <span class="event-card-icon" aria-hidden="true">&#10022;</span>
+                <div><small>Daily Challenge</small><h3>Big Bank Day</h3><p>Bank 500K across any Card Crunch mode.</p></div>
+                <span class="event-card-progress"><i><b style="width:0%"></b></i><em>0 / 500K</em></span>
+                <button data-menu-page="modes" type="button">Play</button>
+                <strong class="event-reward">100 &#9670;</strong>
+              </article>
+              <article class="event-feature-card event-weekly-card">
+                <span class="event-card-icon" aria-hidden="true">&#9819;</span>
+                <div><small>Weekly Run</small><h3>Ten Pot Tour</h3><p>Complete or replay ten Pot Journey tables.</p></div>
+                <span class="event-card-progress"><i><b style="width:40%"></b></i><em>4 / 10</em></span>
+                <span class="event-status-chip">This Week</span>
+                <strong class="event-reward">500 &#9670;</strong>
+              </article>
+              <article class="event-feature-card event-limited-card">
+                <span class="event-card-icon" aria-hidden="true">&hearts;</span>
+                <div><small>Limited Rule</small><h3>Hearts Rush</h3><p>Play three Pots with Hearts Boost active.</p></div>
+                <span class="event-card-progress"><i><b style="width:33%"></b></i><em>1 / 3</em></span>
+                <span class="event-status-chip">Coming Soon</span>
+                <strong class="event-reward">200 &#9670;</strong>
+              </article>
+            </div>
+            <article class="season-progress-card">
+              <span><small>Season 1</small><strong>Crunch Season</strong></span>
+              <span><b>Level 12</b><em>458 / 1,000</em></span>
+              <i><b style="width:45.8%"></b></i>
+              <p>Season event connectivity is a presentation preview; existing progression remains unchanged.</p>
+            </article>
           </section>
 
           <section class="menu-page card-crunch-account-page" data-page="account" aria-labelledby="cardCrunchAccountTitle">
@@ -379,31 +417,93 @@
           </section>
 
           <section class="menu-page" data-page="pots" aria-hidden="true">
-            <div class="pot-page-fixed">
-              <div class="pot-page-heading-row">
-                <button class="page-back-button" data-menu-page="modes" type="button">&lsaquo; Modes</button>
-                <h2>Pick a Pot</h2>
-              </div>
-              <p class="menu-page-copy pot-page-copy"><strong>Each pot is a different challenge.</strong><span>Clear the available pot to unlock the next one.</span></p>
-              <div class="pot-state-legend" aria-label="Pot status guide">
-                <span class="is-cleared"><i aria-hidden="true">&#10003;</i> Cleared</span>
-                <span class="is-available"><i aria-hidden="true">&#9733;</i> Available</span>
-                <span class="is-locked"><i aria-hidden="true">&#128274;</i> Locked</span>
-              </div>
-              <button class="ad-button shield-ad-button" id="shieldAdButton" type="button">
-                <i aria-hidden="true">&#9654;</i>
-                <span>Safe Bank Shield</span>
-                <small>Watch ad &bull; save 25% if you bust</small>
-              </button>
+            <header class="journey-page-header">
+              <button class="journey-back-button" data-menu-page="modes" type="button" aria-label="Back to Play Hub">&lsaquo;</button>
+              <span><strong>Pot Journey</strong><small id="journeyChapterName">Table 1 &bull; Starter Tables</small></span>
+              <button class="journey-info-button" type="button" aria-label="Pot Journey information">i</button>
+            </header>
+            <button class="journey-shield-strip shield-ad-button" id="shieldAdButton" type="button">
+              <i aria-hidden="true">&#9654;</i>
+              <span><strong>Safe Bank Shield</strong><small>Watch ad &bull; save 25% if you bust</small></span>
+            </button>
+            <div class="pot-scroll-region journey-scroll-region" id="journeyScrollRegion" aria-label="Pot Journey challenges">
+              <div class="journey-table-decor" aria-hidden="true"><i>&spades;</i><i>&hearts;</i><i>&diams;</i><i>&clubs;</i></div>
+              <div class="menu-level-map journey-map" id="levelMap"></div>
             </div>
-            <div class="pot-scroll-region" aria-label="Pot challenges">
-              <div class="menu-level-map" id="levelMap"></div>
-            </div>
+            <button class="return-current-pot" id="returnCurrentPotButton" type="button" aria-label="Return to current Pot">&#9733; Current</button>
             <strong id="profilePotsCleared" hidden>0</strong>
             <strong id="profileCoins" hidden>0</strong>
           </section>
+
+          <section class="menu-page gameplay-prep-page" data-page="pot-prep" aria-labelledby="prepPotTitle">
+            <header class="journey-page-header prep-header">
+              <button class="journey-back-button" data-menu-page="pots" type="button" aria-label="Back to Pot Journey">&lsaquo;</button>
+              <span><strong id="prepPotTitle">Pot 1 &mdash; Classic Crunch</strong><small id="prepPotChapter">Starter Tables</small></span>
+              <button class="journey-info-button" type="button" aria-label="Pot information">i</button>
+            </header>
+            <div class="prep-scroll">
+              <section class="prep-deck-panel">
+                <div class="prep-deck-preview" id="prepDeckPreview" aria-hidden="true"></div>
+                <div><small>Equipped Deck</small><strong id="prepDeckName">Starter Classic</strong><em id="prepDeckProgress">52 / 52</em></div>
+                <button data-menu-page="themes" type="button">Change Deck</button>
+              </section>
+              <section class="prep-modifier-card">
+                <span class="prep-modifier-icon" id="prepModifierIcon" aria-hidden="true">&#9824;</span>
+                <div><small>Modifier</small><strong id="prepModifierName">Standard Rules</strong><p id="prepModifierCopy">Build a streak, crunch matching cards, and bank before you bust.</p></div>
+              </section>
+              <section class="prep-target-grid">
+                <article><small>Fill Target</small><strong id="prepTargetValue">1M</strong></article>
+                <article><small>Your Best</small><strong id="prepBestValue">0</strong></article>
+              </section>
+              <section class="prep-boosters" aria-labelledby="prepBoostersTitle">
+                <header><small>Optional</small><h3 id="prepBoostersTitle">Select Boosters</h3></header>
+                <div>
+                  <button type="button" aria-pressed="false"><i>&#9201;</i><strong>Extra Time</strong><small>Prototype +10s</small></button>
+                  <button type="button" aria-pressed="false"><i>&#10022;</i><strong>Crunch Bonus</strong><small>Prototype +25%</small></button>
+                  <button type="button" aria-pressed="false"><i>&hearts;</i><strong>Retry Token</strong><small>Prototype revive</small></button>
+                </div>
+              </section>
+              <p class="prep-prototype-note">Boosters are visual placeholders in this phase and are not consumed or applied.</p>
+            </div>
+            <button class="prep-play-button" id="prepPlayButton" type="button">Play</button>
+          </section>
         </div>
+
+        <nav class="card-table-dock" id="appDock" aria-label="Main navigation">
+          <button class="dock-tab dock-store-tab" data-app-tab-target="shop" type="button"><i aria-hidden="true">&#9670;</i><span>Store</span></button>
+          <button class="dock-tab dock-collection-tab" data-app-tab-target="themes" type="button"><i aria-hidden="true">&#9638;</i><span>Collection</span></button>
+          <button class="dock-tab dock-play-tab is-active" data-app-tab-target="modes" type="button" aria-current="page">
+            <span class="dock-card-fan" id="dockPlayCardFan" aria-hidden="true"></span>
+            <span>Play</span>
+          </button>
+          <button class="dock-tab dock-events-tab" data-app-tab-target="events" type="button"><i aria-hidden="true">&#9819;</i><span>Events</span></button>
+          <button class="dock-tab dock-profile-tab" data-app-tab-target="account" type="button"><i aria-hidden="true">CC</i><span>Profile</span></button>
+        </nav>
       </div>
+
+      <section class="pot-journey-sheet" id="potJourneySheet" aria-hidden="true" hidden>
+        <button class="pot-sheet-backdrop" id="potSheetBackdrop" type="button" aria-label="Close Pot details"></button>
+        <article class="pot-sheet-card" role="dialog" aria-modal="true" aria-labelledby="potSheetTitle">
+          <button class="pot-sheet-close" id="potSheetClose" type="button" aria-label="Close Pot details">&times;</button>
+          <span class="pot-sheet-kicker" id="potSheetKicker">Pot 1</span>
+          <h2 id="potSheetTitle">Classic Crunch</h2>
+          <div class="pot-sheet-render" id="potSheetRender" aria-hidden="true"></div>
+          <section class="pot-sheet-modifier">
+            <i id="potSheetModifierIcon" aria-hidden="true">&#9824;</i>
+            <span><small>Modifier</small><strong id="potSheetModifierName">Standard Rules</strong><p id="potSheetModifierCopy">The original Card Crunch table.</p></span>
+          </section>
+          <div class="pot-sheet-stats">
+            <article><small>Fill Target</small><strong id="potSheetTarget">1M</strong></article>
+            <article><small>Best Score</small><strong id="potSheetBest">0</strong></article>
+          </div>
+          <section class="pot-sheet-rewards">
+            <small>Possible Rewards</small>
+            <span><i aria-hidden="true">&#9670;</i><b id="potSheetCoinReward">100</b></span>
+            <span><i aria-hidden="true">&#9638;</i><b>Card progress</b></span>
+          </section>
+          <button class="pot-sheet-play" id="potSheetPlayButton" type="button">Play Pot 1</button>
+        </article>
+      </section>
     </section>
 
     <section class="modal-screen" id="mapScreen" aria-labelledby="mapTitle" aria-hidden="true">
@@ -545,6 +645,6 @@
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
   <script src="platform-config.js"></script>
-  <script type="module" src="src/main.js?v=190"></script>
+  <script type="module" src="src/main.js?v=191"></script>
   </body>
 </html>
