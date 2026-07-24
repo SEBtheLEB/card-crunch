@@ -1,0 +1,202 @@
+.online-duel-button {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: clamp(8px, 2.8vw, 14px);
+  width: min(92%, 450px);
+  min-height: clamp(54px, 8.5dvh, 68px);
+  margin: clamp(7px, 1.2dvh, 12px) auto 0;
+  padding: 8px clamp(10px, 3vw, 16px);
+  border: 2px solid #59dcff;
+  clip-path: polygon(5px 0, calc(100% - 5px) 0, 100% 5px, 100% calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 5px), 0 5px);
+  color: #edfbff;
+  background:
+    linear-gradient(105deg, rgba(87, 222, 255, .12), transparent 42%),
+    repeating-linear-gradient(0deg, transparent 0 6px, rgba(107, 219, 255, .035) 6px 7px),
+    linear-gradient(#123c58, #081f35);
+  box-shadow: 0 4px 0 #03101d, inset 0 0 0 2px rgba(6, 22, 38, .72), 0 0 14px rgba(68, 205, 255, .18);
+  text-align: left;
+}
+
+.online-duel-button:hover,
+.online-duel-button:focus-visible { filter: brightness(1.14); box-shadow: 0 4px 0 #03101d, inset 0 0 0 2px rgba(6, 22, 38, .72), 0 0 22px rgba(68, 205, 255, .36); }
+.online-duel-button:active { transform: translateY(3px) scale(.99); box-shadow: 0 1px 0 #03101d; }
+.online-duel-icon { display: grid; place-items: center; width: 38px; aspect-ratio: 1; color: #fff2a6; font-size: 1.35rem; text-shadow: 2px 2px #3f2605; }
+.online-duel-button > span:nth-child(2) { display: grid; gap: 3px; min-width: 0; }
+.online-duel-button strong { font-family: "Press Start 2P", monospace; font-size: clamp(.62rem, 2.5vw, .79rem); line-height: 1.25; }
+.online-duel-button small { color: #9ddff0; font: 900 clamp(.55rem, 2vw, .69rem)/1.25 Nunito, sans-serif; }
+.online-duel-button em { display: flex; align-items: center; gap: 5px; color: #b9ffca; font: 900 .58rem/1 Nunito, sans-serif; text-transform: uppercase; }
+.online-duel-button em i { width: 7px; height: 7px; background: #60ff8c; box-shadow: 0 0 8px #49ff7b; animation: onlinePulse 1.2s steps(2) infinite; }
+
+.matchmaking-screen,
+.multiplayer-result-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 2700;
+  display: none;
+  place-items: center;
+  overflow: hidden;
+  padding: max(16px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  background:
+    radial-gradient(circle at 50% 37%, rgba(26, 135, 136, .3), transparent 34%),
+    repeating-linear-gradient(0deg, transparent 0 5px, rgba(77, 194, 175, .025) 5px 6px),
+    linear-gradient(145deg, #07352b, #041811 64%, #020b0c);
+}
+
+/* Matchmaking shares the gameplay card-flight (z110) and shard (z96)
+   layers. Keep this backdrop in the same stacking range as a real Crunch so
+   those exact effects render above it; the result screen remains modal. */
+.matchmaking-screen { z-index: 68; }
+.multiplayer-result-screen { z-index: 2700; }
+
+.matchmaking-screen::after,
+.multiplayer-result-screen::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 2px solid #ae7718;
+  clip-path: polygon(7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 7px), 0 7px);
+  pointer-events: none;
+}
+
+.matchmaking-screen.is-visible,
+.multiplayer-result-screen.is-visible { display: grid; animation: multiplayerFadeIn 180ms steps(4) both; }
+.matchmaking-ambient { position: absolute; inset: 0; opacity: .09; pointer-events: none; }
+.matchmaking-ambient i { position: absolute; color: #a9ffe1; font-size: clamp(2rem, 12vw, 5rem); }
+.matchmaking-ambient i:nth-child(1) { left: 8%; top: 12%; transform: rotate(-18deg); }
+.matchmaking-ambient i:nth-child(2) { right: 8%; top: 22%; transform: rotate(15deg); }
+.matchmaking-ambient i:nth-child(3) { left: 7%; bottom: 14%; transform: rotate(12deg); }
+.matchmaking-ambient i:nth-child(4) { right: 9%; bottom: 9%; transform: rotate(-15deg); }
+
+.matchmaking-shell,
+.multiplayer-result-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  width: min(calc(100vw - 40px), 460px);
+  max-width: 100%;
+  min-height: 0;
+  padding: clamp(14px, 3.2dvh, 28px) clamp(12px, 4vw, 26px);
+  color: #fff3b0;
+  text-align: center;
+}
+
+.matchmaking-shell {
+  grid-template-rows: auto auto auto minmax(180px, 1fr) auto;
+  align-content: stretch;
+  row-gap: clamp(5px, 1.1dvh, 10px);
+  height: min(760px, calc(100dvh - max(32px, env(safe-area-inset-top)) - max(36px, env(safe-area-inset-bottom))));
+  max-height: 100%;
+}
+
+.matchmaking-kicker,
+.multiplayer-result-card > p { margin: 0 0 10px; color: #63e8ff; font: 900 clamp(.65rem, 2.5vw, .85rem)/1.2 "Press Start 2P", monospace; text-transform: uppercase; }
+.matchmaking-shell h2,
+.multiplayer-result-card h2 { max-width: 100%; margin: 0; overflow-wrap: anywhere; color: #fff0a4; font: 900 clamp(.86rem, 4.4vw, 1.55rem)/1.32 "Press Start 2P", monospace; text-shadow: 3px 3px #4c2d04, 0 0 15px rgba(255, 202, 73, .4); text-wrap: balance; }
+.matchmaking-elapsed { margin: 0; color: #b1d9d2; font: 900 clamp(.65rem, 2.8vw, .75rem)/1.2 Nunito, sans-serif; }
+.matchmaking-card-stage { position: relative; display: grid; place-items: center; align-self: stretch; width: min(72vw, 300px); min-height: 0; height: 100%; margin: 0 auto; touch-action: manipulation; cursor: pointer; }
+.matchmaking-card-stage[hidden],
+.matchmaking-versus[hidden] { display: none !important; }
+.matchmaking-card-stage .card { position: relative; width: clamp(112px, min(37vw, 23dvh), 166px); aspect-ratio: .68; transform-origin: center; }
+.matchmaking-card { transition: filter 100ms steps(2); will-change: transform, opacity; }
+.matchmaking-vacuum-target { position: fixed; z-index: 0; top: -7px; left: 50%; width: 14px; height: 5px; opacity: 0; pointer-events: none; transform: translateX(-50%); }
+.matchmaking-actions {
+  display: grid;
+  align-self: end;
+  gap: 9px;
+  width: min(310px, 100%);
+  margin: 0 0 4px;
+}
+.matchmaking-bot-button {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  width: 100%;
+  min-height: 58px;
+  padding: 8px 13px;
+  border: 3px solid #ffe46e;
+  clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px);
+  color: #18280d;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 5px, rgba(255, 255, 255, .08) 5px 6px),
+    linear-gradient(180deg, #b8f75b, #50c833 58%, #249626);
+  box-shadow: 0 5px 0 #155413, inset 0 0 0 2px rgba(238, 255, 174, .62), 0 0 18px rgba(126, 255, 81, .24);
+  text-align: left;
+  text-transform: uppercase;
+}
+.matchmaking-bot-button > span {
+  grid-row: 1 / 3;
+  color: #fff9a6;
+  font-size: 1.35rem;
+  text-align: center;
+  text-shadow: 2px 2px #654100, 0 0 9px #fff36e;
+}
+.matchmaking-bot-button strong { font: 900 clamp(.56rem, 2.4vw, .7rem)/1.25 "Press Start 2P", monospace; }
+.matchmaking-bot-button small { color: #163a19; font: 1000 clamp(.58rem, 2.3vw, .7rem)/1.2 Nunito, sans-serif; letter-spacing: 0; text-transform: none; }
+.matchmaking-bot-button:hover,
+.matchmaking-bot-button:focus-visible { filter: brightness(1.1); box-shadow: 0 5px 0 #155413, inset 0 0 0 2px rgba(238, 255, 174, .8), 0 0 25px rgba(126, 255, 81, .46); }
+.matchmaking-bot-button:active { transform: translateY(4px) scale(.985); box-shadow: 0 1px 0 #155413; }
+.matchmaking-bot-button:disabled { filter: saturate(.35) brightness(.72); cursor: wait; }
+.matchmaking-cancel-button,
+.multiplayer-home-button { min-width: min(180px, 100%); min-height: 46px; padding: 10px 18px; border: 2px solid #6b7e78; color: #f3f0d9; background: linear-gradient(#27463f, #132c28); box-shadow: 0 4px 0 #06120f; font: 900 clamp(.58rem, 2.5vw, .72rem)/1.2 "Press Start 2P", monospace; text-transform: uppercase; }
+.matchmaking-cancel-button { width: 100%; margin: 0; }
+.matchmaking-cancel-button:active,
+.multiplayer-home-button:active { transform: translateY(3px); box-shadow: 0 1px 0 #06120f; }
+
+.matchmaking-versus { position: relative; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; width: 100%; min-height: 280px; margin: 22px 0; }
+.matchmaking-versus > div { display: grid; gap: 6px; min-width: 0; padding: 14px 7px; border-block: 2px solid #396d5f; background: rgba(2, 18, 15, .58); }
+.matchmaking-versus span { color: #6ee9ff; font: 900 .58rem/1 "Press Start 2P", monospace; text-transform: uppercase; }
+.matchmaking-versus strong { overflow: hidden; color: #fff4bd; font: 900 clamp(.62rem, 2.5vw, .82rem)/1.35 Nunito, sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+.matchmaking-versus > b { color: #ffbd37; font: 900 clamp(1.4rem, 8vw, 2.5rem)/1 "Press Start 2P", monospace; text-shadow: 3px 3px #472908; }
+.match-found .matchmaking-elapsed,
+.match-found .matchmaking-actions { visibility: hidden; }
+
+.multiplayer-result-card { min-height: auto; padding: clamp(28px, 8vw, 46px) clamp(18px, 5vw, 34px); border: 3px solid #d89b22; background: repeating-linear-gradient(0deg, transparent 0 6px, rgba(255,255,255,.025) 6px 7px), linear-gradient(145deg, #114535, #061d19); box-shadow: 0 8px 0 #02100d, inset 0 0 0 2px #613d0c, 0 0 30px rgba(255, 194, 54, .2); clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px); }
+.multiplayer-result-card h2[data-result="win"] { color: #fff18d; }
+.multiplayer-result-card h2[data-result="loss"] { color: #ff8f8f; text-shadow: 3px 3px #4e1010; }
+.multiplayer-result-card h2[data-result="draw"] { color: #7eeaff; text-shadow: 3px 3px #073d4f; }
+.multiplayer-scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; width: 100%; margin: 28px 0; }
+.multiplayer-scoreboard section { display: grid; gap: 9px; min-width: 0; padding: 16px 6px; border-block: 2px solid #426f61; }
+.multiplayer-scoreboard span { overflow: hidden; color: #a9d7d0; font: 900 .64rem/1.2 Nunito, sans-serif; text-overflow: ellipsis; white-space: nowrap; text-transform: uppercase; }
+.multiplayer-scoreboard strong { color: white; font: 900 clamp(.85rem, 4vw, 1.2rem)/1.2 "Press Start 2P", monospace; }
+.multiplayer-scoreboard > b { color: #ffbe35; font: 900 1rem/1 "Press Start 2P", monospace; }
+.multiplayer-rematch-button { width: 100%; min-height: 58px; border: 3px solid #ffe36f; color: #1c2608; background: linear-gradient(#a8f24f, #43bd2d); box-shadow: 0 5px 0 #176713, inset 0 0 0 2px #d7ff91; font: 900 clamp(.72rem, 3vw, .94rem)/1.2 "Press Start 2P", monospace; text-transform: uppercase; }
+.multiplayer-home-button { width: 100%; margin-top: 12px; }
+
+.game-shell.multiplayer-mode .target-fill { background: linear-gradient(90deg, #23b4d6, #6ceaff); box-shadow: 0 0 9px rgba(62, 217, 255, .5); }
+.game-shell.multiplayer-mode .timer-strip { border-color: #ce8f22; background: linear-gradient(90deg, #2d1707, #62360c 50%, #2d1707); }
+.game-shell.multiplayer-mode .bank-button { border-color: #4bc9e8; color: #dffbff; background: linear-gradient(#18526a, #092d43); box-shadow: 0 4px 0 #03131f, inset 0 0 0 2px #2c7792; }
+.game-shell.multiplayer-mode .bottom-status > section:first-child strong { color: #74f1ff; font-size: clamp(.58rem, 2.4vw, .72rem); }
+.game-shell.multiplayer-mode .target-summary span:first-child { min-width: 0; }
+.game-shell.multiplayer-mode .target-summary span:first-child strong { display: inline-block; max-width: min(36vw, 150px); overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
+
+.matchmaking-card[data-preview-skin="dark"] { border-color: #647b91; background: linear-gradient(150deg, #2a384d, #151f30 58%, #090f1b); color: #eef8ff; }
+.matchmaking-card[data-preview-skin="pink"] { border-color: #9d2f68; background: linear-gradient(150deg, #fff4f8, #ffd3e5 58%, #ee9fc3); }
+.matchmaking-card[data-preview-skin="gold"] { border-color: #704104; background: linear-gradient(150deg, #fff7bc, #efc95c 56%, #bd7914); }
+.matchmaking-card[data-preview-skin="rainbow"] { border-color: transparent; background: linear-gradient(150deg, #fffbea, #e9f3ff 58%, #f2dfff) padding-box, conic-gradient(#ff4f81, #ffbd3e, #62e88c, #57c8ff, #b47cff, #ff4f81) border-box; }
+
+@keyframes onlinePulse { 50% { opacity: .35; } }
+@keyframes multiplayerFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@media (max-height: 760px) {
+  .online-duel-button { min-height: 50px; margin-top: 6px; }
+  .matchmaking-shell { height: calc(100dvh - max(26px, env(safe-area-inset-top)) - max(30px, env(safe-area-inset-bottom))); padding-block: 10px; row-gap: 4px; }
+  .matchmaking-card-stage .card { width: clamp(102px, min(34vw, 22dvh), 146px); }
+  .matchmaking-actions { gap: 6px; }
+  .matchmaking-bot-button { min-height: 51px; padding-block: 5px; }
+  .matchmaking-cancel-button { min-height: 40px; padding-block: 7px; }
+}
+
+@media (max-width: 370px) {
+  .online-duel-button { width: 94%; }
+  .online-duel-button em { display: none; }
+  .matchmaking-shell { width: calc(100vw - 34px); padding-inline: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .online-duel-button em i,
+  .matchmaking-card,
+  .cutin-card-shard { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+}

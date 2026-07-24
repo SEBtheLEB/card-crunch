@@ -1,6 +1,6 @@
 # Card Crunch Google Play Release
 
-Card Crunch is packaged as a Capacitor 8 Android app with package ID `com.sebtheleb.cardcrunch`. It targets Android 16 / API 36 and uses Google Play Games Services v2 for automatic platform authentication and the Best Run leaderboard.
+Card Crunch is packaged as a Capacitor 8 Android app with its dedicated package ID `com.stlproductionz.cardcrunch`. It targets Android 16 / API 36 and uses Google Play Games Services v2 for automatic platform authentication and the Best Run leaderboard.
 
 ## Build
 
@@ -27,7 +27,7 @@ Upload certificate SHA-1 (for the Play Games Android credential):
 
 ## Play Games Services setup
 
-1. Create the Card Crunch app in Google Play Console using package ID `com.sebtheleb.cardcrunch`.
+1. Create the Card Crunch app in Google Play Console using package ID `com.stlproductionz.cardcrunch`.
 2. Open Play Games Services, create a v2 configuration, and link the Android app.
 3. Create a numeric, larger-is-better leaderboard named `Best Run`.
 4. Replace `0000000000` and `REPLACE_WITH_PLAY_LEADERBOARD_ID` in `android/app/src/main/res/values/strings.xml` with the Console-issued project and leaderboard IDs.

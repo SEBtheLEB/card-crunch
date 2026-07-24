@@ -1,4 +1,4 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=164";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=169";
 import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=164";
 import { isPotUnlocked } from "./progression.js?v=164";
 import { formatCompactNumber } from "./format.js?v=164";
@@ -6,8 +6,9 @@ import { hasShieldToken } from "./save.js?v=164";
 import { bindInstantAction } from "./input.js?v=164";
 import { ECONOMY_CONFIG, economy } from "./economy.js?v=164";
 import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=164";
-import { applyCardSkinPresentation, getCardSkinClass, getCardVisualColorClass } from "./cardSkins.js?v=164";
+import { applyCardSkinPresentation, getCardSkinClass, getCardVisualColorClass } from "./cardSkins.js?v=169";
 import { getPotRuleFacts, renderPotInfo } from "./potInfo.js?v=164";
+import { isMultiplayerMode } from "./multiplayerMode.js?v=169";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -29,6 +30,7 @@ export function createUI() {
     scoreValue: document.querySelector("#scoreValue"),
     streakValue: document.querySelector("#streakValue"),
     timerValue: document.querySelector("#timerValue"),
+    timerCopy: document.querySelector(".timer-copy"),
     timerRing: document.querySelector("#timerRing"),
     timerShell: document.querySelector("#timerShell"),
     levelValue: document.querySelector("#levelValue"),
@@ -43,6 +45,7 @@ export function createUI() {
     multiPanel: document.querySelector("#multiPanel"),
     multiValue: document.querySelector("#multiValue"),
     missValue: document.querySelector("#missValue"),
+    missLabel: document.querySelector("#missValue")?.previousElementSibling,
     comboLabel: document.querySelector("#comboLabel"),
     startScreen: document.querySelector("#startScreen"),
     mapScreen: document.querySelector("#mapScreen"),
@@ -85,6 +88,10 @@ export function createUI() {
     restartButton: document.querySelector("#restartButton"),
     returnToPotsButton: document.querySelector("#returnToPotsButton"),
     startButton: document.querySelector("#startButton"),
+    heroLogoCardFan: document.querySelector("#heroLogoCardFan"),
+    heroSuitAccents: document.querySelector("#heroSuitAccents"),
+    menuSuitAmbience: document.querySelector("#menuSuitAmbience"),
+    potsModeButton: document.querySelector("#potsModeButton"),
     endlessArcadeButton: document.querySelector("#endlessArcadeButton"),
     hamburgerButton: document.querySelector("#hamburgerButton"),
     shieldAdButton: document.querySelector("#shieldAdButton"),
@@ -110,11 +117,15 @@ export function createUI() {
     resetSaveButton: document.querySelector("#resetSaveButton")
   };
 
+  renderHeroLogoCards(elements.heroLogoCardFan);
+  renderMenuSuitDecorations(elements.heroSuitAccents, elements.menuSuitAmbience);
+
   const ui = {
     elements,
     render(state, handlers) {
       elements.shell.classList.toggle("tutorial-mode", Boolean(state.isTutorial));
       elements.shell.classList.toggle("arcade-mode", isArcadeMode(state));
+      elements.shell.classList.toggle("multiplayer-mode", isMultiplayerMode(state));
       renderHud(elements, state);
       const stackSignature = getStackSignature(state);
       if (renderCache.stack !== stackSignature) {
@@ -136,7 +147,14 @@ export function createUI() {
         && (state.status === "playing" || state.status === "pausedInfo");
       elements.potInfoButton.hidden = !potInfoAvailable;
       elements.potInfoButton.disabled = !potInfoAvailable || state.locked || state.status !== "playing";
+      elements.exitLevelButton.textContent = isMultiplayerMode(state) ? "Forfeit" : "Exit";
+      elements.exitLevelButton.setAttribute("aria-label", isMultiplayerMode(state) ? "Forfeit online duel" : "Exit current pot");
       elements.shell.classList.toggle("is-locked", state.locked);
+    },
+    renderMatchHud(state) {
+      renderHud(elements, state);
+      const matchHandlers = elements._crunchCache?.handlers;
+      if (matchHandlers) renderCrunch(elements, state, matchHandlers);
     },
     syncResolvedHud(state) {
       syncHudCountersWithoutMotion(elements, state);
@@ -439,33 +457,41 @@ function renderHud(elements, state) {
   const previousCounters = elements._counterCache ?? null;
   const isEndless = !state.activePot && state.level === 0;
   const arcadeRun = isArcadeMode(state);
+  const multiplayerRun = isMultiplayerMode(state);
+  const opponent = state.multiplayer?.opponent ?? {};
   const potProgress = state.activePot
     ? {
         progress: Math.min(1, state.activePot.progress / state.activePot.target),
         remaining: Math.max(0, state.activePot.target - state.activePot.progress)
       }
     : {
-        progress: arcadeRun ? Math.min(1, state.arcadePlayedCards.length / 8) : 0,
+        progress: multiplayerRun
+          ? (state.score + (Number(opponent.score) || 0) > 0 ? state.score / (state.score + (Number(opponent.score) || 0)) : .5)
+          : arcadeRun ? Math.min(1, state.arcadePlayedCards.length / 8) : 0,
         remaining: isEndless ? "Endless" : 0
       };
 
   setText(elements.scoreValue, formatCompactNumber(state.score), cache, "score");
   setText(
     elements.scoreLabel,
-    state.isTutorial ? "Practice Cash \u00b7 Unbanked" : arcadeRun ? "Endless Arcade Score" : "Run Cash \u00b7 Unbanked",
+    state.isTutorial ? "Practice Cash \u00b7 Unbanked" : multiplayerRun ? "Your Duel Score" : arcadeRun ? "Endless Arcade Score" : "Run Cash \u00b7 Unbanked",
     cache,
     "scoreLabel"
   );
   setText(elements.streakValue, String(state.streak ?? 0), cache, "streak");
-  setText(elements.timerValue, String(Math.ceil(state.timeLeft)), cache, "timer");
+  setText(elements.timerValue, multiplayerRun ? formatMatchTime(state.timeLeft) : String(Math.ceil(state.timeLeft)), cache, "timer");
+  setText(elements.timerCopy, multiplayerRun ? "Match" : "Turn", cache, "timerCopy");
   const livesLeft = Math.max(0, (state.maxMisses ?? 3) - (state.misses ?? 0));
-  setText(elements.missValue, "\u2665".repeat(livesLeft) + "\u2661".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft)), cache, "lives");
-  setText(elements.levelLabel, arcadeRun ? "Mode" : "Pot", cache, "levelLabel");
-  setText(elements.targetLabel, arcadeRun ? "Stack" : "Left", cache, "targetLabel");
-  setText(elements.levelValue, arcadeRun ? "Arcade" : isEndless ? "\u221e" : String(state.level ?? 1), cache, "level");
+  setText(elements.missLabel, multiplayerRun ? "Duel" : "Lives", cache, "missLabel");
+  setText(elements.missValue, multiplayerRun ? "\u25cf LIVE" : "\u2665".repeat(livesLeft) + "\u2661".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft)), cache, "lives");
+  setText(elements.levelLabel, multiplayerRun ? "Rival" : arcadeRun ? "Mode" : "Pot", cache, "levelLabel");
+  setText(elements.targetLabel, multiplayerRun ? "Score" : arcadeRun ? "Stack" : "Left", cache, "targetLabel");
+  setText(elements.levelValue, multiplayerRun ? String(opponent.displayName || "Opponent") : arcadeRun ? "Arcade" : isEndless ? "\u221e" : String(state.level ?? 1), cache, "level");
   setText(
     elements.targetValue,
-    arcadeRun
+    multiplayerRun
+      ? formatCompactNumber(opponent.score || 0)
+      : arcadeRun
       ? `${state.arcadePlayedCards.length} ${state.arcadePlayedCards.length === 1 ? "card" : "cards"}`
       : typeof potProgress.remaining === "number" ? formatCompactNumber(potProgress.remaining) : potProgress.remaining,
     cache,
@@ -477,7 +503,7 @@ function renderHud(elements, state) {
     cache.targetProgress = targetValue;
     elements.targetFill.style.setProperty("--target-progress", targetValue);
   }
-  const timerValue = (state.timeLeft / state.turnSeconds).toFixed(3);
+  const timerValue = (state.timeLeft / Math.max(1, state.turnSeconds)).toFixed(3);
   if (cache.timerProgress !== timerValue) {
     cache.timerProgress = timerValue;
     elements.timerRing.style.setProperty("--timer-progress", timerValue);
@@ -519,7 +545,9 @@ function syncHudCountersWithoutMotion(elements, state) {
   const score = formatCompactNumber(state.score ?? 0);
   const streak = String(state.streak ?? 0);
   const livesLeft = Math.max(0, (state.maxMisses ?? 3) - (state.misses ?? 0));
-  const lives = "\u2665".repeat(livesLeft) + "\u2661".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft));
+  const lives = isMultiplayerMode(state)
+    ? "\u25cf LIVE"
+    : "\u2665".repeat(livesLeft) + "\u2661".repeat(Math.max(0, (state.maxMisses ?? 3) - livesLeft));
 
   elements.scoreValue.textContent = score;
   elements.streakValue.textContent = streak;
@@ -547,8 +575,11 @@ function setText(element, value, cache, key) {
 
 function showMenuPage(elements, pageName = "home") {
   const isHomePage = pageName === "home";
+  if (pageName === "modes") renderModeAlbumArt();
   elements.startScreen.classList.toggle("is-home-page", isHomePage);
+  elements.startScreen.classList.toggle("is-modes-page", pageName === "modes");
   elements.startScreen.classList.toggle("is-pots-page", pageName === "pots");
+  elements.startScreen.classList.toggle("is-store-page", pageName === "shop");
   if (isHomePage) elements.startScreen.scrollTop = 0;
   elements.startScreen.querySelectorAll("[data-page]").forEach((page) => {
     page.classList.toggle("is-active", page.dataset.page === pageName);
@@ -559,6 +590,138 @@ function showMenuPage(elements, pageName = "home") {
   window.dispatchEvent(new CustomEvent("card-crunch-menu-page-change", {
     detail: { pageName }
   }));
+}
+
+function renderModeAlbumArt() {
+  const cardSets = {
+    pots: [
+      { id: "mode-pots-5h", rank: "5", value: 5, suit: "hearts", suitSymbol: "\u2665", color: "red" },
+      { id: "mode-pots-3d", rank: "3", value: 3, suit: "diamonds", suitSymbol: "\u2666", color: "red" },
+      { id: "mode-pots-8s", rank: "8", value: 8, suit: "spades", suitSymbol: "\u2660", color: "black" }
+    ],
+    arcade: [
+      { id: "mode-arcade-ah", rank: "A", value: 1, suit: "hearts", suitSymbol: "\u2665", color: "red" },
+      { id: "mode-arcade-qs", rank: "Q", value: 12, suit: "spades", suitSymbol: "\u2660", color: "black" },
+      { id: "mode-arcade-7c", rank: "7", value: 7, suit: "clubs", suitSymbol: "\u2663", color: "black" }
+    ],
+    duel: [
+      { id: "mode-duel-10h", rank: "10", value: 10, suit: "hearts", suitSymbol: "\u2665", color: "red" },
+      { id: "mode-duel-kc", rank: "K", value: 13, suit: "clubs", suitSymbol: "\u2663", color: "black" },
+      { id: "mode-duel-ad", rank: "A", value: 1, suit: "diamonds", suitSymbol: "\u2666", color: "red" },
+      { id: "mode-duel-js", rank: "J", value: 11, suit: "spades", suitSymbol: "\u2660", color: "black" }
+    ]
+  };
+
+  document.querySelectorAll("[data-mode-card-art]").forEach((stage) => {
+    const cards = cardSets[stage.dataset.modeCardArt] ?? [];
+    stage.replaceChildren(...cards.map((card) => {
+      const element = createCardElement(card);
+      element.setAttribute("aria-hidden", "true");
+      return element;
+    }));
+  });
+}
+
+function renderHeroLogoCards(stage) {
+  if (!stage) return;
+
+  const ranks = [
+    { rank: "A", value: 1 },
+    ...Array.from({ length: 9 }, (_, index) => ({ rank: String(index + 2), value: index + 2 })),
+    { rank: "J", value: 11 },
+    { rank: "Q", value: 12 },
+    { rank: "K", value: 13 }
+  ];
+  const suits = [
+    { suit: "hearts", suitSymbol: "\u2665", color: "red" },
+    { suit: "diamonds", suitSymbol: "\u2666", color: "red" },
+    { suit: "clubs", suitSymbol: "\u2663", color: "black" },
+    { suit: "spades", suitSymbol: "\u2660", color: "black" }
+  ];
+  const deck = suits.flatMap((suit) => ranks.map((rank) => ({
+    id: `hero-${rank.rank.toLowerCase()}-${suit.suit}`,
+    ...rank,
+    ...suit
+  })));
+
+  for (let index = deck.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [deck[index], deck[swapIndex]] = [deck[swapIndex], deck[index]];
+  }
+
+  stage.replaceChildren(...deck.slice(0, 5).map((card, index) => {
+    const element = createCardElement(card);
+    element.classList.add("hero-logo-card");
+    element.tabIndex = -1;
+    element.style.setProperty("--hero-delay", `${(-index * .73).toFixed(2)}s`);
+    element.style.setProperty("--hero-duration", `${(4.6 + Math.random() * 1.8).toFixed(2)}s`);
+    return element;
+  }));
+}
+
+const MENU_SUITS = ["hearts", "diamonds", "clubs", "spades"];
+
+function renderMenuSuitDecorations(accentStage, ambienceStage) {
+  if (!accentStage || !ambienceStage) return;
+
+  const pair = pickLaunchSuitPair();
+  accentStage.replaceChildren(...pair.map((suit, index) => {
+    const icon = createMenuSuitIcon(suit, "hero-suit-accent");
+    icon.style.setProperty("--suit-delay", `${index * -3.7}s`);
+    return icon;
+  }));
+
+  const ambience = Array.from({ length: 10 }, (_, index) => {
+    const suit = MENU_SUITS[Math.floor(Math.random() * MENU_SUITS.length)];
+    const icon = createMenuSuitIcon(suit, "menu-ambient-suit");
+    icon.style.setProperty("--suit-left", `${4 + Math.random() * 92}%`);
+    icon.style.setProperty("--suit-top", `${3 + Math.random() * 92}%`);
+    icon.style.setProperty("--suit-size", `${26 + Math.random() * 38}px`);
+    icon.style.setProperty("--suit-opacity", `${(.055 + Math.random() * .055).toFixed(3)}`);
+    icon.style.setProperty("--suit-rotation", `${Math.round(-28 + Math.random() * 56)}deg`);
+    icon.style.setProperty("--suit-drift", `${Math.round(8 + Math.random() * 16)}px`);
+    icon.style.setProperty("--suit-duration", `${(15 + Math.random() * 11).toFixed(2)}s`);
+    icon.style.setProperty("--suit-delay", `${(-index * 1.9 - Math.random() * 5).toFixed(2)}s`);
+    return icon;
+  });
+  ambienceStage.replaceChildren(...ambience);
+}
+
+function createMenuSuitIcon(suit, className) {
+  const icon = document.createElement("span");
+  icon.className = `menu-suit-icon ${className}`;
+  icon.dataset.suit = suit;
+  return icon;
+}
+
+function pickLaunchSuitPair() {
+  const pairs = [];
+  for (let left = 0; left < MENU_SUITS.length; left += 1) {
+    for (let right = left + 1; right < MENU_SUITS.length; right += 1) {
+      pairs.push([MENU_SUITS[left], MENU_SUITS[right]]);
+    }
+  }
+
+  let previous = "";
+  try {
+    previous = window.localStorage.getItem("card-crunch-menu-suit-pair") ?? "";
+  } catch {
+    previous = "";
+  }
+  const choices = pairs.filter((pair) => [...pair].sort().join("|") !== previous);
+  const pair = choices[Math.floor(Math.random() * choices.length)] ?? pairs[0];
+  if (Math.random() < .5) pair.reverse();
+  try {
+    window.localStorage.setItem("card-crunch-menu-suit-pair", [...pair].sort().join("|"));
+  } catch {
+    // Decorative variation should never prevent the menu from loading.
+  }
+  return pair;
+}
+
+function formatMatchTime(seconds) {
+  const total = Math.max(0, Math.ceil(Number(seconds) || 0));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
 function renderPotMap(elements, pots, handlers, mapState) {
@@ -932,6 +1095,7 @@ function renderCrunch(elements, state, handlers) {
   const preview = getCrunchPreview(state);
   const playing = !state.locked && state.status === "playing";
   const arcadeRun = isArcadeMode(state);
+  const multiplayerRun = isMultiplayerMode(state);
 
   // The handlers object is created once per game, so bind exactly once
   // instead of re-assigning listeners on every 100ms render tick.
@@ -956,24 +1120,26 @@ function renderCrunch(elements, state, handlers) {
   const bankStreakReady = state.streak >= minimumBankStreak;
   const bankCashReady = state.score >= minimumBankCash;
   const bankRuleReady = bankStreakReady && bankCashReady;
-  const canBank = !arcadeRun && playing && (Boolean(state.activePot) || Boolean(state.tutorialBankStep)) && state.score > 0 && bankRuleReady;
+  const canBank = !arcadeRun && !multiplayerRun && playing && (Boolean(state.activePot) || Boolean(state.tutorialBankStep)) && state.score > 0 && bankRuleReady;
   if (cache.canBank !== canBank) {
     cache.canBank = canBank;
     elements.bankButton.disabled = !canBank;
     elements.bankButton.classList.toggle("bank-ready", canBank);
   }
   const bankLabel = elements.bankButton.querySelector(":scope > span");
-  setText(bankLabel, arcadeRun ? "Stacked" : "Bank", cache, "bankLabel");
+  setText(bankLabel, multiplayerRun ? "Rival" : arcadeRun ? "Stacked" : "Bank", cache, "bankLabel");
   setText(
     elements.bankAmountValue,
-    arcadeRun ? `${preview.selectedCount} ${preview.selectedCount === 1 ? "card" : "cards"}` : `$${formatCompactNumber(state.score ?? 0)}`,
+    multiplayerRun
+      ? formatCompactNumber(state.multiplayer?.opponent?.score ?? 0)
+      : arcadeRun ? `${preview.selectedCount} ${preview.selectedCount === 1 ? "card" : "cards"}` : `$${formatCompactNumber(state.score ?? 0)}`,
     cache,
     "bankAmount"
   );
   elements.bankButton.classList.toggle("arcade-stack-meter", arcadeRun);
 
   if (elements.hintAdButton) {
-    const hintHidden = arcadeRun || (!state.isTutorial && (state.hintAdUsedThisRun || state.status === "menu"));
+    const hintHidden = arcadeRun || multiplayerRun || (!state.isTutorial && (state.hintAdUsedThisRun || state.status === "menu"));
     const hintDisabled = !playing || (!state.isTutorial && state.hintAdUsedThisRun);
     if (cache.hintHidden !== hintHidden) {
       cache.hintHidden = hintHidden;
@@ -992,7 +1158,9 @@ function renderCrunch(elements, state, handlers) {
   elements.bankButton.classList.toggle("bank-rule-locked", playing && state.score > 0 && !bankRuleReady);
   elements.bankButton.setAttribute(
     "aria-label",
-    arcadeRun
+    multiplayerRun
+      ? `Opponent score ${formatCompactNumber(state.multiplayer?.opponent?.score ?? 0)}.`
+      : arcadeRun
       ? `${preview.selectedCount} cards currently staged in Endless Arcade.`
       : bankRuleReady
       ? "Bank run cash into the pot. Resets multiplier."
@@ -1366,7 +1534,7 @@ function getRunEndCopy(summary, potComplete) {
   return "No unbanked cash was lost. Shuffle up and start another run.";
 }
 
-function createCard(card, options = {}) {
+export function createCardElement(card, options = {}) {
   const element = document.createElement(options.isButton ? "button" : "div");
   const skinClass = getCardSkinClass(card);
   const visualColorClass = getCardVisualColorClass(card);
@@ -1417,6 +1585,8 @@ function createCard(card, options = {}) {
 
   return element;
 }
+
+const createCard = createCardElement;
 
 function getStackSignature(state) {
   return state.stack.map((card) => card.id).join("|");

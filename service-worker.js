@@ -1,4 +1,4 @@
-const CACHE_NAME = "card-crunch-v165";
+const CACHE_NAME = "card-crunch-v190";
 const PINK_ARCADE_SUITS = ["hearts", "diamonds", "clubs", "spades"];
 const PINK_ARCADE_RANKS = ["ace", "02", "03", "04", "05", "06", "07", "08", "09", "10", "jack", "queen", "king"];
 const PINK_ARCADE_ASSETS = [
@@ -13,11 +13,18 @@ const PINK_ARCADE_ASSETS = [
 const ASSETS = [
   "./",
   "./index.html",
+  "./platform-config.js",
+  "./src/vendor/capacitor-secure-storage.js",
   "./privacy-policy.html",
   "./styles/main.css",
   "./styles/collection.css",
+  "./styles/store.css",
+  "./styles/multiplayer.css",
   "./src/main.js",
-  "./src/stlAccount.js",
+  "./src/stlPlatformConfig.js",
+  "./src/stlPlatformClient.js",
+  "./src/stlCloudSave.js",
+  "./src/stlPlatform.js",
   "./src/tutorial.js",
   "./src/audio.js",
   "./src/haptics.js",
@@ -30,6 +37,12 @@ const ASSETS = [
   "./src/cardSkins.js",
   "./src/cardCollection.js",
   "./src/cardCollectionUI.js",
+  "./src/store.js",
+  "./src/storeProducts.js",
+  "./src/storeState.js",
+  "./src/multiplayer.js",
+  "./src/realtimeMultiplayer.js",
+  "./src/multiplayerMode.js",
   "./src/economy.js",
   "./src/scoreSurge.js",
   "./src/purchases.js",
@@ -49,6 +62,10 @@ const ASSETS = [
   "./manifest.json",
   "./assets/icons/icon-192.svg",
   "./assets/icons/icon-512.svg",
+  "./assets/icons/suits/heart.svg",
+  "./assets/icons/suits/diamond.svg",
+  "./assets/icons/suits/club.svg",
+  "./assets/icons/suits/spade.svg",
   "./assets/fonts/press-start-2p.ttf",
   "./assets/sfx/playing-card.mp3",
   "./assets/sfx/deal-hand-1.mp3",

@@ -1,4 +1,4 @@
-package com.sebtheleb.cardcrunch;
+package com.stlproductionz.cardcrunch;
 
 import android.app.Application;
 import com.google.android.gms.games.PlayGamesSdk;

@@ -2,7 +2,7 @@ import { formatCompactNumber } from "./format.js?v=164";
 import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=164";
 import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle, getCardVisualColorClass } from "./cardSkins.js?v=164";
 import { getPowerCardDetails } from "./arcadeMode.js?v=164";
-import { createScoreSurgePlan } from "./scoreSurge.js?v=164";
+import { createScoreSurgePlan, SCORE_SURGE_CONFIG } from "./scoreSurge.js?v=181";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -70,6 +70,8 @@ const MAJOR_SCORE_RAMP_CONFIG = {
   maxParticles: 150,
   devicePixelRatioCap: 1.25
 };
+const BANK_ROLL_MILESTONE_PAUSE_MS = 54;
+const BANK_MILESTONE_PARTICLE_CAP = 280;
 const tapBounceTimers = new WeakMap();
 const preparedShardSets = new WeakMap();
 const crunchDebrisEmitters = new WeakMap();
@@ -104,6 +106,110 @@ export function showCrunchSkipText() {
 export function hideCrunchSkipText() {
   skipTextLocks = Math.max(0, skipTextLocks - 1);
   if (skipTextLocks === 0) removeCrunchSkipText();
+}
+
+/* Reusable three-hit Crunch interaction for non-gameplay surfaces such as
+   matchmaking. It intentionally drives the same damage map, pixel shards,
+   debris emitter, scatter physics, vacuum, sounds, and impact callbacks used
+   by the score cut-ins instead of maintaining a second visual implementation. */
+export function createCardCrunchInteraction({
+  stage,
+  cards = [],
+  targetEl,
+  onImpact = null,
+  onComplete = null,
+  instantVacuum = false,
+  removeCardsOnComplete = false
+} = {}) {
+  const activeCards = cards.filter((card) => card?.isConnected);
+  if (!stage?.isConnected || !targetEl?.isConnected || !activeCards.length) return null;
+
+  stage.classList.add("crunch-interaction-stage");
+  activeCards.forEach((card) => card.classList.add("crunch-reusable-card"));
+  const shardGrid = getShardGrid(activeCards.length);
+  activeCards.forEach((card) => createCardFractureMap(card, shardGrid));
+  const prepared = prepareCutinCardShards(activeCards, targetEl, shardGrid);
+  if (!prepared) {
+    cleanupReusableCrunchStage(stage, activeCards);
+    return null;
+  }
+
+  let hitCount = 0;
+  let complete = false;
+  let disposed = false;
+  let completionPromise = Promise.resolve();
+
+  const cleanup = () => {
+    cleanupReusableCrunchStage(stage, activeCards);
+    stage.querySelector(".cutin-crunch-debris-canvas")?.remove();
+  };
+
+  const applyHit = (nextHit) => {
+    if (disposed || complete) return { hit: hitCount, complete, completion: completionPromise };
+    hitCount = Math.min(CUTSCENE_CONFIG.interactiveCrunchHits, Math.max(hitCount + 1, nextHit));
+    assignCrunchShakeVectors(activeCards, hitCount);
+    stage.dataset.crunchHit = String(hitCount);
+    activeCards.forEach((card) => { card.dataset.crunchDamage = String(hitCount); });
+    showPreparedCardAssembly(prepared, hitCount);
+    playGameSfx(`crunch_hit_${hitCount}`);
+    spawnCrunchDamageBurst(stage, activeCards, hitCount);
+
+    if (hitCount === CUTSCENE_CONFIG.interactiveCrunchHits) {
+      complete = true;
+      prepared.active = true;
+      prepared.instantVacuum = Boolean(instantVacuum);
+      prepared.onImpact = onImpact;
+      prepared.cards.forEach((card) => card.classList.add("is-shattering", "is-consumed-after-shatter"));
+      beginBankFeed(prepared);
+      startPreparedShardPhysics(prepared);
+      requestPreparedShardVacuum(prepared);
+      completionPromise = prepared.physicsPromise
+        .catch(() => {})
+        .then(() => {
+          if (disposed) return;
+          if (removeCardsOnComplete) activeCards.forEach((card) => card.remove());
+          discardPreparedShardSet(prepared);
+          cleanup();
+          onComplete?.();
+        });
+    }
+
+    return { hit: hitCount, complete, completion: completionPromise };
+  };
+
+  return {
+    get hitCount() { return hitCount; },
+    get complete() { return complete; },
+    get completion() { return completionPromise; },
+    hit() {
+      return applyHit(hitCount + 1);
+    },
+    crunch() {
+      return applyHit(CUTSCENE_CONFIG.interactiveCrunchHits);
+    },
+    destroy() {
+      if (disposed) return;
+      disposed = true;
+      discardPreparedShardSet(prepared);
+      cleanup();
+    }
+  };
+}
+
+function cleanupReusableCrunchStage(stage, cards) {
+  stage?.removeAttribute("data-crunch-hit");
+  stage?.classList.remove("crunch-interaction-stage");
+  cards.forEach((card) => {
+    card.classList.remove(
+      "crunch-reusable-card",
+      "is-crunch-shaking",
+      "is-shattering",
+      "is-precut-source",
+      "is-consumed-after-shatter"
+    );
+    card.removeAttribute("data-crunch-damage");
+    card.querySelectorAll(".cutin-fracture-map").forEach((layer) => layer.remove());
+  });
 }
 
 function ensureCrunchSkipText() {
@@ -248,6 +354,7 @@ export function createCrunchBankCounter({
         bankEl: element,
         valueEl: counterValueEl,
         amount,
+        bankValueBefore: previous,
         cashBefore: startingValue + previous,
         onCashProgress: awardCoinsThrough,
         queueMilestoneBeat
@@ -306,6 +413,7 @@ export function createCrunchBankCounter({
         bankEl: element,
         valueEl: counterValueEl,
         amount: Math.max(0, value - previous),
+        bankValueBefore: previous,
         cashBefore: startingValue + previous,
         onCashProgress: awardCoinsThrough,
         queueMilestoneBeat
@@ -326,6 +434,7 @@ export function createCrunchBankCounter({
         bankEl: element,
         valueEl: counterValueEl,
         amount: Math.max(0, value - previous),
+        bankValueBefore: previous,
         cashBefore: startingValue + previous,
         onCashProgress: awardCoinsThrough,
         queueMilestoneBeat
@@ -1471,7 +1580,11 @@ function prepareCutinCardShards(cardElements, bankEl, requestedGrid = null) {
       "cutin-live-card",
       "cutin-shared-card-flight",
       "cutin-shared-target",
-      "cutin-layout-proxy"
+      "cutin-layout-proxy",
+      "card-deal-pending",
+      "card-deal-landed",
+      "card-in-flight",
+      "card-layout-moving"
     );
     shardTemplate.removeAttribute("data-crunch-damage");
     shardTemplate.removeAttribute("aria-label");
@@ -1668,17 +1781,20 @@ function requestPreparedShardVacuum(prepared) {
   if (!prepared || prepared.vacuumRequested || prepared.disposed) return;
   prepared.vacuumRequested = true;
   prepared.vacuumRequestedAt = performance.now();
+  const settleDelay = prepared.instantVacuum ? 18 : SHARD_PHYSICS_CONFIG.forceSettleAfter;
+  const hoverDelay = prepared.instantVacuum ? 0 : SHARD_PHYSICS_CONFIG.hoverBeforeVacuum;
   prepared.vacuumStartAt = Math.max(
-    prepared.physicsStartedAt + SHARD_PHYSICS_CONFIG.forceSettleAfter,
-    prepared.vacuumRequestedAt + SHARD_PHYSICS_CONFIG.hoverBeforeVacuum
+    prepared.physicsStartedAt + settleDelay,
+    prepared.vacuumRequestedAt + hoverDelay
   );
 
   const byDistance = [...prepared.shardStates]
     .sort((a, b) => getShardDistanceToBank(a, prepared) - getShardDistanceToBank(b, prepared));
+  const stagger = prepared.instantVacuum ? 48 : SHARD_PHYSICS_CONFIG.vacuumStagger;
   byDistance.forEach((state, index) => {
     state.vacuumDelay = byDistance.length <= 1
       ? 0
-      : index / (byDistance.length - 1) * SHARD_PHYSICS_CONFIG.vacuumStagger;
+      : index / (byDistance.length - 1) * stagger;
     state.vacuumDistance = Math.max(1, getShardDistanceToBank(state, prepared));
   });
 }
@@ -1689,7 +1805,8 @@ function stepPreparedShardPhysics(prepared, now) {
   prepared.lastPhysicsFrame = now;
   const elapsed = now - prepared.physicsStartedAt;
   const vacuumElapsed = prepared.vacuumRequested ? now - prepared.vacuumStartAt : -1;
-  const vacuumRamp = Math.max(0, Math.min(1, vacuumElapsed / SHARD_PHYSICS_CONFIG.vacuumRampDuration));
+  const vacuumRampDuration = prepared.instantVacuum ? 105 : SHARD_PHYSICS_CONFIG.vacuumRampDuration;
+  const vacuumRamp = Math.max(0, Math.min(1, vacuumElapsed / vacuumRampDuration));
   let remaining = 0;
 
   if (vacuumElapsed >= 0 && !prepared.vacuumSoundStarted) {
@@ -1714,7 +1831,7 @@ function stepPreparedShardPhysics(prepared, now) {
       continue;
     }
 
-    if (elapsed >= SHARD_PHYSICS_CONFIG.maxDuration) {
+    if (elapsed >= (prepared.instantVacuum ? 420 : SHARD_PHYSICS_CONFIG.maxDuration)) {
       registerShardBankImpact(prepared, state, 0);
       remaining -= 1;
       continue;
@@ -1796,18 +1913,20 @@ function updateVacuumShard(state, prepared, deltaSeconds, vacuumRamp) {
   const dx = prepared.targetX - centerX;
   const dy = prepared.targetY - centerY;
   const distance = Math.max(1, Math.hypot(dx, dy));
-  const force = SHARD_PHYSICS_CONFIG.vacuumBaseForce
-    + SHARD_PHYSICS_CONFIG.vacuumRampForce * vacuumRamp * vacuumRamp
-    + Math.min(1050, distance * SHARD_PHYSICS_CONFIG.vacuumSpring);
-  const funnelStrength = 1.4 + vacuumRamp * 5.2;
+  const speedScale = prepared.instantVacuum ? 3.45 : 1;
+  const force = SHARD_PHYSICS_CONFIG.vacuumBaseForce * speedScale
+    + SHARD_PHYSICS_CONFIG.vacuumRampForce * speedScale * vacuumRamp * vacuumRamp
+    + Math.min(prepared.instantVacuum ? 3200 : 1050, distance * SHARD_PHYSICS_CONFIG.vacuumSpring * speedScale);
+  const funnelStrength = (1.4 + vacuumRamp * 5.2) * speedScale;
   state.vx += (dx / distance * force + dx * funnelStrength) * deltaSeconds;
   state.vy += (dy / distance * force) * deltaSeconds;
   const drag = Math.pow(.988 - vacuumRamp * .006, deltaSeconds * 60);
   state.vx *= drag;
   state.vy *= drag;
   const speed = Math.hypot(state.vx, state.vy);
-  if (speed > SHARD_PHYSICS_CONFIG.vacuumMaxSpeed) {
-    const scale = SHARD_PHYSICS_CONFIG.vacuumMaxSpeed / speed;
+  const maximumSpeed = SHARD_PHYSICS_CONFIG.vacuumMaxSpeed * (prepared.instantVacuum ? 2.45 : 1);
+  if (speed > maximumSpeed) {
+    const scale = maximumSpeed / speed;
     state.vx *= scale;
     state.vy *= scale;
   }
@@ -2080,11 +2199,19 @@ function createCrunchScoreSurge({
   bankEl,
   valueEl,
   amount,
+  bankValueBefore = 0,
   cashBefore,
   onCashProgress,
   queueMilestoneBeat = (effect) => effect()
 }) {
-  const plan = createScoreSurgePlan(amount);
+  const safeBankValueBefore = Math.max(0, Math.round(Number(bankValueBefore) || 0));
+  const amountPlan = createScoreSurgePlan(amount);
+  const endingBankValue = safeBankValueBefore + amountPlan.score;
+  const plan = {
+    ...amountPlan,
+    milestones: createScoreSurgePlan(endingBankValue).milestones
+      .filter((milestone) => milestone > safeBankValueBefore)
+  };
   let credited = 0;
   let milestoneIndex = 0;
   let finished = false;
@@ -2109,7 +2236,8 @@ function createCrunchScoreSurge({
   return {
     update(nextCredited) {
       credited = Math.max(credited, Math.min(plan.score, Math.round(Number(nextCredited) || 0)));
-      while (milestoneIndex < plan.milestones.length && credited >= plan.milestones[milestoneIndex]) {
+      while (milestoneIndex < plan.milestones.length
+        && safeBankValueBefore + credited >= plan.milestones[milestoneIndex]) {
         const milestone = plan.milestones[milestoneIndex];
         const milestoneTier = createScoreSurgePlan(milestone).tier;
         if (bankEl) bankEl.dataset.scoreSurgeTier = String(milestoneTier);
@@ -2147,94 +2275,27 @@ function createCrunchScoreSurge({
 
 function createScoreSurgeStage(bankEl, valueEl, plan) {
   if (!bankEl?.isConnected) return null;
-  const labelEl = bankEl.querySelector(".hud-label");
-  const originalLabel = labelEl?.innerHTML ?? "Crunch Bank";
-  const backdrop = document.createElement("div");
-  backdrop.className = "entry-score-surge-backdrop";
-  backdrop.dataset.tier = String(plan.tier);
-  backdrop.innerHTML = `
-    <div class="entry-score-surge-callout">
-      <strong>0</strong>
-      <span>${plan.name}</span>
-    </div>
-    <div class="entry-score-surge-skip">Tap to skip surge</div>
-  `;
-  document.body.appendChild(backdrop);
-  document.body.classList.add("is-entry-score-surge-active");
   bankEl.classList.add("is-entry-score-surge", "is-entry-score-surge-peak");
   bankEl.dataset.scoreSurgeTier = String(plan.tier);
-  if (labelEl) labelEl.textContent = plan.name;
 
-  let skipped = false;
   let closed = false;
-  const waiters = new Set();
-  const requestSkip = () => {
-    if (skipped) return;
-    skipped = true;
-    backdrop.classList.add("is-skipping");
-    waiters.forEach((finish) => finish());
-    waiters.clear();
-  };
-  const onPointerUp = (event) => {
-    if (event.target?.closest?.(".crunch-collectible-coin")) return;
-    event.preventDefault();
-    event.stopPropagation();
-    requestSkip();
-  };
-  const onSkipAll = () => requestSkip();
-  backdrop.addEventListener("pointerup", onPointerUp);
-  window.addEventListener(CRUNCH_SKIP_EVENT, onSkipAll);
-
-  const entered = nextPaint().then(async () => {
-    if (closed) return;
-    backdrop.classList.add("is-active");
-    bankEl.classList.add("is-entry-score-surge-centered");
-    await sleep(440);
-  });
+  const entered = Promise.resolve();
 
   return {
-    backdrop,
     entered,
     get skipped() {
-      return skipped || isCrunchSkipRequested();
+      return isCrunchSkipRequested();
     },
-    requestSkip,
-    setCallout(value, label = plan.name) {
-      const valueNode = backdrop.querySelector(".entry-score-surge-callout strong");
-      const labelNode = backdrop.querySelector(".entry-score-surge-callout span");
-      if (valueNode) valueNode.textContent = String(value);
-      if (labelNode) labelNode.textContent = label;
-    },
+    requestSkip() {},
+    setCallout() {},
     wait(ms) {
-      if (skipped || isCrunchSkipRequested()) return Promise.resolve();
-      return new Promise((resolve) => {
-        let complete = false;
-        let timeoutId = 0;
-        const finish = () => {
-          if (complete) return;
-          complete = true;
-          window.clearTimeout(timeoutId);
-          waiters.delete(finish);
-          resolve();
-        };
-        timeoutId = window.setTimeout(finish, ms);
-        waiters.add(finish);
-      });
+      if (isCrunchSkipRequested()) return Promise.resolve();
+      return sleep(Math.min(48, Math.max(0, Number(ms) || 0)));
     },
     async close() {
       if (closed) return;
       closed = true;
-      backdrop.classList.add("is-leaving");
-      bankEl.classList.remove("is-entry-score-surge-centered");
-      await sleep(skipped ? 90 : 380);
-      if (labelEl) labelEl.innerHTML = originalLabel;
-      bankEl.classList.remove("is-entry-score-surge-peak", "is-entry-score-surge-centered");
-      document.body.classList.remove("is-entry-score-surge-active");
-      backdrop.removeEventListener("pointerup", onPointerUp);
-      window.removeEventListener(CRUNCH_SKIP_EVENT, onSkipAll);
-      backdrop.remove();
-      waiters.forEach((finish) => finish());
-      waiters.clear();
+      bankEl.classList.remove("is-entry-score-surge-peak");
     }
   };
 }
@@ -2244,39 +2305,22 @@ async function playScoreSurgeMilestone(bankEl, valueEl, milestone, tier, paceTie
   await stage?.entered;
   if (stage?.skipped) return;
   const bankRect = bankEl.getBoundingClientRect();
-  const duration = Math.max(440, 700 - paceTier * 35);
+  const duration = Math.max(210, 285 - paceTier * 10);
   playGameSfx("score_ramp_tick");
-  stage?.setCallout(formatRollingBankNumber(milestone), `Milestone ${formatCompactNumber(milestone)}`);
-
-  const marker = document.createElement("strong");
-  marker.className = "entry-score-surge-milestone";
-  marker.dataset.tier = String(tier);
-  marker.innerHTML = `<span>MILESTONE</span>${formatRollingBankNumber(milestone)}`;
-  marker.style.left = `${bankRect.left + bankRect.width / 2}px`;
-  marker.style.top = `${bankRect.bottom + 12}px`;
-  document.body.appendChild(marker);
-  const markerAnimation = marker.animate?.([
-    { opacity: 0, transform: "translate3d(-50%, 10px, 0) scale(.62)" },
-    { opacity: 1, transform: "translate3d(-50%, -2px, 0) scale(1.18)", offset: .28 },
-    { opacity: 1, transform: "translate3d(-50%, -2px, 0) scale(1)", offset: .76 },
-    { opacity: 0, transform: "translate3d(-50%, -18px, 0) scale(.96)" }
-  ], { duration, easing: "steps(7, end)" });
-  const centeredTransform = bankEl.classList.contains("is-entry-score-surge-centered")
-    ? "translate3d(-50%, -50%, 0)"
-    : "translate3d(-50%, 0, 0)";
+  const anchoredTransform = "translate3d(-50%, 0, 0)";
   const bankAnimation = bankEl.animate?.([
-    { transform: `${centeredTransform} scale(1)`, filter: "brightness(1)" },
+    { transform: `${anchoredTransform} scale(1)`, filter: "brightness(1)" },
     {
-      transform: `${centeredTransform} scale(${1.055 + tier * .014})`,
+      transform: `${anchoredTransform} scale(${1.055 + tier * .014})`,
       filter: `brightness(${1.28 + tier * .1}) drop-shadow(0 0 ${10 + tier * 4}px rgba(255, 205, 65, .78))`,
       offset: .25
     },
     {
-      transform: `${centeredTransform} scale(1.025)`,
+      transform: `${anchoredTransform} scale(1.025)`,
       filter: "brightness(1.22) drop-shadow(0 0 16px rgba(255, 205, 65, .62))",
       offset: .72
     },
-    { transform: `${centeredTransform} scale(1)`, filter: "brightness(1)" }
+    { transform: `${anchoredTransform} scale(1)`, filter: "brightness(1)" }
   ], { duration, easing: "cubic-bezier(.16, 1, .3, 1)" });
   const valueAnimation = valueEl?.animate?.([
     { scale: "1" },
@@ -2285,13 +2329,10 @@ async function playScoreSurgeMilestone(bankEl, valueEl, milestone, tier, paceTie
     { scale: "1" }
   ], { duration, easing: "steps(6, end)" });
 
-  await (stage?.wait(Math.round(duration * .3)) ?? sleep(Math.round(duration * .3)));
-  spawnScoreMilestoneCoinSpill(bankEl.getBoundingClientRect(), tier);
-  await (stage?.wait(Math.round(duration * .7)) ?? sleep(Math.round(duration * .7)));
-  [bankAnimation, valueAnimation, markerAnimation].forEach((animation) => {
+  spawnScoreMilestoneCoinSpill(bankRect, tier);
+  window.setTimeout(() => [bankAnimation, valueAnimation].forEach((animation) => {
     try { animation?.finish?.(); } catch {}
-  });
-  marker.remove();
+  }), duration);
 }
 
 async function playCrunchScoreSurgePeak(bankEl, valueEl, plan, stage) {
@@ -2301,7 +2342,7 @@ async function playCrunchScoreSurgePeak(bankEl, valueEl, plan, stage) {
     await stage.entered;
     stage.setCallout(`+${formatRollingBankNumber(plan.score)}`, plan.name || "Coin Milestone");
     playGameSfx(tier >= 4 ? "score_ramp_peak" : "score_total");
-    await stage.wait(1250 + tier * 130);
+    await stage.wait(260 + tier * 42);
     valueEl?.animate?.([
       { scale: "1", filter: "brightness(1)" },
       { scale: String(1.12 + tier * .025), filter: "brightness(1.8)" },
@@ -2421,35 +2462,29 @@ function spawnCrunchCoinReward(bankRect, reward) {
 async function playCrunchCoinReward(bankEl, reward, stage = null) {
   if (!bankEl?.isConnected || !reward?.coins) return;
   await stage?.entered;
-  if (stage?.skipped) {
-    reward.award?.(reward.coins);
-    return;
-  }
+  const awarded = Number(reward.award?.(reward.coins)) || Number(reward.getBalance?.()) || 0;
+  if (stage?.skipped) return;
   playGameSfx("coin_milestone");
   const rect = bankEl.getBoundingClientRect();
-  stage?.setCallout(`+${formatRollingBankNumber(reward.coins)}`, "Coin Burst");
-  const collection = spawnCrunchCoinReward(rect, reward);
-  if (!collection) return;
-  const centeredTransform = bankEl.classList.contains("is-entry-score-surge-centered")
-    ? "translate3d(-50%, -50%, 0)"
-    : "translate3d(-50%, 0, 0)";
+  spawnScoreMilestoneCoinSpill(rect, Math.min(6, Math.max(2, reward.milestones ?? 1) + 2));
+  const toast = document.createElement("div");
+  toast.className = "crunch-coin-reward-toast is-collecting is-auto-awarded";
+  toast.style.left = `${rect.left + rect.width / 2}px`;
+  toast.style.top = `${Math.min(window.innerHeight - 84, rect.bottom + 16)}px`;
+  toast.innerHTML = `<strong>+${formatCompactNumber(reward.coins)} COINS</strong><span>POUCH ${formatCompactNumber(awarded)}</span>`;
+  document.body.appendChild(toast);
+  const anchoredTransform = "translate3d(-50%, 0, 0)";
   const animation = bankEl.animate?.([
-    { transform: `${centeredTransform} scale(1)`, filter: "brightness(1)" },
-    { transform: `${centeredTransform} scale(1.12)`, filter: "brightness(1.9)", offset: .24 },
-    { transform: `${centeredTransform} scale(1.045)`, filter: "brightness(1.4)", offset: .74 },
-    { transform: `${centeredTransform} scale(1)`, filter: "brightness(1)" }
-  ], { duration: 980, easing: "cubic-bezier(.16, 1, .3, 1)" });
-  try {
-    await Promise.race([
-      collection.done,
-      stage?.wait(6000) ?? sleep(6000)
-    ]);
-    if (!collection.complete) await collection.collectAll();
-    await (stage?.wait(900) ?? sleep(900));
-  } finally {
+    { transform: `${anchoredTransform} scale(1)`, filter: "brightness(1)" },
+    { transform: `${anchoredTransform} scale(1.11)`, filter: "brightness(1.85)", offset: .28 },
+    { transform: `${anchoredTransform} scale(1.035)`, filter: "brightness(1.35)", offset: .7 },
+    { transform: `${anchoredTransform} scale(1)`, filter: "brightness(1)" }
+  ], { duration: 520, easing: "cubic-bezier(.16, 1, .3, 1)" });
+  window.setTimeout(() => toast.remove(), 820);
+  await (stage?.wait(100) ?? sleep(100));
+  window.setTimeout(() => {
     try { animation?.finish?.(); } catch {}
-    await collection.cleanup();
-  }
+  }, 420);
 }
 
 function spawnCollectibleCoinBreak(rect, portion = 1) {
@@ -2488,26 +2523,42 @@ function spawnScoreMilestoneCoinSpill(bankRect, tier = 1) {
   if (!emitter) return;
   const originX = bankRect.left + bankRect.width / 2;
   const originY = bankRect.bottom - 8;
-  const amount = Math.min(28, 8 + tier * 3);
+  const available = Math.max(0, BANK_MILESTONE_PARTICLE_CAP - emitter.particles.length);
+  const amount = Math.min(available, 38, 17 + tier * 4);
   for (let index = 0; index < amount; index += 1) {
     const direction = index % 2 === 0 ? -1 : 1;
-    emitter.particles.push({
-      kind: "coin",
+    const shared = {
       x: originX + (Math.random() - .5) * Math.min(160, bankRect.width * .72),
       y: originY + Math.random() * 6,
       vx: direction * (45 + Math.random() * 190),
       vy: 45 + Math.random() * 170,
       gravity: 690 + Math.random() * 240,
       drag: .982,
-      size: 5 + Math.floor(Math.random() * 4),
-      length: 0,
-      vertical: false,
-      color: index % 3 === 0 ? "#fff3a8" : "#ffc53d",
-      edge: "#6d3d05",
       age: 0,
       delay: Math.random() * 75,
       maxAge: 760 + Math.random() * 360
-    });
+    };
+    if (index % 3 !== 0) {
+      emitter.particles.push({
+        ...shared,
+        kind: "coin",
+        size: 5 + Math.floor(Math.random() * 4),
+        length: 0,
+        vertical: false,
+        color: index % 4 === 0 ? "#fff3a8" : "#ffc53d",
+        edge: "#6d3d05"
+      });
+    } else {
+      emitter.particles.push({
+        ...shared,
+        kind: "card-bit",
+        size: 2 + Math.floor(Math.random() * 3),
+        length: 4 + Math.floor(Math.random() * 6),
+        vertical: Math.random() > .5,
+        color: index % 2 === 0 ? "#fff2ca" : "#d9c89c",
+        edge: "#273047"
+      });
+    }
   }
   startBankImpactEmitter(emitter);
 }
@@ -2759,6 +2810,7 @@ function createRollingBankDisplay(valueEl) {
   let target = 0;
   let frameId = 0;
   let lastFrame = 0;
+  let milestonePauseUntil = 0;
   const settleWaiters = new Set();
 
   const render = (value) => {
@@ -2775,6 +2827,10 @@ function createRollingBankDisplay(valueEl) {
 
   const tick = (now) => {
     frameId = 0;
+    if (now < milestonePauseUntil) {
+      frameId = window.requestAnimationFrame(tick);
+      return;
+    }
     const deltaMs = lastFrame ? Math.min(34, now - lastFrame) : 16;
     lastFrame = now;
     const difference = target - displayed;
@@ -2788,7 +2844,20 @@ function createRollingBankDisplay(valueEl) {
     const responsiveness = Math.min(.34, .14 + deltaMs / 150);
     const minimumStep = Math.abs(difference) > 100000 ? 97 : 7;
     const step = Math.sign(difference) * Math.max(minimumStep, Math.ceil(Math.abs(difference) * responsiveness));
-    displayed += Math.abs(step) > Math.abs(difference) ? difference : step;
+    const nextDisplayed = displayed + (Math.abs(step) > Math.abs(difference) ? difference : step);
+    const nextMilestone = (Math.floor(displayed / SCORE_SURGE_CONFIG.milestoneStep) + 1)
+      * SCORE_SURGE_CONFIG.milestoneStep;
+    if (displayed < nextMilestone && nextDisplayed >= nextMilestone && nextMilestone <= target) {
+      displayed = nextMilestone;
+      milestonePauseUntil = now + BANK_ROLL_MILESTONE_PAUSE_MS;
+      valueEl?.animate?.([
+        { scale: "1", filter: "brightness(1)" },
+        { scale: "1.16", filter: "brightness(2) drop-shadow(0 0 14px #ffd65c)" },
+        { scale: "1", filter: "brightness(1)" }
+      ], { duration: 180, easing: "steps(5, end)" });
+    } else {
+      displayed = nextDisplayed;
+    }
     render(displayed);
     frameId = window.requestAnimationFrame(tick);
   };

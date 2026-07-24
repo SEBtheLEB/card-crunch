@@ -1,25 +1,20 @@
-import { playGameSfx } from "./audio.js?v=164";
-import { economy, ECONOMY_CONFIG } from "./economy.js?v=164";
+import { playGameSfx } from "./audio.js?v=166";
 import {
   CARD_RANKS,
   CARD_SUITS,
   COLLECTIBLE_SKIN_IDS,
-  buildCollectiblePool,
   claimPendingPackReward,
   createCardKey,
-  createPendingPackReward,
   equipCollectedCard,
   getCardSkinRarity,
   getCardCollectionSnapshot,
   getCollectionProgress,
-  isFullDeckSkinOwned,
   isCardSkinOwned,
   parseCardKey,
   subscribeToCardCollection,
-  unequipCollectedCard,
-  unlockFullDeckSkin
-} from "./cardCollection.js?v=164";
-import { applyCardSkin, CARD_SKINS, getCardVisualColorClass, preloadCardSkinAssets } from "./cardSkins.js?v=164";
+  unequipCollectedCard
+} from "./cardCollection.js?v=167";
+import { applyCardSkin, CARD_SKINS, getCardVisualColorClass } from "./cardSkins.js?v=167";
 
 const SUIT_SYMBOLS = Object.freeze({ hearts: "\u2665", diamonds: "\u2666", clubs: "\u2663", spades: "\u2660" });
 const SKIN_ICONS = Object.freeze({ dark: "\u263E", pink: "\u2665", gold: "\u2605", rainbow: "\u25C6" });
@@ -27,14 +22,11 @@ const PACK_RARITY_CLASSES = Object.freeze(["rarity-rare", "rarity-epic", "rarity
 let selectedCollectionSkin = "dark";
 let packOpening = false;
 let packRevealed = false;
+let revealedProductId = "mystery-card-pack";
 let elements = null;
 
 export function initializeCardCollectionUI(bindAction) {
   elements = {
-    buyPackButton: document.querySelector("#buyMysteryPackButton"),
-    buyPackPrice: document.querySelector("#mysteryPackPrice"),
-    buyPinkArcadeDeckButton: document.querySelector("#buyPinkArcadeDeckButton"),
-    pinkArcadeDeckPrice: document.querySelector("#pinkArcadeDeckPrice"),
     storeStatus: document.querySelector("#storeStatus"),
     collectionDeckList: document.querySelector("#collectionDeckList"),
     collectionDetail: document.querySelector("#collectionDetail"),
@@ -45,77 +37,32 @@ export function initializeCardCollectionUI(bindAction) {
     packReward: document.querySelector("#packReward"),
     openButton: document.querySelector("#openPackButton"),
     collectButton: document.querySelector("#collectPackRewardButton"),
-    equipButton: document.querySelector("#equipPackRewardButton")
+    equipButton: document.querySelector("#equipPackRewardButton"),
+    viewButton: document.querySelector("#viewPackCollectionButton"),
+    buyAnotherButton: document.querySelector("#buyAnotherPackButton")
   };
 
-  bindAction(elements.buyPackButton, buyOrResumePack);
-  bindAction(elements.buyPinkArcadeDeckButton, buyOrEquipPinkArcadeDeck);
   bindAction(elements.openButton, revealPendingPack);
   bindAction(elements.collectButton, () => claimAndClosePack(false));
   bindAction(elements.equipButton, () => claimAndClosePack(true));
+  bindAction(elements.viewButton, viewRewardCollection);
+  bindAction(elements.buyAnotherButton, buyAnotherPack);
   bindAction(elements.collectionDeckList, onCollectionDeckAction);
   bindAction(elements.collectionDetail, onCollectionCardAction);
 
-  economy.subscribe(renderPackStoreState);
   subscribeToCardCollection(() => {
-    renderPackStoreState();
     renderCardCollection();
   });
   window.addEventListener("card-crunch-card-skin-change", renderCardCollection);
 
-  renderPackStoreState();
   renderCardCollection();
   if (getCardCollectionSnapshot().pendingReward) showPackOverlay();
 }
 
-function buyOrResumePack() {
-  const snapshot = getCardCollectionSnapshot();
-  if (snapshot.pendingReward) {
-    showPackOverlay();
-    return;
-  }
-  if (!buildCollectiblePool(snapshot.owned).length) {
-    setStoreStatus("Collection complete. Every mystery card has been found!");
-    playGameSfx("score_total");
-    return;
-  }
-  if (!economy.spendCoins(ECONOMY_CONFIG.mysteryCardPackCost)) {
-    const missing = Math.max(0, ECONOMY_CONFIG.mysteryCardPackCost - economy.getSnapshot().coins);
-    setStoreStatus(`You need ${missing} more coin${missing === 1 ? "" : "s"} for a Mystery Pack.`);
-    playGameSfx("invalid_card");
-    return;
-  }
-  const reward = createPendingPackReward();
-  if (!reward) {
-    economy.addCoins(ECONOMY_CONFIG.mysteryCardPackCost);
-    setStoreStatus("Collection complete. Your coins were returned.");
-    return;
-  }
-  playGameSfx("pack_buy");
+export function openPendingPackOverlay() {
+  if (!getCardCollectionSnapshot().pendingReward) return false;
   showPackOverlay();
-}
-
-function buyOrEquipPinkArcadeDeck() {
-  const skinId = "pink_arcade";
-  const alreadyOwned = isFullDeckSkinOwned(skinId);
-  if (!alreadyOwned && !economy.spendCoins(ECONOMY_CONFIG.pinkArcadeDeckCost)) {
-    const missing = Math.max(0, ECONOMY_CONFIG.pinkArcadeDeckCost - economy.getSnapshot().coins);
-    setStoreStatus(`You need ${missing.toLocaleString()} more coins for the Pink Arcade deck.`);
-    playGameSfx("invalid_card");
-    return;
-  }
-
-  if (!alreadyOwned && !unlockFullDeckSkin(skinId)) {
-    economy.addCoins(ECONOMY_CONFIG.pinkArcadeDeckCost);
-    setStoreStatus("Pink Arcade could not be unlocked. Your coins were returned.");
-    return;
-  }
-
-  applyCardSkin(skinId);
-  preloadCardSkinAssets(skinId);
-  renderPackStoreState();
-  setStoreStatus(alreadyOwned ? "Pink Arcade deck equipped." : "Pink Arcade unlocked and equipped. Neon trail online!");
-  playGameSfx(alreadyOwned ? "card_select" : "card_unlock");
+  return true;
 }
 
 function showPackOverlay() {
@@ -133,7 +80,10 @@ function showPackOverlay() {
   elements.openButton.disabled = false;
   elements.collectButton.hidden = true;
   elements.equipButton.hidden = true;
-  elements.packPrompt.textContent = "Tap the pack to reveal one new card";
+  if (elements.viewButton) elements.viewButton.hidden = true;
+  if (elements.buyAnotherButton) elements.buyAnotherButton.hidden = true;
+  const pending = getCardCollectionSnapshot().pendingReward;
+  elements.packPrompt.textContent = `Tap to open ${pending?.productName ?? "your card pack"}`;
   document.body.classList.add("pack-overlay-open");
   elements.openButton.focus({ preventScroll: true });
 }
@@ -151,6 +101,10 @@ function revealPendingPack() {
   elements.packPrompt.textContent = "Cracking the seal...";
   playGameSfx("pack_open");
 
+  const reduceMotion = document.documentElement.classList.contains("reduce-motion");
+  const openedBefore = localStorage.getItem("cardCrunchPackOpeningSeen") === "1";
+  const revealDelay = reduceMotion ? 40 : openedBefore ? 280 : 520;
+  localStorage.setItem("cardCrunchPackOpeningSeen", "1");
   window.setTimeout(() => {
     if (!elements.overlay || elements.overlay.hidden) return;
     packOpening = false;
@@ -164,17 +118,21 @@ function revealPendingPack() {
     elements.packReward.hidden = false;
     elements.collectButton.hidden = false;
     elements.equipButton.hidden = false;
-    elements.packPrompt.textContent = `${rarity.label.toUpperCase()} CARD`;
+    if (elements.viewButton) elements.viewButton.hidden = false;
+    if (elements.buyAnotherButton) elements.buyAnotherButton.hidden = false;
+    revealedProductId = reward.productId ?? "mystery-card-pack";
+    elements.packPrompt.textContent = `${rarity.label.toUpperCase()} \u2022 NEW CARD`;
     spawnPackBurst(reward);
     playGameSfx("card_unlock");
     elements.equipButton.focus({ preventScroll: true });
-  }, 520);
+  }, revealDelay);
 }
 
 function renderPackReward(reward) {
   const colorClass = getSuitColorClass(reward.suit);
   const skinName = CARD_SKINS[reward.skinId]?.name ?? reward.skinId;
   const rarity = getCardSkinRarity(reward.skinId);
+  const progress = getCollectionProgress(reward.skinId);
   elements.overlay.classList.add(`rarity-${rarity.id}`);
   elements.overlay.dataset.rarity = rarity.id;
   elements.overlay.style.setProperty("--pack-rarity-color", rarity.color);
@@ -187,7 +145,8 @@ function renderPackReward(reward) {
     <div class="pack-reward-copy">
       <span class="pack-rarity-label rarity-${rarity.id}">${rarity.label}</span>
       <h2>${reward.rank} of ${capitalize(reward.suit)}</h2>
-      <p>${skinName} &bull; 1 of 52</p>
+      <p>${skinName} &bull; ${Math.min(52, progress.owned + 1)} / 52 collected</p>
+      <small>NEW &bull; Duplicate protected</small>
     </div>
   `;
 }
@@ -210,6 +169,23 @@ function claimAndClosePack(shouldEquip) {
   window.setTimeout(closePackOverlay, 260);
 }
 
+function viewRewardCollection() {
+  if (!packRevealed) return;
+  const reward = claimPendingPackReward();
+  if (!reward) return closePackOverlay();
+  closePackOverlay();
+  window.dispatchEvent(new CustomEvent("card-crunch-request-menu-page", { detail: { pageName: "themes", collectionId: reward.skinId } }));
+}
+
+function buyAnotherPack() {
+  if (!packRevealed) return;
+  const productId = revealedProductId;
+  const reward = claimPendingPackReward();
+  if (!reward) return closePackOverlay();
+  closePackOverlay();
+  window.dispatchEvent(new CustomEvent("card-crunch-pack-buy-another", { detail: { productId } }));
+}
+
 function closePackOverlay() {
   if (!elements?.overlay) return;
   elements.overlay.hidden = true;
@@ -220,47 +196,7 @@ function closePackOverlay() {
   elements.overlay.style.removeProperty("--pack-rarity-color");
   elements.packReward.replaceChildren();
   document.body.classList.remove("pack-overlay-open");
-  renderPackStoreState();
   renderCardCollection();
-  elements.buyPackButton?.focus({ preventScroll: true });
-}
-
-function renderPackStoreState() {
-  if (!elements?.buyPackButton) return;
-  const collection = getCardCollectionSnapshot();
-  const wallet = economy.getSnapshot();
-  const pending = Boolean(collection.pendingReward);
-  const remaining = buildCollectiblePool(collection.owned).length;
-  elements.buyPackButton.disabled = remaining === 0 && !pending;
-  elements.buyPackButton.classList.toggle("has-waiting-pack", pending);
-  elements.buyPackButton.classList.toggle("cannot-afford", !pending && wallet.coins < ECONOMY_CONFIG.mysteryCardPackCost);
-  elements.buyPackPrice.textContent = pending ? "OPEN WAITING PACK" : `${ECONOMY_CONFIG.mysteryCardPackCost} Coins`;
-  const small = elements.buyPackButton.querySelector("small");
-  if (small) small.textContent = remaining ? `${remaining} remain \u00b7 Rainbow 3%` : "Collection complete";
-  renderPinkArcadeDeckStoreState(collection, wallet);
-}
-
-function renderPinkArcadeDeckStoreState(collection = getCardCollectionSnapshot(), wallet = economy.getSnapshot()) {
-  if (!elements?.buyPinkArcadeDeckButton) return;
-  const owned = collection.purchasedFullDeckSkins.includes("pink_arcade");
-  const equipped = collection.fullDeckSkin === "pink_arcade";
-  elements.buyPinkArcadeDeckButton.classList.toggle("is-owned", owned);
-  elements.buyPinkArcadeDeckButton.classList.toggle("is-equipped", equipped);
-  elements.buyPinkArcadeDeckButton.classList.toggle("cannot-afford", !owned && wallet.coins < ECONOMY_CONFIG.pinkArcadeDeckCost);
-  elements.buyPinkArcadeDeckButton.setAttribute("aria-label", equipped
-    ? "Pink Arcade deck equipped"
-    : owned
-      ? "Equip Pink Arcade deck"
-      : `Buy Pink Arcade deck for ${ECONOMY_CONFIG.pinkArcadeDeckCost} coins`);
-  if (elements.pinkArcadeDeckPrice) {
-    elements.pinkArcadeDeckPrice.textContent = equipped
-      ? "EQUIPPED"
-      : owned
-        ? "EQUIP DECK"
-        : `${ECONOMY_CONFIG.pinkArcadeDeckCost.toLocaleString()} Coins`;
-  }
-  const detail = elements.buyPinkArcadeDeckButton.querySelector("small");
-  if (detail) detail.textContent = owned ? "52 cards + custom neon trail" : "Complete 52-card pixel deck";
 }
 
 function renderCardCollection({ preserveMatrixScroll = true } = {}) {
@@ -303,8 +239,8 @@ function renderCardCollection({ preserveMatrixScroll = true } = {}) {
     <div class="collection-detail-rarity rarity-${selectedRarity.id}"><strong>${selectedRarity.label}</strong><span>${selectedRarity.weight}% pack chance</span></div>
     <div class="collection-progress-track"><i style="--collection-progress:${(progress.owned / progress.total) * 100}%"></i></div>
     <p>Tap an owned card to equip only that rank and suit. Tap it again to return that card to Default.</p>
-    <button class="collection-full-deck-button${fullDeckActive ? " is-active" : ""}" data-test-full-deck="${selectedCollectionSkin}" type="button">
-      ${fullDeckActive ? "FULL DECK ACTIVE" : "EQUIP FULL DECK (TEST)"}
+    <button class="collection-full-deck-button${fullDeckActive ? " is-active" : ""}" data-test-full-deck="${selectedCollectionSkin}" type="button" ${progress.complete ? "" : "disabled"}>
+      ${fullDeckActive ? "FULL DECK ACTIVE" : progress.complete ? "EQUIP COMPLETE DECK" : "COLLECT ALL 52 TO EQUIP"}
     </button>
     <div class="collection-card-matrix" role="table" aria-label="${CARD_SKINS[selectedCollectionSkin].name} card collection">
       ${suitRows}
@@ -376,6 +312,7 @@ function onCollectionCardAction(event) {
   const fullDeckButton = event.target.closest?.("[data-test-full-deck]");
   if (fullDeckButton) {
     const skinId = fullDeckButton.dataset.testFullDeck;
+    if (!getCollectionProgress(skinId).complete) return;
     applyCardSkin(skinId);
     setCollectionStatus(`${CARD_SKINS[skinId].name} full deck equipped for testing.`);
     renderCardCollection();

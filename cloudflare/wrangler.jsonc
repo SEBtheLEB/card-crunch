@@ -1,0 +1,35 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "card-crunch-realtime",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-21",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "MATCHMAKER",
+        "class_name": "Matchmaker"
+      },
+      {
+        "name": "MATCH_ROOM",
+        "class_name": "MatchRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "Matchmaker",
+        "MatchRoom"
+      ]
+    }
+  ],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://card-crunch.vercel.app,https://stlproductionz.io,https://www.stlproductionz.io,http://localhost,http://127.0.0.1,https://localhost,capacitor://localhost"
+  }
+}

@@ -1,19 +1,7 @@
 export const SCORE_SURGE_CONFIG = Object.freeze({
   minimumScore: 10_000,
-  baseMilestones: Object.freeze([
-    10_000,
-    20_000,
-    30_000,
-    50_000,
-    80_000,
-    120_000,
-    200_000,
-    350_000,
-    500_000,
-    750_000,
-    1_000_000
-  ]),
-  maximumVisibleMilestones: 18
+  milestoneStep: 10_000,
+  maximumVisibleMilestones: 120
 });
 
 const SCORE_SURGE_TIERS = Object.freeze([
@@ -35,32 +23,22 @@ export function buildScoreSurgeMilestones(score = 0) {
   const safeScore = Math.max(0, Math.floor(Number(score) || 0));
   if (safeScore < SCORE_SURGE_CONFIG.minimumScore) return [];
 
-  const milestones = SCORE_SURGE_CONFIG.baseMilestones.filter((milestone) => milestone <= safeScore);
-  let magnitude = 1_000_000;
-  while (magnitude < safeScore) {
-    for (const multiplier of [2, 3, 5, 8, 10]) {
-      const milestone = magnitude * multiplier;
-      if (milestone > 1_000_000 && milestone <= safeScore && !milestones.includes(milestone)) {
-        milestones.push(milestone);
-      }
-    }
-    magnitude *= 10;
+  const milestoneCount = Math.floor(safeScore / SCORE_SURGE_CONFIG.milestoneStep);
+  if (milestoneCount <= SCORE_SURGE_CONFIG.maximumVisibleMilestones) {
+    return Array.from(
+      { length: milestoneCount },
+      (_, index) => (index + 1) * SCORE_SURGE_CONFIG.milestoneStep
+    );
   }
 
-  milestones.sort((left, right) => left - right);
-  if (milestones.length <= SCORE_SURGE_CONFIG.maximumVisibleMilestones) return milestones;
-
-  const sampled = [milestones[0]];
+  const sampledIndexes = [1];
   const interiorSlots = SCORE_SURGE_CONFIG.maximumVisibleMilestones - 2;
   for (let index = 1; index <= interiorSlots; index += 1) {
-    const sourceIndex = Math.round(index * (milestones.length - 1) / (interiorSlots + 1));
-    const milestone = milestones[sourceIndex];
-    if (milestone > sampled[sampled.length - 1]) sampled.push(milestone);
+    const sourceIndex = 1 + Math.round(index * (milestoneCount - 1) / (interiorSlots + 1));
+    if (sourceIndex > sampledIndexes[sampledIndexes.length - 1]) sampledIndexes.push(sourceIndex);
   }
-  if (sampled[sampled.length - 1] !== milestones[milestones.length - 1]) {
-    sampled.push(milestones[milestones.length - 1]);
-  }
-  return sampled;
+  if (sampledIndexes[sampledIndexes.length - 1] !== milestoneCount) sampledIndexes.push(milestoneCount);
+  return sampledIndexes.map((index) => index * SCORE_SURGE_CONFIG.milestoneStep);
 }
 
 export function createScoreSurgePlan(score = 0) {

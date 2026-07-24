@@ -4,8 +4,13 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const required = [
   "index.html",
+  ".env.example",
+  "platform-config.js",
   "src/main.js",
-  "src/stlAccount.js",
+  "src/stlPlatformConfig.js",
+  "src/stlPlatformClient.js",
+  "src/stlCloudSave.js",
+  "src/stlPlatform.js",
   "src/audio.js",
   "src/haptics.js",
   "src/input.js",
@@ -18,6 +23,20 @@ const required = [
   "src/cardSkins.js",
   "src/cardCollection.js",
   "src/cardCollectionUI.js",
+  "src/store.js",
+  "src/storeProducts.js",
+  "src/storeState.js",
+  "src/multiplayer.js",
+  "src/multiplayerBot.js",
+  "src/realtimeMultiplayer.js",
+  "src/multiplayerMode.js",
+  "api/matchmaking.js",
+  "api/_matchmakingCore.js",
+  "api/_redis.js",
+  "cloudflare/wrangler.jsonc",
+  "cloudflare/src/index.js",
+  "cloudflare/src/protocol.js",
+  "cloudflare/src/session.js",
   "src/potInfo.js",
   "src/tutorial.js",
   "src/economy.js",
@@ -31,8 +50,14 @@ const required = [
   "assets/card-sets/pink_arcade/card-set.json",
   "assets/card-sets/pink_arcade/backs/default_back.png",
   "assets/card-sets/pink_arcade/previews/full-deck-preview.png",
+  "assets/icons/suits/heart.svg",
+  "assets/icons/suits/diamond.svg",
+  "assets/icons/suits/club.svg",
+  "assets/icons/suits/spade.svg",
   "styles/main.css",
   "styles/collection.css",
+  "styles/store.css",
+  "styles/multiplayer.css",
   "capacitor.config.json"
 ];
 
@@ -69,6 +94,106 @@ const arcadeModeModule = await import(`../src/arcadeMode.js?verify=${Date.now()}
 const arcadeResults = arcadeModeModule.runArcadeModeSelfTests();
 if (!Array.isArray(arcadeResults) || arcadeResults.some((result) => result.pass === false)) {
   throw new Error("Endless Arcade and power-card self-tests failed");
+}
+const botModule = await import(`../src/multiplayerBot.js?verify=${Date.now()}`);
+const botA = botModule.createBotDuelBrain({ seed: "verification-bot", rating: 1 });
+const botB = botModule.createBotDuelBrain({ seed: "verification-bot", rating: 1 });
+const botScoresA = [];
+const botScoresB = [];
+for (let elapsed = 0; elapsed <= botModule.BOT_MATCH_DURATION_MS; elapsed += 500) {
+  botScoresA.push(botA.advance(elapsed, elapsed * 3).score);
+  botScoresB.push(botB.advance(elapsed, elapsed * 3).score);
+}
+if (botScoresA.at(-1) <= 0
+  || botScoresA.at(-1) !== botScoresB.at(-1)
+  || botScoresA.some((score, index) => index > 0 && score < botScoresA[index - 1])
+  || botA.snapshot().actions < 30) {
+  throw new Error("House Bot scoring must be deterministic, active, and monotonically increasing");
+}
+const botFixture = botModule.createBotDuelMatch({
+  player: { displayName: "Verifier", skinId: "classic" },
+  rating: 1,
+  now: 10_000,
+  seed: "match-fixture"
+});
+const settledBotFixture = botModule.settleBotDuelMatch(botFixture.match, 12_000, 9_000);
+if (!botFixture.match.opponent.isBot
+  || botFixture.match.endsAt - botFixture.match.startsAt !== 60_000
+  || settledBotFixture.winner !== "you"
+  || settledBotFixture.status !== "complete") {
+  throw new Error("House Bot matches must use the full one-minute multiplayer result contract");
+}
+const matchmakingModule = await import(`../api/_matchmakingCore.js?verify=${Date.now()}`);
+const matchmakingStore = new matchmakingModule.MemoryMatchmakingStore();
+const matchNow = Date.now();
+const firstJoin = await matchmakingModule.handleMatchmakingAction(matchmakingStore, "join", {
+  displayName: "Player One",
+  skinId: "classic"
+}, matchNow);
+const secondJoin = await matchmakingModule.handleMatchmakingAction(matchmakingStore, "join", {
+  displayName: "Player Two",
+  skinId: "rainbow"
+}, matchNow + 20);
+const firstMatched = await matchmakingModule.handleMatchmakingAction(matchmakingStore, "poll", {
+  ...firstJoin.session
+}, matchNow + 40);
+if (firstJoin.state !== "waiting"
+  || secondJoin.state !== "matched"
+  || firstMatched.match?.id !== secondJoin.match?.id
+  || firstMatched.match?.opponent?.displayName !== "Player Two"
+  || secondJoin.match?.opponent?.displayName !== "Player One"
+  || secondJoin.match.endsAt - secondJoin.match.startsAt !== 60_000) {
+  throw new Error("Two waiting players were not paired into the same one-minute match");
+}
+await matchmakingModule.handleMatchmakingAction(matchmakingStore, "score", {
+  ...firstJoin.session,
+  score: 1200
+}, secondJoin.match.startsAt + 1000);
+await matchmakingModule.handleMatchmakingAction(matchmakingStore, "score", {
+  ...secondJoin.session,
+  score: 900
+}, secondJoin.match.startsAt + 1100);
+const settledMatch = await matchmakingModule.handleMatchmakingAction(matchmakingStore, "poll", {
+  ...firstJoin.session
+}, secondJoin.match.endsAt + 1);
+if (settledMatch.state !== "complete"
+  || settledMatch.match.winner !== "you"
+  || settledMatch.match.you.score !== 1200
+  || settledMatch.match.opponent.score !== 900) {
+  throw new Error("Multiplayer score comparison or server-timed result settlement failed");
+}
+const fairnessStore = new matchmakingModule.MemoryMatchmakingStore();
+const fairnessNow = matchNow + 100_000;
+const patientJoin = await matchmakingModule.handleMatchmakingAction(fairnessStore, "join", {
+  displayName: "Patient Player"
+}, fairnessNow);
+await matchmakingModule.handleMatchmakingAction(fairnessStore, "poll", {
+  ...patientJoin.session
+}, fairnessNow + 10_000);
+const laterJoin = await matchmakingModule.handleMatchmakingAction(fairnessStore, "join", {
+  displayName: "Later Player"
+}, fairnessNow + 19_000);
+if (laterJoin.state !== "matched" || laterJoin.match.opponent.displayName !== "Patient Player") {
+  throw new Error("Active waiting players must retain queue priority after heartbeat polling");
+}
+
+const realtimeProtocol = await import(`../cloudflare/src/protocol.js?verify=${Date.now()}`);
+const realtimeNow = matchNow + 200_000;
+const realtimeMatch = realtimeProtocol.createMatchRecord({
+  id: "11111111-1111-4111-8111-111111111111",
+  playerA: { id: "22222222-2222-4222-8222-222222222222", displayName: "Socket One", skinId: "classic" },
+  playerB: { id: "33333333-3333-4333-8333-333333333333", displayName: "Socket Two", skinId: "pink" },
+  now: realtimeNow
+});
+realtimeMatch.scoreA = 4200;
+realtimeMatch.scoreB = 3900;
+realtimeProtocol.settleMatch(realtimeMatch, realtimeMatch.endsAt + 1);
+const realtimeView = realtimeProtocol.buildMatchView(realtimeMatch, realtimeMatch.playerA.id, realtimeMatch.endsAt + 1);
+if (realtimeView?.winner !== "you"
+  || realtimeView.you.score !== 4200
+  || realtimeView.opponent.score !== 3900
+  || realtimeMatch.endsAt - realtimeMatch.startsAt !== 60_000) {
+  throw new Error("Cloudflare realtime match protocol did not settle a one-minute duel correctly");
 }
 const progressionModule = await import(`../src/progression.js?verify=${Date.now()}`);
 const challengePots = progressionModule.createDefaultPots();
@@ -138,10 +263,10 @@ if (!backgroundStyles.includes("--casino-table-bg:")
 if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButton")) {
   throw new Error("Release UI hooks are missing");
 }
-if ((html.match(/data-fullscreen-toggle/g) ?? []).length !== 2) {
+if ((html.match(/data-fullscreen-toggle/g) ?? []).length < 2) {
   throw new Error("Menu and gameplay fullscreen controls are missing");
 }
-if (!html.includes("summaryCoins") || !html.includes("storeCoinsValue") || !html.includes("buyShieldButton")) {
+if (!html.includes("summaryCoins") || !html.includes("storeCoinsValue") || !html.includes("storeContent")) {
   throw new Error("Economy UI hooks are missing");
 }
 if (!html.includes('id="potInfoButton"')
@@ -155,13 +280,10 @@ if (/energy|recharge/i.test(html)) {
 if ((html.match(/data-theme-id=/g) ?? []).length !== 3 || !html.includes("gold-table") || !html.includes("knight-deck")) {
   throw new Error("Selectable theme controls are missing");
 }
-if ((html.match(/data-card-skin-id=/g) ?? []).length !== 6
-  || !html.includes("skin-preview-rainbow")
-  || !html.includes("buyPinkArcadeDeckButton")
-  || !html.includes("skin-preview-pink-arcade")) {
-  throw new Error("Selectable card skin controls are missing");
+if (!html.includes("storeTabs") || !html.includes("storeCollectionPanel") || !html.includes("storePurchaseOverlay")) {
+  throw new Error("Data-driven Store tab or purchase hooks are missing");
 }
-if (!html.includes("buyMysteryPackButton") || !html.includes("packOpeningOverlay") || !html.includes("collectionDeckList") || !html.includes("collectionDetail")) {
+if (!html.includes("packOpeningOverlay") || !html.includes("collectionDeckList") || !html.includes("collectionDetail")) {
   throw new Error("Mystery pack or 52-card collection UI hooks are missing");
 }
 if (!html.includes("run-scoreboard") || !html.includes("summaryRecoveryTicker")) {
@@ -173,8 +295,29 @@ if (!html.includes("tutorialStartButton") || !html.includes("tutorialCoach") || 
 if (!html.includes('id="endlessArcadeButton"') || !html.includes("ENDLESS ARCADE")) {
   throw new Error("Endless Arcade menu action is missing");
 }
-if (!html.includes('data-page="account"') || !html.includes('id="stlGoogleSignInButton"')) {
-  throw new Error("Shared STL Account UI hooks are missing");
+if (!html.includes('id="onlineDuelButton"')
+  || !html.includes('id="matchmakingScreen"')
+  || !html.includes('id="multiplayerResultScreen"')) {
+  throw new Error("Online Duel menu, matchmaking, or result UI hooks are missing");
+}
+if (!html.includes('data-page="modes"')
+  || !html.includes('id="potsModeButton"')
+  || !html.includes('data-mode-card-art="pots"')
+  || !html.includes('data-mode-card-art="arcade"')
+  || !html.includes('data-mode-card-art="duel"')) {
+  throw new Error("PLAY must open the album-style Pots, Endless Arcade, and Online Duel selector");
+}
+if (html.includes('id="matchmakingCountdown"')) {
+  throw new Error("Online Duel must open the dealt board without a separate countdown screen");
+}
+if (!html.includes('data-page="account"')
+  || !html.includes('id="cardCrunchGoogleSignInButton"')
+  || !html.includes('id="cardCrunchSyncButton"')
+  || !html.includes('id="authDiagnostics"')
+  || !html.includes("STL Account")
+  || html.includes("Bit Crush Core")
+  || html.includes("Supabase")) {
+  throw new Error("Dedicated Card Crunch STL Platform account UI hooks are missing or copied account branding remains");
 }
 if (!html.includes("Each pot is a different challenge.")
   || !html.includes("pot-state-legend")
@@ -187,23 +330,250 @@ if (html.includes('id="tutorialPage"')) {
 
 const economyModule = await import(`../src/economy.js?verify=${Date.now()}`);
 
-const accountModule = await import(`../src/stlAccount.js?verify=${Date.now()}`);
-const accountStorage = new Map([
-  ["cardCrunchBestScore", "1250000"],
-  ["cardCrunchBestStreak", "12"],
-  ["cardCrunchTotalCrunches", "345"],
-  ["cardCrunchCoins", "890"]
-]);
-const accountSnapshot = accountModule.buildCardCrunchProgressSnapshot({
-  state: { pots: Array.from({ length: 12 }, (_, index) => ({ id: index + 1, progress: 100, target: 100, complete: true })) },
-  storage: { getItem: (key) => accountStorage.get(key) ?? null }
+const stlConfigModule = await import(`../src/stlPlatformConfig.js?verify=${Date.now()}`);
+const stlClientModule = await import(`../src/stlPlatformClient.js?verify=${Date.now()}`);
+const stlCloudModule = await import(`../src/stlCloudSave.js?verify=${Date.now()}`);
+const stlConfig = stlConfigModule.readSTLPlatformConfig({
+  baseUrl: "https://accounts.stlproductionz.io",
+  clientId: "card-crunch-mobile",
+  gameId: "c32010e4-b054-4b59-a636-aa2c5a991d64",
+  developmentRedirectUri: "cardcrunch-dev://auth/callback",
+  productionRedirectUri: "cardcrunch://auth/callback"
 });
-if (accountModule.STL_ACCOUNT_API_BASE !== "https://stlproductionz.io/api/games"
-  || accountSnapshot.stats.bestScore !== 1250000
-  || accountSnapshot.stats.potsCleared !== 12
-  || accountSnapshot.totals.achievements !== 4
-  || !accountSnapshot.achievements["million-run"].unlocked) {
-  throw new Error("Card Crunch shared-account progress mapping is incomplete");
+stlConfigModule.validateSTLPlatformConfig(stlConfig, { hostname: "card-crunch.vercel.app" });
+const stlDiagnostics = stlConfigModule.getSTLPlatformDiagnostics(stlConfig, {
+  origin: "https://card-crunch.vercel.app",
+  hostname: "card-crunch.vercel.app"
+});
+if (stlDiagnostics.clientId !== "card-crunch-mobile"
+  || stlDiagnostics.redirectUri !== "cardcrunch://auth/callback"
+  || !Object.values(stlDiagnostics.variables).every(Boolean)) {
+  throw new Error("Card Crunch STL Platform diagnostics are incomplete");
+}
+if (stlConfigModule.getRuntimeRedirectUri(
+  stlConfig,
+  { hostname: "localhost" },
+  { isNativePlatform: () => true, getPlatform: () => "android" }
+) !== "cardcrunch://auth/callback"
+  || stlConfigModule.getRuntimeRedirectUri(stlConfig, { hostname: "localhost" }, null)
+    !== "cardcrunch-dev://auth/callback") {
+  throw new Error("Installed Card Crunch builds must use the production callback even inside Capacitor localhost");
+}
+let missingSTLConfigRejected = false;
+try { stlConfigModule.validateSTLPlatformConfig(stlConfigModule.readSTLPlatformConfig({ baseUrl: "" })); } catch (error) {
+  missingSTLConfigRejected = error?.name === "STLPlatformConfigurationError";
+}
+if (!missingSTLConfigRejected) throw new Error("Missing STL Platform variables must fail validation");
+if (stlConfigModule.isAllowedCardCrunchCallback("bitcrushcore://auth/callback")
+  || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback")
+  || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch-dev://auth/callback")
+  || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback?code=test&state=test")
+  || stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback-evil?code=test")
+  || stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback#code=leaked")) {
+  throw new Error("Card Crunch callback allowlist is not isolated");
+}
+if (stlConfigModule.normalizeSTLPlatformBaseUrl("https://accounts.stlproductions.io")
+    !== "https://accounts.stlproductionz.io") {
+  throw new Error("The legacy voice-mode spelling must resolve to the canonical STL Productionz account host");
+}
+let foreignSTLHostRejected = false;
+try {
+  stlConfigModule.validateSTLPlatformConfig(
+    stlConfigModule.readSTLPlatformConfig({
+      ...stlConfig,
+      baseUrl: "https://accounts.another-product.example"
+    }),
+    { hostname: "card-crunch.vercel.app" }
+  );
+} catch (error) {
+  foreignSTLHostRejected = error?.name === "STLPlatformConfigurationError";
+}
+if (!foreignSTLHostRejected) throw new Error("Card Crunch must reject non-STL Platform account hosts");
+
+const createMemoryStorage = () => {
+  const values = new Map();
+  return {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, String(value)),
+    removeItem: (key) => values.delete(key)
+  };
+};
+Object.defineProperty(globalThis, "sessionStorage", {
+  value: createMemoryStorage(),
+  configurable: true
+});
+Object.defineProperty(globalThis, "localStorage", {
+  value: createMemoryStorage(),
+  configurable: true
+});
+Object.defineProperty(globalThis, "navigator", {
+  value: { onLine: true, userAgent: "Card Crunch verifier" },
+  configurable: true
+});
+Object.defineProperty(globalThis, "window", {
+  value: globalThis,
+  configurable: true
+});
+
+const authRequests = [];
+const originalFetch = globalThis.fetch;
+const durableDeviceId = "78711b16-dad0-4f34-9870-30765ee988a6";
+globalThis.fetch = async (url, init = {}) => {
+  authRequests.push({
+    url: String(url),
+    body: init.body ? JSON.parse(init.body) : undefined
+  });
+  if (String(url).endsWith("/api/v1/auth/token")) {
+    return new Response(JSON.stringify({
+      accessToken: "card-crunch-access-token",
+      refreshToken: "card-crunch-refresh-token",
+      tokenType: "Bearer",
+      expiresAt: "2099-01-01T00:00:00.000Z",
+      refreshExpiresAt: "2099-02-01T00:00:00.000Z",
+      scopes: stlClientModule.defaultScopes(),
+      sessionId: "4d4afc0e-2f6a-4ae0-94e2-619511539921",
+      deviceId: durableDeviceId,
+      userId: "1c5cedc2-156c-46eb-b01b-ea1e9b6fc8c1"
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  }
+  return new Response(JSON.stringify({ deviceId: durableDeviceId }), {
+    status: 200,
+    headers: { "content-type": "application/json" }
+  });
+};
+
+const authClient = new stlClientModule.CardCrunchSTLClient(stlConfig);
+const rawInstallDeviceId = "2d2d79b7-3c4c-4ef9-a03f-69f9bf53dc48";
+const pendingSignIn = await authClient.beginSignIn();
+const authorizationUrl = new URL(pendingSignIn.authorizationUrl);
+if (authorizationUrl.origin !== "https://accounts.stlproductionz.io"
+  || authorizationUrl.searchParams.has("prompt")
+  || authorizationUrl.searchParams.get("code_challenge_method") !== "S256"
+  || authorizationUrl.searchParams.get("redirect_uri") !== "cardcrunch://auth/callback") {
+  throw new Error("Card Crunch sign-in must use canonical STL PKCE without unsupported OAuth parameters");
+}
+let mismatchedRuntimeCallbackRejected = false;
+try {
+  await authClient.completeSignIn(
+    `cardcrunch-dev://auth/callback?code=dev-code&state=${pendingSignIn.state}`,
+    { device: { deviceId: rawInstallDeviceId } }
+  );
+} catch (error) {
+  mismatchedRuntimeCallbackRejected = error?.code === "INVALID_REDIRECT_URI";
+}
+if (!mismatchedRuntimeCallbackRejected) {
+  throw new Error("A production Card Crunch auth transaction must reject the development callback");
+}
+const session = await authClient.completeSignIn(
+  `cardcrunch://auth/callback?code=production-code&state=${pendingSignIn.state}`,
+  { device: { deviceId: rawInstallDeviceId } }
+);
+if (session.deviceId !== durableDeviceId
+  || authRequests[0]?.body?.device?.deviceId !== rawInstallDeviceId) {
+  throw new Error("Card Crunch must exchange the raw install identifier for a durable STL device");
+}
+await authClient.registerDevice({
+  deviceId: rawInstallDeviceId,
+  friendlyName: "Verifier",
+  platform: "android",
+  gameId: stlConfig.gameId
+});
+if (authRequests[1]?.body?.deviceId !== durableDeviceId) {
+  throw new Error("Authenticated Card Crunch requests must use the durable STL device ID");
+}
+globalThis.navigator.onLine = false;
+let offlineMutationQueued = false;
+try {
+  await authClient.startPlaySession({
+    gameId: stlConfig.gameId,
+    deviceId: rawInstallDeviceId,
+    platform: "android",
+    gameBuild: "verify",
+    startedAt: "2026-07-23T00:00:00.000Z"
+  }, { idempotencyKey: "verify-offline-session", queueWhenOffline: true });
+} catch (error) {
+  offlineMutationQueued = error?.code === "OFFLINE_QUEUED";
+}
+const queuedOperations = JSON.parse(globalThis.localStorage.getItem("cardCrunchStlOfflineQueueV1") || "[]");
+if (!offlineMutationQueued
+  || queuedOperations.length !== 1
+  || queuedOperations[0]?.userId !== session.userId
+  || queuedOperations[0]?.clientId !== "card-crunch-mobile"
+  || queuedOperations[0]?.body?.deviceId !== durableDeviceId) {
+  throw new Error("Offline STL operations must stay bound to the authenticated player and durable device");
+}
+globalThis.navigator.onLine = true;
+const flushedOperations = await authClient.flushOfflineQueue();
+if (flushedOperations.completed !== 1
+  || JSON.parse(globalThis.localStorage.getItem("cardCrunchStlOfflineQueueV1") || "[]").length !== 0) {
+  throw new Error("The authenticated player must be able to flush only their own STL operations");
+}
+const otherPlayerId = "91ff8a0e-c8d2-4b86-bc74-67840028f1ef";
+globalThis.localStorage.setItem("cardCrunchStlOfflineQueueV1", JSON.stringify([
+  {
+    path: "/devices",
+    method: "POST",
+    body: { deviceId: durableDeviceId },
+    idempotencyKey: "other-player-operation",
+    userId: otherPlayerId,
+    clientId: "card-crunch-mobile",
+    createdAt: "2026-07-23T00:00:00.000Z"
+  },
+  {
+    path: "/devices",
+    method: "POST",
+    body: { deviceId: rawInstallDeviceId },
+    idempotencyKey: "legacy-unscoped-operation",
+    createdAt: "2026-07-23T00:00:00.000Z"
+  }
+]));
+const requestCountBeforeIsolationCheck = authRequests.length;
+const isolatedFlush = await authClient.flushOfflineQueue();
+const isolatedQueue = JSON.parse(globalThis.localStorage.getItem("cardCrunchStlOfflineQueueV1") || "[]");
+if (isolatedFlush.completed !== 0
+  || isolatedQueue.length !== 1
+  || isolatedQueue[0]?.userId !== otherPlayerId
+  || authRequests.length !== requestCountBeforeIsolationCheck) {
+  throw new Error("Card Crunch must never flush another STL player's or an unscoped legacy operation");
+}
+globalThis.localStorage.removeItem("cardCrunchStlOfflineQueueV1");
+globalThis.fetch = originalFetch;
+
+const androidManifest = await readFile(resolve(root, "android/app/src/main/AndroidManifest.xml"), "utf8");
+const stlIntegrationSource = await readFile(resolve(root, "src/stlPlatform.js"), "utf8");
+if (!androidManifest.includes('android:scheme="cardcrunch"')
+  || !androidManifest.includes('android:scheme="cardcrunch-dev"')
+  || (androidManifest.match(/android:path="\/callback"/g) ?? []).length !== 2
+  || androidManifest.includes('android:pathPrefix="/callback"')) {
+  throw new Error("Android must route both exact registered Card Crunch STL callbacks");
+}
+if (!stlIntegrationSource.includes("this.installDeviceId = null")
+  || !stlIntegrationSource.includes("deviceId: this.installDeviceId || await getOrCreateDeviceId()")
+  || !stlIntegrationSource.includes("this.deviceId = session.deviceId")
+  || !stlIntegrationSource.includes("this.deviceId = null")) {
+  throw new Error("Card Crunch must keep the install identifier separate from the durable STL device ID");
+}
+const saveUpload = await stlCloudModule.createCardCrunchSaveUpload({
+  state: { pots: [{ id: 1, progress: 500, target: 1000, complete: false }], bestScore: 900, bestRunStreak: 4, runStartedAt: Date.now() },
+  gameId: stlConfig.gameId,
+  deviceId: "2d2d79b7-3c4c-4ef9-a03f-69f9bf53dc48",
+  gameBuild: "verify"
+});
+if (saveUpload.saveFormatVersion !== "card-crunch-save-v1"
+  || saveUpload.slotKey !== "card-crunch-primary"
+  || !/^[0-9a-f]{64}$/.test(saveUpload.checksum)
+  || saveUpload.progressSummary.activePotId !== 1) {
+  throw new Error("Card Crunch STL cloud save upload must be versioned and checksummed");
+}
+const conflict = stlCloudModule.detectSaveConflict({
+  localSnapshot: { capturedAt: "2026-07-22T10:00:00.000Z" },
+  remoteVersion: { revision: 99, clientCreatedAt: "2026-07-21T10:00:00.000Z" }
+});
+if (!conflict.conflict) throw new Error("Cloud save conflict detection must preserve both advanced saves");
+if (!stlClientModule.defaultScopes().includes("saves:write")
+  || !stlClientModule.defaultScopes().includes("achievements:write")
+  || !stlClientModule.defaultScopes().includes("playtime:write")) {
+  throw new Error("STL Platform scopes must include save, achievement, and playtime mappings");
 }
 const lowReward = economyModule.calculateRunCoinReward({ grossCash: 100_000, bestStreak: 2 });
 const highReward = economyModule.calculateRunCoinReward({ grossCash: 1_000_000, bestStreak: 8, potCleared: true });
@@ -213,8 +583,16 @@ if (lowReward.total <= 0 || highReward.total <= lowReward.total) {
 if ("energyPerRun" in economyModule.ECONOMY_CONFIG || "calculateRegeneratedEnergy" in economyModule) {
   throw new Error("Energy gating still exists in the economy module");
 }
-if (economyModule.ECONOMY_CONFIG.mysteryCardPackCost <= 0 || economyModule.ECONOMY_CONFIG.pinkArcadeDeckCost <= 0) {
-  throw new Error("Mystery packs and premium decks need positive coin prices");
+const storeProductsModule = await import(`../src/storeProducts.js?verify=${Date.now()}`);
+const storeProducts = storeProductsModule.STORE_PRODUCTS;
+const coinPacks = storeProducts.filter((product) => ["generic_card_pack", "themed_card_pack"].includes(product.productType));
+const fullDecks = storeProducts.filter((product) => product.productType === "full_deck");
+if (new Set(storeProducts.map((product) => product.id)).size !== storeProducts.length
+  || coinPacks.length < 4
+  || coinPacks.some((product) => product.currencyType !== "coins" || product.cardsAwarded !== 1 || product.unlockEntireCollection || !/pack/i.test(product.displayName))
+  || fullDecks.length < 3
+  || fullDecks.some((product) => product.currencyType !== "real_money" || !product.unlockEntireCollection || !product.platformProductId || !/full deck/i.test(product.displayName))) {
+  throw new Error("Store products do not clearly separate coin packs from verified full-deck purchases");
 }
 const milestoneReward = economyModule.calculateCrunchMilestoneCoinReward({ fromCash: 90_000, toCash: 310_000 });
 if (milestoneReward.milestones !== 3 || milestoneReward.coins !== 30) {
@@ -222,9 +600,14 @@ if (milestoneReward.milestones !== 3 || milestoneReward.coins !== 30) {
 }
 const scoreSurgeModule = await import(`../src/scoreSurge.js?verify=${Date.now()}`);
 const millionSurge = scoreSurgeModule.createScoreSurgePlan(1_000_000);
+const hugeSurgeMilestones = scoreSurgeModule.buildScoreSurgeMilestones(1_000_000_000);
 if (scoreSurgeModule.getScoreSurgeTier(9_999).tier !== 0
   || scoreSurgeModule.getScoreSurgeTier(10_000).tier !== 1
   || millionSurge.tier !== 6
+  || millionSurge.milestones.length !== 100
+  || millionSurge.milestones.some((milestone, index) => milestone !== (index + 1) * 10_000)
+  || hugeSurgeMilestones.length > scoreSurgeModule.SCORE_SURGE_CONFIG.maximumVisibleMilestones
+  || hugeSurgeMilestones.at(-1) !== 1_000_000_000
   || ![10_000, 20_000, 30_000, 50_000, 80_000, 120_000, 1_000_000]
     .every((milestone) => millionSurge.milestones.includes(milestone))) {
   throw new Error("Value-driven Crunch surge tiers or milestone ramp are incomplete");
@@ -241,7 +624,7 @@ if (!cardSkinModule.getCardSkinAssetUrl({ rank: "A", suit: "hearts" }, "pink_arc
   throw new Error("Pink Arcade rank and suit asset mapping is incorrect");
 }
 
-const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollectionSource, cardCollectionUiSource, cardGestureSource, dealTimingSource, gameStateSource, uiSource, css, collectionCss] = await Promise.all([
+const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollectionSource, cardCollectionUiSource, cardGestureSource, dealTimingSource, gameStateSource, uiSource, storeSource, multiplayerSource, realtimeSource, matchmakingSource, cloudflareSource, css, collectionCss, storeCss, multiplayerCss] = await Promise.all([
   readFile(resolve(root, "src/crunchCutscene.js"), "utf8"),
   readFile(resolve(root, "src/animations.js"), "utf8"),
   readFile(resolve(root, "src/themes.js"), "utf8"),
@@ -252,8 +635,15 @@ const [cutsceneSource, animationsSource, themeSource, cardSkinSource, cardCollec
   readFile(resolve(root, "src/dealTiming.js"), "utf8"),
   readFile(resolve(root, "src/gameState.js"), "utf8"),
   readFile(resolve(root, "src/ui.js"), "utf8"),
+  readFile(resolve(root, "src/store.js"), "utf8"),
+  readFile(resolve(root, "src/multiplayer.js"), "utf8"),
+  readFile(resolve(root, "src/realtimeMultiplayer.js"), "utf8"),
+  readFile(resolve(root, "api/_matchmakingCore.js"), "utf8"),
+  readFile(resolve(root, "cloudflare/src/index.js"), "utf8"),
   readFile(resolve(root, "styles/main.css"), "utf8"),
-  readFile(resolve(root, "styles/collection.css"), "utf8")
+  readFile(resolve(root, "styles/collection.css"), "utf8"),
+  readFile(resolve(root, "styles/store.css"), "utf8"),
+  readFile(resolve(root, "styles/multiplayer.css"), "utf8")
 ]);
 const mainSource = await readFile(resolve(root, "src/main.js"), "utf8");
 const tutorialSource = await readFile(resolve(root, "src/tutorial.js"), "utf8");
@@ -262,6 +652,58 @@ const hapticsSource = await readFile(resolve(root, "src/haptics.js"), "utf8");
 const scoringSource = await readFile(resolve(root, "src/scoring.js"), "utf8");
 const scoreSurgeSource = await readFile(resolve(root, "src/scoreSurge.js"), "utf8");
 const arcadeModeSource = await readFile(resolve(root, "src/arcadeMode.js"), "utf8");
+if (!mainSource.includes("initializeMultiplayer")
+  || !mainSource.includes("initializeSTLPlatformAccount")
+  || !gameStateSource.includes("startMultiplayerMatch")
+  || !gameStateSource.includes("updateMultiplayerClock")
+  || !multiplayerSource.includes("hitWaitingCard")
+  || !multiplayerSource.includes('elements.screen?.addEventListener("pointerdown"')
+  || !multiplayerSource.includes("createCardCrunchInteraction")
+  || !multiplayerSource.includes("animateCardDealIn")
+  || !multiplayerSource.includes("CardCrunchRealtimeTransport")
+  || !multiplayerSource.includes("createBotDuelMatch")
+  || !multiplayerSource.includes("startBotMatch")
+  || !multiplayerSource.includes('this.transportMode === "bot"')
+  || !multiplayerSource.includes('import { playGameSfx } from "./audio.js')
+  || !multiplayerSource.includes('playGameSfx("target_clear")')
+  || !multiplayerSource.includes("this.game.startMultiplayerMatch")
+  || !multiplayerSource.includes("this.hideWaitingScreen();")
+  || !multiplayerSource.includes("this.startMatchClock(generation)")
+  || multiplayerSource.includes("matchmakingCountdown")
+  || multiplayerSource.includes("countdown.textContent")
+  || !realtimeSource.includes("new WebSocket")
+  || !realtimeSource.includes("reconnectRoom")
+  || !cloudflareSource.includes("export class Matchmaker")
+  || !cloudflareSource.includes("export class MatchRoom")
+  || !cloudflareSource.includes("acceptWebSocket")
+  || !cutsceneSource.includes("export function createCardCrunchInteraction")
+  || !matchmakingSource.includes("WAITING_TTL_MS")
+  || !matchmakingSource.includes("settleMatch")
+  || multiplayerSource.includes("waiting-card-shard")
+  || !html.includes('id="matchmakingBotButton"')
+  || html.includes("matchmakingCardHint")
+  || multiplayerCss.includes("waitingShardVacuum")
+  || !multiplayerCss.includes("grid-template-rows: auto auto auto minmax(180px, 1fr) auto")
+  || !multiplayerCss.includes("multiplayer-scoreboard")
+  || !multiplayerCss.includes(".matchmaking-bot-button")) {
+  throw new Error("Online Duel matchmaking, waiting-card toy, live clock, or result presentation is incomplete");
+}
+if (!gameStateSource.includes("playInstantMultiplayerCrunch")
+  || !gameStateSource.includes("instantVacuum: true")
+  || !gameStateSource.includes("removeCardsOnComplete: true")
+  || !gameStateSource.includes("spawnMultiplayerCrunchReward")
+  || !animationsSource.includes("export function spawnMultiplayerCrunchReward")
+  || !gameStateSource.includes("entry.bankPoints ?? entry.points")
+  || !css.includes(".multiplayer-crunch-reward")
+  || !gameStateSource.includes("await sleep(34)")
+  || !animationsSource.includes("reducedMotion ? 720 : 1650")
+  || !cutsceneSource.includes("prepared.instantVacuum ? 420")
+  || !cutsceneSource.includes("prepared.instantVacuum ? 3.45")
+  || !gameStateSource.includes("multiplayerStartDelay")
+  || !cutsceneSource.includes("crunch()")
+  || !cutsceneSource.includes("prepared.instantVacuum")) {
+  throw new Error("Online Duel must use the fast one-hit Crunch, persistent reward callouts, and board-first start flow");
+}
 if (!html.includes("main-menu-screen is-visible is-home-page")
   || !uiSource.includes('classList.toggle("is-home-page"')
   || !css.includes(".main-menu-screen.is-home-page")
@@ -285,9 +727,10 @@ if (!cardCollectionSource.includes("buildCollectiblePool")
   || !cardCollectionSource.includes("CARD_SKIN_RARITIES")
   || !cardCollectionSource.includes("selectWeightedPackReward")
   || !cardCollectionSource.includes("unlockFullDeckSkin")
-  || !cardCollectionUiSource.includes("createPendingPackReward")
+  || !storeSource.includes("createPendingPackReward")
   || !cardCollectionUiSource.includes("getCardSkinRarity")
-  || !cardCollectionUiSource.includes("buyOrEquipPinkArcadeDeck")
+  || !storeSource.includes("confirmRealMoneyPurchase")
+  || !storeSource.includes("registerVerifiedTransaction")
   || !uiSource.includes("getCardSkinClass")
   || !cutsceneSource.includes("getCardSkinClass")
   || !cutsceneSource.includes('class="card-skin-art"')
@@ -297,6 +740,8 @@ if (!cardCollectionSource.includes("buildCollectiblePool")
   || !css.includes(".card.card-skin-pink_arcade")
   || !css.includes(".card-skin-art")
   || !collectionCss.includes(".pack-opening-overlay")
+  || !storeCss.includes(".store-tabs")
+  || !storeCss.includes(".store-product-card")
   || !collectionCss.includes(".rarity-mythic")
   || !collectionCss.includes(".collection-card-matrix")) {
   throw new Error("Rarity-weighted packs, per-card equips, or collection visuals are incomplete");
@@ -402,7 +847,7 @@ if (!sharedHandoffSource.includes("await waitForPaint()")
 if (sharedHandoffSource.includes('classList.remove("cutin-shared-source-hidden")')
   || !sharedHandoffSource.includes("target.remove()")
   || !selectionResolveSource.includes('emphasizedCards.forEach')
-  || !css.includes(".cutin-shared-source-hidden {\n  opacity: 0 !important;")) {
+  || !/\.cutin-shared-source-hidden \{\r?\n  opacity: 0 !important;/.test(css)) {
   throw new Error("Consumed hand and table cards must stay absent behind the Crunch cutscene");
 }
 const animationsCutsceneVersion = animationsSource.match(/from "\.\/crunchCutscene\.js\?v=(\d+)"/)?.[1];
@@ -493,26 +938,34 @@ if (!fullHandPreludeSource.includes("playInteractiveCardCrunch")
   || !selectionResolveSource.includes("onFullHandResolved")) {
   throw new Error("Full Hand must highlight, hand off the live cards, complete three hits, and vacuum into the bank");
 }
+const smoothCoinRewardSource = cutsceneSource.slice(
+  cutsceneSource.indexOf("async function playCrunchCoinReward"),
+  cutsceneSource.indexOf("function spawnCollectibleCoinBreak")
+);
 if (!cutsceneSource.includes("createCrunchScoreSurge")
   || !cutsceneSource.includes("playScoreSurgeMilestone")
   || !cutsceneSource.includes("queueMilestoneBeat")
   || !cutsceneSource.includes("spawnScoreMilestoneCoinSpill")
-  || !cutsceneSource.includes("spawnCrunchCoinReward")
   || !cutsceneSource.includes("createRollingBankDisplay")
   || !cutsceneSource.includes("formatRollingBankNumber")
-  || !cutsceneSource.includes("spawnCollectibleCoinBreak")
-  || !cutsceneSource.includes("crunch-collectible-coin")
   || !cutsceneSource.includes("coinRewards.award")
   || !scoreSurgeSource.includes("buildScoreSurgeMilestones")
-  || !css.includes("is-entry-score-surge-centered")
-  || !css.includes("entry-score-surge-skip")
+  || !cutsceneSource.includes("BANK_ROLL_MILESTONE_PAUSE_MS")
+  || !cutsceneSource.includes("BANK_MILESTONE_PARTICLE_CAP")
+  || !cutsceneSource.includes('kind: "card-bit"')
+  || !cutsceneSource.includes('is-auto-awarded')
+  || smoothCoinRewardSource.includes("spawnCrunchCoinReward")
+  || cutsceneSource.includes('backdrop.className = "entry-score-surge-backdrop"')
+  || cutsceneSource.includes('document.body.classList.add("is-entry-score-surge-active")')
+  || css.includes(".entry-score-surge-backdrop")
+  || css.includes("body.is-entry-score-surge-active")
+  || css.includes("is-entry-score-surge-anchored")
+  || css.includes("is-entry-score-surge-centered")
+  || /\.score-panel\.is-hud-bank-floating\.is-major-score-ramp-active \{\r?\n  top: 50%/.test(css)
   || !css.includes("crunch-coin-reward-toast")
-  || !css.includes("crunch-coin-collection")
-  || !css.includes("crunch-collectible-coin")
   || !audioSource.includes("score_ramp_tick")
-  || !audioSource.includes("coin_milestone")
-  || !audioSource.includes("coin_collect")) {
-  throw new Error("Exact Crunch Bank rolling, centered surges, or collectible milestone coins are missing");
+  || !audioSource.includes("coin_milestone")) {
+  throw new Error("Exact 10K bank rolls must stay anchored, uninterrupted, and shower coins with card crumbs");
 }
 if (!cutsceneSource.includes("forceSettleAfter: 620")
   || !cutsceneSource.includes("vacuumRampDuration: 1120")
@@ -593,7 +1046,7 @@ if (!uiSource.includes("syncHandInteractionState(elements, state)")
 if (!dealTimingSource.includes("getRoundDealDuration") || !gameStateSource.includes("dealToken !== state.timerToken") || !gameStateSource.includes("finishHandDeal(4,")) {
   throw new Error("The turn timer must wait for the hand deal to finish");
 }
-if (!gameStateSource.includes("finishHandDeal(4, { announceReady: Boolean(pot) })")
+if (!gameStateSource.includes("finishHandDeal(4, { announceReady: Boolean(pot) || gameMode === MULTIPLAYER_MODE })")
   || !gameStateSource.includes("if (announceReady) ui.playInitialReadyPulse()")
   || gameStateSource.indexOf("ui.playInitialReadyPulse()") > gameStateSource.indexOf("startTimer();", gameStateSource.indexOf("function finishHandDeal"))
   || !uiSource.includes("playInitialReadyPulse()")
@@ -678,10 +1131,25 @@ if (!roundStartSource.includes("dealNextTable(retainedTableCards)")
 if (!uiSource.includes("animateSummaryNumber") || !css.includes("Arcade run summary")) {
   throw new Error("Arcade run summary counters or styles are missing");
 }
+if (!html.includes('id="heroLogoCardFan"')
+  || html.includes('<i class="hero-card')
+  || !uiSource.includes("renderHeroLogoCards(elements.heroLogoCardFan)")
+  || !uiSource.includes('element.classList.add("hero-logo-card")')
+  || !css.includes("heroLogoCardWobble")) {
+  throw new Error("The home logo must render a randomized, skin-aware fan of gameplay cards");
+}
+if (!html.includes('id="heroSuitAccents"')
+  || !html.includes('id="menuSuitAmbience"')
+  || !uiSource.includes("renderMenuSuitDecorations")
+  || !uiSource.includes("pickLaunchSuitPair")
+  || !css.includes("menuSuitDrift")
+  || css.includes("Decorative poker chips flanking the hero")) {
+  throw new Error("The home menu must use randomized suit assets instead of poker chips");
+}
 
 const fullscreenSource = await readFile(resolve(root, "src/fullscreen.js"), "utf8");
 if (!fullscreenSource.includes("requestFullscreen") || !fullscreenSource.includes("exitFullscreen")) {
   throw new Error("Fullscreen API hooks are missing");
 }
 
-console.log(`Verified ${results.length} scoring cases, ${arcadeResults.length} Endless Arcade and power-card cases, unlimited play, economy rewards, arcade run summary, round message cleanup, selectable themes and card skins, fullscreen controls, release UI hooks, and card-shard VFX.`);
+console.log(`Verified ${results.length} scoring cases, ${arcadeResults.length} Endless Arcade and power-card cases, STL PKCE/device/account isolation, unlimited play, economy rewards, arcade run summary, round message cleanup, selectable themes and card skins, fullscreen controls, release UI hooks, and card-shard VFX.`);

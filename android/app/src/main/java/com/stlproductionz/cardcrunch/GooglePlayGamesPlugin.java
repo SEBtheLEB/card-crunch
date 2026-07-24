@@ -1,4 +1,4 @@
-package com.sebtheleb.cardcrunch;
+package com.stlproductionz.cardcrunch;
 
 import android.content.Intent;
 import com.getcapacitor.JSObject;

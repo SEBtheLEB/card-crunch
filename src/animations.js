@@ -3,8 +3,9 @@ import {
   hideCrunchSkipText,
   isCrunchSkipRequested,
   showCrunchSkipText
-} from "./crunchCutscene.js?v=164";
+} from "./crunchCutscene.js?v=189";
 import { playGameSfx } from "./audio.js?v=164";
+import { formatCompactNumber } from "./format.js?v=164";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RESOLVE_HIGHLIGHT_DURATION_MS = 700;
@@ -527,4 +528,72 @@ function getCombinedRect(elements) {
   const right = Math.max(...rects.map((rect) => rect.right));
   const bottom = Math.max(...rects.map((rect) => rect.bottom));
   return { left, top, width: right - left, height: bottom - top };
+}
+
+export function spawnMultiplayerCrunchReward({
+  sourceElements = [],
+  label = "CRUNCH",
+  points = 0,
+  matchType = "rank",
+  sequenceIndex = 0
+} = {}) {
+  const visibleSources = sourceElements.filter((element) => element?.isConnected);
+  if (!visibleSources.length || typeof document === "undefined") return null;
+
+  const sourceRect = getCombinedRect(visibleSources);
+  const centerX = sourceRect.left + sourceRect.width / 2;
+  const lane = sequenceIndex % 3 - 1;
+  const centerY = sourceRect.top + sourceRect.height * .38 - Math.abs(lane) * 8;
+  const tone = matchType === "sequence"
+    ? "run"
+    : matchType === "add" || matchType === "subtract"
+      ? "math"
+      : matchType === "suit"
+        ? "suit"
+        : "rank";
+  const reward = document.createElement("div");
+  reward.className = `multiplayer-crunch-reward reward-tone-${tone}`;
+  reward.setAttribute("role", "status");
+  reward.setAttribute("aria-label", `${label}, plus ${Math.max(0, Math.round(Number(points) || 0))} points`);
+
+  const name = document.createElement("span");
+  name.textContent = String(label || "CRUNCH").toUpperCase();
+  const amount = document.createElement("strong");
+  amount.textContent = `+${formatCompactNumber(Math.max(0, Math.round(Number(points) || 0)))}`;
+  reward.append(name, amount);
+  reward.style.left = `${centerX}px`;
+  reward.style.top = `${centerY}px`;
+  document.body.appendChild(reward);
+
+  const reducedMotion = document.documentElement.classList.contains("reduce-motion")
+    || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const direction = sequenceIndex % 2 === 0 ? 1 : -1;
+  const drift = direction * Math.min(78, Math.max(42, sourceRect.width * .28));
+  const duration = reducedMotion ? 720 : 1650;
+  const frames = reducedMotion
+    ? [
+        { opacity: 0, transform: "translate3d(-50%, -36%, 0) scale(.84)" },
+        { opacity: 1, transform: "translate3d(-50%, -62%, 0) scale(1.12)", offset: .16 },
+        { opacity: 1, transform: "translate3d(-50%, -78%, 0) scale(1)", offset: .72 },
+        { opacity: 0, transform: "translate3d(-50%, -92%, 0) scale(.96)" }
+      ]
+    : [
+        { opacity: 0, transform: "translate3d(-50%, -12%, 0) scale(.46) rotate(-4deg)" },
+        { opacity: 1, transform: `translate3d(calc(-50% + ${drift * .1}px), calc(-50% - 42px), 0) scale(1.34) rotate(1deg)`, offset: .11 },
+        { opacity: 1, transform: `translate3d(calc(-50% + ${drift * .48}px), calc(-50% - 104px), 0) scale(1.08) rotate(${direction * 2}deg)`, offset: .64 },
+        { opacity: 1, transform: `translate3d(calc(-50% + ${drift * .72}px), calc(-50% - 118px), 0) scale(1.02) rotate(${direction * 3}deg)`, offset: .82 },
+        { opacity: 0, transform: `translate3d(calc(-50% + ${drift}px), calc(-50% - 138px), 0) scale(.9) rotate(${direction * 4}deg)` }
+      ];
+
+  playSfx("score_step");
+  spawnSparkBurst(centerX, centerY, reducedMotion ? 4 : 10, tone === "run" ? "impact" : tone);
+  const animation = reward.animate(frames, {
+    duration,
+    easing: "cubic-bezier(.16, 1, .3, 1)",
+    fill: "forwards"
+  });
+  const remove = () => reward.remove();
+  animation.finished.then(remove, remove);
+  window.setTimeout(remove, duration + 120);
+  return reward;
 }

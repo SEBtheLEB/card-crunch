@@ -6,7 +6,7 @@ import {
   isFullDeckSkinOwned,
   setFullDeckSkin,
   subscribeToCardCollection
-} from "./cardCollection.js?v=164";
+} from "./cardCollection.js?v=167";
 
 const CARD_SKIN_STORAGE_KEY = "cardCrunchCardSkin";
 const SKIN_CLASS_PREFIX = "card-skin-";
@@ -114,6 +114,29 @@ export function applyCardSkinPresentation(element, card) {
     .forEach((className) => element.classList.remove(className));
   const skinId = getEquippedCardSkin(card);
   element.classList.add(`${SKIN_CLASS_PREFIX}${skinId}`);
+  element.dataset.equippedSkin = skinId;
+  const assetUrl = getCardSkinAssetUrl(card, skinId);
+  if (assetUrl) {
+    element.style.setProperty("--card-art-image", `url("${assetUrl}")`);
+    mountCardSkinArt(element, assetUrl);
+  } else {
+    element.style.removeProperty("--card-art-image");
+    element.classList.remove("card-art-ready");
+    element.querySelector(":scope > .card-skin-art")?.remove();
+  }
+  return skinId;
+}
+
+/* Matchmaking previews cycle through Store skins without changing the deck the
+   player has equipped. Gameplay cards continue to use collection ownership. */
+export function applyPreviewCardSkinPresentation(element, card, requestedSkinId = "classic") {
+  if (!element) return "classic";
+  const skinId = CARD_SKINS[requestedSkinId] ? requestedSkinId : "classic";
+  [...element.classList]
+    .filter((className) => className.startsWith(SKIN_CLASS_PREFIX))
+    .forEach((className) => element.classList.remove(className));
+  element.classList.add(`${SKIN_CLASS_PREFIX}${skinId}`);
+  element.dataset.previewSkin = skinId;
   element.dataset.equippedSkin = skinId;
   const assetUrl = getCardSkinAssetUrl(card, skinId);
   if (assetUrl) {

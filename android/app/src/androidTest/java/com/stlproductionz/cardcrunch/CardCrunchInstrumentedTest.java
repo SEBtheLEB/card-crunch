@@ -1,4 +1,4 @@
-package com.sebtheleb.cardcrunch;
+package com.stlproductionz.cardcrunch;
 
 import static org.junit.Assert.assertEquals;
 
@@ -14,6 +14,6 @@ public class CardCrunchInstrumentedTest {
     @Test
     public void appUsesReleasePackageName() {
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        assertEquals("com.sebtheleb.cardcrunch", appContext.getPackageName());
+        assertEquals("com.stlproductionz.cardcrunch", appContext.getPackageName());
     }
 }

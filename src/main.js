@@ -1,5 +1,6 @@
-import { createGame } from "./gameState.js?v=164";
-import { createUI } from "./ui.js?v=164";
+import "./vendor/capacitor-secure-storage.js?v=190";
+import { createGame } from "./gameState.js?v=189";
+import { createUI } from "./ui.js?v=189";
 import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=164";
 import { adManager } from "./ads.js?v=164";
 import { grantShieldToken, hasShieldToken } from "./save.js?v=164";
@@ -7,13 +8,15 @@ import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=
 import { haptic } from "./haptics.js?v=164";
 import { bindInstantAction } from "./input.js?v=164";
 import { initializePlayGames, showPlayLeaderboard } from "./playGames.js?v=164";
-import { installFullscreenControls } from "./fullscreen.js?v=164";
+import { installFullscreenControls } from "./fullscreen.js?v=168";
 import { bindThemePicker, initializeTheme } from "./themes.js?v=164";
-import { initializeCardCollection } from "./cardCollection.js?v=164";
-import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=164";
-import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=164";
+import { initializeCardCollection } from "./cardCollection.js?v=167";
+import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=167";
+import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=169";
+import { initializeStore } from "./store.js?v=167";
 import { initializeTutorial } from "./tutorial.js?v=164";
-import { initializeSTLAccount } from "./stlAccount.js?v=165";
+import { initializeSTLPlatformAccount, installSTLCallbackListener } from "./stlPlatform.js?v=190";
+import { initializeMultiplayer } from "./multiplayer.js?v=189";
 
 initializeTheme();
 initializeCardCollection();
@@ -21,15 +24,17 @@ initializeCardSkin();
 const ui = createUI();
 const game = createGame(ui);
 initializeTutorial({ game });
-initializeSTLAccount({
-  getState: () => game.state,
-  applyCloudProgress: game.applyCloudProgress,
-  bindAction: bindInstantAction
+initializeSTLPlatformAccount({
+  bindAction: bindInstantAction,
+  showPage: ui.showMenuPage,
+  game
 });
+installSTLCallbackListener();
 installAudioUnlock();
 initializePlayGames();
 installFullscreenControls(bindInstantAction);
-bindInstantAction(ui.elements.startButton, () => ui.showMenuPage("pots"));
+bindInstantAction(ui.elements.startButton, () => ui.showMenuPage("modes"));
+bindInstantAction(ui.elements.potsModeButton, () => ui.showMenuPage("pots"));
 bindInstantAction(ui.elements.endlessArcadeButton, game.startEndlessArcade);
 bindInstantAction(ui.elements.backToMenuButton, () => {
   ui.showMap(false);
@@ -49,9 +54,6 @@ bindInstantAction(ui.elements.returnToPotsButton, game.returnToMap);
 bindInstantAction(ui.elements.reviveAdButton, game.onReviveAd);
 bindInstantAction(ui.elements.recoverAdButton, game.onRecoverAd);
 bindInstantAction(ui.elements.hintAdButton, game.onHintAd);
-bindInstantAction(ui.elements.buyShieldButton, game.buyShieldWithCoins);
-bindInstantAction(ui.elements.watchCoinAdButton, game.onCoinAd);
-bindInstantAction(ui.elements.buyCoinPackButton, game.buyCoinPack);
 bindInstantAction(ui.elements.playLeaderboardButton, async () => {
   const opened = await showPlayLeaderboard();
   if (!opened) ui.elements.playLeaderboardStatus.textContent = "Google Play Games connects in the Android release build.";
@@ -73,10 +75,15 @@ bindMenuNavigation();
 bindThemePicker(bindInstantAction);
 bindCardSkinPicker(bindInstantAction);
 initializeCardCollectionUI(bindInstantAction);
+initializeStore({ bindAction: bindInstantAction, showMenuPage: ui.showMenuPage });
+initializeMultiplayer({ game, bindAction: bindInstantAction });
 installRainbowCardTrail();
 loadSettings();
 game.refreshEconomy();
 window.addEventListener("focus", game.refreshEconomy);
+window.addEventListener("card-crunch-request-menu-page", (event) => {
+  if (event.detail?.pageName) ui.showMenuPage(event.detail.pageName);
+});
 
 document.addEventListener(
   "touchmove",
@@ -141,7 +148,7 @@ function installReactivePressFeedback() {
 }
 
 function isPrimaryJuiceButton(target) {
-  return target.matches(".play-button, .crunch-button, .bank-button, .primary-button, .map-pot");
+  return target.matches(".play-button, .mode-album-button, .crunch-button, .bank-button, .primary-button, .map-pot");
 }
 
 function bindMenuNavigation() {
@@ -164,6 +171,7 @@ function bindMenuNavigation() {
       "cardCrunchTheme",
       "cardCrunchCardSkin",
       "cardCrunchCardCollectionV1",
+      "cardCrunchStoreV1",
       "cardCrunchTotalCrunches"
     ].forEach((key) => localStorage.removeItem(key));
     window.location.reload();

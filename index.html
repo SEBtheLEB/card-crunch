@@ -9,6 +9,7 @@
     <meta name="apple-mobile-web-app-title" content="Card Crunch">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="format-detection" content="telephone=no">
+    <meta name="card-crunch-realtime-origin" content="https://card-crunch-realtime.stlprodz1101.workers.dev">
     <title>Card Crunch</title>
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="assets/icons/icon-192.svg">
@@ -16,8 +17,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/main.css?v=164">
-  <link rel="stylesheet" href="styles/collection.css?v=164">
+  <link rel="stylesheet" href="styles/main.css?v=189">
+  <link rel="stylesheet" href="styles/collection.css?v=167">
+  <link rel="stylesheet" href="styles/store.css?v=167">
+  <link rel="stylesheet" href="styles/multiplayer.css?v=189">
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -153,14 +156,10 @@
 
         <div class="menu-pages">
           <section class="menu-page home-page is-active" data-page="home" aria-labelledby="startTitle">
+            <div class="menu-suit-ambience" id="menuSuitAmbience" aria-hidden="true"></div>
             <div class="menu-hero">
-              <div class="hero-card-fan" aria-hidden="true">
-                <i class="hero-card card-red"><b>10</b><span>&hearts;</span></i>
-                <i class="hero-card card-red"><b>J</b><span>&hearts;</span></i>
-                <i class="hero-card card-red"><b>Q</b><span>&hearts;</span></i>
-                <i class="hero-card card-red"><b>K</b><span>&hearts;</span></i>
-                <i class="hero-card card-red"><b>A</b><span>&hearts;</span></i>
-              </div>
+              <div class="hero-suit-accents" id="heroSuitAccents" aria-hidden="true"></div>
+              <div class="hero-card-fan" id="heroLogoCardFan" aria-hidden="true"></div>
               <h1 id="startTitle"><span>Card</span><span>Crunch</span></h1>
               <p class="hero-tagline">Pick &bull; Match &bull; Score</p>
             </div>
@@ -179,52 +178,104 @@
             <div class="play-button-wrap">
               <button class="play-button" id="startButton" type="button"><span>PLAY</span></button>
             </div>
-            <button class="endless-arcade-button" id="endlessArcadeButton" type="button">
-              <span aria-hidden="true">&#9889;</span>
-              <strong>ENDLESS ARCADE</strong>
-              <small>10 seconds &bull; instant refills &bull; rare power cards</small>
-            </button>
             <p class="play-subcopy">Shuffle up &amp; deal</p>
 
             <section class="menu-tile-grid" aria-label="More modes">
               <button data-menu-page="shop" type="button"><span aria-hidden="true">&#9670;</span><strong>Store</strong><small>Coins &amp; boosts</small></button>
               <button data-menu-page="themes" type="button"><span aria-hidden="true">&spades;</span><strong>Collection</strong><small>Cards &amp; tables</small></button>
-              <button data-menu-page="account" type="button"><span aria-hidden="true">&#9733;</span><strong>STL Account</strong><small>Profile &amp; cloud progress</small></button>
+              <button data-menu-page="account" type="button"><span aria-hidden="true">&#9733;</span><strong>STL Account</strong><small>Cloud save</small></button>
               <button class="tutorial-menu-tile" id="tutorialStartButton" type="button"><span aria-hidden="true">?</span><strong>Tutorial</strong><small>Learn every Crunch</small></button>
             </section>
           </section>
 
-          <section class="menu-page stl-account-page" data-page="account" aria-labelledby="stlAccountTitle">
+          <section class="menu-page mode-select-page" data-page="modes" aria-labelledby="modeSelectTitle">
+            <div class="mode-select-heading">
+              <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
+              <span><small>Choose your table</small><h2 id="modeSelectTitle">Play Card Crunch</h2></span>
+            </div>
+            <p class="mode-select-copy">Three ways to turn a good hand into a huge score.</p>
+
+            <div class="mode-album-grid" aria-label="Game modes">
+              <button class="mode-album-button mode-pots-button" id="potsModeButton" type="button">
+                <span class="mode-cover-art" aria-hidden="true">
+                  <span class="mode-card-stage" data-mode-card-art="pots"></span>
+                  <b class="mode-pot-token"><i>1</i><span>Pots</span></b>
+                </span>
+                <span class="mode-album-copy">
+                  <small>Level Journey</small>
+                  <strong>Pot Runs</strong>
+                  <span>Fill pots, unlock rules, climb the table.</span>
+                </span>
+                <em>Choose a Pot &#8250;</em>
+              </button>
+
+              <button class="mode-album-button mode-arcade-button" id="endlessArcadeButton" type="button">
+                <span class="mode-cover-art" aria-hidden="true">
+                  <span class="mode-card-stage" data-mode-card-art="arcade"></span>
+                  <b class="mode-bolt">&#9889;</b>
+                </span>
+                <span class="mode-album-copy">
+                  <small>Power Cards</small>
+                  <strong>ENDLESS ARCADE</strong>
+                  <span>Ten seconds. Instant refills. No ceiling.</span>
+                </span>
+                <em>Start Run &#8250;</em>
+              </button>
+
+              <button class="mode-album-button mode-duel-button" id="onlineDuelButton" type="button">
+                <span class="mode-cover-art" aria-hidden="true">
+                  <span class="mode-card-stage" data-mode-card-art="duel"></span>
+                  <b class="mode-versus">VS</b>
+                </span>
+                <span class="mode-album-copy">
+                  <small><i class="mode-online-dot"></i> Live Match</small>
+                  <strong>ONLINE DUEL</strong>
+                  <span>One minute. One rival. Highest score wins.</span>
+                </span>
+                <em>Find Rival &#8250;</em>
+              </button>
+            </div>
+          </section>
+
+          <section class="menu-page card-crunch-account-page" data-page="account" aria-labelledby="cardCrunchAccountTitle">
             <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
-            <p class="stl-account-kicker">One identity. Every STL game.</p>
-            <h2 id="stlAccountTitle">STL Account</h2>
-            <div class="stl-account-panel">
-              <div id="stlAccountSignedOut">
-                <div class="stl-account-mark" aria-hidden="true">STL</div>
-                <h3>Connect Card Crunch</h3>
-                <p>Use the same Google account as the STL Productionz website and Bit Crush Core. Your game, achievements, and profile will stay together.</p>
-                <button class="stl-google-button" id="stlGoogleSignInButton" type="button"><b>G</b><span>Continue with Google</span><i aria-hidden="true">&rsaquo;</i></button>
+            <p class="card-crunch-account-kicker">Standalone STL Platform identity</p>
+            <h2 id="cardCrunchAccountTitle">STL Account</h2>
+            <div class="card-crunch-account-panel">
+              <div id="cardCrunchAccountSignedOut">
+                <div class="card-crunch-account-mark" aria-hidden="true">CC</div>
+                <h3>Create or sign in to your STL Account</h3>
+                <p>Use one STL Account for Card Crunch and STL Productionz. Once connected, Card Crunch appears on your STL profile with your saves, achievements, and playtime.</p>
+                <button class="card-crunch-google-button" id="cardCrunchGoogleSignInButton" type="button"><b>STL</b><span>Create or sign in</span><i aria-hidden="true">&rsaquo;</i></button>
               </div>
-              <div id="stlAccountSignedIn" hidden>
-                <div class="stl-account-identity">
-                  <span class="stl-account-avatar"><span id="stlAccountInitials">STL</span><img id="stlAccountAvatar" alt="STL profile" hidden></span>
-                  <span><small>Connected player</small><strong id="stlAccountName">STL Player</strong><em id="stlAccountEmail">Shared STL Account</em></span>
+              <div id="cardCrunchAccountSignedIn" hidden>
+                <div class="card-crunch-account-identity">
+                  <span class="card-crunch-account-avatar"><span id="cardCrunchAccountInitials">CC</span><img id="cardCrunchAccountAvatar" alt="Card Crunch profile" hidden></span>
+                  <span><small>Connected player</small><strong id="cardCrunchAccountName">Card Crunch Player</strong><em id="cardCrunchAccountEmail">Google account connected</em></span>
                 </div>
-                <div class="stl-account-benefits" aria-label="Connected account benefits">
-                  <span><b>&#10003;</b> Shared profile</span>
+                <div class="card-crunch-account-benefits" aria-label="Connected account benefits">
+                  <span><b>&#10003;</b> Permanent STL ID</span>
+                  <span><b>&#10003;</b> Cloud saves</span>
                   <span><b>&#10003;</b> Achievements</span>
-                  <span><b>&#10003;</b> Cloud progress</span>
                 </div>
-                <p id="stlAccountSyncTime">Ready to sync</p>
-                <div class="stl-account-actions">
-                  <button id="stlSyncButton" type="button">Sync Now</button>
-                  <a href="https://stlproductionz.io/profile" target="_blank" rel="noopener">View Profile</a>
-                  <button id="stlSignOutButton" type="button">Sign Out</button>
+                <div class="card-crunch-account-actions">
+                  <button id="cardCrunchSyncButton" type="button">Sync Now</button>
+                  <button id="cardCrunchSignOutButton" type="button">Sign Out</button>
                 </div>
+                <p class="card-crunch-account-status" id="cardCrunchSyncState">Cloud save: not synced</p>
               </div>
             </div>
-            <p class="stl-account-status" id="stlAccountStatus" aria-live="polite">Sign in once and Card Crunch will appear on your STL profile.</p>
-            <p class="stl-account-fineprint">STL Productionz handles the account. Card Crunch never receives your Google password.</p>
+            <p class="card-crunch-account-status" id="cardCrunchAccountStatus" aria-live="polite">Checking STL Platform...</p>
+            <p class="card-crunch-account-fineprint">Card Crunch uses a unique STL OAuth client and never uses your Google email as player identity.</p>
+            <details class="auth-diagnostics" id="authDiagnostics" hidden>
+              <summary>STL diagnostics</summary>
+              <dl>
+                <div><dt>Origin</dt><dd id="authDiagnosticOrigin">Unavailable</dd></div>
+                <div><dt>Callback</dt><dd id="authDiagnosticCallback">Unavailable</dd></div>
+                <div><dt>Client</dt><dd id="authDiagnosticProjectRef">Unavailable</dd></div>
+                <div><dt>Variables</dt><dd id="authDiagnosticVariables">Unavailable</dd></div>
+              </dl>
+            </details>
           </section>
 
           <section class="menu-page" data-page="leaderboard" aria-labelledby="leaderboardTitle">
@@ -242,94 +293,32 @@
             <p class="play-games-status" id="playLeaderboardStatus" aria-live="polite">Your best run is submitted when a run ends.</p>
           </section>
 
-          <section class="menu-page" data-page="shop" aria-labelledby="shopTitle">
-            <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
-            <h2 id="shopTitle">Store</h2>
-            <div class="store-wallet" aria-label="Wallet">
-              <span><i aria-hidden="true">&#9670;</i><b id="storeCoinsValue">0</b> Coins</span>
+          <section class="menu-page store-page" data-page="shop" aria-labelledby="shopTitle">
+            <div class="store-page-heading">
+              <button class="page-back-button store-home-button" data-menu-page="home" type="button">&lsaquo; Home</button>
+              <div><span>Card Crunch</span><h2 id="shopTitle">Store</h2></div>
+              <button class="store-restore-button" type="button" data-store-action="restore-purchases">Restore</button>
             </div>
-            <p class="store-status" id="storeStatus" aria-live="polite">Earn coins from runs and spend them on useful boosts.</p>
-            <div class="store-grid">
-              <button class="store-item mystery-pack-store-item" id="buyMysteryPackButton" type="button">
-                <i aria-hidden="true">?</i>
-                <strong>Mystery Card Pack</strong>
-                <span id="mysteryPackPrice">125 Coins</span>
-                <small>208 new cards remain</small>
+
+            <header class="store-wallet-bar" aria-label="Store wallet and utilities">
+              <button class="store-wallet-main" type="button" data-store-action="open-coins" aria-label="Open Coins tab">
+                <span class="store-coin-icon" aria-hidden="true">&#9670;</span>
+                <span><small>Coins</small><strong id="storeCoinsValue">0</strong></span>
+                <i aria-hidden="true">+</i>
               </button>
-              <button class="store-item pink-arcade-store-item" id="buyPinkArcadeDeckButton" type="button">
-                <span class="pink-arcade-store-art" aria-hidden="true">
-                  <img src="assets/card-sets/pink_arcade/previews/card-back-preview.png" alt="">
-                  <i>52</i>
-                </span>
-                <strong>Pink Arcade Deck</strong>
-                <span id="pinkArcadeDeckPrice">1,500 Coins</span>
-                <small>Complete 52-card pixel deck</small>
-              </button>
-              <button class="store-item shield-store-item" id="buyShieldButton" type="button">
-                <i aria-hidden="true">&#9829;</i>
-                <strong>Bank Shield</strong>
-                <span id="buyShieldPrice">500 Coins</span>
-                <small>Save 25% when a run busts</small>
-              </button>
-              <button class="store-item ad-store-item" id="watchCoinAdButton" type="button">
-                <i aria-hidden="true">&#9670;</i>
-                <strong>Coin Drop</strong>
-                <span>Watch Ad &middot; +125</span>
-                <small id="coinAdsRemaining">3 left today</small>
-              </button>
-              <button class="store-item premium-store-item" id="buyCoinPackButton" type="button">
-                <i aria-hidden="true">&#9733;</i>
-                <strong>Coin Vault</strong>
-                <span>1,500 Coins &middot; $1.99</span>
-                <small>Google Play purchase</small>
-              </button>
+              <span class="store-wallet-divider" aria-hidden="true"></span>
+              <button class="store-wallet-tool" data-menu-page="leaderboard" type="button" aria-label="Leaderboard"><span aria-hidden="true">&#9819;</span></button>
+              <button class="store-wallet-tool fullscreen-toggle-button" data-fullscreen-toggle type="button" aria-label="Enter full screen" aria-pressed="false"><span class="fullscreen-icon" aria-hidden="true">&#x26F6;</span></button>
+              <button class="store-wallet-tool" data-menu-page="settings" type="button" aria-label="Settings"><span aria-hidden="true">&#9881;</span></button>
+            </header>
+
+            <div class="store-tabs" id="storeTabs" role="tablist" aria-label="Store sections"></div>
+            <p class="store-status" id="storeStatus" aria-live="polite">Daily rewards and featured offers are ready.</p>
+            <div class="store-scroll" id="storeScroll">
+              <div class="store-content" id="storeContent"></div>
             </div>
-            <section class="skin-store-section" aria-labelledby="skinStoreTitle">
-              <div class="skin-store-heading">
-                <div>
-                  <span>Deck Locker</span>
-                  <h3 id="skinStoreTitle">Equip a Full Deck</h3>
-                </div>
-                <strong>Owned Decks</strong>
-              </div>
-              <div class="card-skin-picker" id="cardSkinPicker" role="group" aria-label="Card skins">
-                <button class="skin-option is-skin-selected" data-card-skin-id="classic" type="button" aria-pressed="true">
-                  <span class="skin-preview skin-preview-classic" aria-hidden="true"><i class="skin-preview-card"><b>A</b><em>&spades;</em></i></span>
-                  <span><strong>Classic</strong><small>Original paper deck</small></span>
-                  <em>Equipped</em>
-                </button>
-                <button class="skin-option" data-card-skin-id="dark" type="button" aria-pressed="false">
-                  <span class="skin-preview skin-preview-dark" aria-hidden="true"><i class="skin-preview-card"><b>K</b><em>&hearts;</em></i></span>
-                  <span><strong>Night Ink</strong><small>Dark-mode paper</small></span>
-                  <em>Equip</em>
-                </button>
-                <button class="skin-option" data-card-skin-id="pink" type="button" aria-pressed="false">
-                  <span class="skin-preview skin-preview-pink" aria-hidden="true"><i class="skin-preview-card"><b>Q</b><em>&diams;</em></i></span>
-                  <span><strong>Pink Pop</strong><small>Berry icing foil</small></span>
-                  <em>Equip</em>
-                </button>
-                <button class="skin-option" data-card-skin-id="gold" type="button" aria-pressed="false">
-                  <span class="skin-preview skin-preview-gold-card" aria-hidden="true"><i class="skin-preview-card"><b>10</b><em>&clubs;</em></i></span>
-                  <span><strong>Gold Royale</strong><small>Gilded casino foil</small></span>
-                  <em>Equip</em>
-                </button>
-                <button class="skin-option skin-option-rainbow" data-card-skin-id="rainbow" type="button" aria-pressed="false">
-                  <span class="skin-preview skin-preview-rainbow" aria-hidden="true"><i class="skin-rainbow-echo echo-one"></i><i class="skin-rainbow-echo echo-two"></i><i class="skin-preview-card"><b>J</b><em>&spades;</em></i></span>
-                  <span><strong>Rainbow Rush</strong><small>Animated smear trail</small></span>
-                  <em>Equip</em>
-                </button>
-                <button class="skin-option skin-option-pink-arcade" data-card-skin-id="pink_arcade" type="button" aria-pressed="false">
-                  <span class="skin-preview skin-preview-pink-arcade" aria-hidden="true">
-                    <img src="assets/card-sets/pink_arcade/previews/full-deck-preview.png" alt="">
-                    <i class="pink-arcade-preview-streak streak-one"></i>
-                    <i class="pink-arcade-preview-streak streak-two"></i>
-                  </span>
-                  <span><strong>Pink Arcade</strong><small>52 supplied pixel cards + neon trail</small></span>
-                  <em>Buy to Equip</em>
-                </button>
-              </div>
-              <p class="skin-store-status" id="skinStoreStatus" aria-live="polite">Classic full deck equipped.</p>
-            </section>
+
+            <section class="store-collection-panel" id="storeCollectionPanel" aria-hidden="true" hidden></section>
           </section>
 
           <section class="menu-page" data-page="themes" aria-labelledby="themesTitle">
@@ -391,7 +380,7 @@
           <section class="menu-page" data-page="pots" aria-hidden="true">
             <div class="pot-page-fixed">
               <div class="pot-page-heading-row">
-                <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
+                <button class="page-back-button" data-menu-page="modes" type="button">&lsaquo; Modes</button>
                 <h2>Pick a Pot</h2>
               </div>
               <p class="menu-page-copy pot-page-copy"><strong>Each pot is a different challenge.</strong><span>Clear the available pot to unlock the next one.</span></p>
@@ -485,6 +474,44 @@
       </div>
     </section>
 
+    <section class="matchmaking-screen" id="matchmakingScreen" aria-hidden="true" aria-labelledby="matchmakingStatus">
+      <div class="matchmaking-ambient" aria-hidden="true"><i>&spades;</i><i>&hearts;</i><i>&diams;</i><i>&clubs;</i></div>
+      <article class="matchmaking-shell">
+        <p class="matchmaking-kicker">Online Duel</p>
+        <h2 id="matchmakingStatus">Searching for an opponent</h2>
+        <p class="matchmaking-elapsed" id="matchmakingElapsed">0s in queue</p>
+        <i class="matchmaking-vacuum-target" id="matchmakingVacuumTarget" aria-hidden="true"></i>
+        <div class="matchmaking-card-stage" id="matchmakingCardStage" aria-label="Tap the waiting card three times to crunch it"></div>
+        <div class="matchmaking-versus" id="matchmakingVersus" hidden>
+          <div><span>You</span><strong id="matchmakingYouName">Player</strong></div>
+          <b>VS</b>
+          <div><span>Rival</span><strong id="matchmakingOpponentName">Opponent</strong></div>
+        </div>
+        <div class="matchmaking-actions">
+          <button class="matchmaking-bot-button" id="matchmakingBotButton" type="button">
+            <span aria-hidden="true">&#9889;</span>
+            <strong>Play House Bot</strong>
+            <small>Instant 60-second duel</small>
+          </button>
+          <button class="matchmaking-cancel-button" id="matchmakingCancelButton" type="button">Cancel Search</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="multiplayer-result-screen" id="multiplayerResultScreen" aria-hidden="true" aria-labelledby="multiplayerResultTitle">
+      <article class="multiplayer-result-card">
+        <p id="multiplayerResultKicker">Match Complete</p>
+        <h2 id="multiplayerResultTitle">YOU WIN!</h2>
+        <div class="multiplayer-scoreboard">
+          <section><span>You</span><strong id="multiplayerYourScore">0</strong></section>
+          <b>VS</b>
+          <section><span id="multiplayerResultOpponentName">Rival</span><strong id="multiplayerOpponentScore">0</strong></section>
+        </div>
+        <button class="multiplayer-rematch-button" id="multiplayerRematchButton" type="button">Find Rematch</button>
+        <button class="multiplayer-home-button" id="multiplayerHomeButton" type="button">Back Home</button>
+      </article>
+    </section>
+
     <section class="pack-opening-overlay" id="packOpeningOverlay" aria-labelledby="packOpeningTitle" aria-hidden="true" hidden>
       <div class="pack-opening-stage">
         <p class="pack-opening-eyebrow" id="packOpeningPrompt">Tap the pack to reveal one new card</p>
@@ -498,12 +525,25 @@
         <button class="pack-open-button" id="openPackButton" type="button">OPEN PACK</button>
         <div class="pack-reward-actions">
           <button class="pack-equip-button" id="equipPackRewardButton" type="button" hidden>EQUIP CARD</button>
-          <button class="pack-collect-button" id="collectPackRewardButton" type="button" hidden>ADD TO COLLECTION</button>
+          <button class="pack-collect-button" id="collectPackRewardButton" type="button" hidden>CONTINUE</button>
+          <button class="pack-view-button" id="viewPackCollectionButton" type="button" hidden>VIEW COLLECTION</button>
+          <button class="pack-buy-another-button" id="buyAnotherPackButton" type="button" hidden>BUY ANOTHER</button>
         </div>
       </div>
     </section>
 
+    <section class="store-purchase-overlay" id="storePurchaseOverlay" aria-hidden="true" hidden>
+      <article class="store-purchase-dialog" role="dialog" aria-modal="true" aria-labelledby="storePurchaseDialogTitle">
+        <div id="storePurchaseBody"></div>
+        <div class="store-purchase-actions">
+          <button type="button" class="store-dialog-cancel" data-store-action="cancel-purchase">CANCEL</button>
+          <button type="button" class="store-dialog-confirm" data-store-action="confirm-purchase">CONFIRM PURCHASE</button>
+        </div>
+      </article>
+    </section>
+
     <div class="pixel-screen-filter" aria-hidden="true"></div>
-  <script type="module" src="src/main.js?v=165"></script>
+  <script src="platform-config.js"></script>
+  <script type="module" src="src/main.js?v=190"></script>
   </body>
 </html>
