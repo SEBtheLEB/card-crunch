@@ -47,7 +47,7 @@ export function initializeSTLPlatformAccount({ bindAction, showPage, game } = {}
     bindAction?.(elements.sync, () => integration.syncCloudSave("manual"));
     void integration.boot();
   } catch (error) {
-    setStatus(elements, error.message || "STL Platform is not configured.", "bad");
+    setStatus(elements, toUserMessage(error), "bad");
     setBusy(elements, true);
     persistProfile(null);
     globalThis.cardCrunchSTL = api;
@@ -93,7 +93,7 @@ class STLPlatformIntegration {
         this.profile = null;
         persistProfile(null);
         renderProfile(this.elements, null);
-        this.setStatus("Sign in with STL Platform to sync Card Crunch.", "");
+        this.setStatus("Play as a guest, or continue with Google to save your progress.", "");
         setBusy(this.elements, false);
         return;
       }
@@ -110,7 +110,7 @@ class STLPlatformIntegration {
 
   async signIn() {
     setBusy(this.elements, true);
-    this.setStatus("Opening STL Platform sign-in...");
+    this.setStatus("Opening secure Google sign-in…");
     try {
       const { authorizationUrl } = await this.client.beginSignIn();
       await openSystemBrowser(authorizationUrl);
@@ -145,7 +145,12 @@ class STLPlatformIntegration {
     await this.refreshPlayer();
     await this.client.flushOfflineQueue().catch(() => null);
     await this.syncCloudSave("sign-in");
-    this.setStatus(`Connected to STL Platform. Save sync is ${this.status.syncState}.`, "good");
+    this.setStatus(
+      this.status.syncState === "synced"
+        ? "Progress synced."
+        : `Signed in. Progress sync is ${this.status.syncState}.`,
+      "good"
+    );
   }
 
   async signOut() {
@@ -163,8 +168,8 @@ class STLPlatformIntegration {
       persistProfile(null);
       this.setStatus(
         remoteError
-          ? "Signed out on this device. Remote session cleanup could not be confirmed."
-          : "Signed out of STL Platform.",
+          ? "Signed out on this device. We couldn’t confirm sign-out on other devices."
+          : "Signed out on this device.",
         remoteError ? "bad" : ""
       );
       renderProfile(this.elements, null);
@@ -386,7 +391,7 @@ function renderProfile(elements, profile) {
   if (!signedIn) return;
   const displayName = profile.displayName || "Card Crunch Player";
   if (elements.name) elements.name.textContent = displayName;
-  if (elements.email) elements.email.textContent = `STL ID ${String(profile.id).slice(0, 8)}...`;
+  if (elements.email) elements.email.textContent = "Connected";
   if (elements.initials) elements.initials.textContent = initials(displayName);
   if (elements.avatar) {
     elements.avatar.hidden = !profile.avatarUrl;
@@ -420,13 +425,25 @@ function setStatus(elements, message, tone = "") {
 function setSyncText(elements, status) {
   if (!elements.syncState) return;
   const queued = status.queued ? ` • ${status.queued} queued` : "";
-  elements.syncState.textContent = `Cloud save: ${status.syncState || "not synced"}${queued}`;
+  const labels = {
+    synced: "Progress synced",
+    queued: "Progress will sync when you’re back online",
+    conflict: "Choose which saved progress to keep",
+    failed: "Progress sync needs another try"
+  };
+  elements.syncState.textContent = `${labels[status.syncState] || "Progress not synced"}${queued}`;
 }
 
 function setBusy(elements, busy) {
   [elements.google, elements.signOut, elements.sync].forEach((button) => {
     if (button) button.disabled = Boolean(busy);
   });
+  const googleLabel = elements.google?.querySelector("span");
+  if (googleLabel) {
+    googleLabel.textContent = busy
+      ? "Signing you in…"
+      : elements.google.dataset.idleLabel || "Continue with Google";
+  }
 }
 
 function persistProfile(profile) {
@@ -487,10 +504,16 @@ function getBuildVersion() {
 
 function toUserMessage(error) {
   if (error instanceof STLClientError) {
-    if (error.code === "OFFLINE_QUEUED") return "Offline: progress is queued for STL sync.";
-    if (error.code === "SESSION_MISSING") return "Sign in to STL Platform first.";
+    if (error.code === "OFFLINE_QUEUED") return "You’re offline. Your progress will sync when you reconnect.";
+    if (error.code === "SESSION_MISSING") return "Continue with Google to save and sync your progress.";
   }
-  return error?.message || "STL Platform is unavailable.";
+  const message = String(error?.message || "");
+  if (/cancel|denied|access_denied/i.test(message)) return "Sign-in was cancelled. Nothing was changed.";
+  if (/already|conflict|linked to another/i.test(message)) return "This sign-in is already connected to another account.";
+  if (/network|fetch|offline|connect|unavailable|timeout/i.test(message)) {
+    return "We couldn’t connect right now. Check your connection and try again.";
+  }
+  return "We couldn’t sign you in. Please try again.";
 }
 
 function initials(value) {

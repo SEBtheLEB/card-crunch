@@ -314,7 +314,10 @@ if (!html.includes('data-page="account"')
   || !html.includes('id="cardCrunchGoogleSignInButton"')
   || !html.includes('id="cardCrunchSyncButton"')
   || !html.includes('id="authDiagnostics"')
-  || !html.includes("STL Account")
+  || !html.includes("Save your progress")
+  || !html.includes("Continue with Google")
+  || !html.includes("One account works across STL apps and games.")
+  || html.includes("Create or sign in to your STL Account")
   || html.includes("Bit Crush Core")
   || html.includes("Supabase")) {
   throw new Error("Dedicated Card Crunch STL Platform account UI hooks are missing or copied account branding remains");

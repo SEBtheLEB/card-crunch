@@ -7456,7 +7456,7 @@ html[data-theme="knight-deck"] .cutin-title {
   color: #ffe786;
 }
 
-/* Build 179: dedicated Card Crunch player identity */
+/* Card Crunch account presentation */
 .card-crunch-account-page {
   gap: 12px;
 }
@@ -7526,9 +7526,9 @@ html[data-theme="knight-deck"] .cutin-title {
   box-shadow: 0 7px 0 #a9bdc8, 0 16px 28px rgba(0, 0, 0, .35);
 }
 
-.card-crunch-google-button b {
-  color: #4285f4;
-  font-size: 1.2rem;
+.card-crunch-google-mark {
+  width: 20px;
+  height: 20px;
 }
 
 .card-crunch-google-button i {
@@ -7539,6 +7539,19 @@ html[data-theme="knight-deck"] .cutin-title {
 .card-crunch-google-button:active {
   transform: translateY(4px);
   box-shadow: 0 3px 0 #a9bdc8, 0 8px 18px rgba(0, 0, 0, .35);
+}
+
+.card-crunch-google-button:focus-visible,
+.card-crunch-account-actions button:focus-visible,
+.card-crunch-account-actions a:focus-visible {
+  outline: 3px solid #ffe786;
+  outline-offset: 3px;
+}
+
+.card-crunch-google-button:disabled {
+  cursor: wait;
+  opacity: .72;
+  transform: none;
 }
 
 .card-crunch-account-identity {
