@@ -266,6 +266,17 @@ if (!backgroundStyles.includes("--casino-table-bg:")
 if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButton")) {
   throw new Error("Release UI hooks are missing");
 }
+for (const assetPath of [
+  "/manifest.json",
+  "/assets/icons/icon-192.svg",
+  "/styles/main.css?v=189",
+  "/platform-config.js",
+  "/src/main.js?v=192"
+]) {
+  if (!html.includes(`"${assetPath}"`)) {
+    throw new Error(`App-shell asset must remain root-relative for OAuth callback routes: ${assetPath}`);
+  }
+}
 if ((html.match(/data-fullscreen-toggle/g) ?? []).length < 2) {
   throw new Error("Menu and gameplay fullscreen controls are missing");
 }
