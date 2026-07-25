@@ -582,6 +582,12 @@ await authClient.uploadCloudSave({
 if (preparedUploadSlotId !== "9a191682-649f-4637-b575-e11d25cab445") {
   throw new Error("Card Crunch must persist its STL cloud save slot before transferring save data");
 }
+const saveCompletionRequest = authRequests.find(({ url }) => /\/api\/v1\/saves\/[^/]+\/versions$/.test(url));
+if (!saveCompletionRequest?.body?.uploadId
+  || "data" in saveCompletionRequest.body
+  || "slotId" in saveCompletionRequest.body) {
+  throw new Error("Card Crunch must send only the strict STL save-completion contract");
+}
 globalThis.navigator.onLine = false;
 let offlineMutationQueued = false;
 try {

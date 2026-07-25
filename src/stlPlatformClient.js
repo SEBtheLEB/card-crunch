@@ -218,7 +218,23 @@ export class CardCrunchSTLClient {
     if (!transfer.ok) throw new STLClientError("STL private save transfer failed.", "SAVE_TRANSFER_FAILED", { status: transfer.status });
     return this.request(`/saves/${encodeURIComponent(ticket.slotId)}/versions`, {
       method: "POST",
-      body: { ...input, uploadId: ticket.uploadId, checksum, fileSize: bytes.byteLength, compression: input.compression || "none" },
+      body: {
+        gameId: input.gameId,
+        slotKey: input.slotKey,
+        displayName: input.displayName,
+        expectedRevision: input.expectedRevision,
+        parentVersionId: input.parentVersionId,
+        deviceId: input.deviceId,
+        gameBuild: input.gameBuild,
+        saveFormatVersion: input.saveFormatVersion,
+        checksum,
+        fileSize: bytes.byteLength,
+        compression: input.compression || "none",
+        clientCreatedAt: input.clientCreatedAt,
+        progressSummary: input.progressSummary,
+        playSeconds: input.playSeconds,
+        uploadId: ticket.uploadId
+      },
       idempotencyKey: options.idempotencyKey
     });
   }
