@@ -143,7 +143,12 @@ export class CardCrunchSTLClient {
 
   async signOut() {
     try {
-      if (await this.sessionStore.load()) await this.request("/auth/sign-out", { method: "POST" });
+      if (await this.sessionStore.load()) {
+        await this.request("/auth/sign-out", {
+          method: "POST",
+          body: { allOtherSessions: false }
+        });
+      }
     } finally {
       await Promise.all([
         this.sessionStore.clear(),

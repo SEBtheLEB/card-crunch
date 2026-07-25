@@ -644,6 +644,11 @@ if (isolatedFlush.completed !== 0
   throw new Error("Card Crunch must never flush another STL player's or an unscoped legacy operation");
 }
 globalThis.localStorage.removeItem("cardCrunchStlOfflineQueueV1");
+await authClient.signOut();
+const signOutRequest = authRequests.find(({ url }) => url.endsWith("/api/v1/auth/sign-out"));
+if (signOutRequest?.body?.allOtherSessions !== false) {
+  throw new Error("Card Crunch sign-out must send the strict STL JSON revocation contract");
+}
 globalThis.fetch = originalFetch;
 
 const androidManifest = await readFile(resolve(root, "android/app/src/main/AndroidManifest.xml"), "utf8");
