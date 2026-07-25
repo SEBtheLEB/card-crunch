@@ -523,10 +523,10 @@ const rawInstallDeviceId = "2d2d79b7-3c4c-4ef9-a03f-69f9bf53dc48";
 const pendingSignIn = await authClient.beginSignIn();
 const authorizationUrl = new URL(pendingSignIn.authorizationUrl);
 if (authorizationUrl.origin !== "https://accounts.stlproductionz.io"
-  || authorizationUrl.searchParams.has("prompt")
+  || authorizationUrl.searchParams.get("prompt") !== "select_account"
   || authorizationUrl.searchParams.get("code_challenge_method") !== "S256"
   || authorizationUrl.searchParams.get("redirect_uri") !== "https://card-crunch.vercel.app/auth/callback") {
-  throw new Error("Card Crunch sign-in must use canonical STL PKCE without unsupported OAuth parameters");
+  throw new Error("Card Crunch sign-in must use canonical STL PKCE and request Google account selection");
 }
 let mismatchedRuntimeCallbackRejected = false;
 try {

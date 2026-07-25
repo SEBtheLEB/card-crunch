@@ -24,7 +24,7 @@ import { storeState } from "./storeState.js?v=167";
 import { getRoundDealDuration } from "./dealTiming.js?v=164";
 import { MULTIPLAYER_MATCH_SECONDS, MULTIPLAYER_MODE, isMultiplayerMode } from "./multiplayerMode.js?v=169";
 import { haptic } from "./haptics.js?v=164";
-import { notifySTLProgress } from "./stlPlatform.js?v=193";
+import { notifySTLProgress } from "./stlPlatform.js?v=194";
 import {
   animateBust,
   animateSelectionResolve,
