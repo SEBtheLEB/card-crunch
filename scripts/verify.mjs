@@ -61,7 +61,8 @@ const required = [
   "styles/store.css",
   "styles/multiplayer.css",
   "styles/app-shell.css",
-  "capacitor.config.json"
+  "capacitor.config.json",
+  "vercel.json"
 ];
 
 await Promise.all(required.map((file) => access(resolve(root, file))));
@@ -256,6 +257,7 @@ if (dealTimingModule.getRoundDealDuration(4, 2) >= 2000) {
 }
 
 const html = await readFile(resolve(root, "index.html"), "utf8");
+const vercelConfiguration = await readFile(resolve(root, "vercel.json"), "utf8");
 const backgroundStyles = await readFile(resolve(root, "styles/main.css"), "utf8");
 if (!backgroundStyles.includes("--casino-table-bg:")
   || !backgroundStyles.includes("repeating-linear-gradient(52deg")
@@ -265,6 +267,12 @@ if (!backgroundStyles.includes("--casino-table-bg:")
 }
 if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButton")) {
   throw new Error("Release UI hooks are missing");
+}
+if (
+  !vercelConfiguration.includes("https://zmemhczpfbzkoglxzuna.supabase.co") ||
+  vercelConfiguration.includes("https://*.supabase.co")
+) {
+  throw new Error("Card Crunch CSP must allow only the dedicated STL save-storage origin");
 }
 for (const assetPath of [
   "/manifest.json",
