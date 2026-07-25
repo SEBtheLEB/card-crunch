@@ -3,7 +3,7 @@ import {
   getRuntimeRedirectUri,
   readSTLPlatformConfig,
   validateSTLPlatformConfig
-} from "./stlPlatformConfig.js?v=192";
+} from "./stlPlatformConfig.js?v=193";
 
 const AUTH_TRANSACTION_KEY = "cardCrunchStlAuthTransactionV1";
 const SESSION_KEY = "cardCrunchStlSessionV1";
@@ -204,6 +204,12 @@ export class CardCrunchSTLClient {
       idempotencyKey: options.idempotencyKey
     });
     if (!ticket?.transfer?.url || !ticket?.slotId || !ticket?.uploadId) throw new STLClientError("STL save upload ticket was incomplete.", "BAD_SAVE_TICKET");
+    if (typeof options.onUploadPrepared === "function") {
+      await options.onUploadPrepared({
+        slotId: ticket.slotId,
+        uploadId: ticket.uploadId
+      });
+    }
     const transfer = await fetch(ticket.transfer.url, {
       method: ticket.transfer.method || "PUT",
       headers: ticket.transfer.headers || {},
@@ -220,6 +226,11 @@ export class CardCrunchSTLClient {
   async listSaveVersions(slotId, options = {}) {
     const suffix = slotId ? `/${encodeURIComponent(slotId)}/versions` : "/versions";
     return this.request(`/saves${suffix}`, { method: "GET", timeoutMs: options.timeoutMs });
+  }
+
+  async listCloudSaveSlots(gameId, options = {}) {
+    const query = new URLSearchParams({ gameId: String(gameId || "") });
+    return this.request(`/saves?${query}`, { method: "GET", timeoutMs: options.timeoutMs });
   }
 
   async mutate(path, body, { queueWhenOffline = true, idempotencyKey = crypto.randomUUID(), method = "POST" } = {}) {

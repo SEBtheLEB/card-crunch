@@ -1,8 +1,8 @@
 import {
   CARD_CRUNCH_SAVE_FORMAT_VERSION,
   CARD_CRUNCH_SAVE_SLOT_KEY
-} from "./stlPlatformConfig.js?v=189";
-import { sha256Hex } from "./stlPlatformClient.js?v=189";
+} from "./stlPlatformConfig.js?v=193";
+import { sha256Hex } from "./stlPlatformClient.js?v=193";
 
 const CLOUD_META_KEY = "cardCrunchStlCloudMetaV1";
 const SAVE_KEYS = Object.freeze([
@@ -31,6 +31,7 @@ export async function createCardCrunchSaveUpload({ state, gameId, deviceId, game
     gameId,
     deviceId,
     gameBuild,
+    slotId: meta.slotId || undefined,
     slotKey: CARD_CRUNCH_SAVE_SLOT_KEY,
     displayName: "Card Crunch Progress",
     expectedRevision: meta.revision,

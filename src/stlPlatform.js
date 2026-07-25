@@ -6,8 +6,8 @@ import {
   readSTLPlatformConfig,
   shouldShowSTLDiagnostics,
   validateSTLPlatformConfig
-} from "./stlPlatformConfig.js?v=192";
-import { createCardCrunchSTLClient, getOrCreateDeviceId, STLClientError } from "./stlPlatformClient.js?v=192";
+} from "./stlPlatformConfig.js?v=193";
+import { createCardCrunchSTLClient, getOrCreateDeviceId, STLClientError } from "./stlPlatformClient.js?v=193";
 import {
   applyCloudSaveSnapshot,
   createCardCrunchSaveUpload,
@@ -15,7 +15,7 @@ import {
   detectSaveConflict,
   noteCloudUploadResult,
   readCloudMeta
-} from "./stlCloudSave.js?v=189";
+} from "./stlCloudSave.js?v=193";
 
 const PROFILE_KEY = "cardCrunchStlProfileV1";
 const ACHIEVEMENT_DEDUPE_KEY = "cardCrunchStlAchievementReportsV1";
@@ -269,15 +269,50 @@ class STLPlatformIntegration {
     if (this.syncInFlight || !this.profile) return;
     this.syncInFlight = true;
     try {
-      const upload = await createCardCrunchSaveUpload({
+      let upload = await createCardCrunchSaveUpload({
         state: this.game?.state,
         gameId: this.config.gameId,
         deviceId: this.deviceId || await getOrCreateDeviceId(),
         gameBuild: getBuildVersion()
       });
+      if (!upload.slotId) {
+        const slots = await this.client.listCloudSaveSlots(upload.gameId);
+        const existingSlot = slots?.items?.find((slot) => slot?.slotKey === upload.slotKey);
+        if (existingSlot?.slotId) {
+          const remoteRevision = Math.max(0, Number(existingSlot.currentRevision) || 0);
+          if (remoteRevision > 0 || existingSlot.currentVersionId) {
+            throw new STLClientError(
+              "Cloud progress already exists for this account.",
+              "SAVE_CONFLICT",
+              {
+                remoteVersion: {
+                  ...existingSlot,
+                  revision: remoteRevision,
+                  saveVersionId: existingSlot.currentVersionId,
+                  serverReceivedAt: existingSlot.updatedAt
+                }
+              }
+            );
+          }
+          noteCloudUploadResult({ slot: existingSlot });
+          upload = {
+            ...upload,
+            slotId: existingSlot.slotId,
+            expectedRevision: 0,
+            parentVersionId: undefined
+          };
+        }
+      }
       const result = await this.client.uploadCloudSave(upload, {
         idempotencyKey: stableIdempotency("save", upload.checksum),
-        queueWhenOffline: true
+        queueWhenOffline: true,
+        onUploadPrepared: ({ slotId }) => noteCloudUploadResult({
+          slot: {
+            slotId,
+            currentRevision: upload.expectedRevision,
+            currentVersionId: upload.parentVersionId
+          }
+        })
       });
       noteCloudUploadResult(result);
       this.status = { syncState: "synced", lastSyncAt: new Date().toISOString(), reason, queued: await this.client.queueSize(), conflict: null };

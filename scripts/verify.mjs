@@ -451,9 +451,13 @@ const authRequests = [];
 const originalFetch = globalThis.fetch;
 const durableDeviceId = "78711b16-dad0-4f34-9870-30765ee988a6";
 globalThis.fetch = async (url, init = {}) => {
+  let parsedBody;
+  if (typeof init.body === "string") {
+    try { parsedBody = JSON.parse(init.body); } catch {}
+  }
   authRequests.push({
     url: String(url),
-    body: init.body ? JSON.parse(init.body) : undefined
+    body: parsedBody
   });
   if (String(url).endsWith("/api/v1/auth/token")) {
     return new Response(JSON.stringify({
@@ -467,6 +471,46 @@ globalThis.fetch = async (url, init = {}) => {
       deviceId: durableDeviceId,
       userId: "1c5cedc2-156c-46eb-b01b-ea1e9b6fc8c1"
     }), { status: 200, headers: { "content-type": "application/json" } });
+  }
+  if (String(url).includes("/api/v1/saves?")) {
+    return new Response(JSON.stringify({
+      items: [{
+        slotId: "9a191682-649f-4637-b575-e11d25cab445",
+        gameId: stlConfig.gameId,
+        slotKey: "card-crunch-primary",
+        currentRevision: 0,
+        syncStatus: "pending",
+        updatedAt: "2026-07-25T00:00:00.000Z"
+      }],
+      nextCursor: null
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  }
+  if (String(url).endsWith("/api/v1/saves/uploads")) {
+    return new Response(JSON.stringify({
+      slotId: "9a191682-649f-4637-b575-e11d25cab445",
+      uploadId: "777b0500-a558-4d35-a2c3-bcf33ecbe773",
+      transfer: {
+        url: "https://zmemhczpfbzkoglxzuna.supabase.co/storage/v1/upload/sign/verify",
+        method: "PUT",
+        headers: { "content-type": "application/octet-stream" }
+      }
+    }), { status: 201, headers: { "content-type": "application/json" } });
+  }
+  if (String(url) === "https://zmemhczpfbzkoglxzuna.supabase.co/storage/v1/upload/sign/verify") {
+    return new Response(null, { status: 200 });
+  }
+  if (/\/api\/v1\/saves\/[^/]+\/versions$/.test(String(url))) {
+    return new Response(JSON.stringify({
+      slot: {
+        slotId: "9a191682-649f-4637-b575-e11d25cab445",
+        currentRevision: 1
+      },
+      version: {
+        slotId: "9a191682-649f-4637-b575-e11d25cab445",
+        saveVersionId: "d1bff3fa-36cf-48dd-b253-254648df4d9c",
+        revision: 1
+      }
+    }), { status: 201, headers: { "content-type": "application/json" } });
   }
   return new Response(JSON.stringify({ deviceId: durableDeviceId }), {
     status: 200,
@@ -512,6 +556,31 @@ await authClient.registerDevice({
 });
 if (authRequests[1]?.body?.deviceId !== durableDeviceId) {
   throw new Error("Authenticated Card Crunch requests must use the durable STL device ID");
+}
+const listedSaveSlots = await authClient.listCloudSaveSlots(stlConfig.gameId);
+if (listedSaveSlots.items?.[0]?.slotKey !== "card-crunch-primary") {
+  throw new Error("Card Crunch must be able to recover its existing STL cloud save slot");
+}
+let preparedUploadSlotId = "";
+await authClient.uploadCloudSave({
+  data: new TextEncoder().encode("{}"),
+  gameId: stlConfig.gameId,
+  deviceId: durableDeviceId,
+  gameBuild: "verify",
+  slotKey: "card-crunch-primary",
+  displayName: "Card Crunch Progress",
+  expectedRevision: 0,
+  saveFormatVersion: "card-crunch-save-v1",
+  compression: "none",
+  clientCreatedAt: "2026-07-25T00:00:00.000Z",
+  progressSummary: {},
+  playSeconds: 0
+}, {
+  idempotencyKey: "verify-cloud-save-recovery",
+  onUploadPrepared: ({ slotId }) => { preparedUploadSlotId = slotId; }
+});
+if (preparedUploadSlotId !== "9a191682-649f-4637-b575-e11d25cab445") {
+  throw new Error("Card Crunch must persist its STL cloud save slot before transferring save data");
 }
 globalThis.navigator.onLine = false;
 let offlineMutationQueued = false;
@@ -600,6 +669,21 @@ if (saveUpload.saveFormatVersion !== "card-crunch-save-v1"
   || !/^[0-9a-f]{64}$/.test(saveUpload.checksum)
   || saveUpload.progressSummary.activePotId !== 1) {
   throw new Error("Card Crunch STL cloud save upload must be versioned and checksummed");
+}
+stlCloudModule.noteCloudUploadResult({
+  slot: {
+    slotId: "9a191682-649f-4637-b575-e11d25cab445",
+    currentRevision: 0
+  }
+});
+const resumedSaveUpload = await stlCloudModule.createCardCrunchSaveUpload({
+  state: {},
+  gameId: stlConfig.gameId,
+  deviceId: "2d2d79b7-3c4c-4ef9-a03f-69f9bf53dc48",
+  gameBuild: "verify"
+});
+if (resumedSaveUpload.slotId !== "9a191682-649f-4637-b575-e11d25cab445") {
+  throw new Error("Card Crunch must reuse a prepared STL cloud save slot after an interrupted upload");
 }
 const conflict = stlCloudModule.detectSaveConflict({
   localSnapshot: { capturedAt: "2026-07-22T10:00:00.000Z" },
