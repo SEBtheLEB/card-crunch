@@ -1,13 +1,13 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=169";
-import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=164";
-import { isPotUnlocked } from "./progression.js?v=164";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=196";
+import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=196";
+import { isPotUnlocked } from "./progression.js?v=196";
 import { formatCompactNumber } from "./format.js?v=164";
 import { hasShieldToken } from "./save.js?v=164";
 import { bindInstantAction } from "./input.js?v=164";
 import { ECONOMY_CONFIG, economy } from "./economy.js?v=164";
 import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardGestures.js?v=164";
 import { applyCardSkinPresentation, getCardSkinClass, getCardVisualColorClass } from "./cardSkins.js?v=169";
-import { getPotRuleFacts, renderPotInfo } from "./potInfo.js?v=164";
+import { getPotRuleFacts, renderPotInfo } from "./potInfo.js?v=196";
 import { isMultiplayerMode } from "./multiplayerMode.js?v=169";
 
 export function createUI() {

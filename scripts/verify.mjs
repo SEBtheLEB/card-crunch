@@ -277,9 +277,9 @@ if (
 for (const assetPath of [
   "/manifest.json",
   "/assets/icons/icon-192.svg",
-  "/styles/main.css?v=189",
+  "/styles/main.css?v=196",
   "/platform-config.js",
-  "/src/main.js?v=192"
+  "/src/main.js?v=196"
 ]) {
   if (!html.includes(`"${assetPath}"`)) {
     throw new Error(`App-shell asset must remain root-relative for OAuth callback routes: ${assetPath}`);
@@ -978,11 +978,12 @@ if (!sharedHandoffSource.includes("await waitForPaint()")
   || !css.includes("is-shared-handoff.is-handoff-ready::after")) {
   throw new Error("Shared cards must be painted before their live sources are hidden");
 }
-if (sharedHandoffSource.includes('classList.remove("cutin-shared-source-hidden")')
+if (!sharedHandoffSource.includes("{ restoreSources = false }")
+  || !sharedHandoffSource.includes('if (restoreSources) element.classList.remove("cutin-shared-source-hidden")')
   || !sharedHandoffSource.includes("target.remove()")
   || !selectionResolveSource.includes('emphasizedCards.forEach')
   || !/\.cutin-shared-source-hidden \{\r?\n  opacity: 0 !important;/.test(css)) {
-  throw new Error("Consumed hand and table cards must stay absent behind the Crunch cutscene");
+  throw new Error("Consumed cards must stay hidden, while full-hand power cards must be restorable for their real Crunches");
 }
 const animationsCutsceneVersion = animationsSource.match(/from "\.\/crunchCutscene\.js\?v=(\d+)"/)?.[1];
 const gameStateCutsceneVersion = gameStateSource.match(/from "\.\/crunchCutscene\.js\?v=(\d+)"/)?.[1];
@@ -1065,12 +1066,12 @@ const fullHandPreludeSource = cutsceneSource.slice(
   cutsceneSource.indexOf("export async function playFullHandPrelude"),
   cutsceneSource.indexOf("export async function playBustCutin")
 );
-if (!fullHandPreludeSource.includes("playInteractiveCardCrunch")
-  || !fullHandPreludeSource.includes("fullHand: true")
+if (!fullHandPreludeSource.includes("playInteractiveFullHandPowerUp")
+  || !fullHandPreludeSource.includes("TAP TO POWER UP")
   || !fullHandPreludeSource.includes("transitionSourceCardsIntoCutin")
-  || !fullHandPreludeSource.includes("bank.add")
+  || fullHandPreludeSource.includes("bank.add")
   || !selectionResolveSource.includes("onFullHandResolved")) {
-  throw new Error("Full Hand must highlight, hand off the live cards, complete three hits, and vacuum into the bank");
+  throw new Error("Full Hand must charge the live cards in three hits, then return them for their real Crunches");
 }
 const smoothCoinRewardSource = cutsceneSource.slice(
   cutsceneSource.indexOf("async function playCrunchCoinReward"),

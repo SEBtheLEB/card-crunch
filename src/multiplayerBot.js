@@ -9,7 +9,7 @@ const BOT_PROFILES = Object.freeze([
   { name: "Prism Jack", skinId: "rainbow", accuracy: .93, pace: .86, combo: 1.23 }
 ]);
 
-const HAND_MULTIPLIERS = Object.freeze([0, 1, 2, 4, 8]);
+const HAND_MULTIPLIERS = Object.freeze([0, 1, 1.15, 1.35, 2]);
 
 export function createBotDuelMatch({ player = {}, rating = 1, now = Date.now(), seed = "" } = {}) {
   const safeSeed = seed || `bot-${now}-${player.displayName || "player"}`;
@@ -79,12 +79,12 @@ export function createBotDuelBrain({ seed = "card-crunch-bot", rating = 1, profi
         streak += 1;
         const selectionCount = chooseSelectionCount(random, comboSkill);
         const basePoints = chooseBasePoints(random, comboSkill);
-        const speedMultiplier = decisionDelay <= 760 ? 3 : decisionDelay <= 980 ? 2 : decisionDelay <= 1220 ? 1.5 : 1;
+        const speedMultiplier = decisionDelay <= 760 ? 1.5 : decisionDelay <= 980 ? 1.3 : decisionDelay <= 1220 ? 1.15 : 1;
         const streakMultiplier = getStreakMultiplier(streak);
         const handMultiplier = HAND_MULTIPLIERS[selectionCount];
         const earned = Math.max(100, Math.round(basePoints * handMultiplier * speedMultiplier * streakMultiplier * runMultiplier));
         score += earned;
-        runMultiplier = Math.min(4, Math.round((runMultiplier + .12 + Math.max(0, selectionCount - 1) * .035) * 100) / 100);
+        runMultiplier = Math.min(3, Math.round((runMultiplier + .04 + Math.max(0, selectionCount - 1) * .015) * 100) / 100);
         events.push({
           type: "crunch",
           at: nextDecisionAt,
@@ -150,10 +150,10 @@ function chooseBasePoints(random, comboSkill) {
 }
 
 function getStreakMultiplier(streak) {
-  if (streak >= 15) return 10;
-  if (streak >= 10) return 5;
-  if (streak >= 6) return 3;
-  if (streak >= 3) return 2;
+  if (streak >= 15) return 2;
+  if (streak >= 10) return 1.6;
+  if (streak >= 6) return 1.35;
+  if (streak >= 3) return 1.15;
   return 1;
 }
 

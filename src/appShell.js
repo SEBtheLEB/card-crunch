@@ -1,6 +1,6 @@
-import { createCardElement } from "./ui.js?v=189";
+import { createCardElement } from "./ui.js?v=196";
 import { formatCompactNumber } from "./format.js?v=164";
-import { isPotUnlocked } from "./progression.js?v=164";
+import { isPotUnlocked } from "./progression.js?v=196";
 import {
   getCardCollectionSnapshot,
   getCollectionProgress,

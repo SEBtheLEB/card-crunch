@@ -1,4 +1,4 @@
-import { renderHeroLogoCards } from "./ui.js?v=192";
+import { renderHeroLogoCards } from "./ui.js?v=196";
 import { playGameSfx } from "./audio.js?v=164";
 import { haptic } from "./haptics.js?v=164";
 

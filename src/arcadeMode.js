@@ -1,5 +1,5 @@
 import { RANKS, SUITS, drawCard } from "./deck.js?v=164";
-import { MATCH_TYPES, SCORE_CONFIG, createStackEntry, evaluateStackAdd } from "./scoring.js?v=164";
+import { MATCH_TYPES, SCORE_CONFIG, createStackEntry, evaluateStackAdd } from "./scoring.js?v=196";
 
 export const ARCADE_MODE = "endlessArcade";
 
@@ -161,14 +161,14 @@ export function resolveArcadeCrunch(baseStack, playedCards) {
 export function getArcadeStackMultiplier(count) {
   const normalized = Math.max(0, Math.floor(Number(count) || 0));
   if (normalized <= 1) return 1;
-  if (normalized === 2) return 1.5;
-  if (normalized === 3) return 2;
-  if (normalized === 4) return 3;
-  if (normalized === 5) return 4.5;
-  if (normalized === 6) return 6;
-  if (normalized === 7) return 8;
-  if (normalized === 8) return 10;
-  return Math.min(20, 10 + (normalized - 8) * 2);
+  if (normalized === 2) return 1.15;
+  if (normalized === 3) return 1.3;
+  if (normalized === 4) return 1.5;
+  if (normalized === 5) return 1.75;
+  if (normalized === 6) return 2;
+  if (normalized === 7) return 2.3;
+  if (normalized === 8) return 2.6;
+  return Math.min(4, 2.6 + (normalized - 8) * 0.25);
 }
 
 function resolveArcadeCard(activeStack, card, lastNormalCard) {

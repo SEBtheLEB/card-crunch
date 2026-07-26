@@ -1,5 +1,5 @@
 import { drawCards, shuffle, createDeck } from "./deck.js?v=164";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=164";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=196";
 import {
   ARCADE_CONFIG,
   ARCADE_MODE,
@@ -9,10 +9,10 @@ import {
   isArcadeMode,
   isPowerCard,
   resolveArcadeCrunch
-} from "./arcadeMode.js?v=164";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=164";
-import { createCardCrunchInteraction, createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=189";
-import { ensurePlayableRound } from "./handSafety.js?v=164";
+} from "./arcadeMode.js?v=196";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=196";
+import { createCardCrunchInteraction, createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=196";
+import { ensurePlayableRound } from "./handSafety.js?v=196";
 import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=164";
 import { formatCompactNumber } from "./format.js?v=164";
 import { adManager } from "./ads.js?v=164";
@@ -32,11 +32,11 @@ import {
   playSfx,
   spawnMultiplayerCrunchReward,
   spawnSparkBurst
-} from "./animations.js?v=189";
+} from "./animations.js?v=196";
 
-const RUN_MULTIPLIER_MAX = 10;
-const RUN_MULTIPLIER_BASE_STEP = 0.2;
-const RUN_MULTIPLIER_COMBO_STEP = 0.1;
+const RUN_MULTIPLIER_MAX = 3;
+const RUN_MULTIPLIER_BASE_STEP = 0.05;
+const RUN_MULTIPLIER_COMBO_STEP = 0.02;
 const SHIELD_SAVE_RATE = 0.25;
 const RECOVERY_RATE = 0.5;
 const BONUS_BANK_RATE = 0.25;
@@ -574,6 +574,20 @@ export function createGame(ui) {
     selectedCardElements = [],
     baseStackCards = []
   }) {
+    if (cutscene?.fullHand) {
+      const fullHandCards = resolution.history.slice(0, 4).map((entry) => entry.card);
+      await playFullHandPrelude({
+        cards: fullHandCards,
+        fullHand: cutscene.fullHand,
+        sourceCards: fullHandCards.map((card, index) => ({
+          card,
+          element: selectedCardElements[index]
+        })).filter(({ card, element }) => Boolean(card && element)),
+        autoAdvance: true
+      });
+      selectedCardElements.forEach((card) => card?.classList.add("is-full-hand-powered"));
+    }
+
     const elementByCardId = new Map();
     resolution.activeStack.slice(0, baseStackCards.length).forEach((card, index) => {
       if (card?.id && baseStackCards[index]) elementByCardId.set(card.id, baseStackCards[index]);
@@ -628,6 +642,7 @@ export function createGame(ui) {
 
     ui.elements.scorePanel.classList.add("score-bump");
     window.setTimeout(() => ui.elements.scorePanel.classList.remove("score-bump"), 220);
+    selectedCardElements.forEach((card) => card?.classList.remove("is-full-hand-powered"));
   }
 
   function createActiveCrunchBankCounter() {
@@ -700,7 +715,7 @@ export function createGame(ui) {
       + RUN_MULTIPLIER_COMBO_STEP * Math.max(0, selectedCount - 1)
       + Math.max(0, Number(modifier?.multiplierStepBonus ?? 0));
     const maximum = Math.max(1, Number(modifier?.multiplierMax ?? RUN_MULTIPLIER_MAX));
-    state.bankMultiplier = Math.min(maximum, Math.round((state.bankMultiplier + step) * 10) / 10);
+    state.bankMultiplier = Math.min(maximum, Math.round((state.bankMultiplier + step) * 100) / 100);
     state.bestRunMultiplier = Math.max(state.bestRunMultiplier, state.bankMultiplier);
   }
 
@@ -1582,8 +1597,8 @@ function createMultiplayerState(options = {}) {
 }
 
 export function formatRunMultiplier(value) {
-  const rounded = Math.round(value * 10) / 10;
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  const rounded = Math.round(value * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2).replace(/0$/, "");
 }
 
 function loadPots() {

@@ -1,7 +1,7 @@
 import "./vendor/capacitor-secure-storage.js?v=190";
-import { createGame } from "./gameState.js?v=189";
-import { createUI } from "./ui.js?v=192";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=164";
+import { createGame } from "./gameState.js?v=196";
+import { createUI } from "./ui.js?v=196";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=196";
 import { adManager } from "./ads.js?v=164";
 import { grantShieldToken, hasShieldToken } from "./save.js?v=164";
 import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=164";
@@ -16,9 +16,9 @@ import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from 
 import { initializeStore } from "./store.js?v=167";
 import { initializeTutorial } from "./tutorial.js?v=164";
 import { initializeSTLPlatformAccount, installSTLCallbackListener } from "./stlPlatform.js?v=195";
-import { initializeMultiplayer } from "./multiplayer.js?v=189";
-import { initializeAppShell } from "./appShell.js?v=191";
-import { initializeLaunchGate } from "./launchGate.js?v=192";
+import { initializeMultiplayer } from "./multiplayer.js?v=196";
+import { initializeAppShell } from "./appShell.js?v=196";
+import { initializeLaunchGate } from "./launchGate.js?v=196";
 
 initializeTheme();
 initializeCardCollection();
