@@ -279,7 +279,7 @@ for (const assetPath of [
   "/assets/icons/icon-192.svg",
   "/styles/main.css?v=196",
   "/platform-config.js",
-  "/src/main.js?v=196"
+  "/src/main.js?v=197"
 ]) {
   if (!html.includes(`"${assetPath}"`)) {
     throw new Error(`App-shell asset must remain root-relative for OAuth callback routes: ${assetPath}`);
@@ -668,6 +668,11 @@ if (!stlIntegrationSource.includes("this.installDeviceId = null")
 if (!stlIntegrationSource.includes('nativePlatform === "android" || nativePlatform === "ios"')
   || !stlIntegrationSource.includes("window.location.assign(url)")) {
   throw new Error("Web STL sign-in must navigate in-page while native builds use the Capacitor system browser");
+}
+if (!stlIntegrationSource.includes("this.completedCallbackKeys")
+  || !stlIntegrationSource.includes("this.signInCompletion")
+  || stlIntegrationSource.includes("/already|conflict|linked to another/i")) {
+  throw new Error("STL callbacks must be single-flight and must not mislabel generic conflicts as account-link failures");
 }
 const saveUpload = await stlCloudModule.createCardCrunchSaveUpload({
   state: { pots: [{ id: 1, progress: 500, target: 1000, complete: false }], bestScore: 900, bestRunStreak: 4, runStartedAt: Date.now() },
@@ -1227,6 +1232,7 @@ if (!html.includes('id="launchAuthGate"')
   || !html.includes('id="launchGoogleSignInButton"')
   || !launchGateSource.includes("renderHeroLogoCards")
   || !launchGateSource.includes("card-crunch-auth-ready")
+  || !launchGateSource.includes("localStorage.setItem(GUEST_SESSION_KEY")
   || !mainSource.includes("initializeLaunchGate")) {
   throw new Error("The branded Card Crunch guest and STL Google launch gate is incomplete");
 }

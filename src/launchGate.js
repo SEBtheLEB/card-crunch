@@ -2,7 +2,8 @@ import { renderHeroLogoCards } from "./ui.js?v=196";
 import { playGameSfx } from "./audio.js?v=164";
 import { haptic } from "./haptics.js?v=164";
 
-const GUEST_SESSION_KEY = "cardCrunchGuestSessionV1";
+const GUEST_SESSION_KEY = "cardCrunchGuestSessionV2";
+const LEGACY_GUEST_SESSION_KEY = "cardCrunchGuestSessionV1";
 
 export function initializeLaunchGate({ bindAction } = {}) {
   const gate = document.querySelector("#launchAuthGate");
@@ -52,7 +53,11 @@ export function initializeLaunchGate({ bindAction } = {}) {
 
 function readGuestSession() {
   try {
-    return sessionStorage.getItem(GUEST_SESSION_KEY) === "1";
+    if (localStorage.getItem(GUEST_SESSION_KEY) === "1") return true;
+    if (sessionStorage.getItem(LEGACY_GUEST_SESSION_KEY) !== "1") return false;
+    localStorage.setItem(GUEST_SESSION_KEY, "1");
+    sessionStorage.removeItem(LEGACY_GUEST_SESSION_KEY);
+    return true;
   } catch {
     return false;
   }
@@ -60,8 +65,9 @@ function readGuestSession() {
 
 function writeGuestSession(enabled) {
   try {
-    if (enabled) sessionStorage.setItem(GUEST_SESSION_KEY, "1");
-    else sessionStorage.removeItem(GUEST_SESSION_KEY);
+    if (enabled) localStorage.setItem(GUEST_SESSION_KEY, "1");
+    else localStorage.removeItem(GUEST_SESSION_KEY);
+    sessionStorage.removeItem(LEGACY_GUEST_SESSION_KEY);
   } catch {}
 }
 

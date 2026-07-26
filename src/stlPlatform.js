@@ -7,7 +7,7 @@ import {
   shouldShowSTLDiagnostics,
   validateSTLPlatformConfig
 } from "./stlPlatformConfig.js?v=193";
-import { createCardCrunchSTLClient, getOrCreateDeviceId, STLClientError } from "./stlPlatformClient.js?v=195";
+import { createCardCrunchSTLClient, getOrCreateDeviceId, STLClientError } from "./stlPlatformClient.js?v=197";
 import {
   applyCloudSaveSnapshot,
   createCardCrunchSaveUpload,
@@ -81,6 +81,8 @@ class STLPlatformIntegration {
     this.syncTimer = null;
     this.syncInFlight = false;
     this.achievementReports = readAchievementReports();
+    this.signInCompletion = null;
+    this.completedCallbackKeys = new Set();
   }
 
   async boot() {
@@ -127,6 +129,22 @@ class STLPlatformIntegration {
   }
 
   async completeSignIn(callbackUrl) {
+    const callbackKey = getCallbackKey(callbackUrl);
+    if (callbackKey && this.completedCallbackKeys.has(callbackKey)) {
+      return this.signInCompletion;
+    }
+    if (this.signInCompletion) return this.signInCompletion;
+    if (callbackKey) this.completedCallbackKeys.add(callbackKey);
+
+    this.signInCompletion = this.finishSignIn(callbackUrl);
+    try {
+      return await this.signInCompletion;
+    } finally {
+      this.signInCompletion = null;
+    }
+  }
+
+  async finishSignIn(callbackUrl) {
     setBusy(this.elements, true);
     try {
       const session = await this.client.completeSignIn(callbackUrl, {
@@ -601,10 +619,11 @@ function toUserMessage(error) {
   if (error instanceof STLClientError) {
     if (error.code === "OFFLINE_QUEUED") return "You’re offline. Your progress will sync when you reconnect.";
     if (error.code === "SESSION_MISSING") return "Continue with Google to save and sync your progress.";
+    if (error.code === "INVALID_STATE") return "That sign-in return was already handled. Try again if you are not signed in.";
+    if (error.code === "IDENTITY_ALREADY_LINKED") return "Continue with Google to open your existing STL Account.";
   }
   const message = String(error?.message || "");
   if (/cancel|denied|access_denied/i.test(message)) return "Sign-in was cancelled. Nothing was changed.";
-  if (/already|conflict|linked to another/i.test(message)) return "This sign-in is already connected to another account.";
   if (/network|fetch|offline|connect|unavailable|timeout/i.test(message)) {
     return "We couldn’t connect right now. Check your connection and try again.";
   }
@@ -613,6 +632,18 @@ function toUserMessage(error) {
 
 function initials(value) {
   return String(value).split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "CC";
+}
+
+function getCallbackKey(callbackUrl) {
+  try {
+    const callback = new URL(callbackUrl);
+    const state = callback.searchParams.get("state");
+    const code = callback.searchParams.get("code");
+    const error = callback.searchParams.get("error");
+    return state ? `${state}:${code || error || "callback"}` : "";
+  } catch {
+    return "";
+  }
 }
 
 function isDevHost() {

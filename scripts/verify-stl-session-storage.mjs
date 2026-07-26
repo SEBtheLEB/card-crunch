@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { indexedDB as fakeIndexedDB } from "fake-indexeddb";
 
 const root = resolve(import.meta.dirname, "..");
 const SESSION_KEY = "cardCrunchStlSessionV1";
@@ -37,6 +38,10 @@ Object.defineProperty(globalThis, "location", {
 Object.defineProperty(globalThis, "window", {
   configurable: true,
   value: globalThis
+});
+Object.defineProperty(globalThis, "indexedDB", {
+  configurable: true,
+  value: fakeIndexedDB
 });
 
 const {
@@ -129,7 +134,7 @@ globalThis.__CARD_CRUNCH_CAPACITOR_SECURE_STORAGE__ = {
 };
 
 const webClient = new CardCrunchSTLClient(config);
-assert.equal(webClient.storageSecurity, "memory-only");
+assert.equal(webClient.storageSecurity, "web-crypto-indexeddb");
 const webTransaction = await webClient.beginSignIn();
 await webClient.completeSignIn(
   `https://card-crunch.vercel.app/auth/callback?code=web-code&state=${webTransaction.state}`
@@ -138,10 +143,29 @@ assert.equal(webSecureStorageCalls, 0, "the secure-storage plugin's plaintext we
 assert.equal(localStorage.getItem(SESSION_KEY), null);
 assert.equal(localStorage.getItem(`cap_sec_${SESSION_KEY}`), null);
 assert.equal(localStorage.getItem(`capacitor-storage_${SESSION_KEY}`), null);
+const protectedWebDatabase = await new Promise((resolve, reject) => {
+  const request = indexedDB.open("cardCrunchProtectedAuthV1", 1);
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(request.error);
+});
+const encryptedWebSession = await new Promise((resolve, reject) => {
+  const request = protectedWebDatabase
+    .transaction("records", "readonly")
+    .objectStore("records")
+    .get(SESSION_KEY);
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(request.error);
+});
+assert.ok(encryptedWebSession?.ciphertext, "browser sessions must be encrypted at rest");
+assert.doesNotMatch(
+  JSON.stringify(encryptedWebSession),
+  /card-crunch-refresh-token/,
+  "browser storage must not contain a readable refresh token"
+);
 assert.equal(
-  await new CardCrunchSTLClient(config).restoreSession(),
-  null,
-  "browser refresh tokens must not survive a new client process"
+  (await new CardCrunchSTLClient(config).restoreSession())?.userId,
+  userId,
+  "the encrypted browser session must survive a new client process"
 );
 
 const protectedValues = new Map();
@@ -290,4 +314,4 @@ const capacitorBuild = await readFile(resolve(root, "android/app/capacitor.build
 assert.match(capacitorBuild, /implementation project\(':aparajita-capacitor-secure-storage'\)/);
 
 globalThis.fetch = originalFetch;
-console.log("Verified OS-protected native STL sessions, durable native PKCE, single-flight refresh rotation, and memory-only browser auth.");
+console.log("Verified encrypted durable web sessions, OS-protected native sessions, durable PKCE, and single-flight refresh rotation.");

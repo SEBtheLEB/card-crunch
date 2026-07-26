@@ -73,7 +73,7 @@ Never add STL Platform service-role keys, Google OAuth secrets, Supabase keys, o
 - Native OAuth transactions use the same protected store, so the PKCE verifier survives an app process restart while the system browser is open.
 - iOS Keychain synchronization is disabled and credentials are marked `whenUnlockedThisDeviceOnly`.
 - Android application backup is disabled so encrypted session data cannot be restored without the device-bound Keystore key.
-- Browser builds deliberately keep access tokens in memory and never persist refresh tokens in `localStorage`, `sessionStorage`, or the secure-storage plugin's plaintext web implementation. Durable browser sign-in requires a future server-side `HttpOnly` session design.
+- Browser and installed-PWA builds persist the STL session in IndexedDB encrypted with a non-exportable Web Crypto AES-GCM key. Tokens are never written to `localStorage`, `sessionStorage`, URLs, or the secure-storage plugin's plaintext web adapter. Native Android/iOS builds continue to use operating-system protected storage.
 - Card Crunch has no Electron target. Any future desktop shell must use Electron `safeStorage` in its main process through narrow, sender-validated IPC; it must not reuse the browser adapter.
 
 Live auth is not complete until the STL Platform production API host, Supabase project, Google OAuth app, Vercel environment variables, and OAuth token authority are configured and verified.
