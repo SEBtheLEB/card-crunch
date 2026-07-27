@@ -794,7 +794,8 @@ const arcadeModeSource = await readFile(resolve(root, "src/arcadeMode.js"), "utf
 if (!mainSource.includes("initializeLaunchGate({ bindAction: bindInstantAction, account: stlAccount });")
   || mainSource.indexOf("initializeLaunchGate({ bindAction: bindInstantAction, account: stlAccount });")
     > mainSource.indexOf("installSTLCallbackListener();")
-  || !launchGateSource.includes("syncProfile(account?.getProfile?.() ?? null)")) {
+  || !launchGateSource.includes("syncProfile(account?.getProfile?.() ?? null)")
+  || !appShellCss.includes(".launch-auth-gate[hidden]")) {
   throw new Error("The launch gate must attach before OAuth callback processing and reconcile restored profiles");
 }
 if (!mainSource.includes("initializeMultiplayer")

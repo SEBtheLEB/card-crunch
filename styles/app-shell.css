@@ -1255,6 +1255,10 @@ button:focus-visible,
   isolation: isolate;
 }
 
+.launch-auth-gate[hidden] {
+  display: none;
+}
+
 .launch-auth-gate::before {
   position: absolute;
   inset: 7px;
