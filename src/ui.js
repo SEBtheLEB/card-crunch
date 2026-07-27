@@ -1,4 +1,4 @@
-import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=196";
+import { formatRunMultiplier, getCrunchPreview } from "./gameState.js?v=201";
 import { ARCADE_MODE, getPowerCardDetails, isArcadeMode, isPowerCard } from "./arcadeMode.js?v=196";
 import { isPotUnlocked } from "./progression.js?v=196";
 import { formatCompactNumber } from "./format.js?v=164";

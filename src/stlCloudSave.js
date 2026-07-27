@@ -14,6 +14,8 @@ const SAVE_KEYS = Object.freeze([
   "cardCrunchEconomyV1",
   "cardCrunchCardCollectionV1",
   "cardCrunchStoreV1",
+  "cardCrunchBoostersV1",
+  "cardCrunchLiveEventsV1",
   "cardCrunchShieldToken",
   "cardCrunchTheme",
   "cardCrunchCardSkin"
@@ -65,6 +67,8 @@ export function createLocalSaveSnapshot(state = {}) {
       economy: parseJson(storage.cardCrunchEconomyV1, null),
       cardCollection: parseJson(storage.cardCrunchCardCollectionV1, null),
       store: parseJson(storage.cardCrunchStoreV1, null),
+      boosters: parseJson(storage.cardCrunchBoostersV1, null),
+      liveEvents: parseJson(storage.cardCrunchLiveEventsV1, null),
       shieldToken: storage.cardCrunchShieldToken === "1",
       theme: storage.cardCrunchTheme || "midnight-gold",
       cardSkin: storage.cardCrunchCardSkin || "classic"

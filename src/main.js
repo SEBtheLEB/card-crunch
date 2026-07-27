@@ -1,7 +1,7 @@
 import "./vendor/capacitor-secure-storage.js?v=190";
-import { createGame } from "./gameState.js?v=196";
+import { createGame } from "./gameState.js?v=201";
 import { createUI } from "./ui.js?v=196";
-import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=196";
+import { calculateCrunchScore, runScoringSelfTests } from "./scoring.js?v=201";
 import { adManager } from "./ads.js?v=164";
 import { grantShieldToken, hasShieldToken } from "./save.js?v=164";
 import { installAudioUnlock, playGameSfx, setAudioSettings } from "./audio.js?v=164";
@@ -15,9 +15,9 @@ import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=167";
 import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=169";
 import { initializeStore } from "./store.js?v=167";
 import { initializeTutorial } from "./tutorial.js?v=164";
-import { initializeSTLPlatformAccount, installSTLCallbackListener } from "./stlPlatform.js?v=200";
+import { initializeSTLPlatformAccount, installSTLCallbackListener } from "./stlPlatform.js?v=201";
 import { initializeMultiplayer } from "./multiplayer.js?v=196";
-import { initializeAppShell } from "./appShell.js?v=196";
+import { initializeAppShell } from "./appShell.js?v=201";
 import { initializeLaunchGate } from "./launchGate.js?v=198";
 
 initializeTheme();
@@ -175,7 +175,9 @@ function bindMenuNavigation() {
       "cardCrunchCardSkin",
       "cardCrunchCardCollectionV1",
       "cardCrunchStoreV1",
-      "cardCrunchTotalCrunches"
+      "cardCrunchTotalCrunches",
+      "cardCrunchBoostersV1",
+      "cardCrunchLiveEventsV1"
     ].forEach((key) => localStorage.removeItem(key));
     window.location.reload();
   });

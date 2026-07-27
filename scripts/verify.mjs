@@ -42,6 +42,8 @@ const required = [
   "src/potInfo.js",
   "src/tutorial.js",
   "src/economy.js",
+  "src/boosters.js",
+  "src/liveEvents.js",
   "src/scoreSurge.js",
   "src/purchases.js",
   "assets/sfx/playing-card.mp3",
@@ -279,7 +281,7 @@ for (const assetPath of [
   "/assets/icons/icon-192.svg",
   "/styles/main.css?v=196",
   "/platform-config.js",
-  "/src/main.js?v=200"
+  "/src/main.js?v=201"
 ]) {
   if (!html.includes(`"${assetPath}"`)) {
     throw new Error(`App-shell asset must remain root-relative for OAuth callback routes: ${assetPath}`);
@@ -353,8 +355,23 @@ if (!html.includes("Pot Journey")
 if (html.includes('id="tutorialPage"')) {
   throw new Error("Tutorial must use the real game board, not a separate practice layout");
 }
+if (!html.includes('id="eventsFeatureList"')
+  || !html.includes('data-booster-id="extra-time"')
+  || !html.includes('data-booster-id="crunch-bonus"')
+  || !html.includes('data-booster-id="retry-token"')
+  || /Prototype \+|visual placeholders/i.test(html)) {
+  throw new Error("Live events and Pot boosters must replace their former placeholder UI");
+}
 
 const economyModule = await import(`../src/economy.js?verify=${Date.now()}`);
+const boosterModule = await import(`../src/boosters.js?verify=${Date.now()}`);
+const startingBoosters = boosterModule.boosterInventory.getSnapshot();
+if (startingBoosters.inventory["extra-time"] < 1
+  || boosterModule.getBoosterRunEffects(["extra-time", "crunch-bonus", "retry-token"]).extraTurnSeconds !== 10
+  || boosterModule.getBoosterRunEffects(["crunch-bonus"]).crunchMultiplier !== 1.25
+  || !boosterModule.getBoosterRunEffects(["retry-token"]).retryToken) {
+  throw new Error("Persistent Pot booster inventory or run effects are incomplete");
+}
 
 const stlConfigModule = await import(`../src/stlPlatformConfig.js?verify=${Date.now()}`);
 const stlClientModule = await import(`../src/stlPlatformClient.js?verify=${Date.now()}`);
@@ -716,6 +733,27 @@ const lowReward = economyModule.calculateRunCoinReward({ grossCash: 100_000, bes
 const highReward = economyModule.calculateRunCoinReward({ grossCash: 1_000_000, bestStreak: 8, potCleared: true });
 if (lowReward.total <= 0 || highReward.total <= lowReward.total) {
   throw new Error("Run coin rewards do not scale with performance");
+}
+const liveEventsModule = await import(`../src/liveEvents.js?verify=${Date.now()}`);
+const activeDaily = liveEventsModule.liveEvents.getSnapshot().daily;
+if (activeDaily.metric === "bankCash") {
+  liveEventsModule.liveEvents.record("bank", { amount: activeDaily.target });
+} else if (activeDaily.metric === "bestStreak") {
+  liveEventsModule.liveEvents.record("crunch", { selectedCount: 1, streak: activeDaily.target });
+} else {
+  for (let index = 0; index < activeDaily.target; index += 1) {
+    liveEventsModule.liveEvents.record("crunch", {
+      selectedCount: 1,
+      speedLabel: activeDaily.metric === "lightningCrunches" ? "LIGHTNING" : null
+    });
+  }
+}
+const completedDaily = liveEventsModule.liveEvents.getSnapshot().daily;
+const claimedDaily = liveEventsModule.liveEvents.claim(completedDaily.id);
+if (completedDaily.progress !== completedDaily.target
+  || !claimedDaily
+  || liveEventsModule.liveEvents.claim(completedDaily.id) !== null) {
+  throw new Error("Daily challenges must progress from gameplay and grant each reward once");
 }
 if ("energyPerRun" in economyModule.ECONOMY_CONFIG || "calculateRegeneratedEnergy" in economyModule) {
   throw new Error("Energy gating still exists in the economy module");

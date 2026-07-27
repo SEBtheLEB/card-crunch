@@ -280,6 +280,7 @@ export function calculateCrunchScore({
   timeLeft,
   streak,
   runMultiplier = 1,
+  boosterMultiplier = 1,
   gameplayModifier = null,
   resolutionOverride = null,
   selectionMultiplierOverride = null,
@@ -296,6 +297,7 @@ export function calculateCrunchScore({
           timeLeft,
           streak,
           runMultiplier,
+          boosterMultiplier,
           gameplayModifier,
           resolutionOverride: {
             success: true,
@@ -331,7 +333,7 @@ export function calculateCrunchScore({
   const stackTypeMultiplier = stackTypes.reduce((product, bonus) => product * (bonus.multiplier ?? 1), 1);
   const stackTypeFlat = stackTypes.reduce((sum, bonus) => sum + (bonus.flatBonus ?? 0), 0);
   const potRuleMultiplier = getPotRuleMultiplier(gameplayModifier, selectedCards.length);
-  const total = Math.round((storedBase * handMultiplier * speedBonus.multiplier * streakMultiplier * stackTypeMultiplier * potRuleMultiplier + stackTypeFlat) * runMultiplier);
+  const total = Math.round((storedBase * handMultiplier * speedBonus.multiplier * streakMultiplier * stackTypeMultiplier * potRuleMultiplier + stackTypeFlat) * runMultiplier * boosterMultiplier);
   const isFullHand = enableFullHand && selectedCards.length === 4;
   const effectiveSelectionLabel = isFullHand ? "FULL HAND POWER" : selectionLabel;
   const breakdown = buildCrunchBreakdown({
@@ -343,6 +345,7 @@ export function calculateCrunchScore({
     potRuleMultiplier,
     potRuleLabel: gameplayModifier?.scoreLabel,
     runMultiplier,
+    boosterMultiplier,
     selectionLabel: effectiveSelectionLabel,
     total
   });
@@ -354,7 +357,8 @@ export function calculateCrunchScore({
     * streakMultiplier
     * stackTypeMultiplier
     * potRuleMultiplier
-    * runMultiplier;
+    * runMultiplier
+    * boosterMultiplier;
   const entryAwards = allocateCutsceneAwards({
     awardedPoints,
     total,
@@ -373,6 +377,7 @@ export function calculateCrunchScore({
     streakMultiplier,
     stackTypes,
     potRuleMultiplier,
+    boosterMultiplier,
     total,
     cutscene: {
       entries: presentationEntries.map((entry, index) => ({
@@ -999,7 +1004,7 @@ function getStackPairs(cards) {
   return pairs;
 }
 
-function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, potRuleMultiplier = 1, potRuleLabel = "POT RULE", runMultiplier = 1, selectionLabel = "HAND", total }) {
+function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, potRuleMultiplier = 1, potRuleLabel = "POT RULE", runMultiplier = 1, boosterMultiplier = 1, selectionLabel = "HAND", total }) {
   const steps = [{ label: "STORED", value: `+${formatCompactNumber(storedBase)}`, tone: "total", kind: "base" }];
   if (handMultiplier > 1) steps.push({ label: selectionLabel, value: `x${formatMultiplier(handMultiplier)}`, tone: "double", kind: "multiplier", multiplier: handMultiplier });
   if (speedBonus.multiplier > 1) steps.push({ label: speedBonus.label, value: `x${formatMultiplier(speedBonus.multiplier)}`, tone: "speed", kind: "multiplier", multiplier: speedBonus.multiplier });
@@ -1013,6 +1018,7 @@ function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMu
     flatBonus: bonus.flatBonus
   }));
   if (potRuleMultiplier > 1) steps.push({ label: potRuleLabel, value: `x${formatMultiplier(potRuleMultiplier)}`, tone: "pot", kind: "multiplier", multiplier: potRuleMultiplier });
+  if (boosterMultiplier > 1) steps.push({ label: "CRUNCH BOOST", value: `x${formatMultiplier(boosterMultiplier)}`, tone: "power", kind: "multiplier", multiplier: boosterMultiplier });
   if (runMultiplier > 1) steps.push({ label: "RUN MULTI", value: `x${formatMultiplier(runMultiplier)}`, tone: "run", kind: "multiplier", multiplier: runMultiplier });
   steps.push({ label: "TOTAL", value: `+${formatCompactNumber(total)}`, tone: "total", kind: "total" });
   return steps;

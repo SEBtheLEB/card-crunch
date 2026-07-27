@@ -9,6 +9,8 @@ import {
 import { CARD_SKINS } from "./cardSkins.js?v=169";
 import { playGameSfx } from "./audio.js?v=164";
 import { haptic } from "./haptics.js?v=164";
+import { boosterInventory } from "./boosters.js?v=201";
+import { liveEvents } from "./liveEvents.js?v=201";
 
 const TOP_LEVEL_TABS = ["shop", "themes", "modes", "events", "account"];
 const PLAY_CHILD_PAGES = new Set(["modes", "pots", "pot-prep"]);
@@ -31,7 +33,8 @@ export function initializeAppShell({ ui, game, bindAction }) {
     handlers: null,
     journeyHasCentered: false,
     tabScroll: new Map(),
-    sheetReturnFocus: null
+    sheetReturnFocus: null,
+    selectedBoosters: new Set()
   };
 
   ui.showMenuPage = showPage;
@@ -54,6 +57,15 @@ export function initializeAppShell({ ui, game, bindAction }) {
   });
   window.addEventListener("card-crunch-card-skin-change", renderDockCards);
   window.addEventListener("card-crunch-economy-change", refreshProfileShell);
+  boosterInventory.subscribe(() => {
+    renderPreparationBoosters();
+    renderEvents();
+  });
+  liveEvents.subscribe(() => {
+    renderEvents();
+    refreshPlayHubEvent();
+    game.refreshEconomy();
+  });
 
   function showPage(requestedPage = "modes") {
     const pageName = requestedPage === "home" ? "modes" : requestedPage;
@@ -78,6 +90,7 @@ export function initializeAppShell({ ui, game, bindAction }) {
       queueCurrentPotCenter();
     }
     if (pageName === "account") refreshProfileShell();
+    if (pageName === "events") renderEvents();
     if (previousTop !== nextTop) animateTabEntry(nextTop);
   }
 
@@ -161,13 +174,21 @@ export function initializeAppShell({ ui, game, bindAction }) {
     refs.prepBest.textContent = formatCompactNumber(Math.max(pot.progress ?? 0, game.state.bestScore ?? 0));
     refs.prepPlayButton.textContent = `${pot.complete ? "Replay" : "Play"} Pot ${pot.id}`;
     refs.prepPlayButton.style.setProperty("--pot-accent", pot.accent);
+    state.selectedBoosters.clear();
+    renderPreparationBoosters();
     refreshPreparationDeck();
     showPage("pot-prep");
   }
 
   function launchPreparedPot() {
     if (!state.selectedPot) return;
-    game.enterLevel(state.selectedPot.id);
+    const boosters = [...state.selectedBoosters];
+    if (boosters.length > 0 && !boosterInventory.consume(boosters)) {
+      renderPreparationBoosters();
+      refs.prepBoosterNote.textContent = "A selected booster is no longer available.";
+      return;
+    }
+    game.enterLevel(state.selectedPot.id, { boosters });
   }
 
   function refreshPlayHub() {
@@ -184,6 +205,7 @@ export function initializeAppShell({ ui, game, bindAction }) {
     refs.hubProgressFill.style.width = `${progress * 100}%`;
     refs.hubPotFill.style.height = `${Math.max(10, progress * 100)}%`;
     refs.hubContinueLabel.textContent = `${pot.progress > 0 ? "Continue" : "Start"} Pot ${pot.id}`;
+    refreshPlayHubEvent();
   }
 
   function refreshPreparationDeck() {
@@ -234,10 +256,100 @@ export function initializeAppShell({ ui, game, bindAction }) {
     bindShellAction(refs.prepPlayButton, launchPreparedPot);
     refs.prepBoosters.forEach((button) => {
       bindShellAction(button, () => {
-        const selected = button.getAttribute("aria-pressed") === "true";
-        button.setAttribute("aria-pressed", String(!selected));
+        const id = button.dataset.boosterId;
+        const inventory = boosterInventory.getSnapshot().inventory[id] ?? 0;
+        if (inventory <= 0) {
+          if (!boosterInventory.purchase(id)) {
+            refs.prepBoosterNote.textContent = "Not enough coins for that booster.";
+            haptic("error");
+            return;
+          }
+          refs.prepBoosterNote.textContent = `${button.querySelector("strong")?.textContent ?? "Booster"} added to inventory.`;
+          playGameSfx("score_arrive");
+          game.refreshEconomy();
+        }
+        if (state.selectedBoosters.has(id)) state.selectedBoosters.delete(id);
+        else state.selectedBoosters.add(id);
+        renderPreparationBoosters();
       });
     });
+  }
+
+  function renderPreparationBoosters() {
+    const snapshot = boosterInventory.getSnapshot();
+    refs.prepBoosters.forEach((button) => {
+      const id = button.dataset.boosterId;
+      const definition = snapshot.definitions[id];
+      const count = snapshot.inventory[id] ?? 0;
+      const selected = state.selectedBoosters.has(id) && count > 0;
+      if (count <= 0) state.selectedBoosters.delete(id);
+      button.setAttribute("aria-pressed", String(selected));
+      button.classList.toggle("is-empty", count <= 0);
+      const inventoryLabel = button.querySelector("em");
+      if (inventoryLabel) inventoryLabel.textContent = count > 0 ? `Owned ${count}` : `Buy ${definition.coinPrice} \u25C6`;
+    });
+    const selectedCount = state.selectedBoosters.size;
+    refs.prepBoosterNote.textContent = selectedCount
+      ? `${selectedCount} booster${selectedCount === 1 ? "" : "s"} armed for this run.`
+      : "Selected boosters are consumed when the run begins.";
+  }
+
+  function refreshPlayHubEvent() {
+    const daily = liveEvents.getSnapshot().daily;
+    if (!daily) return;
+    refs.playHubEventTitle.textContent = daily.description;
+    refs.playHubEventReward.textContent = daily.claimed
+      ? "Claimed"
+      : `Reward ${formatCompactNumber(daily.reward.coins ?? 0)} \u25C6`;
+  }
+
+  function renderEvents() {
+    const snapshot = liveEvents.getSnapshot();
+    refs.eventsResetBadge.textContent = `\u23F1 ${formatRemaining(snapshot.daily.expiresAt - Date.now())}`;
+    refs.eventsFeatureList.replaceChildren();
+    snapshot.challenges.forEach((challenge) => {
+      const article = document.createElement("article");
+      const complete = challenge.progress >= challenge.target;
+      article.className = `event-feature-card event-${challenge.cadence}-card${complete ? " is-complete" : ""}${challenge.claimed ? " is-claimed" : ""}`;
+      const rewardParts = [`${formatCompactNumber(challenge.reward.coins ?? 0)} \u25C6`];
+      if (challenge.reward.booster) rewardParts.push("+ Booster");
+      article.innerHTML = `
+        <span class="event-card-icon" aria-hidden="true">${challenge.icon}</span>
+        <div><small>${getCadenceLabel(challenge.cadence)}</small><h3>${challenge.title}</h3><p>${challenge.description}</p></div>
+        <span class="event-card-progress"><i><b style="width:${Math.min(100, challenge.progress / challenge.target * 100)}%"></b></i><em>${formatCompactNumber(challenge.progress)} / ${formatCompactNumber(challenge.target)}</em></span>
+        <strong class="event-reward">${rewardParts.join(" ")}</strong>
+      `;
+      if (challenge.claimed) {
+        const status = document.createElement("span");
+        status.className = "event-status-chip";
+        status.textContent = "Claimed";
+        article.appendChild(status);
+      } else {
+        const action = document.createElement("button");
+        action.type = "button";
+        action.textContent = complete ? "Claim" : "Play";
+        action.className = complete ? "event-claim-button" : "";
+        bindShellAction(action, () => {
+          if (!complete) {
+            showPage("modes");
+            return;
+          }
+          const reward = liveEvents.claim(challenge.id);
+          if (!reward) return;
+          playGameSfx("score_arrive");
+          haptic("success");
+          game.refreshEconomy();
+          renderEvents();
+        });
+        article.appendChild(action);
+      }
+      refs.eventsFeatureList.appendChild(article);
+    });
+    refs.seasonLabel.textContent = `Season ${snapshot.season.id}`;
+    refs.seasonLevel.textContent = `Level ${snapshot.season.level}`;
+    refs.seasonProgressText.textContent = `${snapshot.season.xp} / ${snapshot.season.target}`;
+    refs.seasonProgressFill.style.width = `${snapshot.season.xp / snapshot.season.target * 100}%`;
+    refs.seasonRewardText.textContent = `Next level awards ${snapshot.season.nextRewardCoins} coins. Every fifth level adds a Crunch Bonus booster.`;
   }
 
   function bindJourneyUtilities() {
@@ -353,7 +465,7 @@ export function initializeAppShell({ ui, game, bindAction }) {
   }
 
   showPage("modes");
-  return { showPage, renderJourney, refreshPlayHub };
+  return { showPage, renderJourney, refreshPlayHub, renderEvents };
 }
 
 function collectShellElements(root) {
@@ -372,6 +484,15 @@ function collectShellElements(root) {
     hubProgressFill: root.querySelector("#playHubProgressFill"),
     hubPotFill: root.querySelector("#playHubPotFill"),
     hubContinueLabel: root.querySelector("#playHubContinueLabel"),
+    playHubEventTitle: root.querySelector("#playHubEventTitle"),
+    playHubEventReward: root.querySelector("#playHubEventReward"),
+    eventsResetBadge: root.querySelector("#eventsResetBadge"),
+    eventsFeatureList: root.querySelector("#eventsFeatureList"),
+    seasonLabel: root.querySelector("#seasonLabel"),
+    seasonLevel: root.querySelector("#seasonLevel"),
+    seasonProgressText: root.querySelector("#seasonProgressText"),
+    seasonProgressFill: root.querySelector("#seasonProgressFill"),
+    seasonRewardText: root.querySelector("#seasonRewardText"),
     levelMap: root.querySelector("#levelMap"),
     journeyScroller: root.querySelector("#journeyScrollRegion"),
     journeyChapter: root.querySelector("#journeyChapterName"),
@@ -400,8 +521,24 @@ function collectShellElements(root) {
     prepTarget: root.querySelector("#prepTargetValue"),
     prepBest: root.querySelector("#prepBestValue"),
     prepBoosters: [...root.querySelectorAll(".prep-boosters button")],
+    prepBoosterNote: root.querySelector("#prepBoosterNote"),
     prepPlayButton: root.querySelector("#prepPlayButton")
   };
+}
+
+function getCadenceLabel(cadence) {
+  if (cadence === "daily") return "Daily Challenge";
+  if (cadence === "weekly") return "Weekly Run";
+  return "Limited Event";
+}
+
+function formatRemaining(milliseconds) {
+  const totalMinutes = Math.max(0, Math.ceil(milliseconds / 60_000));
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}d ${hours}h`;
+  return `${hours}h ${minutes}m`;
 }
 
 function createJourneyNode(pot, index, pots, currentPot, bindAction, onOpen) {
