@@ -5,7 +5,7 @@ import { haptic } from "./haptics.js?v=164";
 const GUEST_SESSION_KEY = "cardCrunchGuestSessionV2";
 const LEGACY_GUEST_SESSION_KEY = "cardCrunchGuestSessionV1";
 
-export function initializeLaunchGate({ bindAction } = {}) {
+export function initializeLaunchGate({ bindAction, account = globalThis.cardCrunchSTL } = {}) {
   const gate = document.querySelector("#launchAuthGate");
   const guestButton = document.querySelector("#launchGuestButton");
   const cardFan = document.querySelector("#launchAuthCardFan");
@@ -46,7 +46,11 @@ export function initializeLaunchGate({ bindAction } = {}) {
   document.documentElement.classList.add("launch-auth-active");
   gate.hidden = false;
   gate.classList.add("is-visible");
-  if (readGuestSession()) enterGame({ guest: false });
+  if (readGuestSession()) {
+    enterGame({ guest: false });
+  } else {
+    syncProfile(account?.getProfile?.() ?? null);
+  }
 
   return Object.freeze({ enterGame });
 }

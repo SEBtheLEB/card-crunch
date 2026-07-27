@@ -154,6 +154,7 @@ class STLPlatformIntegration {
         }
       });
       await this.afterSessionRestored(session);
+      dispatchAuthReady(this.profile);
       clearWebCallbackFromAddressBar();
     } catch (error) {
       this.setStatus(toUserMessage(error), "bad");
@@ -172,7 +173,9 @@ class STLPlatformIntegration {
     this.setStatus(
       this.status.syncState === "synced"
         ? "Progress synced."
-        : `Signed in. Progress sync is ${this.status.syncState}.`,
+        : this.status.syncState === "conflict"
+          ? "Signed in. Choose which saved progress to keep from your profile."
+          : "Signed in. Cloud progress will retry automatically.",
       "good"
     );
   }

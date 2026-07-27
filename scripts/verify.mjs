@@ -279,7 +279,7 @@ for (const assetPath of [
   "/assets/icons/icon-192.svg",
   "/styles/main.css?v=196",
   "/platform-config.js",
-  "/src/main.js?v=197"
+  "/src/main.js?v=198"
 ]) {
   if (!html.includes(`"${assetPath}"`)) {
     throw new Error(`App-shell asset must remain root-relative for OAuth callback routes: ${assetPath}`);
@@ -791,6 +791,12 @@ const hapticsSource = await readFile(resolve(root, "src/haptics.js"), "utf8");
 const scoringSource = await readFile(resolve(root, "src/scoring.js"), "utf8");
 const scoreSurgeSource = await readFile(resolve(root, "src/scoreSurge.js"), "utf8");
 const arcadeModeSource = await readFile(resolve(root, "src/arcadeMode.js"), "utf8");
+if (!mainSource.includes("initializeLaunchGate({ bindAction: bindInstantAction, account: stlAccount });")
+  || mainSource.indexOf("initializeLaunchGate({ bindAction: bindInstantAction, account: stlAccount });")
+    > mainSource.indexOf("installSTLCallbackListener();")
+  || !launchGateSource.includes("syncProfile(account?.getProfile?.() ?? null)")) {
+  throw new Error("The launch gate must attach before OAuth callback processing and reconcile restored profiles");
+}
 if (!mainSource.includes("initializeMultiplayer")
   || !mainSource.includes("initializeSTLPlatformAccount")
   || !gameStateSource.includes("startMultiplayerMatch")

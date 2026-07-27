@@ -15,10 +15,10 @@ import { initializeCardCollectionUI } from "./cardCollectionUI.js?v=167";
 import { bindCardSkinPicker, initializeCardSkin, installRainbowCardTrail } from "./cardSkins.js?v=169";
 import { initializeStore } from "./store.js?v=167";
 import { initializeTutorial } from "./tutorial.js?v=164";
-import { initializeSTLPlatformAccount, installSTLCallbackListener } from "./stlPlatform.js?v=197";
+import { initializeSTLPlatformAccount, installSTLCallbackListener } from "./stlPlatform.js?v=198";
 import { initializeMultiplayer } from "./multiplayer.js?v=196";
 import { initializeAppShell } from "./appShell.js?v=196";
-import { initializeLaunchGate } from "./launchGate.js?v=197";
+import { initializeLaunchGate } from "./launchGate.js?v=198";
 
 initializeTheme();
 initializeCardCollection();
@@ -32,8 +32,8 @@ const stlAccount = initializeSTLPlatformAccount({
   showPage: ui.showMenuPage,
   game
 });
+initializeLaunchGate({ bindAction: bindInstantAction, account: stlAccount });
 installSTLCallbackListener();
-initializeLaunchGate({ bindAction: bindInstantAction });
 installAudioUnlock();
 initializePlayGames();
 installFullscreenControls(bindInstantAction);
