@@ -7,7 +7,7 @@ import {
   shouldShowSTLDiagnostics,
   validateSTLPlatformConfig
 } from "./stlPlatformConfig.js?v=193";
-import { createCardCrunchSTLClient, getOrCreateDeviceId, STLClientError } from "./stlPlatformClient.js?v=197";
+import { createCardCrunchSTLClient, getOrCreateDeviceId, STLClientError } from "./stlPlatformClient.js?v=200";
 import {
   applyCloudSaveSnapshot,
   createCardCrunchSaveUpload,

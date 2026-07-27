@@ -279,7 +279,7 @@ for (const assetPath of [
   "/assets/icons/icon-192.svg",
   "/styles/main.css?v=196",
   "/platform-config.js",
-  "/src/main.js?v=198"
+  "/src/main.js?v=200"
 ]) {
   if (!html.includes(`"${assetPath}"`)) {
     throw new Error(`App-shell asset must remain root-relative for OAuth callback routes: ${assetPath}`);
@@ -524,6 +524,7 @@ const pendingSignIn = await authClient.beginSignIn();
 const authorizationUrl = new URL(pendingSignIn.authorizationUrl);
 if (authorizationUrl.origin !== "https://accounts.stlproductionz.io"
   || authorizationUrl.searchParams.get("prompt") !== "select_account"
+  || authorizationUrl.searchParams.get("provider") !== "google"
   || authorizationUrl.searchParams.get("code_challenge_method") !== "S256"
   || authorizationUrl.searchParams.get("redirect_uri") !== "https://card-crunch.vercel.app/auth/callback") {
   throw new Error("Card Crunch sign-in must use canonical STL PKCE and request Google account selection");

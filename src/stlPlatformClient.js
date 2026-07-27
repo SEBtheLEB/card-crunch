@@ -62,6 +62,7 @@ export class CardCrunchSTLClient {
     url.searchParams.set("code_challenge_method", "S256");
     url.searchParams.set("scope", [...new Set(scopes)].join(" "));
     url.searchParams.set("prompt", "select_account");
+    url.searchParams.set("provider", "google");
     return { authorizationUrl: url.toString(), state, expiresAt };
   }
 
