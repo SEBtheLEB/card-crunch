@@ -355,66 +355,38 @@
 .store-product-art {
   position: relative;
   display: grid;
-  width: clamp(70px, 19vw, 98px);
-  height: clamp(86px, 23vw, 118px);
+  width: clamp(88px, 24vw, 132px);
+  height: clamp(88px, 24vw, 132px);
   place-items: center;
   justify-self: center;
-  filter: drop-shadow(4px 6px 0 rgba(0, 0, 0, .45));
+  filter:
+    drop-shadow(0 8px 0 rgba(0, 0, 0, .28))
+    drop-shadow(0 0 12px color-mix(in srgb, var(--panel-border, #d99a1b) 35%, transparent));
 }
-.store-product-art i {
-  position: relative;
-  z-index: 3;
-  display: grid;
-  width: 58%;
-  aspect-ratio: .72;
-  place-items: center;
-  border: 3px solid #ffe169;
-  clip-path: var(--store-pixel-corners);
-  background: linear-gradient(145deg, #7f2fc1, #27104d);
-  box-shadow: inset 0 0 0 3px #2a123e, 0 0 14px rgba(208, 94, 255, .45);
-  color: #ffd64d;
-  font-family: var(--font-pixel);
-  font-size: clamp(.62rem, 3vw, 1rem);
-  font-style: normal;
-  text-shadow: 2px 2px 0 #4e2208;
-  transform: rotate(-5deg);
-}
-.store-product-art b,
-.store-product-art em {
-  position: absolute;
+.store-art-sprite {
   display: block;
-  width: 54%;
-  aspect-ratio: .72;
-  border: 2px solid rgba(255, 224, 98, .72);
-  background: color-mix(in srgb, var(--panel-start, #4d2278) 76%, #10151d);
+  width: 100%;
+  height: 100%;
+  background-image: url("/assets/store/store-items.png");
+  background-repeat: no-repeat;
+  background-position: var(--sprite-x) var(--sprite-y);
+  background-size: 400% 400%;
+  image-rendering: pixelated;
+  transform: translateZ(0);
+  transition: transform 100ms steps(3, end);
 }
-.store-product-art b { transform: translate(-13px, 2px) rotate(-11deg); }
-.store-product-art em { transform: translate(13px, 2px) rotate(9deg); }
-.store-product-art img { position: relative; z-index: 4; width: 100%; max-height: 100%; object-fit: contain; image-rendering: pixelated; }
+.store-product-card:is(.premium, .treasure, .hero-deck) .store-art-sprite {
+  animation: store-art-hover 2.8s steps(8, end) infinite;
+}
+.store-product-card:hover .store-art-sprite,
+.store-daily-hero:hover .store-art-sprite {
+  transform: translateY(-3px) scale(1.04);
+}
 
-.art-mystery-pack-gold i { background: linear-gradient(145deg, #ffc93d, #bd5d09 70%); color: #301540; }
-.art-pink-arcade-deck { width: clamp(84px, 23vw, 118px); }
-.art-bank-shield i { aspect-ratio: .83; clip-path: polygon(50% 0, 90% 16%, 84% 72%, 50% 100%, 16% 72%, 10% 16%); background: linear-gradient(145deg, #2d7fc4, #071e3a); color: #ffe46c; }
-.art-coin-drop i,
-.art-coin-pile i,
-.art-coin-pouch i,
-.art-coin-mountain i,
-.art-coin-vault i {
-  width: 50px;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 28%, #fff29e 0 8%, #ffc229 9% 45%, #b76405 46% 68%, #5f2d03 69%);
-  color: #754006;
-  box-shadow: 25px 18px 0 -5px #d98a0c, -22px 22px 0 -6px #f2ad18, 2px 36px 0 -8px #ffca32, inset 0 0 0 3px #854707, 0 0 16px rgba(255, 194, 43, .4);
+@keyframes store-art-hover {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-3px) rotate(1deg); }
 }
-.art-night-pack i { background: linear-gradient(145deg, #6785a4, #17263c); color: #e7f5ff; }
-.art-pink-pack i { background: linear-gradient(145deg, #ff9dca, #9c225b); color: #fff0f7; }
-.art-gold-pack i,
-.art-gold-deck i { background: linear-gradient(145deg, #ffe975, #a96206); color: #5c3002; }
-.art-rainbow-pack i,
-.art-prism-deck i { background: conic-gradient(#ff5b8f, #ffd653, #65e690, #5ecbff, #b67cff, #ff5b8f); color: #fff; }
-.art-flame-trail i { background: linear-gradient(145deg, #ffdb44, #d03c09 60%, #281005); color: #fff2ad; }
-.art-holo-back i { background: conic-gradient(#39dcf6, #8f79ff, #56f1b7, #39dcf6); color: #fff; }
 
 .store-product-copy { min-width: 0; }
 .store-product-copy h3 {
@@ -702,7 +674,7 @@ html[data-equipped-trail="pixel_flame"] .card-flight-trail {
   .store-product-card.coin-row { grid-template-columns: 72px minmax(0, 1fr) 92px; gap: 7px; padding: 12px 9px; }
   .store-product-card.wide { min-height: 146px; }
   .store-product-card.hero-deck { min-height: 165px; }
-  .store-product-art { width: 67px; height: 83px; }
+  .store-product-art { width: clamp(78px, 22vw, 92px); height: clamp(78px, 22vw, 92px); }
   .store-product-copy h3 { font-size: clamp(.46rem, 2.3vw, .62rem); }
   .store-product-copy p { font-size: clamp(.6rem, 2.5vw, .74rem); }
   .store-product-copy > small, .store-product-copy li { font-size: clamp(.52rem, 2.1vw, .64rem); }

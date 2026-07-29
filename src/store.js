@@ -25,26 +25,27 @@ import { getNextDailyReset, getStoreProduct, getStoreProductsForTab, STORE_TABS 
 import { storeState } from "./storeState.js?v=167";
 
 const SUIT_SYMBOLS = Object.freeze({ hearts: "\u2665", diamonds: "\u2666", clubs: "\u2663", spades: "\u2660" });
-const ART_SYMBOLS = Object.freeze({
-  "mystery-pack-purple": "?",
-  "mystery-pack-gold": "?",
-  "pink-arcade-deck": "CC",
-  "bank-shield": "\u2665",
-  "coin-drop": "\u25c9",
-  "coin-vault": "\u25c9",
-  "night-pack": "\u263e",
-  "pink-pack": "\u2665",
-  "gold-pack": "\u265b",
-  "rainbow-pack": "\u25c6",
-  "gold-deck": "\u265b",
-  "prism-deck": "\u25c6",
-  "flame-trail": "\u25b2",
-  "holo-back": "\u25c7",
-  "coin-pile": "\u25c9",
-  "coin-pouch": "\u25c9",
-  "coin-mountain": "\u2605",
-  "starter-bundle": "?",
-  "weekend-bundle": "x3"
+const ART_SPRITES = Object.freeze({
+  "mystery-pack-purple": [0, 0],
+  "mystery-pack-gold": [1, 0],
+  "pink-arcade-deck": [2, 0],
+  "coin-vault": [3, 0],
+  "bank-shield": [0, 1],
+  "coin-drop": [1, 1],
+  "night-pack": [2, 1],
+  "pink-pack": [3, 1],
+  "gold-pack": [0, 2],
+  "gold-deck": [0, 2],
+  "rainbow-pack": [1, 2],
+  "prism-deck": [1, 2],
+  "flame-trail": [2, 2],
+  "holo-back": [3, 2],
+  "coin-pile": [0, 3],
+  "coin-pouch": [1, 3],
+  "coin-crate": [2, 3],
+  "coin-mountain": [3, 3],
+  "starter-bundle": [2, 0],
+  "weekend-bundle": [0, 0]
 });
 
 const tabScrollPositions = new Map(STORE_TABS.map((tab) => [tab.id, 0]));
@@ -240,11 +241,10 @@ function renderProductCard(product, variant, wallet, collection) {
 }
 
 function renderArtwork(product) {
-  const isPinkAsset = product.artwork === "pink-arcade-deck";
+  const [column, row] = ART_SPRITES[product.artwork] ?? ART_SPRITES["mystery-pack-purple"];
   return `
     <div class="store-product-art art-${product.artwork}" aria-hidden="true">
-      ${isPinkAsset ? "<img src=\"assets/card-sets/pink_arcade/previews/full-deck-preview.png\" alt=\"\">" : `<i>${ART_SYMBOLS[product.artwork] ?? "\u2605"}</i>`}
-      <b></b><em></em>
+      <span class="store-art-sprite" style="--sprite-x:${column * 100 / 3}%;--sprite-y:${row * 100 / 3}%"></span>
     </div>
   `;
 }

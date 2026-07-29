@@ -58,6 +58,7 @@ const required = [
   "assets/icons/suits/diamond.svg",
   "assets/icons/suits/club.svg",
   "assets/icons/suits/spade.svg",
+  "assets/store/store-items.png",
   "styles/main.css",
   "styles/collection.css",
   "styles/store.css",
@@ -281,7 +282,7 @@ for (const assetPath of [
   "/assets/icons/icon-192.svg",
   "/styles/main.css?v=196",
   "/platform-config.js",
-  "/src/main.js?v=201"
+  "/src/main.js?v=202"
 ]) {
   if (!html.includes(`"${assetPath}"`)) {
     throw new Error(`App-shell asset must remain root-relative for OAuth callback routes: ${assetPath}`);
