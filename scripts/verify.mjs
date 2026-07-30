@@ -263,10 +263,10 @@ const html = await readFile(resolve(root, "index.html"), "utf8");
 const vercelConfiguration = await readFile(resolve(root, "vercel.json"), "utf8");
 const backgroundStyles = await readFile(resolve(root, "styles/main.css"), "utf8");
 if (!backgroundStyles.includes("--casino-table-bg:")
-  || !backgroundStyles.includes("repeating-linear-gradient(52deg")
+  || !backgroundStyles.includes("pixel-casino-shell-v2.png")
   || backgroundStyles.includes("pixel-casino-menu.jpg")
   || backgroundStyles.includes("pixel-casino-table.jpg")) {
-  throw new Error("The lightweight top-down felt table background is not connected to the UI");
+  throw new Error("The rendered top-down felt table background is not connected to the UI");
 }
 if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButton")) {
   throw new Error("Release UI hooks are missing");
@@ -280,9 +280,9 @@ if (
 for (const assetPath of [
   "/manifest.json",
   "/assets/icons/icon-192.svg",
-  "/styles/main.css?v=196",
+  "/styles/main.css?v=203",
   "/platform-config.js",
-  "/src/main.js?v=202"
+  "/src/main.js?v=203"
 ]) {
   if (!html.includes(`"${assetPath}"`)) {
     throw new Error(`App-shell asset must remain root-relative for OAuth callback routes: ${assetPath}`);
@@ -327,9 +327,9 @@ if (!html.includes('id="onlineDuelButton"')
 }
 if (!html.includes('data-page="modes"')
   || !html.includes('id="potsModeButton"')
-  || !html.includes('data-mode-card-art="pots"')
-  || !html.includes('data-mode-card-art="arcade"')
-  || !html.includes('data-mode-card-art="duel"')) {
+  || !html.includes("sprite-online-duel")
+  || !html.includes("sprite-endless-arcade")
+  || !html.includes('id="playHubPotSprite"')) {
   throw new Error("PLAY must open the album-style Pots, Endless Arcade, and Online Duel selector");
 }
 if (html.includes('id="matchmakingCountdown"')) {

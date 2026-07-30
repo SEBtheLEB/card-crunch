@@ -24,9 +24,9 @@
   overflow: hidden !important;
   padding: calc(8px + var(--safe-top)) calc(8px + var(--safe-right)) calc(6px + var(--safe-bottom)) calc(8px + var(--safe-left)) !important;
   background:
-    radial-gradient(circle at 50% 22%, rgba(29, 126, 86, .24), transparent 38%),
-    repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 2px, transparent 2px 6px),
-    linear-gradient(145deg, #052e23, #031b17 64%, #020d12) !important;
+    linear-gradient(rgba(1, 13, 10, .06), rgba(1, 7, 12, .22)),
+    url("../assets/backgrounds/pixel-casino-shell-v2.png") center / cover no-repeat,
+    #052e23 !important;
 }
 
 .main-menu-screen.has-app-shell::after {
@@ -35,9 +35,39 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  border: 3px solid #090e13;
-  box-shadow: inset 0 0 0 2px rgba(226, 167, 48, .68), inset 0 0 44px rgba(0,0,0,.55);
+  border: 2px solid rgba(5, 10, 15, .82);
+  box-shadow: inset 0 0 38px rgba(0,0,0,.38);
 }
+
+.shell-ui-sprite,
+.pot-ui-sprite {
+  display: block;
+  flex: 0 0 auto;
+  background-repeat: no-repeat;
+  background-position: var(--sprite-x, 0%) var(--sprite-y, 0%);
+  background-size: 400% 400%;
+  image-rendering: pixelated;
+}
+
+.shell-ui-sprite { background-image: url("../assets/ui/shell-ui-atlas.png"); }
+.pot-ui-sprite { background-image: url("../assets/ui/pot-journey-atlas.png"); }
+
+.sprite-store-pack { --sprite-x: 0%; --sprite-y: 0%; }
+.sprite-collection-box { --sprite-x: 33.333%; --sprite-y: 0%; }
+.sprite-play-cards { --sprite-x: 66.667%; --sprite-y: 0%; }
+.sprite-events-trophy { --sprite-x: 100%; --sprite-y: 0%; }
+.sprite-profile-avatar { --sprite-x: 0%; --sprite-y: 33.333%; }
+.sprite-settings-gear { --sprite-x: 33.333%; --sprite-y: 33.333%; }
+.sprite-fullscreen { --sprite-x: 66.667%; --sprite-y: 33.333%; }
+.sprite-leaderboard { --sprite-x: 100%; --sprite-y: 33.333%; }
+.sprite-online-duel { --sprite-x: 0%; --sprite-y: 66.667%; }
+.sprite-endless-arcade { --sprite-x: 33.333%; --sprite-y: 66.667%; }
+.sprite-daily-calendar { --sprite-x: 66.667%; --sprite-y: 66.667%; }
+.sprite-season-crown { --sprite-x: 100%; --sprite-y: 66.667%; }
+.sprite-extra-time { --sprite-x: 0%; --sprite-y: 100%; }
+.sprite-crunch-bonus { --sprite-x: 33.333%; --sprite-y: 100%; }
+.sprite-retry-token { --sprite-x: 66.667%; --sprite-y: 100%; }
+.sprite-safe-bank { --sprite-x: 100%; --sprite-y: 100%; }
 
 .has-app-shell .menu-shell {
   position: relative;
@@ -54,6 +84,11 @@
   min-height: var(--shell-hud-height);
   border: 2px solid #080d14;
   box-shadow: inset 0 0 0 1px #345266, 3px 4px 0 rgba(0,0,0,.68);
+}
+.has-app-shell .menu-icon-button .shell-ui-sprite {
+  width: 34px;
+  height: 34px;
+  filter: drop-shadow(0 2px 0 rgba(0,0,0,.42));
 }
 
 .has-app-shell .menu-pages {
@@ -176,6 +211,17 @@
   font: 400 clamp(.9rem, 3.8vw, 1.14rem)/1 var(--font-pixel);
   font-style: normal;
 }
+.dock-tab i.shell-ui-sprite {
+  width: 38px;
+  height: 38px;
+  min-height: 0;
+  filter: drop-shadow(0 3px 0 rgba(0,0,0,.45));
+  transition: filter 120ms ease, transform 120ms ease;
+}
+.dock-tab.is-active i.shell-ui-sprite {
+  filter: drop-shadow(0 3px 0 rgba(0,0,0,.5)) drop-shadow(0 0 7px rgba(255,218,86,.45));
+  transform: translateY(-2px) scale(1.06);
+}
 .dock-tab span:last-child {
   overflow: hidden;
   max-width: 100%;
@@ -245,7 +291,7 @@
 
 /* Play Hub */
 .play-hub-page.is-active {
-  grid-template-rows: auto minmax(238px, 1fr) auto auto !important;
+  grid-template-rows: auto minmax(292px, 1fr) auto auto !important;
   gap: clamp(7px, 1.4dvh, 12px) !important;
   overflow-y: auto;
   padding-bottom: 8px;
@@ -256,7 +302,7 @@
   overflow: hidden;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto auto auto;
-  min-height: 0;
+  min-height: 292px;
   padding: 10px 12px 12px;
   border: 3px solid #080c10;
   clip-path: polygon(9px 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% - 9px), calc(100% - 9px) 100%, 9px 100%, 0 calc(100% - 9px), 0 9px);
@@ -278,34 +324,20 @@
 .journey-hero-stage {
   position: relative;
   display: grid;
-  min-height: 118px;
+  min-height: 134px;
   place-items: center;
 }
 .journey-pot-render {
   position: relative;
-  width: clamp(130px, 39vw, 176px);
-  height: 104px;
+  width: clamp(126px, 36vw, 154px);
+  height: clamp(126px, 36vw, 154px);
   filter: drop-shadow(0 11px 0 rgba(0,0,0,.38)) drop-shadow(0 0 10px rgba(255,187,48,.22));
 }
 .journey-pot-render::before,
 .journey-pot-render::after {
-  content: "";
-  position: absolute;
-  z-index: 2;
-  left: 12%;
-  right: 12%;
-  bottom: 0;
-  height: 78%;
-  clip-path: polygon(0 0, 100% 0, 88% 100%, 12% 100%);
-  background: linear-gradient(90deg, #75430c, #d99a1b 18%, #80500f 46%, #f4c450 75%, #75430c);
+  display: none;
 }
-.journey-pot-render::after {
-  z-index: 3;
-  inset: auto 19% 12% 19%;
-  height: 53%;
-  background: linear-gradient(180deg, #32210d, #0a1118);
-  clip-path: polygon(0 0, 100% 0, 90% 100%, 10% 100%);
-}
+.journey-pot-render > .pot-ui-sprite { position: absolute; inset: 0; }
 .journey-pot-rim {
   position: absolute;
   z-index: 5;
@@ -326,16 +358,16 @@
   height: 20%;
   max-height: 49%;
   background: repeating-linear-gradient(150deg, #f4e7bc 0 8px, #2a4f6f 8px 12px);
-  transition: height .45s ease;
+  display: none;
 }
 .journey-pot-render > b {
   position: absolute;
   z-index: 6;
   left: 50%;
-  bottom: 23%;
+  bottom: 22%;
   transform: translateX(-50%);
   color: #fff1a0;
-  font: 400 1.1rem/1 var(--font-pixel);
+  font: 400 1.15rem/1 var(--font-pixel);
   text-shadow: 2px 2px 0 #382000;
 }
 .journey-pot-cards {
@@ -510,6 +542,12 @@
   width: min(100%, 158px);
   height: 96px;
 }
+.hub-mode-render {
+  width: min(100%, 142px);
+  aspect-ratio: 1;
+  justify-self: center;
+  filter: drop-shadow(0 7px 0 rgba(0,0,0,.38));
+}
 .hub-mode-art .card {
   position: absolute !important;
   left: 50%;
@@ -585,6 +623,11 @@
   text-align: left;
 }
 .event-strip-icon { color: #da9cff; font-size: 1.25rem; }
+.event-strip-icon.shell-ui-sprite {
+  width: 42px;
+  height: 42px;
+  filter: drop-shadow(0 3px 0 rgba(0,0,0,.42));
+}
 .play-hub-event-strip > span:nth-child(2) { display: grid; gap: 3px; }
 .play-hub-event-strip small { color: #c997ff; font: 400 .38rem/1 var(--font-pixel); }
 .play-hub-event-strip strong { font-size: .67rem; }
@@ -636,6 +679,11 @@
   text-align: left;
 }
 .journey-shield-strip > i { color: #62e9b1; font-style: normal; }
+.journey-shield-strip > i.shell-ui-sprite {
+  width: 38px;
+  height: 38px;
+  filter: drop-shadow(0 3px 0 rgba(0,0,0,.42));
+}
 .journey-shield-strip > span { display: grid; gap: 2px; }
 .journey-shield-strip strong { font: 400 .46rem/1 var(--font-pixel); text-transform: uppercase; }
 .journey-shield-strip small { color: #a9d7cd; font-size: .58rem; }
@@ -646,8 +694,8 @@
   overscroll-behavior: contain;
   border: 3px solid #06100d;
   background:
-    radial-gradient(circle at 50% 0, rgba(31, 139, 86, .23), transparent 32%),
-    repeating-linear-gradient(90deg, rgba(255,255,255,.012) 0 3px, transparent 3px 8px),
+    linear-gradient(rgba(2, 19, 14, .12), rgba(2, 12, 16, .3)),
+    url("../assets/backgrounds/pot-journey-table-v2.png") top center / 100% auto repeat-y,
     #06251b;
   box-shadow: inset 0 0 0 2px #285644, inset 0 0 32px rgba(0,0,0,.55);
 }
@@ -670,8 +718,8 @@
 .journey-map {
   position: relative;
   display: grid;
-  gap: 42px;
-  padding: 20px 12px 120px;
+  gap: 58px;
+  padding: 26px 12px 130px;
 }
 .journey-chapter {
   display: grid;
@@ -712,7 +760,7 @@
   z-index: 2;
   display: grid;
   width: 132px;
-  min-height: 144px;
+  min-height: 174px;
   justify-items: center;
   gap: 5px;
   margin-inline: auto;
@@ -744,9 +792,14 @@
   --fill: 5%;
   position: relative;
   display: block;
-  width: 112px;
-  height: 91px;
+  width: 118px;
+  height: 118px;
   filter: drop-shadow(0 8px 0 rgba(0,0,0,.4)) drop-shadow(0 0 8px rgba(var(--pot-accent-rgb),.2));
+}
+.pixel-pot-render > .pot-ui-sprite {
+  position: absolute;
+  inset: 0;
+  filter: saturate(.96) brightness(.96);
 }
 .pixel-pot-body {
   position: absolute;
@@ -839,7 +892,7 @@
 .journey-pot-copy > strong {
   position: absolute;
   z-index: 6;
-  top: 43px;
+  top: 53px;
   color: #fff3ad;
   font: 400 .75rem/1 var(--font-pixel);
   text-shadow: 2px 2px 0 #3a2206;
@@ -934,7 +987,7 @@
 .pot-sheet-kicker { color: var(--pot-accent); font: 400 .46rem/1 var(--font-pixel); }
 .pot-sheet-card > h2 { color: #fff0a0; font: 400 1.15rem/1 var(--font-pixel); text-shadow: 3px 3px 0 #3c2404; }
 .pot-sheet-render { display: grid; min-height: 118px; place-items: center; }
-.pixel-pot-render.is-large { width: 146px; height: 118px; transform: scale(1.16); transform-origin: center; }
+.pixel-pot-render.is-large { width: 154px; height: 154px; transform: scale(1.04); transform-origin: center; }
 .pot-sheet-modifier {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
@@ -1085,6 +1138,11 @@
 }
 .prep-boosters button[aria-pressed="true"] { border-color:#45cb6b; box-shadow:inset 0 0 0 2px #45cb6b,0 0 12px rgba(69,203,107,.25); }
 .prep-boosters button i { color:#ffe16e; font-size:1.2rem; font-style:normal; }
+.prep-boosters button i.shell-ui-sprite {
+  width: 46px;
+  height: 46px;
+  filter: drop-shadow(0 4px 0 rgba(0,0,0,.38));
+}
 .prep-boosters button strong { font:400 .38rem/1.3 var(--font-pixel); text-transform:uppercase; }
 .prep-boosters button small { font-size:.5rem; }
 .prep-boosters button em {
@@ -1124,6 +1182,11 @@
 .event-weekly-card { background:linear-gradient(135deg,#493411,#102225); box-shadow:inset 0 0 0 2px #bd8c24,3px 4px 0 #02060b; }
 .event-limited-card { background:linear-gradient(135deg,#4a1625,#182130); box-shadow:inset 0 0 0 2px #bd4964,3px 4px 0 #02060b; }
 .event-card-icon { grid-area:icon; display:grid; place-items:center; color:#ffe375; font-size:1.8rem; }
+.event-card-icon .shell-ui-sprite {
+  width: 52px;
+  height: 52px;
+  filter: drop-shadow(0 4px 0 rgba(0,0,0,.4));
+}
 .event-feature-card > div { grid-area:copy; display:grid; gap:3px; }
 .event-feature-card small { color:#b78cff; font:400 .36rem/1 var(--font-pixel); text-transform:uppercase; }
 .event-feature-card h3 { margin:0; color:#fff1aa; font:400 .56rem/1.2 var(--font-pixel); text-transform:uppercase; }
@@ -1225,8 +1288,9 @@ button:focus-visible,
 @media (max-width: 370px), (max-height: 760px) {
   :root { --shell-hud-height:50px; --shell-dock-height:82px; }
   .has-app-shell .menu-shell { gap:4px !important; }
-  .play-hub-page.is-active { grid-template-rows:auto minmax(220px,1fr) auto auto !important; gap:6px !important; }
-  .journey-hero-stage { min-height:80px; }
+  .play-hub-page.is-active { grid-template-rows:auto minmax(250px,1fr) auto auto !important; gap:6px !important; }
+  .play-hub-hero { min-height:250px; }
+  .journey-hero-stage { min-height:96px; }
   .journey-pot-render {
     transform:scale(.7);
     transform-origin:center top;

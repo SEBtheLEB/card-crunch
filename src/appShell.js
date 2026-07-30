@@ -204,6 +204,7 @@ export function initializeAppShell({ ui, game, bindAction }) {
     refs.hubBestScore.textContent = `Best ${formatCompactNumber(Math.max(pot.progress ?? 0, game.state.bestScore ?? 0))}`;
     refs.hubProgressFill.style.width = `${progress * 100}%`;
     refs.hubPotFill.style.height = `${Math.max(10, progress * 100)}%`;
+    applySpriteCell(refs.hubPotSprite, getPotSpriteCell(pot, { current: true }));
     refs.hubContinueLabel.textContent = `${pot.progress > 0 ? "Continue" : "Start"} Pot ${pot.id}`;
     refreshPlayHubEvent();
   }
@@ -314,7 +315,7 @@ export function initializeAppShell({ ui, game, bindAction }) {
       const rewardParts = [`${formatCompactNumber(challenge.reward.coins ?? 0)} \u25C6`];
       if (challenge.reward.booster) rewardParts.push("+ Booster");
       article.innerHTML = `
-        <span class="event-card-icon" aria-hidden="true">${challenge.icon}</span>
+        <span class="event-card-icon" aria-hidden="true"><i class="shell-ui-sprite ${getEventSpriteClass(challenge)}"></i></span>
         <div><small>${getCadenceLabel(challenge.cadence)}</small><h3>${challenge.title}</h3><p>${challenge.description}</p></div>
         <span class="event-card-progress"><i><b style="width:${Math.min(100, challenge.progress / challenge.target * 100)}%"></b></i><em>${formatCompactNumber(challenge.progress)} / ${formatCompactNumber(challenge.target)}</em></span>
         <strong class="event-reward">${rewardParts.join(" ")}</strong>
@@ -483,6 +484,7 @@ function collectShellElements(root) {
     hubBestScore: root.querySelector("#playHubBestScore"),
     hubProgressFill: root.querySelector("#playHubProgressFill"),
     hubPotFill: root.querySelector("#playHubPotFill"),
+    hubPotSprite: root.querySelector("#playHubPotSprite"),
     hubContinueLabel: root.querySelector("#playHubContinueLabel"),
     playHubEventTitle: root.querySelector("#playHubEventTitle"),
     playHubEventReward: root.querySelector("#playHubEventReward"),
@@ -561,7 +563,7 @@ function createJourneyNode(pot, index, pots, currentPot, bindAction, onOpen) {
   button.innerHTML = `
     <span class="journey-route-link" aria-hidden="true"></span>
     ${current ? '<em class="journey-you-are-here">You are here</em>' : ""}
-    ${createPotRenderMarkup(pot, progress)}
+    ${createPotRenderMarkup(pot, progress, { spriteState: state })}
     <span class="journey-pot-copy">
       <strong>${pot.id}</strong>
       <small>${pot.title}</small>
@@ -572,20 +574,52 @@ function createJourneyNode(pot, index, pots, currentPot, bindAction, onOpen) {
   return button;
 }
 
-function createPotRenderMarkup(pot, progress, { large = false } = {}) {
+function createPotRenderMarkup(pot, progress, { large = false, spriteState = "" } = {}) {
   const stateClass = pot.complete ? "is-filled" : progress > 0 ? "is-progressed" : "";
+  const sprite = getPotSpriteCell(pot, { spriteState });
   return `
     <span class="pixel-pot-render ${stateClass}${large ? " is-large" : ""}" style="--fill:${Math.max(5, progress * 100)}%;--pot-accent:${pot.accent};--pot-accent-rgb:${pot.accentRgb}">
-      <i class="pixel-pot-lid"></i>
-      <i class="pixel-pot-rim"></i>
-      <i class="pixel-pot-body"></i>
-      <i class="pixel-pot-fill"></i>
-      <i class="pixel-pot-card card-one"></i>
-      <i class="pixel-pot-card card-two"></i>
-      <i class="pixel-pot-card card-three"></i>
+      <i class="pot-ui-sprite" style="${getSpriteStyle(sprite)}"></i>
       ${pot.complete ? '<b class="pixel-pot-check">&#10003;</b>' : ""}
     </span>
   `;
+}
+
+function getPotSpriteCell(pot, { current = false, spriteState = "" } = {}) {
+  if (!pot) return [0, 0];
+  if (spriteState === "locked") return [1, 0];
+  if (pot.complete) return [3, 0];
+  const modifier = pot.gameplayModifier ?? {};
+  const allowedSuits = modifier.allowedSuits ?? [];
+  if (allowedSuits.includes("hearts")) return [0, 1];
+  if (allowedSuits.includes("diamonds")) return [1, 1];
+  if (allowedSuits.includes("clubs")) return [2, 1];
+  if (allowedSuits.includes("spades")) return [3, 1];
+  if (modifier.turnSeconds) return [0, 2];
+  if (modifier.allowedMatchTypes?.some((type) => type === "add" || type === "subtract")) return [1, 2];
+  if (modifier.allowedMatchTypes?.includes("sequence") || /straight|sequence|run/i.test(pot.title)) return [2, 2];
+  if (modifier.minBankStreak || modifier.minimumBankCash || /bank|vault/i.test(pot.title)) return [3, 2];
+  if (/jackpot/i.test(pot.title) || pot.chapter === "Jackpot Rules") return [0, 3];
+  if (pot.id >= 55 || pot.chapter === "Master Tables") return [1, 3];
+  if ((pot.progress ?? 0) > 0 || current) return [2, 0];
+  return [0, 0];
+}
+
+function getEventSpriteClass(challenge) {
+  if (challenge?.cadence === "daily") return "sprite-daily-calendar";
+  if (challenge?.cadence === "weekly") return "sprite-season-crown";
+  return "sprite-events-trophy";
+}
+
+function getSpriteStyle([column, row]) {
+  return `--sprite-x:${column * 100 / 3}%;--sprite-y:${row * 100 / 3}%`;
+}
+
+function applySpriteCell(element, cell) {
+  if (!element) return;
+  const [column, row] = cell;
+  element.style.setProperty("--sprite-x", `${column * 100 / 3}%`);
+  element.style.setProperty("--sprite-y", `${row * 100 / 3}%`);
 }
 
 function renderCardFan(stage, cards, cardClass) {

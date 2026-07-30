@@ -19,11 +19,9 @@
   --bg-1: #0a0f24;
   --bg-2: #121a3a;
   --casino-table-bg:
-    radial-gradient(82% 58% at 50% 38%, rgba(43, 148, 97, .2), transparent 72%),
-    radial-gradient(120% 86% at 50% 46%, transparent 42%, rgba(1, 15, 12, .48) 100%),
-    repeating-linear-gradient(52deg, rgba(255, 255, 255, .018) 0 2px, transparent 2px 6px),
-    repeating-linear-gradient(-52deg, rgba(0, 0, 0, .055) 0 1px, transparent 1px 6px),
-    linear-gradient(180deg, #0b563d 0%, #08432f 48%, #05281f 100%);
+    linear-gradient(rgba(1, 18, 13, .05), rgba(1, 9, 13, .2)),
+    url("../assets/backgrounds/pixel-casino-shell-v2.png") center / cover no-repeat,
+    #063526;
 
   /* Glass panels */
   --glass: rgba(16, 22, 48, .58);
