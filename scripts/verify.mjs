@@ -280,9 +280,9 @@ if (
 for (const assetPath of [
   "/manifest.json",
   "/assets/icons/icon-192.svg",
-  "/styles/main.css?v=203",
+  "/styles/main.css?v=204",
   "/platform-config.js",
-  "/src/main.js?v=203"
+  "/src/main.js?v=204"
 ]) {
   if (!html.includes(`"${assetPath}"`)) {
     throw new Error(`App-shell asset must remain root-relative for OAuth callback routes: ${assetPath}`);

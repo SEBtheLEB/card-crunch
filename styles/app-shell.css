@@ -1640,3 +1640,515 @@ html.reduce-motion .launch-auth-gate {
     transition-duration:1ms !important;
   }
 }
+
+/* ==========================================================================
+   Build 204: one cabinet language across every top-level page
+   ========================================================================== */
+
+.control-ui-sprite {
+  display: block;
+  flex: 0 0 auto;
+  background-image: url("../assets/ui/game-controls-atlas.png");
+  background-repeat: no-repeat;
+  background-position: var(--control-x, 0%) var(--control-y, 0%);
+  background-size: 400% 400%;
+  image-rendering: pixelated;
+}
+
+.sprite-coin-pouch { --control-x: 0%; --control-y: 0%; }
+.sprite-lives { --control-x: 33.333%; --control-y: 0%; }
+.sprite-timer { --control-x: 66.667%; --control-y: 0%; }
+.sprite-streak { --control-x: 100%; --control-y: 0%; }
+.sprite-bank-vault { --control-x: 0%; --control-y: 33.333%; }
+.sprite-card-crusher { --control-x: 33.333%; --control-y: 33.333%; }
+.sprite-multiplier { --control-x: 66.667%; --control-y: 33.333%; }
+.sprite-rulebook { --control-x: 100%; --control-y: 33.333%; }
+.sprite-back { --control-x: 0%; --control-y: 66.667%; }
+.sprite-casino-home { --control-x: 33.333%; --control-y: 66.667%; }
+.sprite-play-emblem { --control-x: 66.667%; --control-y: 66.667%; }
+.sprite-lock { --control-x: 100%; --control-y: 66.667%; }
+.sprite-daily-pack { --control-x: 0%; --control-y: 100%; }
+.sprite-mystery-pack { --control-x: 33.333%; --control-y: 100%; }
+.sprite-coin-chest { --control-x: 66.667%; --control-y: 100%; }
+.sprite-cloud-profile { --control-x: 100%; --control-y: 100%; }
+
+.has-app-shell .menu-shell {
+  gap: 7px !important;
+}
+
+.has-app-shell .menu-topbar {
+  min-height: var(--shell-hud-height);
+  padding: 4px;
+  border: 3px solid #050a0f;
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, calc(100% - 8px) 3px, calc(100% - 3px) 3px, calc(100% - 3px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 3px) calc(100% - 8px), calc(100% - 3px) calc(100% - 3px), calc(100% - 8px) calc(100% - 3px), calc(100% - 8px) 100%, 8px 100%, 8px calc(100% - 3px), 3px calc(100% - 3px), 3px calc(100% - 8px), 0 calc(100% - 8px), 0 8px, 3px 8px, 3px 3px, 8px 3px);
+  background:
+    linear-gradient(90deg, rgba(255,216,87,.08), transparent 24% 76%, rgba(255,216,87,.05)),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.02) 0 3px, transparent 3px 7px),
+    linear-gradient(180deg, #123c31, #08231f);
+  box-shadow: inset 0 0 0 2px #b97d1c, inset 0 3px 0 rgba(255,238,150,.15), 4px 5px 0 rgba(0,0,0,.72);
+}
+
+.menu-topbar .menu-chip {
+  min-height: 44px;
+  padding: 3px 8px 3px 3px;
+  border-right-color: rgba(255,218,91,.2);
+}
+
+.menu-topbar .chip-icon {
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border: 0;
+  color: transparent;
+  background-color: transparent;
+  background-image: url("../assets/ui/game-controls-atlas.png");
+  background-repeat: no-repeat;
+  background-size: 400% 400%;
+  background-position: 0% 0%;
+  box-shadow: none;
+  filter: drop-shadow(0 3px 0 rgba(0,0,0,.42));
+  image-rendering: pixelated;
+}
+
+.menu-topbar .menu-chip strong {
+  color: #fff0a4;
+  font-size: clamp(.69rem, 2.95vw, .94rem);
+}
+
+.menu-topbar .menu-chip small {
+  color: #a8d6c7;
+}
+
+.menu-chip-add {
+  width: 22px;
+  height: 22px;
+  border-color: #04150d;
+  background: linear-gradient(180deg, #7cf5a0, #27b967);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.34), 2px 3px 0 #020805;
+}
+
+.menu-topbar-actions {
+  align-items: center;
+  padding-left: 5px;
+}
+
+.menu-topbar .menu-icon-button {
+  display: grid;
+  width: 38px;
+  min-height: 44px;
+  place-items: center;
+  border-left: 1px solid rgba(255,219,101,.12);
+}
+
+.has-app-shell .menu-icon-button .shell-ui-sprite {
+  width: 35px;
+  height: 35px;
+}
+
+.menu-topbar .menu-icon-button:not(:disabled):active {
+  transform: translateY(2px) scale(.92);
+  transform-origin: center;
+  filter: brightness(1.22);
+}
+
+.shell-page-heading {
+  min-height: 48px;
+  padding: 5px 7px 5px 10px;
+  border-left: 4px solid #e3a82c;
+  background:
+    linear-gradient(90deg, rgba(255,212,79,.08), transparent 55%),
+    linear-gradient(180deg, rgba(12,42,51,.92), rgba(7,25,36,.86));
+  box-shadow: inset 0 -1px 0 rgba(88,216,226,.2);
+}
+
+.shell-page-heading small {
+  color: #65e5f5;
+}
+
+.shell-page-heading h2 {
+  font-size: clamp(.94rem, 4.35vw, 1.28rem);
+}
+
+.shell-header-action,
+.journey-info-button,
+.journey-back-button {
+  position: relative;
+  overflow: hidden;
+  width: 42px;
+  height: 42px;
+  border: 2px solid #050a10;
+  clip-path: polygon(7px 0, calc(100% - 7px) 0, calc(100% - 7px) 3px, calc(100% - 3px) 3px, calc(100% - 3px) 7px, 100% 7px, 100% calc(100% - 7px), calc(100% - 3px) calc(100% - 7px), calc(100% - 3px) 100%, 7px 100%, 7px calc(100% - 3px), 3px calc(100% - 3px), 3px calc(100% - 7px), 0 calc(100% - 7px), 0 7px, 3px 7px, 3px 3px, 7px 3px);
+  color: transparent;
+  background-color: #10263a;
+  background-image: url("../assets/ui/game-controls-atlas.png");
+  background-repeat: no-repeat;
+  background-size: 400% 400%;
+  box-shadow: inset 0 0 0 1px #42647a, 2px 3px 0 #02060b;
+  image-rendering: pixelated;
+}
+
+.shell-header-action,
+.journey-info-button {
+  background-position: 100% 33.333%;
+}
+
+.journey-back-button {
+  background-position: 0% 66.667%;
+}
+
+.shell-header-action:not(:disabled):active,
+.journey-info-button:not(:disabled):active,
+.journey-back-button:not(:disabled):active {
+  transform: translateY(2px) scale(.94);
+  transform-origin: center;
+  filter: brightness(1.2);
+}
+
+.play-hub-page.is-active {
+  grid-template-rows: auto minmax(286px, 1fr) auto auto !important;
+}
+
+.play-hub-hero {
+  min-height: 286px;
+  padding: 8px 11px 11px;
+  border: 4px solid #04090d;
+  background:
+    radial-gradient(circle at 50% 32%, rgba(255,204,67,.2), transparent 30%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.024) 0 3px, transparent 3px 9px),
+    linear-gradient(180deg, #15513a, #082720 74%);
+  box-shadow: inset 0 0 0 2px #e5a72b, inset 0 0 0 5px #17412f, 4px 5px 0 #02070a;
+}
+
+.play-hub-hero::after {
+  content: "MAIN JOURNEY";
+  position: absolute;
+  top: 8px;
+  left: 9px;
+  z-index: 4;
+  padding: 5px 7px 4px;
+  border: 2px solid #392000;
+  background: linear-gradient(180deg, #ffe278, #c97b10);
+  box-shadow: 2px 2px 0 rgba(0,0,0,.5);
+  color: #2b1700;
+  font: 400 .36rem/1 var(--font-pixel);
+}
+
+.journey-hero-stage {
+  min-height: 126px;
+}
+
+.journey-pot-render {
+  width: clamp(120px, 34vw, 150px);
+  height: clamp(120px, 34vw, 150px);
+}
+
+.play-hub-hero-copy {
+  position: relative;
+  gap: 3px;
+  padding-top: 4px;
+}
+
+.play-hub-hero-copy > strong {
+  font-size: clamp(1.02rem, 4.7vw, 1.38rem);
+}
+
+.hub-progress-block > i {
+  height: 12px;
+  border-color: #020805;
+  background: #03100c;
+  box-shadow: inset 0 2px 0 rgba(0,0,0,.7);
+}
+
+.hub-progress-block > i > b {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 10px, rgba(3,48,22,.26) 10px 13px),
+    linear-gradient(90deg, #45d96e, #f0d54c);
+  box-shadow: 0 0 8px rgba(85,232,115,.36);
+}
+
+.hub-continue-button {
+  position: relative;
+  min-height: 45px;
+  padding: 0 42px 0 12px;
+  border: 3px solid #3a2100;
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, calc(100% - 8px) 3px, calc(100% - 3px) 3px, calc(100% - 3px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 3px) calc(100% - 8px), calc(100% - 3px) 100%, 8px 100%, 8px calc(100% - 3px), 3px calc(100% - 3px), 3px calc(100% - 8px), 0 calc(100% - 8px), 0 8px, 3px 8px, 3px 3px, 8px 3px);
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.16) 0 9px, transparent 9px 18px),
+    linear-gradient(180deg, #ffe46e, #e9930e);
+  box-shadow: inset 0 0 0 2px #fff1a2, 0 5px 0 #633800;
+}
+
+.hub-continue-button::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 36px;
+  aspect-ratio: 1;
+  translate: 0 -50%;
+  background-image: url("../assets/ui/game-controls-atlas.png");
+  background-repeat: no-repeat;
+  background-size: 400% 400%;
+  background-position: 66.667% 66.667%;
+  image-rendering: pixelated;
+}
+
+.play-hub-secondary-grid {
+  gap: 9px;
+}
+
+.hub-mode-tile {
+  border: 4px solid #04080d;
+  clip-path: polygon(9px 0, calc(100% - 9px) 0, calc(100% - 9px) 3px, calc(100% - 3px) 3px, calc(100% - 3px) 9px, 100% 9px, 100% calc(100% - 9px), calc(100% - 3px) calc(100% - 9px), calc(100% - 3px) 100%, 9px 100%, 9px calc(100% - 3px), 3px calc(100% - 3px), 3px calc(100% - 9px), 0 calc(100% - 9px), 0 9px, 3px 9px, 3px 3px, 9px 3px);
+}
+
+.hub-duel-tile {
+  background:
+    radial-gradient(circle at 18% 45%, rgba(93,224,255,.18), transparent 34%),
+    linear-gradient(100deg, #123b62 0 42%, #0b1a2b 50%, #571a49 100%);
+  box-shadow: inset 0 0 0 2px #59d2f0, inset 0 -5px 0 #bb3a79, 4px 5px 0 #02070b;
+}
+
+.hub-arcade-tile {
+  background:
+    radial-gradient(circle at 17% 45%, rgba(236,106,255,.22), transparent 33%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.03) 0 3px, transparent 3px 10px),
+    linear-gradient(155deg, #512379, #17112e);
+}
+
+.hub-mode-tile:not(:disabled):active,
+.play-hub-event-strip:not(:disabled):active,
+.play-hub-hero:not(:disabled):active {
+  transform: translateY(3px) scale(.975);
+  transform-origin: center;
+  filter: brightness(1.16);
+}
+
+.play-hub-event-strip {
+  min-height: 54px;
+  border: 3px solid #070812;
+  clip-path: polygon(7px 0, calc(100% - 7px) 0, calc(100% - 7px) 3px, calc(100% - 3px) 3px, calc(100% - 3px) 7px, 100% 7px, 100% calc(100% - 7px), calc(100% - 3px) calc(100% - 7px), calc(100% - 3px) 100%, 7px 100%, 7px calc(100% - 3px), 3px calc(100% - 3px), 3px calc(100% - 7px), 0 calc(100% - 7px), 0 7px, 3px 7px, 3px 3px, 7px 3px);
+  background:
+    linear-gradient(90deg, rgba(188,101,255,.18), transparent 38%),
+    linear-gradient(90deg, #3c225e, #14233d);
+  box-shadow: inset 0 0 0 2px #8f65ce, 3px 4px 0 #02060b;
+}
+
+.journey-page-header {
+  padding: 3px;
+  border-bottom: 2px solid rgba(230,174,54,.22);
+  background: linear-gradient(90deg, rgba(230,174,54,.08), transparent 32% 68%, rgba(76,216,242,.06));
+}
+
+.journey-shield-strip {
+  min-height: 46px;
+  border: 3px solid #06120f;
+  clip-path: polygon(7px 0, calc(100% - 7px) 0, calc(100% - 7px) 3px, calc(100% - 3px) 3px, calc(100% - 3px) 7px, 100% 7px, 100% calc(100% - 7px), calc(100% - 3px) calc(100% - 7px), calc(100% - 3px) 100%, 7px 100%, 7px calc(100% - 3px), 3px calc(100% - 3px), 3px calc(100% - 7px), 0 calc(100% - 7px), 0 7px, 3px 7px, 3px 3px, 7px 3px);
+  background:
+    linear-gradient(90deg, rgba(90,238,180,.13), transparent 55%),
+    linear-gradient(180deg, #12483a, #0a2925);
+  box-shadow: inset 0 0 0 2px #2db893, 3px 3px 0 #020805;
+}
+
+.journey-shield-strip > i.shell-ui-sprite {
+  width: 42px;
+  height: 42px;
+}
+
+.journey-chapter > header {
+  min-height: 35px;
+  padding: 7px 10px;
+  border-block: 2px solid rgba(227,171,53,.28);
+  background: linear-gradient(90deg, rgba(12,48,38,.9), rgba(7,27,28,.72));
+}
+
+.journey-pot-copy {
+  min-width: 104px;
+  padding: 7px 8px;
+  border: 2px solid #050b0f;
+  background: rgba(5,19,24,.86);
+  box-shadow: inset 0 0 0 1px rgba(77,207,215,.22), 2px 3px 0 rgba(0,0,0,.54);
+}
+
+.journey-pot-node.is-current .journey-pot-copy {
+  border-color: #7c4c0b;
+  background: rgba(47,37,10,.9);
+  box-shadow: inset 0 0 0 1px #e6ae36, 0 0 10px rgba(255,205,77,.24);
+}
+
+.journey-pot-node.is-complete .journey-pot-copy,
+.journey-pot-node.is-cleared .journey-pot-copy {
+  background: rgba(8,49,34,.9);
+}
+
+.journey-pot-node.is-locked .journey-pot-copy {
+  opacity: .74;
+  background: rgba(8,15,22,.9);
+}
+
+.event-feature-card,
+.season-progress-card,
+.prep-deck-panel,
+.prep-modifier-card,
+.prep-target-grid,
+.prep-boosters,
+.pot-sheet-card {
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, calc(100% - 8px) 3px, calc(100% - 3px) 3px, calc(100% - 3px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 3px) calc(100% - 8px), calc(100% - 3px) calc(100% - 3px), calc(100% - 8px) calc(100% - 3px), calc(100% - 8px) 100%, 8px 100%, 8px calc(100% - 3px), 3px calc(100% - 3px), 3px calc(100% - 8px), 0 calc(100% - 8px), 0 8px, 3px 8px, 3px 3px, 8px 3px);
+}
+
+.event-feature-card {
+  border-width: 3px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 3px 4px 0 rgba(0,0,0,.68);
+}
+
+.prep-deck-panel,
+.prep-modifier-card,
+.prep-boosters {
+  border: 3px solid #050a10;
+  box-shadow: inset 0 0 0 2px #355b68, 3px 4px 0 rgba(0,0,0,.65);
+}
+
+.prep-target-grid {
+  overflow: hidden;
+  border: 3px solid #050a10;
+  background: #0b1e2c;
+  box-shadow: inset 0 0 0 2px #30516a, 3px 4px 0 rgba(0,0,0,.65);
+}
+
+.prep-target-grid article {
+  border: 0;
+  border-left: 1px solid rgba(106,193,217,.18);
+  background: transparent;
+  box-shadow: none;
+}
+
+.prep-target-grid article:first-child {
+  border-left: 0;
+}
+
+.prep-boosters button {
+  border: 3px solid #050910;
+  clip-path: polygon(7px 0, calc(100% - 7px) 0, calc(100% - 7px) 3px, calc(100% - 3px) 3px, calc(100% - 3px) 7px, 100% 7px, 100% calc(100% - 7px), calc(100% - 3px) calc(100% - 7px), calc(100% - 3px) 100%, 7px 100%, 7px calc(100% - 3px), 3px calc(100% - 3px), 3px calc(100% - 7px), 0 calc(100% - 7px), 0 7px, 3px 7px, 3px 3px, 7px 3px);
+  box-shadow: inset 0 0 0 1px #4b6680, 0 4px 0 #03060b;
+}
+
+.prep-boosters button[aria-pressed="true"] {
+  border-color: #634007;
+  box-shadow: inset 0 0 0 2px #f2c64c, 0 4px 0 #3a2403, 0 0 12px rgba(255,211,78,.35);
+}
+
+.prep-boosters button:not(:disabled):active,
+.prep-play-button:not(:disabled):active,
+.pot-sheet-play:not(:disabled):active {
+  transform: translateY(3px) scale(.96);
+  transform-origin: center;
+  filter: brightness(1.15);
+}
+
+.prep-play-button,
+.pot-sheet-play {
+  position: relative;
+  min-height: 52px;
+  padding-right: 54px;
+  border: 3px solid #2e1b00;
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, calc(100% - 8px) 3px, calc(100% - 3px) 3px, calc(100% - 3px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 3px) calc(100% - 8px), calc(100% - 3px) 100%, 8px 100%, 8px calc(100% - 3px), 3px calc(100% - 3px), 3px calc(100% - 8px), 0 calc(100% - 8px), 0 8px, 3px 8px, 3px 3px, 8px 3px);
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.15) 0 9px, transparent 9px 18px),
+    linear-gradient(180deg, #ffeb78, #e79a12);
+  box-shadow: inset 0 0 0 2px #fff1a5, 0 6px 0 #593400;
+}
+
+.prep-play-button::after,
+.pot-sheet-play::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 40px;
+  aspect-ratio: 1;
+  translate: 0 -50%;
+  background-image: url("../assets/ui/game-controls-atlas.png");
+  background-repeat: no-repeat;
+  background-size: 400% 400%;
+  background-position: 66.667% 66.667%;
+  image-rendering: pixelated;
+}
+
+.card-table-dock {
+  min-height: var(--shell-dock-height);
+  padding: 4px 3px calc(4px + var(--safe-bottom));
+  border: 3px solid #03070c;
+  border-top-color: #9c6415;
+  background:
+    linear-gradient(180deg, rgba(255,220,100,.08) 0 4px, transparent 4px),
+    linear-gradient(180deg, #132d42, #071522);
+  box-shadow: inset 0 2px 0 #e3ae3d, 0 -5px 16px rgba(0,0,0,.45);
+}
+
+.dock-tab {
+  grid-template-rows: 38px auto;
+  gap: 4px;
+  min-height: 72px;
+  padding: 5px 2px;
+}
+
+.dock-tab i.shell-ui-sprite {
+  width: 42px;
+  height: 42px;
+}
+
+.dock-tab span:last-child {
+  min-height: 10px;
+  font-size: clamp(.4rem, 1.72vw, .5rem);
+}
+
+.dock-tab.is-active {
+  background:
+    linear-gradient(180deg, rgba(80,232,128,.22), rgba(12,78,50,.36));
+  box-shadow: inset 0 3px 0 #63e5ff, inset 0 0 0 1px rgba(255,217,82,.16);
+}
+
+.dock-tab:not(:disabled):active {
+  transform: translateY(3px) scale(.94);
+  transform-origin: center bottom;
+}
+
+.dock-play-tab {
+  grid-template-rows: 45px auto;
+  border: 3px solid #07100b;
+  background: linear-gradient(180deg, #1a7142, #0a3524);
+  box-shadow: inset 0 3px 0 #5ae07a, inset 0 0 0 2px #b98427;
+}
+
+.dock-play-tab.is-active {
+  background: linear-gradient(180deg, #28a453, #0d5b31);
+  box-shadow: inset 0 3px 0 #91ff8b, inset 0 0 0 2px #f0c750, 0 -5px 16px rgba(51,214,94,.22);
+}
+
+@media (max-width: 370px), (max-height: 760px) {
+  .has-app-shell .menu-shell {
+    gap: 4px !important;
+  }
+
+  .menu-topbar .chip-icon {
+    width: 33px;
+    height: 33px;
+  }
+
+  .play-hub-page.is-active {
+    grid-template-rows: auto minmax(252px, 1fr) auto auto !important;
+  }
+
+  .play-hub-hero {
+    min-height: 252px;
+  }
+
+  .journey-hero-stage {
+    min-height: 100px;
+  }
+
+  .dock-tab i.shell-ui-sprite {
+    width: 37px;
+    height: 37px;
+  }
+}

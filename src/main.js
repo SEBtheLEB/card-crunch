@@ -17,7 +17,7 @@ import { initializeStore } from "./store.js?v=202";
 import { initializeTutorial } from "./tutorial.js?v=164";
 import { initializeSTLPlatformAccount, installSTLCallbackListener } from "./stlPlatform.js?v=201";
 import { initializeMultiplayer } from "./multiplayer.js?v=196";
-import { initializeAppShell } from "./appShell.js?v=203";
+import { initializeAppShell } from "./appShell.js?v=204";
 import { initializeLaunchGate } from "./launchGate.js?v=198";
 
 initializeTheme();
