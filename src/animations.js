@@ -3,7 +3,7 @@ import {
   hideCrunchSkipText,
   isCrunchSkipRequested,
   showCrunchSkipText
-} from "./crunchCutscene.js?v=189";
+} from "./crunchCutscene.js?v=196";
 import { playGameSfx } from "./audio.js?v=164";
 import { formatCompactNumber } from "./format.js?v=164";
 
@@ -229,6 +229,7 @@ export async function animateSelectionResolve({
       });
       fullHandElements.forEach((card) => {
         card.classList.remove("card-selected", "resolve-selected-card", "resolve-full-hand-card", "is-vibrating");
+        card.classList.add("is-full-hand-powered");
       });
       shell?.classList.remove("resolve-full-hand");
       clearSpotlight();
@@ -281,7 +282,7 @@ export async function animateSelectionResolve({
     }
   } finally {
     clearSpotlight();
-    selectedHandCards.forEach((card) => card?.classList.remove("resolve-full-hand-card"));
+    selectedHandCards.forEach((card) => card?.classList.remove("resolve-full-hand-card", "is-full-hand-powered"));
     document.querySelectorAll(".game-shell.resolve-full-hand, .tutorial-page.resolve-full-hand")
       .forEach((shell) => shell.classList.remove("resolve-full-hand"));
     if (!retainConsumedSources) {

@@ -1,5 +1,5 @@
 import { drawCards, shuffle, createDeck } from "./deck.js?v=164";
-import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=164";
+import { calculateCrunchScore, evaluateStackAdd, getSelectionMultiplier } from "./scoring.js?v=201";
 import {
   ARCADE_CONFIG,
   ARCADE_MODE,
@@ -9,10 +9,10 @@ import {
   isArcadeMode,
   isPowerCard,
   resolveArcadeCrunch
-} from "./arcadeMode.js?v=164";
-import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=164";
-import { createCardCrunchInteraction, createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=189";
-import { ensurePlayableRound } from "./handSafety.js?v=164";
+} from "./arcadeMode.js?v=196";
+import { createDefaultPots, getTargetForLevel, isPotUnlocked } from "./progression.js?v=196";
+import { createCardCrunchInteraction, createCrunchBankCounter, playBustCutin, playCrunchEntryExplanation, playCrunchTotalExplanation, playFullHandPrelude, resetCrunchSkipRequest } from "./crunchCutscene.js?v=196";
+import { ensurePlayableRound } from "./handSafety.js?v=196";
 import { clearRunSave, consumeShieldToken, grantShieldToken, hasShieldToken } from "./save.js?v=164";
 import { formatCompactNumber } from "./format.js?v=164";
 import { adManager } from "./ads.js?v=164";
@@ -24,7 +24,9 @@ import { storeState } from "./storeState.js?v=167";
 import { getRoundDealDuration } from "./dealTiming.js?v=164";
 import { MULTIPLAYER_MATCH_SECONDS, MULTIPLAYER_MODE, isMultiplayerMode } from "./multiplayerMode.js?v=169";
 import { haptic } from "./haptics.js?v=164";
-import { notifySTLProgress } from "./stlPlatform.js?v=189";
+import { notifySTLProgress } from "./stlPlatform.js?v=201";
+import { boosterInventory, getBoosterRunEffects } from "./boosters.js?v=201";
+import { liveEvents } from "./liveEvents.js?v=201";
 import {
   animateBust,
   animateSelectionResolve,
@@ -32,11 +34,11 @@ import {
   playSfx,
   spawnMultiplayerCrunchReward,
   spawnSparkBurst
-} from "./animations.js?v=189";
+} from "./animations.js?v=196";
 
-const RUN_MULTIPLIER_MAX = 10;
-const RUN_MULTIPLIER_BASE_STEP = 0.2;
-const RUN_MULTIPLIER_COMBO_STEP = 0.1;
+const RUN_MULTIPLIER_MAX = 3;
+const RUN_MULTIPLIER_BASE_STEP = 0.05;
+const RUN_MULTIPLIER_COMBO_STEP = 0.02;
 const SHIELD_SAVE_RATE = 0.25;
 const RECOVERY_RATE = 0.5;
 const BONUS_BANK_RATE = 0.25;
@@ -103,7 +105,10 @@ export function createGame(ui) {
     tutorialExpectedIndexes: [],
     tutorialGuideStackByStep: [],
     dealHandCount: 0,
-    dealTableCount: 0
+    dealTableCount: 0,
+    activeBoosters: [],
+    boosterCrunchMultiplier: 1,
+    boosterRetryAvailable: false
   };
 
   function showMap() {
@@ -120,19 +125,19 @@ export function createGame(ui) {
     ui.showMap(false);
   }
 
-  function enterLevel(levelId) {
+  function enterLevel(levelId, { boosters = [] } = {}) {
     const pot = state.pots.find((item) => item.id === levelId);
     if (!pot || !isPotUnlocked(state.pots, levelId)) return;
     clearRunSave();
-    requestNewRun(pot);
+    requestNewRun(pot, "pot", null, { boosters });
   }
 
-  function requestNewRun(pot = null, gameMode = pot ? "pot" : "endless", multiplayer = null) {
-    start(pot, { gameMode, multiplayer });
+  function requestNewRun(pot = null, gameMode = pot ? "pot" : "endless", multiplayer = null, runOptions = {}) {
+    start(pot, { gameMode, multiplayer, ...runOptions });
     return true;
   }
 
-  function start(pot = state.pots.find((item) => !item.complete) ?? state.pots[0], { gameMode = pot ? "pot" : "endless", multiplayer = null } = {}) {
+  function start(pot = state.pots.find((item) => !item.complete) ?? state.pots[0], { gameMode = pot ? "pot" : "endless", multiplayer = null, boosters = [] } = {}) {
     stopTimer();
     ui.hidePotInfo({ immediate: true });
     ui.hideBonusBankOffer();
@@ -165,11 +170,15 @@ export function createGame(ui) {
     state.level = pot?.id ?? 0;
     state.replayingCompletedPot = Boolean(pot?.complete);
     state.target = pot?.target ?? getTargetForLevel(1);
+    const boosterEffects = gameMode === "pot" ? getBoosterRunEffects(boosters) : getBoosterRunEffects([]);
+    state.activeBoosters = boosterEffects.ids;
+    state.boosterCrunchMultiplier = boosterEffects.crunchMultiplier;
+    state.boosterRetryAvailable = boosterEffects.retryToken;
     state.turnSeconds = gameMode === MULTIPLAYER_MODE
       ? MULTIPLAYER_MATCH_SECONDS
       : gameMode === ARCADE_MODE
       ? ARCADE_CONFIG.turnSeconds
-      : Math.max(3, Number(pot?.gameplayModifier?.turnSeconds ?? 10));
+      : Math.max(3, Number(pot?.gameplayModifier?.turnSeconds ?? 10) + boosterEffects.extraTurnSeconds);
     state.fever = false;
     state.bankMultiplier = getStartingRunMultiplier(state);
     state.bestRunMultiplier = state.bankMultiplier;
@@ -202,6 +211,7 @@ export function createGame(ui) {
     if (state.safeBankShieldActive) ui.setMessage("Shield armed: busting out auto-banks 25%", "good");
     ui.render(state, handlers);
     notifySTLProgress("run-start", { mode: gameMode, potId: pot?.id ?? null });
+    liveEvents.record("run-start", { mode: gameMode, potId: pot?.id ?? null });
     finishHandDeal(4, { announceReady: Boolean(pot) || gameMode === MULTIPLAYER_MODE });
   }
 
@@ -403,6 +413,7 @@ export function createGame(ui) {
       timeLeft: state.timeLeft,
       streak: state.streak,
       runMultiplier: state.bankMultiplier,
+      boosterMultiplier: state.boosterCrunchMultiplier,
       gameplayModifier: state.activePot?.gameplayModifier,
       resolutionOverride: arcadeRun ? resolveArcadeCrunch(state.stack, selectedCards) : null,
       selectionMultiplierOverride: arcadeRun ? getArcadeStackMultiplier(selectedCards.length) : null,
@@ -479,6 +490,7 @@ export function createGame(ui) {
         ui.syncResolvedHud(state);
         state.multiplayer?.callbacks?.onScoreChange?.(state.score);
         notifySTLProgress("crunch", { amount: partial.total, selectedCount: validCardCount, mode: state.gameMode });
+        recordLiveCrunch(partial, selectedCards.slice(0, validCardCount));
       }
       if (!multiplayerRun) {
         await playBustCutin({
@@ -564,6 +576,7 @@ export function createGame(ui) {
     localStorage.setItem("cardCrunchBestScore", String(state.bestScore));
     localStorage.setItem("cardCrunchBestStreak", String(Math.max(Number(localStorage.getItem("cardCrunchBestStreak") ?? 0), state.streak)));
     notifySTLProgress("crunch", { amount: crunch.total, selectedCount: selectedCards.length, mode: state.gameMode });
+    recordLiveCrunch(crunch, selectedCards);
     if (completeMultiplayerIfPending()) return;
     startNewRound({ retainedTableCards });
   }
@@ -574,6 +587,20 @@ export function createGame(ui) {
     selectedCardElements = [],
     baseStackCards = []
   }) {
+    if (cutscene?.fullHand) {
+      const fullHandCards = resolution.history.slice(0, 4).map((entry) => entry.card);
+      await playFullHandPrelude({
+        cards: fullHandCards,
+        fullHand: cutscene.fullHand,
+        sourceCards: fullHandCards.map((card, index) => ({
+          card,
+          element: selectedCardElements[index]
+        })).filter(({ card, element }) => Boolean(card && element)),
+        autoAdvance: true
+      });
+      selectedCardElements.forEach((card) => card?.classList.add("is-full-hand-powered"));
+    }
+
     const elementByCardId = new Map();
     resolution.activeStack.slice(0, baseStackCards.length).forEach((card, index) => {
       if (card?.id && baseStackCards[index]) elementByCardId.set(card.id, baseStackCards[index]);
@@ -628,6 +655,7 @@ export function createGame(ui) {
 
     ui.elements.scorePanel.classList.add("score-bump");
     window.setTimeout(() => ui.elements.scorePanel.classList.remove("score-bump"), 220);
+    selectedCardElements.forEach((card) => card?.classList.remove("is-full-hand-powered"));
   }
 
   function createActiveCrunchBankCounter() {
@@ -652,6 +680,21 @@ export function createGame(ui) {
       "cardCrunchTotalCrunches",
       String(Number(localStorage.getItem("cardCrunchTotalCrunches") ?? 0) + safeCount)
     );
+  }
+
+  function recordLiveCrunch(crunch, selectedCards) {
+    const entries = crunch?.cutscene?.entries ?? [];
+    liveEvents.record("crunch", {
+      amount: Math.max(0, Number(crunch?.total) || 0),
+      selectedCount: selectedCards.length,
+      matchTypes: entries.map((entry) => entry.matchType),
+      suits: selectedCards.map((card) => card?.suit).filter(Boolean),
+      speedLabel: crunch?.speedBonus?.label ?? null,
+      streak: crunch?.streakAfterCrunch ?? state.streak,
+      fullHand: Boolean(crunch?.cutscene?.fullHand),
+      mode: state.gameMode,
+      potId: state.activePot?.id ?? null
+    });
   }
 
   function isTutorialSelectionCorrect() {
@@ -700,7 +743,7 @@ export function createGame(ui) {
       + RUN_MULTIPLIER_COMBO_STEP * Math.max(0, selectedCount - 1)
       + Math.max(0, Number(modifier?.multiplierStepBonus ?? 0));
     const maximum = Math.max(1, Number(modifier?.multiplierMax ?? RUN_MULTIPLIER_MAX));
-    state.bankMultiplier = Math.min(maximum, Math.round((state.bankMultiplier + step) * 10) / 10);
+    state.bankMultiplier = Math.min(maximum, Math.round((state.bankMultiplier + step) * 100) / 100);
     state.bestRunMultiplier = Math.max(state.bestRunMultiplier, state.bankMultiplier);
   }
 
@@ -729,6 +772,7 @@ export function createGame(ui) {
     ui.playBankJuice(amount);
     ui.render(state, handlers);
     notifySTLProgress("bank", { amount, potId: state.activePot?.id ?? null });
+    liveEvents.record("bank", { amount, potId: state.activePot?.id ?? null });
     await sleep(620);
 
     if (state.activePot.complete && !state.replayingCompletedPot) {
@@ -783,6 +827,7 @@ export function createGame(ui) {
       if (earned) {
         const deposited = depositToPot(bonus);
         state.bankedThisRun += deposited;
+        liveEvents.record("bank", { amount: deposited, bonus: true, potId: state.activePot?.id ?? null });
         playSfx("bank");
         ui.setMessage(`+$${formatCompactNumber(deposited)} bank bonus!`, "good");
         ui.playBankJuice(deposited);
@@ -849,6 +894,22 @@ export function createGame(ui) {
     ui.hideBonusBankOffer();
     if (state.fever) playSfx("fever_end");
     playSfx("bust");
+    if (!multiplayerRun && state.boosterRetryAvailable) {
+      state.boosterRetryAvailable = false;
+      ui.setMessage("RETRY TOKEN! No life lost", "good");
+      ui.render(state, handlers);
+      await animateBust({
+        boardEl: ui.elements.shell,
+        stackCards: ui.getAllStackCardElements(),
+        handCard: failedSelectionIndex >= 0
+          ? resolvedCardElements?.[failedSelectionIndex] ?? ui.getHandCardElement(state.selectedHandIndexes[failedSelectionIndex])
+          : null,
+        protectedBust: true
+      });
+      discardSelectedCards();
+      startNewRound();
+      return;
+    }
     state.misses += 1;
     state.streak = 0;
     state.fever = false;
@@ -895,6 +956,7 @@ export function createGame(ui) {
     clearRunSave();
     submitBestScore(state.bestScore);
     notifySTLProgress("run-end", { mode: state.gameMode, score: state.score, banked: state.bankedThisRun });
+    liveEvents.record("run-end", { mode: state.gameMode, score: state.score, banked: state.bankedThisRun, cleared: true });
     grantRunCoins({ potCleared: true });
     ui.render(state, handlers);
     showRunSummary();
@@ -912,6 +974,7 @@ export function createGame(ui) {
     clearRunSave();
     playSfx("game_over");
     submitBestScore(state.bestScore);
+    liveEvents.record("run-end", { mode: state.gameMode, score: state.score, banked: state.bankedThisRun, cleared: false });
 
     if (state.safeBankShieldActive && state.activePot && state.score > 0) {
       const saved = Math.round(state.score * SHIELD_SAVE_RATE);
@@ -1026,6 +1089,7 @@ export function createGame(ui) {
     savePots(state.pots);
     if (state.activePot.complete) grantRunCoins({ potCleared: true });
     notifySTLProgress("bank", { amount: recovered, recovered: true, potId: state.activePot?.id ?? null });
+    liveEvents.record("bank", { amount: recovered, recovered: true, potId: state.activePot?.id ?? null });
     showRunSummary();
   }
 
@@ -1079,7 +1143,7 @@ export function createGame(ui) {
     ui.showGameOver(false);
     ui.showStart(true);
     ui.showMap(false);
-    if (returnToModeSelect) ui.showMenuPage("modes");
+    ui.showMenuPage(returnToModeSelect ? "modes" : "pots");
   }
 
   async function onCoinAd() {
@@ -1159,6 +1223,8 @@ export function createGame(ui) {
     if (remoteCoins > localCoins) economy.addCoins(remoteCoins - localCoins);
     mergeCardCollectionSnapshot(gameEntry.progress?.cardCollection);
     storeState.mergeRemoteSnapshot(gameEntry.progress?.store);
+    boosterInventory.mergeRemoteSnapshot(gameEntry.progress?.boosters);
+    liveEvents.mergeRemoteSnapshot(gameEntry.progress?.liveEvents);
     ui.renderMap(state.pots, handlers);
     ui.renderMenuStats(state);
   }
@@ -1430,6 +1496,9 @@ export function createGame(ui) {
     state.bonusBankAdUsedForLastDeposit = true;
     state.hintAdUsedThisRun = false;
     state.rewardAdInProgress = false;
+    state.activeBoosters = [];
+    state.boosterCrunchMultiplier = 1;
+    state.boosterRetryAvailable = false;
     state.runStartedAt = 0;
     state.locked = true;
     state.status = "menu";
@@ -1486,6 +1555,7 @@ export function createGame(ui) {
     savePots(state.pots);
     if (state.activePot.complete && before < state.activePot.target) {
       notifySTLProgress("pot-clear", { potId: state.activePot.id, amount });
+      liveEvents.record("pot-clear", { potId: state.activePot.id, amount });
     }
     return state.activePot.progress - before;
   }
@@ -1582,8 +1652,8 @@ function createMultiplayerState(options = {}) {
 }
 
 export function formatRunMultiplier(value) {
-  const rounded = Math.round(value * 10) / 10;
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  const rounded = Math.round(value * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2).replace(/0$/, "");
 }
 
 function loadPots() {

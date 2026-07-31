@@ -18,41 +18,40 @@ export const SCORE_CONFIG = {
 
 export const SEQUENCE_TIER_MULTIPLIERS = {
   3: 1,
-  4: 2,
-  5: 4,
-  6: 6
+  4: 1.35,
+  5: 1.75,
+  6: 2.25
 };
 
 const SECONDARY_MATCH_MULTIPLIERS = {
-  [MATCH_TYPES.ADD]: 1.5,
-  [MATCH_TYPES.SUBTRACT]: 1.5,
-  [MATCH_TYPES.RANK]: 1.5,
-  [MATCH_TYPES.SUIT]: 1.5
+  [MATCH_TYPES.ADD]: 1.2,
+  [MATCH_TYPES.SUBTRACT]: 1.2,
+  [MATCH_TYPES.RANK]: 1.2,
+  [MATCH_TYPES.SUIT]: 1.2
 };
 
 export const MATCH_TIER_MULTIPLIERS = {
   2: 1,
-  3: 6,
-  4: 12,
-  5: 20,
-  6: 30
+  3: 2,
+  4: 3,
+  5: 4,
+  6: 5
 };
 
 export const SELECTION_MULTIPLIERS = {
   1: 1,
-  2: 2,
-  3: 4,
-  4: 8
+  2: 1.15,
+  3: 1.35,
+  4: 2
 };
 
 export const STACK_TYPE_CONFIG = {
-  flushCrunch: { minCardsSameSuit: 4, multiplier: 2 },
-  tripleRank: { multiplier: 2 },
-  chainCrunch: { minMathLinks: 2, multiplier: 3 },
-  mathFeast: { minMathCards: 3, multiplier: 2 },
-  suitStorm: { minSuitCards: 3, multiplier: 1.5 },
-  perfectHand: { minSelectedCards: 4, multiplier: 3 },
-  greedCrunch: { minSelectedCards: 3, flatBonus: 500 }
+  flushCrunch: { minCardsSameSuit: 4, multiplier: 1.35 },
+  tripleRank: { multiplier: 1.35 },
+  chainCrunch: { minMathLinks: 2, multiplier: 1.35 },
+  mathFeast: { minMathCards: 3, multiplier: 1.5 },
+  suitStorm: { minSuitCards: 3, multiplier: 1.25 },
+  greedCrunch: { minSelectedCards: 3, flatBonus: 250 }
 };
 
 export function evaluateStackAdd(stackCards, selectedCard, gameplayModifier = null) {
@@ -281,6 +280,7 @@ export function calculateCrunchScore({
   timeLeft,
   streak,
   runMultiplier = 1,
+  boosterMultiplier = 1,
   gameplayModifier = null,
   resolutionOverride = null,
   selectionMultiplierOverride = null,
@@ -297,6 +297,7 @@ export function calculateCrunchScore({
           timeLeft,
           streak,
           runMultiplier,
+          boosterMultiplier,
           gameplayModifier,
           resolutionOverride: {
             success: true,
@@ -328,11 +329,13 @@ export function calculateCrunchScore({
   const speedBonus = getSpeedBonus(timeLeft);
   const streakAfterCrunch = streak + 1;
   const streakMultiplier = getStreakMultiplier(streakAfterCrunch);
-  const stackTypes = detectStackTypes(resolution.activeStack, resolution.history, selectedCards.length, { enableFullHand });
+  const stackTypes = detectStackTypes(resolution.activeStack, resolution.history, selectedCards.length);
   const stackTypeMultiplier = stackTypes.reduce((product, bonus) => product * (bonus.multiplier ?? 1), 1);
   const stackTypeFlat = stackTypes.reduce((sum, bonus) => sum + (bonus.flatBonus ?? 0), 0);
   const potRuleMultiplier = getPotRuleMultiplier(gameplayModifier, selectedCards.length);
-  const total = Math.round((storedBase * handMultiplier * speedBonus.multiplier * streakMultiplier * stackTypeMultiplier * potRuleMultiplier + stackTypeFlat) * runMultiplier);
+  const total = Math.round((storedBase * handMultiplier * speedBonus.multiplier * streakMultiplier * stackTypeMultiplier * potRuleMultiplier + stackTypeFlat) * runMultiplier * boosterMultiplier);
+  const isFullHand = enableFullHand && selectedCards.length === 4;
+  const effectiveSelectionLabel = isFullHand ? "FULL HAND POWER" : selectionLabel;
   const breakdown = buildCrunchBreakdown({
     storedBase,
     handMultiplier,
@@ -342,37 +345,26 @@ export function calculateCrunchScore({
     potRuleMultiplier,
     potRuleLabel: gameplayModifier?.scoreLabel,
     runMultiplier,
-    selectionLabel,
+    boosterMultiplier,
+    selectionLabel: effectiveSelectionLabel,
     total
   });
-  const isFullHand = enableFullHand && selectedCards.length === 4;
   const fullHandSteps = isFullHand
-    ? breakdown.filter((step) => step.label === selectionLabel || step.label === "PERFECT HAND")
+    ? breakdown.filter((step) => step.label === effectiveSelectionLabel)
     : [];
-  const perfectHandMultiplier = isFullHand
-    ? stackTypes.find((bonus) => bonus.label === "PERFECT HAND")?.multiplier ?? 1
-    : 1;
-  const fullHandMultiplier = isFullHand
-    ? handMultiplier * perfectHandMultiplier
-    : 1;
   const fullScoreMultiplier = handMultiplier
     * speedBonus.multiplier
     * streakMultiplier
     * stackTypeMultiplier
     * potRuleMultiplier
-    * runMultiplier;
-  const entryScoreMultiplier = fullScoreMultiplier / fullHandMultiplier;
-  const entryAwardTotal = isFullHand
-    ? Math.min(total, Math.max(0, Math.round(storedBase * entryScoreMultiplier + stackTypeFlat * runMultiplier)))
-    : total;
-  const fullHandBankPoints = Math.max(0, total - entryAwardTotal);
+    * runMultiplier
+    * boosterMultiplier;
   const entryAwards = allocateCutsceneAwards({
     awardedPoints,
-    total: entryAwardTotal,
-    multiplier: entryScoreMultiplier
+    total,
+    multiplier: fullScoreMultiplier
   });
-  const fullHandLabels = new Set(fullHandSteps.map((step) => step.label));
-  const inlineMultipliers = breakdown.filter((step) => step.kind === "multiplier" && !fullHandLabels.has(step.label));
+  const inlineMultipliers = breakdown.filter((step) => step.kind === "multiplier");
   const inlineFlatBonuses = breakdown.filter((step) => step.kind === "bonus");
 
   return {
@@ -385,6 +377,7 @@ export function calculateCrunchScore({
     streakMultiplier,
     stackTypes,
     potRuleMultiplier,
+    boosterMultiplier,
     total,
     cutscene: {
       entries: presentationEntries.map((entry, index) => ({
@@ -421,10 +414,11 @@ export function calculateCrunchScore({
       tier: isFullHand || selectedCards.length >= 6 ? "full" : selectedCards.length >= 3 ? "big" : "normal",
       fullHand: isFullHand
         ? {
-            label: "FULL HAND!",
-            subtitle: "ALL 4 CARDS LOCKED",
+            label: "FULL HAND POWER!",
+            subtitle: "ALL 4 CARDS CHARGED",
             bonuses: fullHandSteps,
-            bankPoints: fullHandBankPoints
+            multiplier: handMultiplier,
+            bankPoints: 0
           }
         : null
     },
@@ -457,13 +451,13 @@ function getRuleAdjustedDisplayPoints(entry, gameplayModifier) {
 function getMatchTierMultiplier(matchCount = 2) {
   if (matchCount <= 2) return MATCH_TIER_MULTIPLIERS[2];
   if (MATCH_TIER_MULTIPLIERS[matchCount]) return MATCH_TIER_MULTIPLIERS[matchCount];
-  return MATCH_TIER_MULTIPLIERS[6] + (matchCount - 6) * 12;
+  return MATCH_TIER_MULTIPLIERS[6] + (matchCount - 6) * 0.75;
 }
 
 function getSequenceTierMultiplier(matchCount = 3) {
   if (matchCount <= 3) return SEQUENCE_TIER_MULTIPLIERS[3];
   if (SEQUENCE_TIER_MULTIPLIERS[matchCount]) return SEQUENCE_TIER_MULTIPLIERS[matchCount];
-  return SEQUENCE_TIER_MULTIPLIERS[6] + (matchCount - 6) * 2;
+  return SEQUENCE_TIER_MULTIPLIERS[6] + (matchCount - 6) * 0.35;
 }
 
 function getEntrySecondaryMatches(entry) {
@@ -670,7 +664,7 @@ function createSecondaryMatch(primary, candidate) {
   return {
     type: isExactNumberAndSuit ? "rank-suit" : candidate.type,
     label: isExactNumberAndSuit ? "NUMBER + SUIT" : labels[candidate.type] ?? candidate.label,
-    multiplier: isExactNumberAndSuit ? 2 : SECONDARY_MATCH_MULTIPLIERS[candidate.type] ?? 1,
+    multiplier: isExactNumberAndSuit ? 1.5 : SECONDARY_MATCH_MULTIPLIERS[candidate.type] ?? 1,
     tone: isExactNumberAndSuit ? "double" : candidate.type === MATCH_TYPES.ADD || candidate.type === MATCH_TYPES.SUBTRACT ? "math" : candidate.type,
     matchedCards: candidate.matchedCards,
     matchedIndexes: candidate.matchedIndexes
@@ -706,21 +700,21 @@ export function getSelectionMultiplier(count) {
 }
 
 export function getSpeedBonus(timeLeft) {
-  if (timeLeft >= 8) return { label: "LIGHTNING", multiplier: 3 };
-  if (timeLeft >= 6) return { label: "FAST", multiplier: 2 };
-  if (timeLeft >= 4) return { label: "QUICK", multiplier: 1.5 };
+  if (timeLeft >= 8) return { label: "LIGHTNING", multiplier: 1.5 };
+  if (timeLeft >= 6) return { label: "FAST", multiplier: 1.3 };
+  if (timeLeft >= 4) return { label: "QUICK", multiplier: 1.15 };
   return { label: null, multiplier: 1 };
 }
 
 export function getStreakMultiplier(streak) {
-  if (streak >= 15) return 10;
-  if (streak >= 10) return 5;
-  if (streak >= 6) return 3;
-  if (streak >= 3) return 2;
+  if (streak >= 15) return 2;
+  if (streak >= 10) return 1.6;
+  if (streak >= 6) return 1.35;
+  if (streak >= 3) return 1.15;
   return 1;
 }
 
-export function detectStackTypes(stackCards, history, selectedCount, { enableFullHand = true } = {}) {
+export function detectStackTypes(stackCards, history, selectedCount) {
   const bonuses = [];
   const suitCounts = countBy(stackCards, "suit");
   const rankCounts = countBy(stackCards, "value");
@@ -733,13 +727,16 @@ export function detectStackTypes(stackCards, history, selectedCount, { enableFul
     .filter((entry) => entry.matchType === MATCH_TYPES.RANK)
     .map((entry) => entry.matchedCards.length + 1));
 
-  if (maxSuit >= STACK_TYPE_CONFIG.flushCrunch.minCardsSameSuit) bonuses.push({ label: "FLUSH CRUNCH", value: "x2", multiplier: STACK_TYPE_CONFIG.flushCrunch.multiplier, tone: "suit" });
-  if (maxRank >= 3 && strongestRankMatch < 3) bonuses.push({ label: "TRIPLE RANK", value: "x2", multiplier: STACK_TYPE_CONFIG.tripleRank.multiplier, tone: "rank" });
-  if (mathCards >= STACK_TYPE_CONFIG.chainCrunch.minMathLinks) bonuses.push({ label: "CHAIN CRUNCH", value: "x3", multiplier: STACK_TYPE_CONFIG.chainCrunch.multiplier, tone: "math" });
-  if (mathCards >= STACK_TYPE_CONFIG.mathFeast.minMathCards) bonuses.push({ label: "MATH FEAST", value: "x2", multiplier: STACK_TYPE_CONFIG.mathFeast.multiplier, tone: "math" });
-  if (suitCards >= STACK_TYPE_CONFIG.suitStorm.minSuitCards) bonuses.push({ label: "SUIT STORM", value: "x1.5", multiplier: STACK_TYPE_CONFIG.suitStorm.multiplier, tone: "suit" });
-  if (enableFullHand && selectedCount === STACK_TYPE_CONFIG.perfectHand.minSelectedCards) bonuses.push({ label: "PERFECT HAND", value: `x${STACK_TYPE_CONFIG.perfectHand.multiplier}`, multiplier: STACK_TYPE_CONFIG.perfectHand.multiplier, tone: "double" });
-  if (selectedCount >= STACK_TYPE_CONFIG.greedCrunch.minSelectedCards) bonuses.push({ label: "GREED CRUNCH", value: "+500", flatBonus: STACK_TYPE_CONFIG.greedCrunch.flatBonus, tone: "fever" });
+  const hasFlush = maxSuit >= STACK_TYPE_CONFIG.flushCrunch.minCardsSameSuit;
+  if (hasFlush) bonuses.push({ label: "FLUSH CRUNCH", value: `x${formatMultiplier(STACK_TYPE_CONFIG.flushCrunch.multiplier)}`, multiplier: STACK_TYPE_CONFIG.flushCrunch.multiplier, tone: "suit" });
+  if (maxRank >= 3 && strongestRankMatch < 3) bonuses.push({ label: "TRIPLE RANK", value: `x${formatMultiplier(STACK_TYPE_CONFIG.tripleRank.multiplier)}`, multiplier: STACK_TYPE_CONFIG.tripleRank.multiplier, tone: "rank" });
+  if (mathCards >= STACK_TYPE_CONFIG.mathFeast.minMathCards) {
+    bonuses.push({ label: "MATH FEAST", value: `x${formatMultiplier(STACK_TYPE_CONFIG.mathFeast.multiplier)}`, multiplier: STACK_TYPE_CONFIG.mathFeast.multiplier, tone: "math" });
+  } else if (mathCards >= STACK_TYPE_CONFIG.chainCrunch.minMathLinks) {
+    bonuses.push({ label: "CHAIN CRUNCH", value: `x${formatMultiplier(STACK_TYPE_CONFIG.chainCrunch.multiplier)}`, multiplier: STACK_TYPE_CONFIG.chainCrunch.multiplier, tone: "math" });
+  }
+  if (!hasFlush && suitCards >= STACK_TYPE_CONFIG.suitStorm.minSuitCards) bonuses.push({ label: "SUIT STORM", value: `x${formatMultiplier(STACK_TYPE_CONFIG.suitStorm.multiplier)}`, multiplier: STACK_TYPE_CONFIG.suitStorm.multiplier, tone: "suit" });
+  if (selectedCount >= STACK_TYPE_CONFIG.greedCrunch.minSelectedCards) bonuses.push({ label: "GREED CRUNCH", value: "+250", flatBonus: STACK_TYPE_CONFIG.greedCrunch.flatBonus, tone: "fever" });
 
   return bonuses;
 }
@@ -871,8 +868,8 @@ export function runScoringSelfTests() {
     { name: "success sequence", pass: success.success && success.resolution.history.length === 2 },
     { name: "fail sequence", pass: !fail.success && fail.resolution.failedIndex === 1 },
     { name: "one card crunch", pass: one.success && one.handMultiplier === 1 },
-    { name: "two card multiplier", pass: success.handMultiplier === 2 },
-    { name: "speed bonus", pass: success.speedBonus.multiplier === 2 },
+    { name: "two card multiplier", pass: success.handMultiplier === 1.15 },
+    { name: "speed bonus", pass: success.speedBonus.multiplier === 1.3 },
     { name: "math base ignores match tiers", pass: success.cutscene.entries[0].points === SCORE_CONFIG.math },
     { name: "suit surge modifier", pass: suitSurge.success && suitSurge.storedBase === 200 },
     { name: "heart lock accepts hearts", pass: heartLockSuccess.success },
@@ -891,9 +888,9 @@ export function runScoringSelfTests() {
     {
       name: "same number and suit earns one compound bonus",
       pass: numberAndSuitMatch.success
-        && numberAndSuitMatch.storedBase === SCORE_CONFIG.rank * 2
-        && numberAndSuitMatch.total === SCORE_CONFIG.rank * 2
-        && numberAndSuitMatch.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "NUMBER + SUIT" && bonus.value === "x2")
+        && numberAndSuitMatch.storedBase === SCORE_CONFIG.rank * 1.5
+        && numberAndSuitMatch.total === SCORE_CONFIG.rank * 1.5
+        && numberAndSuitMatch.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "NUMBER + SUIT" && bonus.value === "x1.5")
     },
     { name: "full hand fever modifier", pass: fullHandFever.success && fullHandFever.potRuleMultiplier === 2 },
     { name: "cutscene awards equal total", pass: success.cutscene.entries.reduce((sum, entry) => sum + entry.bankPoints, 0) === success.total },
@@ -910,8 +907,8 @@ export function runScoringSelfTests() {
     {
       name: "sequence keeps a separate suit truth as a modifier",
       pass: sequenceWithSuit.success
-        && sequenceWithSuit.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "SUIT MATCH" && bonus.value === "x1.5")
-        && sequenceWithSuit.storedBase === SCORE_CONFIG.sequence * 1.5
+        && sequenceWithSuit.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "SUIT MATCH" && bonus.value === "x1.2")
+        && sequenceWithSuit.storedBase === SCORE_CONFIG.sequence * 1.2
     },
     {
       name: "growing sequence consolidates into its longest run",
@@ -919,7 +916,7 @@ export function runScoringSelfTests() {
         && growingSequence.cutscene.entries.length === 1
         && growingSequence.cutscene.entries[0].selectedIndexes.length === 3
         && growingSequence.cutscene.entries[0].sequenceRanks.join(",") === "A,2,3,4,5"
-        && growingSequence.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "5-CARD RUN" && bonus.value === "x4")
+        && growingSequence.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "5-CARD RUN" && bonus.value === "x1.75")
         && growingSequence.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "SUIT MATCH")
     },
     {
@@ -934,7 +931,7 @@ export function runScoringSelfTests() {
       pass: orderedSequenceWithTripleSuit.success
         && orderedSequenceWithTripleSuit.cutscene.entries
           .find((entry) => entry.matchType === MATCH_TYPES.SEQUENCE)
-          ?.inlineBonuses.some((bonus) => bonus.label === "TRIPLE SUIT MATCH" && bonus.value === "x6")
+          ?.inlineBonuses.some((bonus) => bonus.label === "TRIPLE SUIT MATCH" && bonus.value === "x2")
     },
     {
       name: "failed crunch banks only the valid left-to-right prefix",
@@ -948,7 +945,7 @@ export function runScoringSelfTests() {
     {
       name: "triple rank reacts inline",
       pass: tripleRank.cutscene.entries[0].matchCount === 3
-        && tripleRank.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "TRIPLE MATCH" && bonus.value === "x6")
+        && tripleRank.cutscene.entries[0].inlineBonuses.some((bonus) => bonus.label === "TRIPLE MATCH" && bonus.value === "x2")
         && tripleRank.cutscene.entries[0].bankPoints === tripleRank.total
     },
     {
@@ -961,13 +958,15 @@ export function runScoringSelfTests() {
         && tripleSuit.cutscene.entries[0].points === SCORE_CONFIG.suit * MATCH_TIER_MULTIPLIERS[3]
     },
     {
-      name: "full hand celebration owns bonuses",
+      name: "full hand powers the later crunches",
       pass: perfectHand.success
-        && perfectHand.cutscene.fullHand?.bonuses.some((bonus) => bonus.label === "HAND" && bonus.value === "x8")
-        && perfectHand.cutscene.fullHand?.bonuses.some((bonus) => bonus.label === "PERFECT HAND" && bonus.value === "x3")
-        && perfectHand.cutscene.fullHand.bankPoints > 0
-        && perfectHand.cutscene.entries.every((entry) => entry.inlineBonuses.every((bonus) => bonus.label !== "HAND" && bonus.label !== "PERFECT HAND"))
-        && perfectHand.cutscene.entries.reduce((sum, entry) => sum + entry.bankPoints, perfectHand.cutscene.fullHand.bankPoints) === perfectHand.total
+        && perfectHand.handMultiplier === 2
+        && perfectHand.cutscene.fullHand?.label === "FULL HAND POWER!"
+        && perfectHand.cutscene.fullHand?.bonuses.some((bonus) => bonus.label === "FULL HAND POWER" && bonus.value === "x2")
+        && perfectHand.cutscene.fullHand.bankPoints === 0
+        && perfectHand.cutscene.entries.every((entry) => entry.inlineBonuses.some((bonus) => bonus.label === "FULL HAND POWER" && bonus.value === "x2"))
+        && perfectHand.cutscene.entries.reduce((sum, entry) => sum + entry.bankPoints, 0) === perfectHand.total
+        && perfectHand.total < 50000
     }
   ];
 
@@ -1005,7 +1004,7 @@ function getStackPairs(cards) {
   return pairs;
 }
 
-function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, potRuleMultiplier = 1, potRuleLabel = "POT RULE", runMultiplier = 1, selectionLabel = "HAND", total }) {
+function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMultiplier, stackTypes, potRuleMultiplier = 1, potRuleLabel = "POT RULE", runMultiplier = 1, boosterMultiplier = 1, selectionLabel = "HAND", total }) {
   const steps = [{ label: "STORED", value: `+${formatCompactNumber(storedBase)}`, tone: "total", kind: "base" }];
   if (handMultiplier > 1) steps.push({ label: selectionLabel, value: `x${formatMultiplier(handMultiplier)}`, tone: "double", kind: "multiplier", multiplier: handMultiplier });
   if (speedBonus.multiplier > 1) steps.push({ label: speedBonus.label, value: `x${formatMultiplier(speedBonus.multiplier)}`, tone: "speed", kind: "multiplier", multiplier: speedBonus.multiplier });
@@ -1019,6 +1018,7 @@ function buildCrunchBreakdown({ storedBase, handMultiplier, speedBonus, streakMu
     flatBonus: bonus.flatBonus
   }));
   if (potRuleMultiplier > 1) steps.push({ label: potRuleLabel, value: `x${formatMultiplier(potRuleMultiplier)}`, tone: "pot", kind: "multiplier", multiplier: potRuleMultiplier });
+  if (boosterMultiplier > 1) steps.push({ label: "CRUNCH BOOST", value: `x${formatMultiplier(boosterMultiplier)}`, tone: "power", kind: "multiplier", multiplier: boosterMultiplier });
   if (runMultiplier > 1) steps.push({ label: "RUN MULTI", value: `x${formatMultiplier(runMultiplier)}`, tone: "run", kind: "multiplier", multiplier: runMultiplier });
   steps.push({ label: "TOTAL", value: `+${formatCompactNumber(total)}`, tone: "total", kind: "total" });
   return steps;

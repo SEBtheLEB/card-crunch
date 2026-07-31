@@ -1,8 +1,8 @@
 import {
   CARD_CRUNCH_SAVE_FORMAT_VERSION,
   CARD_CRUNCH_SAVE_SLOT_KEY
-} from "./stlPlatformConfig.js?v=189";
-import { sha256Hex } from "./stlPlatformClient.js?v=189";
+} from "./stlPlatformConfig.js?v=205";
+import { sha256Hex } from "./stlPlatformClient.js?v=193";
 
 const CLOUD_META_KEY = "cardCrunchStlCloudMetaV1";
 const SAVE_KEYS = Object.freeze([
@@ -14,6 +14,8 @@ const SAVE_KEYS = Object.freeze([
   "cardCrunchEconomyV1",
   "cardCrunchCardCollectionV1",
   "cardCrunchStoreV1",
+  "cardCrunchBoostersV1",
+  "cardCrunchLiveEventsV1",
   "cardCrunchShieldToken",
   "cardCrunchTheme",
   "cardCrunchCardSkin"
@@ -31,6 +33,7 @@ export async function createCardCrunchSaveUpload({ state, gameId, deviceId, game
     gameId,
     deviceId,
     gameBuild,
+    slotId: meta.slotId || undefined,
     slotKey: CARD_CRUNCH_SAVE_SLOT_KEY,
     displayName: "Card Crunch Progress",
     expectedRevision: meta.revision,
@@ -64,6 +67,8 @@ export function createLocalSaveSnapshot(state = {}) {
       economy: parseJson(storage.cardCrunchEconomyV1, null),
       cardCollection: parseJson(storage.cardCrunchCardCollectionV1, null),
       store: parseJson(storage.cardCrunchStoreV1, null),
+      boosters: parseJson(storage.cardCrunchBoostersV1, null),
+      liveEvents: parseJson(storage.cardCrunchLiveEventsV1, null),
       shieldToken: storage.cardCrunchShieldToken === "1",
       theme: storage.cardCrunchTheme || "midnight-gold",
       cardSkin: storage.cardCrunchCardSkin || "classic"

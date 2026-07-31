@@ -3,12 +3,17 @@ import {
   getRuntimeRedirectUri,
   readSTLPlatformConfig,
   validateSTLPlatformConfig
-} from "./stlPlatformConfig.js?v=190";
+} from "./stlPlatformConfig.js?v=205";
 
 const AUTH_TRANSACTION_KEY = "cardCrunchStlAuthTransactionV1";
 const SESSION_KEY = "cardCrunchStlSessionV1";
 const QUEUE_KEY = "cardCrunchStlOfflineQueueV1";
 const DEVICE_KEY = "cardCrunchStlDeviceIdV1";
+const WEB_AUTH_DATABASE = "cardCrunchProtectedAuthV1";
+const WEB_AUTH_DATABASE_VERSION = 1;
+const WEB_AUTH_KEY_STORE = "keys";
+const WEB_AUTH_RECORD_STORE = "records";
+const WEB_AUTH_KEY_ID = "card-crunch-auth-key-v1";
 const BASE64URL_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
 export class STLClientError extends Error {
@@ -56,6 +61,8 @@ export class CardCrunchSTLClient {
     url.searchParams.set("code_challenge", challenge);
     url.searchParams.set("code_challenge_method", "S256");
     url.searchParams.set("scope", [...new Set(scopes)].join(" "));
+    url.searchParams.set("prompt", "select_account");
+    url.searchParams.set("provider", "google");
     return { authorizationUrl: url.toString(), state, expiresAt };
   }
 
@@ -142,7 +149,12 @@ export class CardCrunchSTLClient {
 
   async signOut() {
     try {
-      if (await this.sessionStore.load()) await this.request("/auth/sign-out", { method: "POST" });
+      if (await this.sessionStore.load()) {
+        await this.request("/auth/sign-out", {
+          method: "POST",
+          body: { allOtherSessions: false }
+        });
+      }
     } finally {
       await Promise.all([
         this.sessionStore.clear(),
@@ -204,6 +216,12 @@ export class CardCrunchSTLClient {
       idempotencyKey: options.idempotencyKey
     });
     if (!ticket?.transfer?.url || !ticket?.slotId || !ticket?.uploadId) throw new STLClientError("STL save upload ticket was incomplete.", "BAD_SAVE_TICKET");
+    if (typeof options.onUploadPrepared === "function") {
+      await options.onUploadPrepared({
+        slotId: ticket.slotId,
+        uploadId: ticket.uploadId
+      });
+    }
     const transfer = await fetch(ticket.transfer.url, {
       method: ticket.transfer.method || "PUT",
       headers: ticket.transfer.headers || {},
@@ -212,7 +230,23 @@ export class CardCrunchSTLClient {
     if (!transfer.ok) throw new STLClientError("STL private save transfer failed.", "SAVE_TRANSFER_FAILED", { status: transfer.status });
     return this.request(`/saves/${encodeURIComponent(ticket.slotId)}/versions`, {
       method: "POST",
-      body: { ...input, uploadId: ticket.uploadId, checksum, fileSize: bytes.byteLength, compression: input.compression || "none" },
+      body: {
+        gameId: input.gameId,
+        slotKey: input.slotKey,
+        displayName: input.displayName,
+        expectedRevision: input.expectedRevision,
+        parentVersionId: input.parentVersionId,
+        deviceId: input.deviceId,
+        gameBuild: input.gameBuild,
+        saveFormatVersion: input.saveFormatVersion,
+        checksum,
+        fileSize: bytes.byteLength,
+        compression: input.compression || "none",
+        clientCreatedAt: input.clientCreatedAt,
+        progressSummary: input.progressSummary,
+        playSeconds: input.playSeconds,
+        uploadId: ticket.uploadId
+      },
       idempotencyKey: options.idempotencyKey
     });
   }
@@ -220,6 +254,11 @@ export class CardCrunchSTLClient {
   async listSaveVersions(slotId, options = {}) {
     const suffix = slotId ? `/${encodeURIComponent(slotId)}/versions` : "/versions";
     return this.request(`/saves${suffix}`, { method: "GET", timeoutMs: options.timeoutMs });
+  }
+
+  async listCloudSaveSlots(gameId, options = {}) {
+    const query = new URLSearchParams({ gameId: String(gameId || "") });
+    return this.request(`/saves?${query}`, { method: "GET", timeoutMs: options.timeoutMs });
   }
 
   async mutate(path, body, { queueWhenOffline = true, idempotencyKey = crypto.randomUUID(), method = "POST" } = {}) {
@@ -414,6 +453,15 @@ function createProtectedSessionPersistence() {
     };
   }
 
+  const protectedBrowserSession = createProtectedBrowserStore(SESSION_KEY);
+  const protectedBrowserTransaction = createProtectedBrowserStore(AUTH_TRANSACTION_KEY);
+  if (protectedBrowserSession && protectedBrowserTransaction) {
+    return {
+      sessionStore: protectedBrowserSession,
+      transactionStore: protectedBrowserTransaction
+    };
+  }
+
   let memorySession = null;
   return {
     sessionStore: {
@@ -426,6 +474,113 @@ function createProtectedSessionPersistence() {
     },
     transactionStore: createJsonStore(sessionStorage, AUTH_TRANSACTION_KEY)
   };
+}
+
+function createProtectedBrowserStore(recordKey) {
+  if (!globalThis.indexedDB || !globalThis.crypto?.subtle) return null;
+
+  return {
+    security: "web-crypto-indexeddb",
+    async load() {
+      const database = await openProtectedBrowserDatabase();
+      const [keyRecord, record] = await Promise.all([
+        readIndexedDbValue(database, WEB_AUTH_KEY_STORE, WEB_AUTH_KEY_ID),
+        readIndexedDbValue(database, WEB_AUTH_RECORD_STORE, recordKey)
+      ]);
+      if (!record) return null;
+      if (!keyRecord?.key) {
+        await deleteIndexedDbValue(database, WEB_AUTH_RECORD_STORE, recordKey);
+        return null;
+      }
+      try {
+        const plaintext = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: new Uint8Array(record.iv) },
+          keyRecord.key,
+          record.ciphertext
+        );
+        return JSON.parse(new TextDecoder().decode(plaintext));
+      } catch {
+        await deleteIndexedDbValue(database, WEB_AUTH_RECORD_STORE, recordKey);
+        return null;
+      }
+    },
+    async save(value) {
+      const database = await openProtectedBrowserDatabase();
+      const encryptionKey = await getOrCreateBrowserEncryptionKey(database);
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const plaintext = new TextEncoder().encode(JSON.stringify(value));
+      const ciphertext = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv },
+        encryptionKey,
+        plaintext
+      );
+      await writeIndexedDbValue(database, WEB_AUTH_RECORD_STORE, {
+        id: recordKey,
+        version: 1,
+        iv: [...iv],
+        ciphertext
+      });
+    },
+    async clear() {
+      const database = await openProtectedBrowserDatabase();
+      await deleteIndexedDbValue(database, WEB_AUTH_RECORD_STORE, recordKey);
+    }
+  };
+}
+
+let protectedBrowserDatabasePromise;
+
+function openProtectedBrowserDatabase() {
+  protectedBrowserDatabasePromise ||= new Promise((resolve, reject) => {
+    const request = indexedDB.open(WEB_AUTH_DATABASE, WEB_AUTH_DATABASE_VERSION);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(WEB_AUTH_KEY_STORE)) {
+        database.createObjectStore(WEB_AUTH_KEY_STORE, { keyPath: "id" });
+      }
+      if (!database.objectStoreNames.contains(WEB_AUTH_RECORD_STORE)) {
+        database.createObjectStore(WEB_AUTH_RECORD_STORE, { keyPath: "id" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("Protected browser storage could not be opened."));
+    request.onblocked = () => reject(new Error("Protected browser storage is blocked."));
+  });
+  return protectedBrowserDatabasePromise;
+}
+
+async function getOrCreateBrowserEncryptionKey(database) {
+  const stored = await readIndexedDbValue(database, WEB_AUTH_KEY_STORE, WEB_AUTH_KEY_ID);
+  if (stored?.key) return stored.key;
+  const key = await crypto.subtle.generateKey(
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+  await writeIndexedDbValue(database, WEB_AUTH_KEY_STORE, { id: WEB_AUTH_KEY_ID, key });
+  return key;
+}
+
+function readIndexedDbValue(database, storeName, key) {
+  return runIndexedDbRequest(database, storeName, "readonly", (store) => store.get(key));
+}
+
+function writeIndexedDbValue(database, storeName, value) {
+  return runIndexedDbRequest(database, storeName, "readwrite", (store) => store.put(value));
+}
+
+function deleteIndexedDbValue(database, storeName, key) {
+  return runIndexedDbRequest(database, storeName, "readwrite", (store) => store.delete(key));
+}
+
+function runIndexedDbRequest(database, storeName, mode, operation) {
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(storeName, mode);
+    const request = operation(transaction.objectStore(storeName));
+    request.onsuccess = () => resolve(request.result ?? null);
+    request.onerror = () => reject(request.error || new Error("Protected browser storage failed."));
+    transaction.onabort = () => reject(transaction.error || new Error("Protected browser storage was interrupted."));
+  });
 }
 
 function createCapacitorSecureStore({ key, secureStorage, keychainAccess }) {

@@ -65,8 +65,8 @@ const CRUNCH_GUIDE = [
   {
     id: "full-hand",
     title: "Full Hand",
-    points: "Hand x8 + Perfect x3",
-    copy: "Resolve all four selected cards successfully for the biggest hand bonus.",
+    points: "Power all Crunches x2",
+    copy: "Resolve all four cards to charge them before their real Crunches.",
     types: [],
     requiresFour: true,
     cards: [["3", "hearts"], ["6", "clubs"], ["9", "diamonds"], ["Q", "spades"]],

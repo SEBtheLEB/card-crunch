@@ -3,6 +3,8 @@ export const CARD_CRUNCH_STL_CLIENT_ID = "card-crunch-mobile";
 export const CARD_CRUNCH_STL_BASE_URL = "https://accounts.stlproductionz.io";
 export const CARD_CRUNCH_DEV_CALLBACK = "cardcrunch-dev://auth/callback";
 export const CARD_CRUNCH_PROD_CALLBACK = "cardcrunch://auth/callback";
+export const CARD_CRUNCH_WEB_CALLBACK = "https://card-crunch.vercel.app/auth/callback";
+export const CARD_CRUNCH_RELEASE_WEB_CALLBACK = "https://card-crunch-release.vercel.app/auth/callback";
 export const CARD_CRUNCH_SAVE_SLOT_KEY = "card-crunch-primary";
 export const CARD_CRUNCH_SAVE_FORMAT_VERSION = "card-crunch-save-v1";
 
@@ -11,7 +13,8 @@ export const STL_ENV_NAMES = Object.freeze({
   clientId: "VITE_STL_CLIENT_ID",
   gameId: "VITE_STL_GAME_ID",
   developmentRedirectUri: "VITE_STL_REDIRECT_URI_DEV",
-  productionRedirectUri: "VITE_STL_REDIRECT_URI_PROD"
+  productionRedirectUri: "VITE_STL_REDIRECT_URI_PROD",
+  webRedirectUri: "VITE_STL_WEB_REDIRECT_URI"
 });
 
 export class STLPlatformConfigurationError extends Error {
@@ -32,7 +35,8 @@ export function readSTLPlatformConfig(source = globalThis.__CARD_CRUNCH_STL_CONF
     clientId: String(source?.clientId || CARD_CRUNCH_STL_CLIENT_ID).trim(),
     gameId: String(source?.gameId || CARD_CRUNCH_STL_GAME_ID).trim(),
     developmentRedirectUri: String(source?.developmentRedirectUri || CARD_CRUNCH_DEV_CALLBACK).trim(),
-    productionRedirectUri: String(source?.productionRedirectUri || CARD_CRUNCH_PROD_CALLBACK).trim()
+    productionRedirectUri: String(source?.productionRedirectUri || CARD_CRUNCH_PROD_CALLBACK).trim(),
+    webRedirectUri: String(source?.webRedirectUri || CARD_CRUNCH_WEB_CALLBACK).trim()
   });
 }
 
@@ -47,7 +51,8 @@ export function getRuntimeRedirectUri(
   }
   const host = String(locationLike?.hostname || "").toLowerCase();
   const local = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
-  return local ? config.developmentRedirectUri : config.productionRedirectUri;
+  if (local) return `${String(locationLike?.origin || "http://localhost:4183").replace(/\/+$/, "")}/auth/callback`;
+  return config.webRedirectUri;
 }
 
 export function validateSTLPlatformConfig(config = readSTLPlatformConfig(), locationLike = globalThis.location) {
@@ -58,12 +63,18 @@ export function validateSTLPlatformConfig(config = readSTLPlatformConfig(), loca
   if (!config.gameId) missing.push(STL_ENV_NAMES.gameId);
   if (!config.developmentRedirectUri) missing.push(STL_ENV_NAMES.developmentRedirectUri);
   if (!config.productionRedirectUri) missing.push(STL_ENV_NAMES.productionRedirectUri);
+  if (!config.webRedirectUri) missing.push(STL_ENV_NAMES.webRedirectUri);
 
   if (config.baseUrl && !isAllowedSTLPlatformBaseUrl(config.baseUrl)) invalid.push(STL_ENV_NAMES.baseUrl);
   if (config.clientId && !/^[a-z][a-z0-9._-]{2,127}$/.test(config.clientId)) invalid.push(STL_ENV_NAMES.clientId);
   if (config.gameId && !isUuid(config.gameId)) invalid.push(STL_ENV_NAMES.gameId);
   if (config.developmentRedirectUri && config.developmentRedirectUri !== CARD_CRUNCH_DEV_CALLBACK) invalid.push(STL_ENV_NAMES.developmentRedirectUri);
   if (config.productionRedirectUri && config.productionRedirectUri !== CARD_CRUNCH_PROD_CALLBACK) invalid.push(STL_ENV_NAMES.productionRedirectUri);
+  if (config.webRedirectUri
+      && !callbackMatchesRedirect(config.webRedirectUri, CARD_CRUNCH_WEB_CALLBACK)
+      && !callbackMatchesRedirect(config.webRedirectUri, CARD_CRUNCH_RELEASE_WEB_CALLBACK)) {
+    invalid.push(STL_ENV_NAMES.webRedirectUri);
+  }
   if (getRuntimeRedirectUri(config, locationLike) && !isAllowedCardCrunchCallback(getRuntimeRedirectUri(config, locationLike))) {
     invalid.push("runtimeRedirectUri");
   }
@@ -74,7 +85,10 @@ export function validateSTLPlatformConfig(config = readSTLPlatformConfig(), loca
 
 export function isAllowedCardCrunchCallback(value) {
   return callbackMatchesRedirect(value, CARD_CRUNCH_DEV_CALLBACK)
-    || callbackMatchesRedirect(value, CARD_CRUNCH_PROD_CALLBACK);
+    || callbackMatchesRedirect(value, CARD_CRUNCH_PROD_CALLBACK)
+    || callbackMatchesRedirect(value, CARD_CRUNCH_WEB_CALLBACK)
+    || callbackMatchesRedirect(value, CARD_CRUNCH_RELEASE_WEB_CALLBACK)
+    || isAllowedLoopbackCallback(value);
 }
 
 export function callbackMatchesRedirect(value, expectedRedirectUri) {
@@ -114,13 +128,14 @@ export function getSTLPlatformDiagnostics(config = readSTLPlatformConfig(), loca
     clientId: config.clientId || "unconfigured",
     gameId: config.gameId || "unconfigured",
     redirectUri: getRuntimeRedirectUri(config, locationLike),
-    callbacks: `${CARD_CRUNCH_DEV_CALLBACK} | ${CARD_CRUNCH_PROD_CALLBACK}`,
+    callbacks: `${CARD_CRUNCH_DEV_CALLBACK} | ${CARD_CRUNCH_PROD_CALLBACK} | ${config.webRedirectUri}`,
     variables: Object.freeze({
       [STL_ENV_NAMES.baseUrl]: Boolean(config.baseUrl),
       [STL_ENV_NAMES.clientId]: Boolean(config.clientId),
       [STL_ENV_NAMES.gameId]: Boolean(config.gameId),
       [STL_ENV_NAMES.developmentRedirectUri]: Boolean(config.developmentRedirectUri),
-      [STL_ENV_NAMES.productionRedirectUri]: Boolean(config.productionRedirectUri)
+      [STL_ENV_NAMES.productionRedirectUri]: Boolean(config.productionRedirectUri),
+      [STL_ENV_NAMES.webRedirectUri]: Boolean(config.webRedirectUri)
     })
   });
 }
@@ -140,6 +155,21 @@ function isAllowedSTLPlatformBaseUrl(value) {
     if (url.origin === CARD_CRUNCH_STL_BASE_URL) return true;
     const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
     return loopback && (url.protocol === "http:" || url.protocol === "https:");
+  } catch {
+    return false;
+  }
+}
+
+function isAllowedLoopbackCallback(value) {
+  try {
+    const callback = new URL(value);
+    const loopback = callback.hostname === "localhost" || callback.hostname === "127.0.0.1" || callback.hostname === "[::1]";
+    return loopback
+      && callback.protocol === "http:"
+      && callback.pathname === "/auth/callback"
+      && !callback.username
+      && !callback.password
+      && !callback.hash;
   } catch {
     return false;
   }

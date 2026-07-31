@@ -6,8 +6,8 @@ import {
   readSTLPlatformConfig,
   shouldShowSTLDiagnostics,
   validateSTLPlatformConfig
-} from "./stlPlatformConfig.js?v=190";
-import { createCardCrunchSTLClient, getOrCreateDeviceId, STLClientError } from "./stlPlatformClient.js?v=190";
+} from "./stlPlatformConfig.js?v=205";
+import { createCardCrunchSTLClient, getOrCreateDeviceId, STLClientError } from "./stlPlatformClient.js?v=200";
 import {
   applyCloudSaveSnapshot,
   createCardCrunchSaveUpload,
@@ -15,7 +15,7 @@ import {
   detectSaveConflict,
   noteCloudUploadResult,
   readCloudMeta
-} from "./stlCloudSave.js?v=189";
+} from "./stlCloudSave.js?v=201";
 
 const PROFILE_KEY = "cardCrunchStlProfileV1";
 const ACHIEVEMENT_DEDUPE_KEY = "cardCrunchStlAchievementReportsV1";
@@ -42,12 +42,12 @@ export function initializeSTLPlatformAccount({ bindAction, showPage, game } = {}
     validateSTLPlatformConfig(config);
     integration = new STLPlatformIntegration({ config, game, elements, showPage });
     globalThis.cardCrunchSTL = api;
-    bindAction?.(elements.google, () => integration.signIn());
+    elements.googleButtons.forEach((button) => bindAction?.(button, () => integration.signIn()));
     bindAction?.(elements.signOut, () => integration.signOut());
     bindAction?.(elements.sync, () => integration.syncCloudSave("manual"));
     void integration.boot();
   } catch (error) {
-    setStatus(elements, error.message || "STL Platform is not configured.", "bad");
+    setStatus(elements, toUserMessage(error), "bad");
     setBusy(elements, true);
     persistProfile(null);
     globalThis.cardCrunchSTL = api;
@@ -81,6 +81,8 @@ class STLPlatformIntegration {
     this.syncTimer = null;
     this.syncInFlight = false;
     this.achievementReports = readAchievementReports();
+    this.signInCompletion = null;
+    this.completedCallbackKeys = new Set();
   }
 
   async boot() {
@@ -93,7 +95,7 @@ class STLPlatformIntegration {
         this.profile = null;
         persistProfile(null);
         renderProfile(this.elements, null);
-        this.setStatus("Sign in with STL Platform to sync Card Crunch.", "");
+        this.setStatus("Play as a guest, or continue with Google to save your progress.", "");
         setBusy(this.elements, false);
         return;
       }
@@ -105,14 +107,20 @@ class STLPlatformIntegration {
       renderProfile(this.elements, null);
     } finally {
       setBusy(this.elements, false);
+      dispatchAuthReady(this.profile);
     }
   }
 
   async signIn() {
     setBusy(this.elements, true);
-    this.setStatus("Opening STL Platform sign-in...");
+    this.setStatus("Opening secure Google sign-in…");
     try {
       const { authorizationUrl } = await this.client.beginSignIn();
+      this.setStatus("Continuing to STL Account…");
+      if (isDevHost()) {
+        const target = new URL(authorizationUrl);
+        console.info("[Card Crunch STL] OAuth handoff ready.", `${target.origin}${target.pathname}`);
+      }
       await openSystemBrowser(authorizationUrl);
     } catch (error) {
       this.setStatus(toUserMessage(error), "bad");
@@ -121,6 +129,22 @@ class STLPlatformIntegration {
   }
 
   async completeSignIn(callbackUrl) {
+    const callbackKey = getCallbackKey(callbackUrl);
+    if (callbackKey && this.completedCallbackKeys.has(callbackKey)) {
+      return this.signInCompletion;
+    }
+    if (this.signInCompletion) return this.signInCompletion;
+    if (callbackKey) this.completedCallbackKeys.add(callbackKey);
+
+    this.signInCompletion = this.finishSignIn(callbackUrl);
+    try {
+      return await this.signInCompletion;
+    } finally {
+      this.signInCompletion = null;
+    }
+  }
+
+  async finishSignIn(callbackUrl) {
     setBusy(this.elements, true);
     try {
       const session = await this.client.completeSignIn(callbackUrl, {
@@ -130,7 +154,8 @@ class STLPlatformIntegration {
         }
       });
       await this.afterSessionRestored(session);
-      this.showPage?.("account");
+      dispatchAuthReady(this.profile);
+      clearWebCallbackFromAddressBar();
     } catch (error) {
       this.setStatus(toUserMessage(error), "bad");
     } finally {
@@ -145,7 +170,14 @@ class STLPlatformIntegration {
     await this.refreshPlayer();
     await this.client.flushOfflineQueue().catch(() => null);
     await this.syncCloudSave("sign-in");
-    this.setStatus(`Connected to STL Platform. Save sync is ${this.status.syncState}.`, "good");
+    this.setStatus(
+      this.status.syncState === "synced"
+        ? "Progress synced."
+        : this.status.syncState === "conflict"
+          ? "Signed in. Choose which saved progress to keep from your profile."
+          : "Signed in. Cloud progress will retry automatically.",
+      "good"
+    );
   }
 
   async signOut() {
@@ -163,8 +195,8 @@ class STLPlatformIntegration {
       persistProfile(null);
       this.setStatus(
         remoteError
-          ? "Signed out on this device. Remote session cleanup could not be confirmed."
-          : "Signed out of STL Platform.",
+          ? "Signed out on this device. We couldn’t confirm sign-out on other devices."
+          : "Signed out on this device.",
         remoteError ? "bad" : ""
       );
       renderProfile(this.elements, null);
@@ -258,15 +290,50 @@ class STLPlatformIntegration {
     if (this.syncInFlight || !this.profile) return;
     this.syncInFlight = true;
     try {
-      const upload = await createCardCrunchSaveUpload({
+      let upload = await createCardCrunchSaveUpload({
         state: this.game?.state,
         gameId: this.config.gameId,
         deviceId: this.deviceId || await getOrCreateDeviceId(),
         gameBuild: getBuildVersion()
       });
+      if (!upload.slotId) {
+        const slots = await this.client.listCloudSaveSlots(upload.gameId);
+        const existingSlot = slots?.items?.find((slot) => slot?.slotKey === upload.slotKey);
+        if (existingSlot?.slotId) {
+          const remoteRevision = Math.max(0, Number(existingSlot.currentRevision) || 0);
+          if (remoteRevision > 0 || existingSlot.currentVersionId) {
+            throw new STLClientError(
+              "Cloud progress already exists for this account.",
+              "SAVE_CONFLICT",
+              {
+                remoteVersion: {
+                  ...existingSlot,
+                  revision: remoteRevision,
+                  saveVersionId: existingSlot.currentVersionId,
+                  serverReceivedAt: existingSlot.updatedAt
+                }
+              }
+            );
+          }
+          noteCloudUploadResult({ slot: existingSlot });
+          upload = {
+            ...upload,
+            slotId: existingSlot.slotId,
+            expectedRevision: 0,
+            parentVersionId: undefined
+          };
+        }
+      }
       const result = await this.client.uploadCloudSave(upload, {
         idempotencyKey: stableIdempotency("save", upload.checksum),
-        queueWhenOffline: true
+        queueWhenOffline: true,
+        onUploadPrepared: ({ slotId }) => noteCloudUploadResult({
+          slot: {
+            slotId,
+            currentRevision: upload.expectedRevision,
+            currentVersionId: upload.parentVersionId
+          }
+        })
       });
       noteCloudUploadResult(result);
       this.status = { syncState: "synced", lastSyncAt: new Date().toISOString(), reason, queued: await this.client.queueSize(), conflict: null };
@@ -341,6 +408,11 @@ export function installSTLCallbackListener() {
       }
     });
   }
+
+  const currentUrl = String(globalThis.location?.href || "");
+  if (isWebCallbackUrl(currentUrl)) {
+    void integration?.completeSignIn(currentUrl);
+  }
 }
 
 function achievementsForEvent(eventName, payload, state = {}) {
@@ -363,13 +435,19 @@ function sanitizeEvidence(payload = {}) {
 }
 
 function getElements() {
+  const accountGoogle = document.querySelector("#cardCrunchGoogleSignInButton");
+  const launchGoogle = document.querySelector("#launchGoogleSignInButton");
+  const accountStatus = document.querySelector("#cardCrunchAccountStatus");
+  const launchStatus = document.querySelector("#launchAuthStatus");
   return {
     signedOut: document.querySelector("#cardCrunchAccountSignedOut"),
     signedIn: document.querySelector("#cardCrunchAccountSignedIn"),
-    google: document.querySelector("#cardCrunchGoogleSignInButton"),
+    google: accountGoogle,
+    googleButtons: [accountGoogle, launchGoogle].filter(Boolean),
     signOut: document.querySelector("#cardCrunchSignOutButton"),
     sync: document.querySelector("#cardCrunchSyncButton"),
-    status: document.querySelector("#cardCrunchAccountStatus"),
+    status: accountStatus,
+    statusElements: [accountStatus, launchStatus].filter(Boolean),
     avatar: document.querySelector("#cardCrunchAccountAvatar"),
     initials: document.querySelector("#cardCrunchAccountInitials"),
     name: document.querySelector("#cardCrunchAccountName"),
@@ -386,7 +464,7 @@ function renderProfile(elements, profile) {
   if (!signedIn) return;
   const displayName = profile.displayName || "Card Crunch Player";
   if (elements.name) elements.name.textContent = displayName;
-  if (elements.email) elements.email.textContent = `STL ID ${String(profile.id).slice(0, 8)}...`;
+  if (elements.email) elements.email.textContent = "Connected";
   if (elements.initials) elements.initials.textContent = initials(displayName);
   if (elements.avatar) {
     elements.avatar.hidden = !profile.avatarUrl;
@@ -412,20 +490,34 @@ function renderDiagnostics(elements, diagnostics) {
 }
 
 function setStatus(elements, message, tone = "") {
-  if (!elements.status) return;
-  elements.status.textContent = message;
-  elements.status.dataset.tone = tone;
+  elements.statusElements.forEach((status) => {
+    status.textContent = message;
+    status.dataset.tone = tone;
+  });
 }
 
 function setSyncText(elements, status) {
   if (!elements.syncState) return;
   const queued = status.queued ? ` • ${status.queued} queued` : "";
-  elements.syncState.textContent = `Cloud save: ${status.syncState || "not synced"}${queued}`;
+  const labels = {
+    synced: "Progress synced",
+    queued: "Progress will sync when you’re back online",
+    conflict: "Choose which saved progress to keep",
+    failed: "Progress sync needs another try"
+  };
+  elements.syncState.textContent = `${labels[status.syncState] || "Progress not synced"}${queued}`;
 }
 
 function setBusy(elements, busy) {
-  [elements.google, elements.signOut, elements.sync].forEach((button) => {
+  [...elements.googleButtons, elements.signOut, elements.sync].forEach((button) => {
     if (button) button.disabled = Boolean(busy);
+  });
+  elements.googleButtons.forEach((button) => {
+    const googleLabel = button.querySelector("span");
+    if (!googleLabel) return;
+    googleLabel.textContent = busy
+      ? "Signing you in…"
+      : button.dataset.idleLabel || "Continue with Google";
   });
 }
 
@@ -462,13 +554,54 @@ function stableIdempotency(...parts) {
 }
 
 async function openSystemBrowser(url) {
-  const browser = globalThis.Capacitor?.Plugins?.Browser;
-  if (browser?.open) return browser.open({ url, presentationStyle: "popover" });
-  window.location.assign(url);
+  const capacitor = globalThis.Capacitor;
+  const nativePlatform = String(capacitor?.getPlatform?.() || "").toLowerCase();
+  const isNative = capacitor?.isNativePlatform?.() || nativePlatform === "android" || nativePlatform === "ios";
+  const browser = capacitor?.Plugins?.Browser;
+  if (isDevHost()) console.info("[Card Crunch STL] Opening OAuth.", isNative ? `native:${nativePlatform || "unknown"}` : "web");
+  if (isNative && browser?.open) return browser.open({ url, presentationStyle: "popover" });
+  const handoff = document.createElement("a");
+  handoff.href = url;
+  handoff.target = "_self";
+  handoff.hidden = true;
+  handoff.setAttribute("aria-hidden", "true");
+  document.body.append(handoff);
+  handoff.click();
+  window.setTimeout(() => {
+    handoff.remove();
+    if (document.visibilityState === "visible") window.location.assign(url);
+  }, 80);
 }
 
 async function closeSystemBrowser() {
-  try { await globalThis.Capacitor?.Plugins?.Browser?.close?.(); } catch {}
+  const capacitor = globalThis.Capacitor;
+  const nativePlatform = String(capacitor?.getPlatform?.() || "").toLowerCase();
+  const isNative = capacitor?.isNativePlatform?.() || nativePlatform === "android" || nativePlatform === "ios";
+  if (!isNative) return;
+  try { await capacitor?.Plugins?.Browser?.close?.(); } catch {}
+}
+
+function isWebCallbackUrl(value) {
+  try {
+    const callback = new URL(value);
+    return callback.pathname === "/auth/callback"
+      && (callback.searchParams.has("code") || callback.searchParams.has("error"))
+      && callback.searchParams.has("state")
+      && isAllowedCardCrunchCallback(value);
+  } catch {
+    return false;
+  }
+}
+
+function clearWebCallbackFromAddressBar() {
+  if (globalThis.Capacitor?.isNativePlatform?.()) return;
+  try {
+    if (location.pathname === "/auth/callback") history.replaceState(null, "", "/");
+  } catch {}
+}
+
+function dispatchAuthReady(profile) {
+  globalThis.dispatchEvent?.(new CustomEvent("card-crunch-auth-ready", { detail: { profile } }));
 }
 
 function getPlatformKind() {
@@ -487,14 +620,33 @@ function getBuildVersion() {
 
 function toUserMessage(error) {
   if (error instanceof STLClientError) {
-    if (error.code === "OFFLINE_QUEUED") return "Offline: progress is queued for STL sync.";
-    if (error.code === "SESSION_MISSING") return "Sign in to STL Platform first.";
+    if (error.code === "OFFLINE_QUEUED") return "You’re offline. Your progress will sync when you reconnect.";
+    if (error.code === "SESSION_MISSING") return "Continue with Google to save and sync your progress.";
+    if (error.code === "INVALID_STATE") return "That sign-in return was already handled. Try again if you are not signed in.";
+    if (error.code === "IDENTITY_ALREADY_LINKED") return "Continue with Google to open your existing STL Account.";
   }
-  return error?.message || "STL Platform is unavailable.";
+  const message = String(error?.message || "");
+  if (/cancel|denied|access_denied/i.test(message)) return "Sign-in was cancelled. Nothing was changed.";
+  if (/network|fetch|offline|connect|unavailable|timeout/i.test(message)) {
+    return "We couldn’t connect right now. Check your connection and try again.";
+  }
+  return "We couldn’t sign you in. Please try again.";
 }
 
 function initials(value) {
   return String(value).split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "CC";
+}
+
+function getCallbackKey(callbackUrl) {
+  try {
+    const callback = new URL(callbackUrl);
+    const state = callback.searchParams.get("state");
+    const code = callback.searchParams.get("code");
+    const error = callback.searchParams.get("error");
+    return state ? `${state}:${code || error || "callback"}` : "";
+  } catch {
+    return "";
+  }
 }
 
 function isDevHost() {

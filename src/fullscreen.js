@@ -1,6 +1,5 @@
 let controls = [];
 let changing = false;
-let firstGestureArmed = false;
 
 export function installFullscreenControls(bindAction) {
   controls = [...document.querySelectorAll("[data-fullscreen-toggle]")];
@@ -32,36 +31,13 @@ export async function toggleFullscreen() {
 async function attemptAutomaticFullscreen() {
   if (getFullscreenElement()) return;
 
-  // WebViews may allow this immediately. Standard browsers reject it until
-  // user activation, so retain a one-shot first-gesture fallback.
-  const entered = await enterFullscreen();
-  if (entered) return;
-  armFirstGestureFullscreen();
-}
-
-function armFirstGestureFullscreen() {
-  if (firstGestureArmed) return;
-  firstGestureArmed = true;
-
-  const onFirstGesture = (event) => {
-    if (event.target?.closest?.("[data-fullscreen-toggle]")) {
-      disarm();
-      return;
-    }
-    disarm();
-    // Let the tapped control finish its own pointer/click action before the
-    // browser changes display mode. Some mobile browsers cancel the target
-    // event when fullscreen begins inside the capture phase.
-    window.setTimeout(() => enterFullscreen(), 0);
-  };
-  const disarm = () => {
-    firstGestureArmed = false;
-    document.removeEventListener("pointerup", onFirstGesture, true);
-    document.removeEventListener("keydown", onFirstGesture, true);
-  };
-
-  document.addEventListener("pointerup", onFirstGesture, { capture: true, once: true, passive: true });
-  document.addEventListener("keydown", onFirstGesture, { capture: true, once: true });
+  // Installed PWAs and native WebViews already have an app-like launch
+  // context. Normal browser tabs keep their first tap for the control the
+  // player actually touched; fullscreen remains available through the button.
+  const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches
+    || window.navigator.standalone === true
+    || globalThis.Capacitor?.isNativePlatform?.() === true;
+  if (standalone) await enterFullscreen();
 }
 
 async function enterFullscreen() {

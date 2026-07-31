@@ -1,7 +1,7 @@
 import { formatCompactNumber } from "./format.js?v=164";
 import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=164";
 import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle, getCardVisualColorClass } from "./cardSkins.js?v=164";
-import { getPowerCardDetails } from "./arcadeMode.js?v=164";
+import { getPowerCardDetails } from "./arcadeMode.js?v=196";
 import { createScoreSurgePlan, SCORE_SURGE_CONFIG } from "./scoreSurge.js?v=181";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
@@ -593,7 +593,13 @@ export async function playCrunchTotalExplanation({ total, scoreEl, tier = "norma
   }
 }
 
-export async function playFullHandPrelude({ cards = [], fullHand = null, sourceCards = [], bank = null } = {}) {
+export async function playFullHandPrelude({
+  cards = [],
+  fullHand = null,
+  sourceCards = [],
+  bank = null,
+  autoAdvance = false
+} = {}) {
   if (cards.length < 4 || !fullHand) return;
 
   const hasSharedHandoff = sourceCards.some(({ element }) => element?.isConnected);
@@ -603,7 +609,7 @@ export async function playFullHandPrelude({ cards = [], fullHand = null, sourceC
   const advance = createAdvanceController(overlay);
   overlay.innerHTML = `
     <div class="cutin-stage cutin-full-hand-stage">
-      <div class="cutin-full-hand-kicker">MAXIMUM COMBO</div>
+      <div class="cutin-full-hand-kicker">MAXIMUM CHARGE</div>
       <div class="cutin-full-hand-row">
         ${cards.map((card, index) => createCutinCardMarkup(card, `full-hand-card full-hand-card-${index + 1}`)).join("")}
       </div>
@@ -614,23 +620,18 @@ export async function playFullHandPrelude({ cards = [], fullHand = null, sourceC
           <span><em>${bonus.label}</em><strong>${bonus.value}</strong></span>
         `).join("")}
       </div>
-      <div class="cutin-points cutin-full-hand-points">+${formatCompactNumber(fullHand.bankPoints ?? 0)}</div>
     </div>
   `;
   document.body.appendChild(overlay);
   let cleanupSharedHandoff = () => {};
 
   try {
-    cleanupSharedHandoff = await transitionSourceCardsIntoCutin(overlay, sourceCards, advance);
+    cleanupSharedHandoff = await transitionSourceCardsIntoCutin(overlay, sourceCards, advance, { restoreSources: true });
     const stage = overlay.querySelector(".cutin-full-hand-stage");
-    const crunchPrompt = createInteractiveCrunchPrompt(overlay);
-    playGameSfx("score_total");
+    const powerPrompt = createInteractiveCrunchPrompt(overlay, "TAP TO POWER UP");
+    playGameSfx("double_match");
     stage?.classList.add("is-full-hand-ready");
-    await playInteractiveCardCrunch(overlay, advance, crunchPrompt, bank?.element ?? null, { fullHand: true });
-    if (bank) {
-      const activeCards = getActiveCutinCards(overlay);
-      await bank.add(fullHand.bankPoints ?? 0, overlay.querySelector(".cutin-full-hand-points"), advance, activeCards);
-    }
+    await playInteractiveFullHandPowerUp(overlay, advance, powerPrompt, bank?.element ?? null, { autoAdvance });
     overlay.classList.add("is-leaving");
     await waitMaybe(advance, CUTSCENE_CONFIG.fadeOutDuration);
   } finally {
@@ -792,13 +793,57 @@ function getActiveCutinCards(overlay) {
   return [...overlay.querySelectorAll(".cutin-card:not(.dim):not(.cutin-layout-proxy)")];
 }
 
-function createInteractiveCrunchPrompt(overlay) {
+function createInteractiveCrunchPrompt(overlay, action = "TAP TO CRUNCH") {
   const prompt = document.createElement("div");
   prompt.className = "cutin-crunch-prompt";
   prompt.setAttribute("aria-live", "polite");
-  prompt.textContent = `TAP TO CRUNCH  0/${CUTSCENE_CONFIG.interactiveCrunchHits}`;
+  prompt.textContent = `${action}  0/${CUTSCENE_CONFIG.interactiveCrunchHits}`;
   overlay.appendChild(prompt);
   return prompt;
+}
+
+async function playInteractiveFullHandPowerUp(
+  overlay,
+  advance,
+  prompt,
+  bankEl = null,
+  { autoAdvance = false } = {}
+) {
+  const stage = overlay.querySelector(".cutin-stage");
+  const cards = getActiveCutinCards(overlay);
+  if (!stage || !cards.length || isCrunchSkipRequested()) return;
+
+  const reactingCards = getDisplayedCrunchCards(overlay);
+  for (let hit = 1; hit <= CUTSCENE_CONFIG.interactiveCrunchHits; hit += 1) {
+    if (autoAdvance) await advance.wait(130);
+    else await advance.waitForTap(0);
+    if (isCrunchSkipRequested()) return;
+
+    assignCrunchShakeVectors(reactingCards, hit);
+    stage.dataset.powerHit = String(hit);
+    overlay.dataset.powerHit = String(hit);
+    cards.forEach((card) => {
+      card.dataset.powerCharge = String(hit);
+      spawnModifierBurst(overlay, card, "power");
+    });
+    stage.classList.remove("is-full-hand-reacting");
+    void stage.offsetWidth;
+    stage.classList.add("is-full-hand-reacting");
+    overlay.classList.remove("is-full-hand-impact");
+    void overlay.offsetWidth;
+    overlay.classList.add("is-full-hand-impact");
+    playGameSfx(hit === CUTSCENE_CONFIG.interactiveCrunchHits ? "double_match" : "score_step");
+    pulseModifierBank(bankEl);
+    prompt.textContent = hit < CUTSCENE_CONFIG.interactiveCrunchHits
+      ? `POWER UP AGAIN  ${hit}/${CUTSCENE_CONFIG.interactiveCrunchHits}`
+      : "FULL HAND POWER x2!";
+    prompt.classList.toggle("is-final-hit", hit === CUTSCENE_CONFIG.interactiveCrunchHits);
+  }
+
+  stage.classList.add("is-full-hand-powered");
+  overlay.classList.add("is-full-hand-powered");
+  await advance.wait(autoAdvance ? 150 : 280);
+  prompt.remove();
 }
 
 async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null, { fullHand = false } = {}) {
@@ -1324,7 +1369,7 @@ function createCutinCardMarkup(card, extraClass = "") {
   `;
 }
 
-async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
+async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance, { restoreSources = false } = {}) {
   const sources = sourceCards
     .filter(({ card, element }) => card?.id && element?.isConnected)
     .map(({ card, element }) => ({ card, element, rect: element.getBoundingClientRect() }))
@@ -1422,7 +1467,7 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
       easing: "cubic-bezier(.18, .82, .2, 1)",
       fill: "both"
     });
-    return { animation, target, flight };
+    return { animation, target, flight, element };
   });
 
   await advance.wait(CUTSCENE_CONFIG.sharedCardDuration + Math.max(0, animations.length - 1) * CUTSCENE_CONFIG.sharedCardStagger);
@@ -1439,9 +1484,10 @@ async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance) {
   });
 
   return () => {
-    animations.forEach(({ animation, target, flight }) => {
+    animations.forEach(({ animation, target, flight, element }) => {
       animation.cancel();
       discardPreparedCardShards(flight);
+      if (restoreSources) element.classList.remove("cutin-shared-source-hidden");
       target.remove();
       flight.remove();
     });
