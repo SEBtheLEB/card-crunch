@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build-web.mjs",
+    "build:release": "node scripts/build-web.mjs --release",
     "dev": "npm run build && node scripts/dev-server.mjs",
     "cloudflare:dev": "wrangler dev --config cloudflare/wrangler.jsonc",
     "cloudflare:deploy": "wrangler deploy --config cloudflare/wrangler.jsonc",
@@ -15,6 +16,7 @@
     "android:sync": "npm run build && cap sync android",
     "android:debug": "npm run android:sync && cd android && gradlew.bat assembleDebug",
     "android:bundle": "npm run android:sync && cd android && gradlew.bat bundleRelease",
+    "android:bundle:release": "node scripts/build-android-release.mjs",
     "android:open": "cap open android",
     "test": "node scripts/verify.mjs && node scripts/verify-stl-session-storage.mjs"
   },

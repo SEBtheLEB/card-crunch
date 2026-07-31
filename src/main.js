@@ -17,8 +17,11 @@ import { initializeStore } from "./store.js?v=202";
 import { initializeTutorial } from "./tutorial.js?v=164";
 import { initializeSTLPlatformAccount, installSTLCallbackListener } from "./stlPlatform.js?v=201";
 import { initializeMultiplayer } from "./multiplayer.js?v=196";
-import { initializeAppShell } from "./appShell.js?v=204";
+import { initializeAppShell } from "./appShell.js?v=205";
 import { initializeLaunchGate } from "./launchGate.js?v=198";
+
+const BUILD_CONFIG = getBuildConfig();
+const POTS_ONLY_RELEASE = BUILD_CONFIG.potsOnly === true;
 
 initializeTheme();
 initializeCardCollection();
@@ -37,8 +40,8 @@ installSTLCallbackListener();
 installAudioUnlock();
 initializePlayGames();
 installFullscreenControls(bindInstantAction);
-bindInstantAction(ui.elements.startButton, () => ui.showMenuPage("modes"));
-bindInstantAction(ui.elements.endlessArcadeButton, game.startEndlessArcade);
+bindInstantAction(ui.elements.startButton, () => ui.showMenuPage(getPlayLandingPage()));
+if (!POTS_ONLY_RELEASE) bindInstantAction(ui.elements.endlessArcadeButton, game.startEndlessArcade);
 bindInstantAction(ui.elements.backToMenuButton, () => {
   ui.showMap(false);
   ui.showStart(true);
@@ -79,7 +82,7 @@ bindThemePicker(bindInstantAction);
 bindCardSkinPicker(bindInstantAction);
 initializeCardCollectionUI(bindInstantAction);
 initializeStore({ bindAction: bindInstantAction, showMenuPage: ui.showMenuPage });
-initializeMultiplayer({ game, bindAction: bindInstantAction });
+if (!POTS_ONLY_RELEASE) initializeMultiplayer({ game, bindAction: bindInstantAction });
 installRainbowCardTrail();
 loadSettings();
 game.refreshEconomy();
@@ -112,11 +115,21 @@ if ("serviceWorker" in navigator) {
 
 window.CardCrunch = {
   game,
+  build: Object.freeze({ ...BUILD_CONFIG }),
   calculateCrunchScore,
   runScoringSelfTests
 };
 
 console.table(runScoringSelfTests());
+
+function getBuildConfig() {
+  const config = globalThis.__CARD_CRUNCH_BUILD_CONFIG__;
+  return config && typeof config === "object" ? config : { flavor: "development", potsOnly: false };
+}
+
+function getPlayLandingPage() {
+  return getBuildConfig().potsOnly ? "pots" : "modes";
+}
 
 function installReactivePressFeedback() {
   const selector = "button:not(:disabled):not(.card):not(.crunch-skip-text)";

@@ -6,6 +6,7 @@ const required = [
   "index.html",
   ".env.example",
   "platform-config.js",
+  "build-config.js",
   "src/main.js",
   "src/appShell.js",
   "src/launchGate.js",
@@ -261,6 +262,9 @@ if (dealTimingModule.getRoundDealDuration(4, 2) >= 2000) {
 
 const html = await readFile(resolve(root, "index.html"), "utf8");
 const vercelConfiguration = await readFile(resolve(root, "vercel.json"), "utf8");
+const releaseVercelConfiguration = await readFile(resolve(root, "vercel.release.json"), "utf8");
+const buildScript = await readFile(resolve(root, "scripts/build-web.mjs"), "utf8");
+const appShellScript = await readFile(resolve(root, "src/appShell.js"), "utf8");
 const backgroundStyles = await readFile(resolve(root, "styles/main.css"), "utf8");
 if (!backgroundStyles.includes("--casino-table-bg:")
   || !backgroundStyles.includes("pixel-casino-shell-v2.png")
@@ -277,12 +281,19 @@ if (
 ) {
   throw new Error("Card Crunch CSP must allow only the dedicated STL save-storage origin");
 }
+if (!releaseVercelConfiguration.includes('"buildCommand": "npm run build:release"')
+  || !releaseVercelConfiguration.includes("https://card-crunch-release.vercel.app")
+  || !buildScript.includes('process.argv.includes("--release")')
+  || !appShellScript.includes("RELEASE_POTS_ONLY ? launchReleasePot : openPreparation")) {
+  throw new Error("The isolated Pot Journey release flavor is not fully configured");
+}
 for (const assetPath of [
   "/manifest.json",
   "/assets/icons/icon-192.svg",
-  "/styles/main.css?v=204",
+  "/styles/main.css?v=205",
+  "/build-config.js",
   "/platform-config.js",
-  "/src/main.js?v=204"
+  "/src/main.js?v=205"
 ]) {
   if (!html.includes(`"${assetPath}"`)) {
     throw new Error(`App-shell asset must remain root-relative for OAuth callback routes: ${assetPath}`);
@@ -416,6 +427,7 @@ if (stlConfigModule.isAllowedCardCrunchCallback("bitcrushcore://auth/callback")
   || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback")
   || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch-dev://auth/callback")
   || !stlConfigModule.isAllowedCardCrunchCallback("https://card-crunch.vercel.app/auth/callback?code=test&state=test")
+  || !stlConfigModule.isAllowedCardCrunchCallback("https://card-crunch-release.vercel.app/auth/callback?code=test&state=test")
   || !stlConfigModule.isAllowedCardCrunchCallback("http://localhost:4183/auth/callback?code=test&state=test")
   || !stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback?code=test&state=test")
   || stlConfigModule.isAllowedCardCrunchCallback("cardcrunch://auth/callback-evil?code=test")

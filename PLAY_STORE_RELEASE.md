@@ -7,12 +7,15 @@ Card Crunch is packaged as a Capacitor 8 Android app with its dedicated package 
 ```powershell
 npm.cmd ci
 npm.cmd test
-npm.cmd run android:bundle
+npm.cmd run android:bundle:release
 ```
 
-The signed bundle is written to:
+The pots-only release flavor is baked into the signed bundle. The bundle is written to:
 
 `android/app/build/outputs/bundle/release/app-release.aab`
+
+The full development build remains available at `https://card-crunch.vercel.app`.
+The pots-only web release is deployed separately at `https://card-crunch-release.vercel.app`.
 
 The local upload key and its credentials are intentionally ignored by Git. Keep both of these files backed up securely:
 
@@ -47,7 +50,7 @@ Play Games v2 is required for new titles. Scores are submitted only at a critica
 
 ## Versioning
 
-Before every Play upload, increase `versionCode` in `android/app/build.gradle`. Update `versionName` for user-facing releases.
+The current release is `versionCode 2`, `versionName 1.1.0`. Before every later Play upload, increase `versionCode` in `android/app/build.gradle`. Update `versionName` for user-facing releases.
 
 ## Official references
 

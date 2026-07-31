@@ -1,7 +1,7 @@
 import {
   CARD_CRUNCH_SAVE_FORMAT_VERSION,
   CARD_CRUNCH_SAVE_SLOT_KEY
-} from "./stlPlatformConfig.js?v=193";
+} from "./stlPlatformConfig.js?v=205";
 import { sha256Hex } from "./stlPlatformClient.js?v=193";
 
 const CLOUD_META_KEY = "cardCrunchStlCloudMetaV1";

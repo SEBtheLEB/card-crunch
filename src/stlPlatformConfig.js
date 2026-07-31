@@ -4,6 +4,7 @@ export const CARD_CRUNCH_STL_BASE_URL = "https://accounts.stlproductionz.io";
 export const CARD_CRUNCH_DEV_CALLBACK = "cardcrunch-dev://auth/callback";
 export const CARD_CRUNCH_PROD_CALLBACK = "cardcrunch://auth/callback";
 export const CARD_CRUNCH_WEB_CALLBACK = "https://card-crunch.vercel.app/auth/callback";
+export const CARD_CRUNCH_RELEASE_WEB_CALLBACK = "https://card-crunch-release.vercel.app/auth/callback";
 export const CARD_CRUNCH_SAVE_SLOT_KEY = "card-crunch-primary";
 export const CARD_CRUNCH_SAVE_FORMAT_VERSION = "card-crunch-save-v1";
 
@@ -69,7 +70,11 @@ export function validateSTLPlatformConfig(config = readSTLPlatformConfig(), loca
   if (config.gameId && !isUuid(config.gameId)) invalid.push(STL_ENV_NAMES.gameId);
   if (config.developmentRedirectUri && config.developmentRedirectUri !== CARD_CRUNCH_DEV_CALLBACK) invalid.push(STL_ENV_NAMES.developmentRedirectUri);
   if (config.productionRedirectUri && config.productionRedirectUri !== CARD_CRUNCH_PROD_CALLBACK) invalid.push(STL_ENV_NAMES.productionRedirectUri);
-  if (config.webRedirectUri && config.webRedirectUri !== CARD_CRUNCH_WEB_CALLBACK) invalid.push(STL_ENV_NAMES.webRedirectUri);
+  if (config.webRedirectUri
+      && !callbackMatchesRedirect(config.webRedirectUri, CARD_CRUNCH_WEB_CALLBACK)
+      && !callbackMatchesRedirect(config.webRedirectUri, CARD_CRUNCH_RELEASE_WEB_CALLBACK)) {
+    invalid.push(STL_ENV_NAMES.webRedirectUri);
+  }
   if (getRuntimeRedirectUri(config, locationLike) && !isAllowedCardCrunchCallback(getRuntimeRedirectUri(config, locationLike))) {
     invalid.push("runtimeRedirectUri");
   }
@@ -82,6 +87,7 @@ export function isAllowedCardCrunchCallback(value) {
   return callbackMatchesRedirect(value, CARD_CRUNCH_DEV_CALLBACK)
     || callbackMatchesRedirect(value, CARD_CRUNCH_PROD_CALLBACK)
     || callbackMatchesRedirect(value, CARD_CRUNCH_WEB_CALLBACK)
+    || callbackMatchesRedirect(value, CARD_CRUNCH_RELEASE_WEB_CALLBACK)
     || isAllowedLoopbackCallback(value);
 }
 

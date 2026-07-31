@@ -6,7 +6,7 @@ import {
   readSTLPlatformConfig,
   shouldShowSTLDiagnostics,
   validateSTLPlatformConfig
-} from "./stlPlatformConfig.js?v=193";
+} from "./stlPlatformConfig.js?v=205";
 import { createCardCrunchSTLClient, getOrCreateDeviceId, STLClientError } from "./stlPlatformClient.js?v=200";
 import {
   applyCloudSaveSnapshot,

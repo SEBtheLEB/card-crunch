@@ -1,4 +1,4 @@
-const CACHE_NAME = "card-crunch-v204";
+const CACHE_NAME = "card-crunch-v205";
 const PINK_ARCADE_SUITS = ["hearts", "diamonds", "clubs", "spades"];
 const PINK_ARCADE_RANKS = ["ace", "02", "03", "04", "05", "06", "07", "08", "09", "10", "jack", "queen", "king"];
 const PINK_ARCADE_ASSETS = [
@@ -13,6 +13,7 @@ const PINK_ARCADE_ASSETS = [
 const ASSETS = [
   "./",
   "./index.html",
+  "./build-config.js",
   "./platform-config.js",
   "./src/vendor/capacitor-secure-storage.js",
   "./privacy-policy.html",

@@ -15,6 +15,9 @@ import { liveEvents } from "./liveEvents.js?v=201";
 const TOP_LEVEL_TABS = ["shop", "themes", "modes", "events", "account"];
 const PLAY_CHILD_PAGES = new Set(["modes", "pots", "pot-prep"]);
 const PROFILE_CHILD_PAGES = new Set(["account", "settings", "leaderboard"]);
+const BUILD_CONFIG = globalThis.__CARD_CRUNCH_BUILD_CONFIG__ ?? {};
+const RELEASE_POTS_ONLY = BUILD_CONFIG.potsOnly === true;
+const PLAY_LANDING_PAGE = RELEASE_POTS_ONLY ? "pots" : "modes";
 const DOCK_CARDS = Object.freeze([
   { id: "dock-9h", rank: "9", value: 9, suit: "hearts", suitSymbol: "\u2665", color: "red" },
   { id: "dock-as", rank: "A", value: 1, suit: "spades", suitSymbol: "\u2660", color: "black" },
@@ -25,8 +28,10 @@ export function initializeAppShell({ ui, game, bindAction }) {
   const root = ui.elements.startScreen;
   const refs = collectShellElements(root);
   const originalShowMenuPage = ui.showMenuPage.bind(ui);
+  root.classList.toggle("release-pots-only", RELEASE_POTS_ONLY);
+  root.dataset.buildFlavor = RELEASE_POTS_ONLY ? "release" : "development";
   const state = {
-    activePage: "modes",
+    activePage: PLAY_LANDING_PAGE,
     activeTopLevel: "modes",
     selectedPot: null,
     pots: game.state.pots,
@@ -68,7 +73,10 @@ export function initializeAppShell({ ui, game, bindAction }) {
   });
 
   function showPage(requestedPage = "modes") {
-    const pageName = requestedPage === "home" ? "modes" : requestedPage;
+    const requestedLanding = requestedPage === "home" ? PLAY_LANDING_PAGE : requestedPage;
+    const pageName = RELEASE_POTS_ONLY && (requestedLanding === "modes" || requestedLanding === "pot-prep")
+      ? "pots"
+      : requestedLanding;
     const previousPage = state.activePage;
     const previousTop = state.activeTopLevel;
     const nextTop = getTopLevelPage(pageName);
@@ -135,8 +143,14 @@ export function initializeAppShell({ ui, game, bindAction }) {
     refs.sheetModifierIcon.innerHTML = pot.icon;
     refs.sheetModifierName.textContent = pot.ruleLabel;
     refs.sheetModifierCopy.textContent = pot.detail;
-    refs.sheetTarget.textContent = formatCompactNumber(pot.target);
-    refs.sheetBest.textContent = formatCompactNumber(Math.max(pot.progress ?? 0, game.state.bestScore ?? 0));
+    refs.sheetTargetLabel.textContent = RELEASE_POTS_ONLY ? "Still Needed" : "Fill Target";
+    refs.sheetProgressLabel.textContent = RELEASE_POTS_ONLY ? "In This Pot" : "Best Score";
+    refs.sheetTarget.textContent = formatCompactNumber(
+      RELEASE_POTS_ONLY ? Math.max(0, pot.target - (pot.progress ?? 0)) : pot.target
+    );
+    refs.sheetBest.textContent = formatCompactNumber(
+      RELEASE_POTS_ONLY ? pot.progress ?? 0 : Math.max(pot.progress ?? 0, game.state.bestScore ?? 0)
+    );
     refs.sheetCoinReward.textContent = formatCompactNumber(Math.max(100, Math.round(pot.target / 10000)));
     refs.sheetPlayButton.textContent = `${pot.complete ? "Replay" : pot.progress > 0 ? "Continue" : "Play"} Pot ${pot.id}`;
     refs.sheetRender.innerHTML = createPotRenderMarkup(pot, progress, { large: true });
@@ -189,6 +203,14 @@ export function initializeAppShell({ ui, game, bindAction }) {
       return;
     }
     game.enterLevel(state.selectedPot.id, { boosters });
+  }
+
+  function launchReleasePot() {
+    if (!state.selectedPot) return;
+    const potId = state.selectedPot.id;
+    closePotSheet({ immediate: true, restoreFocus: false });
+    state.selectedBoosters.clear();
+    game.enterLevel(potId, { boosters: [] });
   }
 
   function refreshPlayHub() {
@@ -247,7 +269,7 @@ export function initializeAppShell({ ui, game, bindAction }) {
   function bindSheet() {
     bindShellAction(refs.sheetBackdrop, () => closePotSheet());
     bindShellAction(refs.sheetClose, () => closePotSheet());
-    bindShellAction(refs.sheetPlayButton, openPreparation);
+    bindShellAction(refs.sheetPlayButton, RELEASE_POTS_ONLY ? launchReleasePot : openPreparation);
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && !refs.sheet.hidden) closePotSheet();
     });
@@ -465,7 +487,7 @@ export function initializeAppShell({ ui, game, bindAction }) {
     page.dataset.profilePots = String(completed);
   }
 
-  showPage("modes");
+  showPage(PLAY_LANDING_PAGE);
   return { showPage, renderJourney, refreshPlayHub, renderEvents };
 }
 
@@ -508,6 +530,8 @@ function collectShellElements(root) {
     sheetModifierIcon: root.querySelector("#potSheetModifierIcon"),
     sheetModifierName: root.querySelector("#potSheetModifierName"),
     sheetModifierCopy: root.querySelector("#potSheetModifierCopy"),
+    sheetTargetLabel: root.querySelector("#potSheetTargetLabel"),
+    sheetProgressLabel: root.querySelector("#potSheetProgressLabel"),
     sheetTarget: root.querySelector("#potSheetTarget"),
     sheetBest: root.querySelector("#potSheetBest"),
     sheetCoinReward: root.querySelector("#potSheetCoinReward"),

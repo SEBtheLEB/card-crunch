@@ -1311,6 +1311,51 @@ button:focus-visible,
   .journey-shield-strip small { font-size:.5rem; }
 }
 
+/* Release flavor: Pot Journey is the Play destination and one sheet launches it. */
+.main-menu-screen.release-pots-only .play-hub-page,
+.main-menu-screen.release-pots-only .gameplay-prep-page {
+  display: none !important;
+}
+
+.main-menu-screen.release-pots-only .journey-back-button {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.main-menu-screen.release-pots-only .pot-sheet-card {
+  width: min(92vw, 420px);
+  max-height: min(76dvh, 620px);
+  padding: clamp(22px, 5vw, 30px);
+  gap: clamp(12px, 2.4vh, 18px);
+}
+
+.main-menu-screen.release-pots-only .pot-sheet-render,
+.main-menu-screen.release-pots-only .pot-sheet-rewards {
+  display: none;
+}
+
+.main-menu-screen.release-pots-only .pot-sheet-kicker {
+  margin-top: 4px;
+}
+
+.main-menu-screen.release-pots-only .pot-sheet-modifier {
+  min-height: 112px;
+  padding: 16px;
+}
+
+.main-menu-screen.release-pots-only .pot-sheet-stats {
+  margin-top: 2px;
+}
+
+.main-menu-screen.release-pots-only .pot-sheet-stats article {
+  min-height: 82px;
+}
+
+.main-menu-screen.release-pots-only .pot-sheet-play {
+  min-height: 62px;
+  margin-top: 2px;
+}
+
 /* First-launch account gate */
 .launch-auth-gate {
   box-sizing: border-box;

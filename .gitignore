@@ -7,6 +7,8 @@ android/local.properties
 android/keystore.properties
 android/keystore/
 android/app/build/
+artifacts/*.aab
+artifacts/*.apk
 *.jks
 *.keystore
 

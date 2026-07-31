@@ -3,7 +3,7 @@ import {
   getRuntimeRedirectUri,
   readSTLPlatformConfig,
   validateSTLPlatformConfig
-} from "./stlPlatformConfig.js?v=193";
+} from "./stlPlatformConfig.js?v=205";
 
 const AUTH_TRANSACTION_KEY = "cardCrunchStlAuthTransactionV1";
 const SESSION_KEY = "cardCrunchStlSessionV1";

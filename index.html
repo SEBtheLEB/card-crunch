@@ -17,11 +17,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles/main.css?v=204">
+  <link rel="stylesheet" href="/styles/main.css?v=205">
   <link rel="stylesheet" href="/styles/collection.css?v=167">
   <link rel="stylesheet" href="/styles/store.css?v=202">
   <link rel="stylesheet" href="/styles/multiplayer.css?v=189">
-  <link rel="stylesheet" href="/styles/app-shell.css?v=204">
+  <link rel="stylesheet" href="/styles/app-shell.css?v=205">
   </head>
   <body>
     <section class="launch-auth-gate is-visible" id="launchAuthGate" role="dialog" aria-modal="true" aria-labelledby="launchAuthTitle" aria-describedby="launchAuthStatus">
@@ -496,9 +496,9 @@
             <i id="potSheetModifierIcon" aria-hidden="true">&#9824;</i>
             <span><small>Modifier</small><strong id="potSheetModifierName">Standard Rules</strong><p id="potSheetModifierCopy">The original Card Crunch table.</p></span>
           </section>
-          <div class="pot-sheet-stats">
-            <article><small>Fill Target</small><strong id="potSheetTarget">1M</strong></article>
-            <article><small>Best Score</small><strong id="potSheetBest">0</strong></article>
+            <div class="pot-sheet-stats">
+              <article><small id="potSheetTargetLabel">Fill Target</small><strong id="potSheetTarget">1M</strong></article>
+              <article><small id="potSheetProgressLabel">Best Score</small><strong id="potSheetBest">0</strong></article>
           </div>
           <section class="pot-sheet-rewards">
             <small>Possible Rewards</small>
@@ -648,7 +648,8 @@
     </section>
 
     <div class="pixel-screen-filter" aria-hidden="true"></div>
+  <script src="/build-config.js"></script>
   <script src="/platform-config.js"></script>
-  <script type="module" src="/src/main.js?v=204"></script>
+  <script type="module" src="/src/main.js?v=205"></script>
   </body>
 </html>
