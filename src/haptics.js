@@ -37,6 +37,7 @@ export async function haptic(name = "tap", { force = false } = {}) {
   }
 
   try {
+    if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
     navigator.vibrate?.(pattern.fallback);
   } catch {
     // Haptics are optional and must never interrupt gameplay.

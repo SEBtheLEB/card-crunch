@@ -4,6 +4,22 @@ import { resolve } from "node:path";
 import { runInNewContext } from "node:vm";
 import { bindInstantAction } from "../src/input.js";
 import { generateUIArt } from "./generate-ui-art.mjs";
+import { haptic } from "../src/haptics.js";
+
+const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+let vibrations = 0;
+const activation = { hasBeenActive: false };
+Object.defineProperty(globalThis, "navigator", { configurable: true, value: { userActivation: activation, vibrate() { vibrations += 1; } } });
+try {
+  await haptic("tap", { force: true });
+  assert.equal(vibrations, 0, "restoring a page must not trigger browser vibration before interaction");
+  activation.hasBeenActive = true;
+  await haptic("tap", { force: true });
+  assert.equal(vibrations, 1, "vibration remains available after player interaction");
+} finally {
+  if (navigatorDescriptor) Object.defineProperty(globalThis, "navigator", navigatorDescriptor);
+  else delete globalThis.navigator;
+}
 
 class Button extends EventTarget {
   disabled = false;
@@ -97,7 +113,7 @@ assert.equal(await request("/api/matchmaking"), null);
 assert.equal(await request("https://accounts.stlproductionz.io/session"), null);
 assert.equal(await request("/src/main.js", { method: "POST" }), null);
 offline = true;
-assert.match(await (await request("/src/main.js?v=208")).text(), /^cached:/);
+assert.match(await (await request("/src/main.js?v=209")).text(), /^cached:/);
 assert.match(await (await request("/assets/ui/store-items.svg")).text(), /^cached:/);
 assert.match(await (await request("/auth/callback", { mode: "navigate" })).text(), /index\.html/);
 assert.match(await (await request("/", { mode: "navigate" })).text(), /index\.html/);
@@ -114,13 +130,13 @@ for (const path of ["/", "/auth/callback"]) {
   assert.equal(await page.text(), "cached redirected HTML");
 }
 offline = false; status = 500;
-assert.equal((await request("/src/main.js?v=208")).status, 500);
+assert.equal((await request("/src/main.js?v=209")).status, 500);
 offline = true;
-assert.match(await (await request("/src/main.js?v=208")).text(), /^cached:/, "a server failure must not poison the offline copy");
+assert.match(await (await request("/src/main.js?v=209")).text(), /^cached:/, "a server failure must not poison the offline copy");
 offline = false; status = 200;
-await request("/src/main.js?v=208");
+await request("/src/main.js?v=209");
 offline = true;
-assert.equal(await (await request("/src/main.js?v=208")).text(), "fresh");
+assert.equal(await (await request("/src/main.js?v=209")).text(), "fresh");
 cachesByName.set("card-crunch-v-old", new Map());
 cachesByName.set("another-app-cache", new Map());
 await lifecycle("activate");
