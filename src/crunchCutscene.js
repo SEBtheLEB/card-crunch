@@ -3,6 +3,7 @@ import { playCrunchShardImpact, playGameSfx } from "./audio.js?v=164";
 import { getCardSkinAssetUrl, getCardSkinClass, getCardSkinStyle, getCardVisualColorClass } from "./cardSkins.js?v=164";
 import { getPowerCardDetails } from "./arcadeMode.js?v=196";
 import { createScoreSurgePlan, SCORE_SURGE_CONFIG } from "./scoreSurge.js?v=181";
+import { prefersReducedMotion } from "./motion.js";
 
 export const CRUNCH_SKIP_EVENT = "card-crunch-skip-all";
 
@@ -123,6 +124,33 @@ export function createCardCrunchInteraction({
 } = {}) {
   const activeCards = cards.filter((card) => card?.isConnected);
   if (!stage?.isConnected || !targetEl?.isConnected || !activeCards.length) return null;
+  if (prefersReducedMotion()) {
+    let hits = 0, complete = false, disposed = false;
+    let completion = Promise.resolve();
+    const applyHit = (next) => {
+      if (!complete && !disposed) {
+        hits = Math.min(CUTSCENE_CONFIG.interactiveCrunchHits, next);
+        playGameSfx(`crunch_hit_${hits}`);
+        if (hits === CUTSCENE_CONFIG.interactiveCrunchHits) {
+          complete = true;
+          completion = Promise.resolve().then(() => {
+            if (disposed) return;
+            activeCards.forEach((card, index) => {
+              onImpact?.({ arrived: index + 1, total: activeCards.length });
+              if (removeCardsOnComplete) card.remove();
+            });
+            onComplete?.();
+          });
+        }
+      }
+      return { hit: hits, complete, completion };
+    };
+    return {
+      get hitCount() { return hits; }, get complete() { return complete; }, get completion() { return completion; },
+      hit: () => applyHit(hits + 1), crunch: () => applyHit(CUTSCENE_CONFIG.interactiveCrunchHits),
+      destroy() { disposed = true; }
+    };
+  }
 
   stage.classList.add("crunch-interaction-stage");
   activeCards.forEach((card) => card.classList.add("crunch-reusable-card"));
@@ -219,10 +247,14 @@ function ensureCrunchSkipText() {
   skipTextElement.className = "crunch-skip-text";
   skipTextElement.textContent = "TAP TO SKIP";
   skipTextElement.setAttribute("aria-label", "Skip the crunch animation");
+  skipTextElement.setAttribute("aria-keyshortcuts", "Escape");
   skipTextElement.addEventListener("pointerup", (event) => {
     event.preventDefault();
     event.stopPropagation();
     requestCrunchSkipAll();
+  });
+  skipTextElement.addEventListener("click", (event) => {
+    if (event.detail === 0) requestCrunchSkipAll();
   });
   document.body.appendChild(skipTextElement);
   if (skipAllRequested) skipTextElement.classList.add("is-skipping");
@@ -766,6 +798,7 @@ function pulseModifierBank(bankEl) {
 }
 
 function spawnModifierBurst(overlay, sourceEl, tone) {
+  if (prefersReducedMotion() || document.hidden) return;
   if (!overlay?.isConnected || !sourceEl?.isConnected) return;
   const rect = sourceEl.getBoundingClientRect();
   const centerX = rect.left + rect.width / 2;
@@ -850,6 +883,13 @@ async function playInteractiveCardCrunch(overlay, advance, prompt, bankEl = null
   const stage = overlay.querySelector(".cutin-stage");
   const cards = getActiveCutinCards(overlay);
   if (!stage || !cards.length || isCrunchSkipRequested()) return;
+  if (prefersReducedMotion()) {
+    prompt.textContent = "TAP TO CRUNCH";
+    await advance.waitForTap(0);
+    playGameSfx("crunch_hit_3");
+    prompt.remove();
+    return;
+  }
 
   const reactingCards = getDisplayedCrunchCards(overlay);
 
@@ -995,6 +1035,7 @@ function spawnCrunchDamageBurst(overlay, cards, hit) {
 }
 
 function ensureCrunchDebrisEmitter(overlay) {
+  if (prefersReducedMotion() || document.hidden) return null;
   const existing = crunchDebrisEmitters.get(overlay);
   if (existing?.canvas?.isConnected) return existing;
 
@@ -1274,9 +1315,19 @@ function createAdvanceController(overlay) {
     if (next) next();
   };
   const onSkipAll = () => finishAllWaiters();
+  const onKey = (event) => {
+    if (!overlay.isConnected) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      requestCrunchSkipAll();
+    } else if ((event.key === "Enter" || event.key === " ") && !event.target?.closest?.("button, input, a")) {
+      onAdvance(event);
+    }
+  };
 
   overlay.addEventListener("pointerup", onAdvance);
   window.addEventListener(CRUNCH_SKIP_EVENT, onSkipAll);
+  document.addEventListener("keydown", onKey);
 
   return {
     waitForTap(minMs = 0) {
@@ -1324,12 +1375,14 @@ function createAdvanceController(overlay) {
       document.body.classList.remove("is-crunch-focus-active");
       overlay.removeEventListener("pointerup", onAdvance);
       window.removeEventListener(CRUNCH_SKIP_EVENT, onSkipAll);
+      document.removeEventListener("keydown", onKey);
       hideCrunchSkipText();
     }
   };
 }
 
 function playTapBounce(overlay) {
+  if (prefersReducedMotion()) return;
   const target = overlay.querySelector(".cutin-stage, .cutin-final, .cutin-mini, .cutin-bonus-page, .cutin-bonus-step");
   if (!target) return;
   target.classList.add("cutin-tap-bounce");
@@ -1370,6 +1423,7 @@ function createCutinCardMarkup(card, extraClass = "") {
 }
 
 async function transitionSourceCardsIntoCutin(overlay, sourceCards, advance, { restoreSources = false } = {}) {
+  if (prefersReducedMotion()) return () => {};
   const sources = sourceCards
     .filter(({ card, element }) => card?.id && element?.isConnected)
     .map(({ card, element }) => ({ card, element, rect: element.getBoundingClientRect() }))
@@ -1780,6 +1834,13 @@ function showPreparedCardAssembly(prepared, hit) {
 async function feedCutinCardsToBank(cardElements, bankEl, onImpact = null) {
   const cards = cardElements.filter((card) => card?.isConnected);
   if (!cards.length || !bankEl?.isConnected) return;
+  if (prefersReducedMotion()) {
+    cards.forEach((card, index) => {
+      card.classList.add("is-consumed-after-shatter");
+      onImpact?.({ arrived: index + 1, total: cards.length });
+    });
+    return;
+  }
 
   const prepared = prepareCutinCardShards(cards, bankEl);
   if (!prepared) return;
@@ -2123,6 +2184,7 @@ function spawnBankImpactCrumbs(x, y, strength = 1) {
 }
 
 function ensureBankImpactEmitter() {
+  if (prefersReducedMotion() || document.hidden) return null;
   if (bankImpactEmitter?.canvas?.isConnected) return bankImpactEmitter;
   const canvas = document.createElement("canvas");
   canvas.className = "cutin-bank-impact-canvas";
@@ -2347,6 +2409,7 @@ function createScoreSurgeStage(bankEl, valueEl, plan) {
 }
 
 async function playScoreSurgeMilestone(bankEl, valueEl, milestone, tier, paceTier = tier, stage = null) {
+  if (prefersReducedMotion()) return;
   if (!bankEl?.isConnected) return;
   await stage?.entered;
   if (stage?.skipped) return;
@@ -2383,6 +2446,7 @@ async function playScoreSurgeMilestone(bankEl, valueEl, milestone, tier, paceTie
 
 async function playCrunchScoreSurgePeak(bankEl, valueEl, plan, stage) {
   if (!bankEl?.isConnected || !stage) return;
+  if (prefersReducedMotion()) { await stage.close(); return; }
   const tier = Math.max(1, plan.tier);
   try {
     await stage.entered;
@@ -2802,6 +2866,7 @@ function nextPaint() {
 }
 
 async function flyValueToBank(sourceEl, bankEl, value, advance = null) {
+  if (prefersReducedMotion()) return;
   if (!sourceEl || !bankEl) return;
   const sourceRect = sourceEl.getBoundingClientRect();
   const bankRect = bankEl.getBoundingClientRect();
@@ -2819,6 +2884,7 @@ async function flyValueToBank(sourceEl, bankEl, value, advance = null) {
 
 async function countBankTo(valueEl, from, to, advance = null, duration = 520) {
   if (!valueEl) return;
+  if (prefersReducedMotion()) { valueEl.textContent = formatRollingBankNumber(to); return; }
   const startedAt = performance.now();
 
   return new Promise((resolve) => {

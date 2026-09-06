@@ -5,6 +5,7 @@
   "description": "Card Crunch mobile arcade card game",
   "type": "module",
   "scripts": {
+    "art:build": "node scripts/generate-ui-art.mjs",
     "build": "node scripts/build-web.mjs",
     "build:release": "node scripts/build-web.mjs --release",
     "dev": "npm run build && node scripts/dev-server.mjs",
@@ -18,7 +19,7 @@
     "android:bundle": "npm run android:sync && cd android && gradlew.bat bundleRelease",
     "android:bundle:release": "node scripts/build-android-release.mjs",
     "android:open": "cap open android",
-    "test": "node scripts/verify.mjs && node scripts/verify-stl-session-storage.mjs"
+    "test": "node scripts/verify.mjs && node scripts/verify-stl-session-storage.mjs && node scripts/verify-presentation.mjs"
   },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "8.0.0",

@@ -1,0 +1,14 @@
+# Keep native builds, local configuration, and review artifacts out of web uploads.
+.git/
+.vercel/
+.agents/
+.codex/
+.env*
+node_modules/
+dist/
+android/
+artifacts/
+attachments/
+skills-lock.json
+*.jks
+*.keystore

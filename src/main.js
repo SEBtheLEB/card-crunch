@@ -19,6 +19,8 @@ import { initializeSTLPlatformAccount, installSTLCallbackListener } from "./stlP
 import { initializeMultiplayer } from "./multiplayer.js?v=196";
 import { initializeAppShell } from "./appShell.js?v=205";
 import { initializeLaunchGate } from "./launchGate.js?v=198";
+import { prefersReducedMotion } from "./motion.js";
+import { initializeScreenAccessibility } from "./screenAccessibility.js";
 
 const BUILD_CONFIG = getBuildConfig();
 const POTS_ONLY_RELEASE = BUILD_CONFIG.potsOnly === true;
@@ -106,6 +108,10 @@ document.addEventListener("gesturestart", (event) => {
 });
 
 installReactivePressFeedback();
+initializeScreenAccessibility();
+document.addEventListener("visibilitychange", () => {
+  document.documentElement.classList.toggle("page-in-background", document.hidden);
+});
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -197,7 +203,11 @@ function bindMenuNavigation() {
 }
 
 function loadSettings() {
-  const settings = JSON.parse(localStorage.getItem("cardCrunchSettings") ?? "{}");
+  let settings = {};
+  try {
+    const saved = JSON.parse(localStorage.getItem("cardCrunchSettings") ?? "{}");
+    if (saved && typeof saved === "object" && !Array.isArray(saved)) settings = saved;
+  } catch { /* A damaged preference must never prevent the game from launching. */ }
   ui.elements.soundToggle.checked = settings.sound !== false;
   ui.elements.musicToggle.checked = settings.music !== false;
   ui.elements.motionToggle.checked = Boolean(settings.reduceMotion);
@@ -231,6 +241,7 @@ function getTapTone(target) {
 }
 
 function sprayTapParticles(x, y, tone = "gold", requestedAmount = null) {
+  if (prefersReducedMotion() || document.hidden) return;
   const colorsByTone = {
     gold: ["#ffe894", "#ffbf3f", "#fff8d0"],
     blue: ["#76c6ff", "#42a1ff", "#dff4ff"],
@@ -255,5 +266,6 @@ function sprayTapParticles(x, y, tone = "gold", requestedAmount = null) {
     particle.style.setProperty("--spray-scale", `${.55 + Math.random() * .95}`);
     document.body.appendChild(particle);
     particle.addEventListener("animationend", () => particle.remove(), { once: true });
+    window.setTimeout(() => particle.remove(), 1000);
   }
 }

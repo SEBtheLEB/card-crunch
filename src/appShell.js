@@ -11,6 +11,7 @@ import { playGameSfx } from "./audio.js?v=164";
 import { haptic } from "./haptics.js?v=164";
 import { boosterInventory } from "./boosters.js?v=201";
 import { liveEvents } from "./liveEvents.js?v=201";
+import { animateEntrance, prefersReducedMotion } from "./motion.js";
 
 const TOP_LEVEL_TABS = ["shop", "themes", "modes", "events", "account"];
 const PLAY_CHILD_PAGES = new Set(["modes", "pots", "pot-prep"]);
@@ -41,6 +42,9 @@ export function initializeAppShell({ ui, game, bindAction }) {
     sheetReturnFocus: null,
     selectedBoosters: new Set()
   };
+  let sheetCloseTimer = null;
+  let sheetFrame = null;
+  let pageAnimation = null;
 
   ui.showMenuPage = showPage;
   ui.renderMap = renderJourney;
@@ -80,6 +84,9 @@ export function initializeAppShell({ ui, game, bindAction }) {
     const previousPage = state.activePage;
     const previousTop = state.activeTopLevel;
     const nextTop = getTopLevelPage(pageName);
+    const nextPage = [...refs.pages.querySelectorAll(".menu-page")].find((page) => page.dataset.page === pageName);
+    if (!nextPage) return;
+    pageAnimation?.cancel();
 
     rememberScroll(previousPage);
     closePotSheet({ immediate: true, restoreFocus: false });
@@ -99,7 +106,15 @@ export function initializeAppShell({ ui, game, bindAction }) {
     }
     if (pageName === "account") refreshProfileShell();
     if (pageName === "events") renderEvents();
-    if (previousTop !== nextTop) animateTabEntry(nextTop);
+    if (previousPage !== pageName) {
+      const direction = previousTop === nextTop ? (pageName === "pots" || pageName === "pot-prep" ? 1 : -1)
+        : Math.sign(TOP_LEVEL_TABS.indexOf(nextTop) - TOP_LEVEL_TABS.indexOf(previousTop));
+      pageAnimation = animateEntrance(nextPage, { direction });
+      if (!document.documentElement.classList.contains("launch-auth-active")) {
+        const heading = nextPage.querySelector("h2, .journey-page-header strong, .prep-page-header strong");
+        if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
+      }
+    }
   }
 
   function renderJourney(pots = game.state.pots, handlers = state.handlers) {
@@ -133,6 +148,8 @@ export function initializeAppShell({ ui, game, bindAction }) {
 
   function openPotSheet(pot) {
     if (!pot || !isPotUnlocked(state.pots, pot.id)) return;
+    window.clearTimeout(sheetCloseTimer);
+    if (sheetFrame) cancelAnimationFrame(sheetFrame);
     state.selectedPot = pot;
     state.sheetReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const progress = getPotProgress(pot);
@@ -156,13 +173,17 @@ export function initializeAppShell({ ui, game, bindAction }) {
     refs.sheetRender.innerHTML = createPotRenderMarkup(pot, progress, { large: true });
     refs.sheet.hidden = false;
     refs.sheet.setAttribute("aria-hidden", "false");
-    requestAnimationFrame(() => {
+    sheetFrame = requestAnimationFrame(() => {
+      sheetFrame = null;
       refs.sheet.classList.add("is-visible");
       refs.sheetClose.focus({ preventScroll: true });
     });
   }
 
   function closePotSheet({ immediate = false, restoreFocus = true } = {}) {
+    window.clearTimeout(sheetCloseTimer);
+    if (sheetFrame) cancelAnimationFrame(sheetFrame);
+    sheetFrame = null;
     if (refs.sheet.hidden) return;
     refs.sheet.classList.remove("is-visible");
     refs.sheet.setAttribute("aria-hidden", "true");
@@ -171,8 +192,8 @@ export function initializeAppShell({ ui, game, bindAction }) {
       if (restoreFocus) state.sheetReturnFocus?.focus?.({ preventScroll: true });
       state.sheetReturnFocus = null;
     };
-    if (immediate) finish();
-    else window.setTimeout(finish, 220);
+    if (immediate || prefersReducedMotion()) finish();
+    else sheetCloseTimer = window.setTimeout(finish, 220);
   }
 
   function openPreparation() {
@@ -407,6 +428,7 @@ export function initializeAppShell({ ui, game, bindAction }) {
       const nextIndex = Math.max(0, Math.min(TOP_LEVEL_TABS.length - 1, currentIndex + (dx < 0 ? 1 : -1)));
       if (nextIndex !== currentIndex) showPage(TOP_LEVEL_TABS[nextIndex]);
     }, { passive: true });
+    refs.pages.addEventListener("pointercancel", () => { start = null; }, { passive: true });
   }
 
   function queueCurrentPotCenter() {
@@ -421,7 +443,7 @@ export function initializeAppShell({ ui, game, bindAction }) {
     const target = current.offsetTop - refs.journeyScroller.clientHeight * .38;
     refs.journeyScroller.scrollTo({
       top: Math.max(0, target),
-      behavior: smooth && !document.documentElement.classList.contains("reduce-motion") ? "smooth" : "auto"
+      behavior: smooth && !prefersReducedMotion() ? "smooth" : "auto"
     });
   }
 
@@ -446,14 +468,6 @@ export function initializeAppShell({ ui, game, bindAction }) {
     });
   }
 
-  function animateTabEntry(activeTop) {
-    const page = root.querySelector(`.menu-page.is-active`);
-    if (!page) return;
-    page.classList.remove("shell-page-enter");
-    requestAnimationFrame(() => page.classList.add("shell-page-enter"));
-    window.setTimeout(() => page.classList.remove("shell-page-enter"), 280);
-  }
-
   function rememberScroll(pageName) {
     const page = root.querySelector(`.menu-page[data-page="${pageName}"]`);
     if (!page) return;
@@ -472,7 +486,7 @@ export function initializeAppShell({ ui, game, bindAction }) {
   function scrollActivePageToTop() {
     const page = root.querySelector(".menu-page.is-active");
     if (!page) return;
-    getPageScroller(page).scrollTo({ top: 0, behavior: "smooth" });
+    getPageScroller(page).scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
   }
 
   function refreshProfileShell() {

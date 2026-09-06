@@ -15,7 +15,8 @@ import {
   unlockFullDeckSkin
 } from "./cardCollection.js?v=167";
 import { openPendingPackOverlay } from "./cardCollectionUI.js?v=167";
-import { applyCardSkin, CARD_SKINS, getCardVisualColorClass, preloadCardSkinAssets } from "./cardSkins.js?v=167";
+import { applyCardSkin, CARD_SKINS, getCardSkinAssetUrl, getCardVisualColorClass, preloadCardSkinAssets } from "./cardSkins.js?v=167";
+import { animateEntrance } from "./motion.js";
 import { economy } from "./economy.js?v=166";
 import { formatCompactNumber } from "./format.js?v=166";
 import { haptic } from "./haptics.js?v=166";
@@ -55,6 +56,7 @@ let pendingPurchaseId = null;
 let elements = null;
 let timerId = 0;
 let showPage = null;
+let tabAnimation = null;
 
 export function initializeStore({ bindAction, showMenuPage } = {}) {
   elements = {
@@ -73,6 +75,17 @@ export function initializeStore({ bindAction, showMenuPage } = {}) {
 
   bindAction(elements.page, onStoreAction);
   bindAction(elements.purchaseOverlay, onStoreAction);
+  elements.tabs.addEventListener("keydown", (event) => {
+    if (!event.target.matches("[role=tab]")) return;
+    const index = STORE_TABS.findIndex((tab) => tab.id === currentTab);
+    const next = event.key === "ArrowRight" ? (index + 1) % STORE_TABS.length
+      : event.key === "ArrowLeft" ? (index + STORE_TABS.length - 1) % STORE_TABS.length
+      : event.key === "Home" ? 0 : event.key === "End" ? STORE_TABS.length - 1 : -1;
+    if (next < 0) return;
+    event.preventDefault();
+    switchTab(STORE_TABS[next].id);
+    elements.tabs.querySelector("[aria-selected=true]")?.focus({ preventScroll: true });
+  });
   economy.subscribe(() => renderStore({ preserveScroll: true }));
   storeState.subscribe(() => renderStore({ preserveScroll: true }));
   subscribeToCardCollection(() => renderStore({ preserveScroll: true }));
@@ -101,16 +114,23 @@ function onPackBuyAnother(event) {
 
 function renderStore({ preserveScroll = true } = {}) {
   if (!elements?.content) return;
+  const focused = elements.page.contains(document.activeElement) ? document.activeElement : null;
+  const focusAction = focused?.dataset.storeAction;
+  const focusProduct = focused?.dataset.productId;
+  const focusTab = focused?.dataset.storeTab;
   const previousScroll = preserveScroll ? elements.scroll?.scrollTop ?? 0 : tabScrollPositions.get(currentTab) ?? 0;
   const wallet = economy.getSnapshot();
   const collection = getCardCollectionSnapshot();
   if (elements.coinValue) elements.coinValue.textContent = formatCompactNumber(wallet.coins);
   elements.tabs.innerHTML = STORE_TABS.map((tab) => `
     <button class="store-tab${currentTab === tab.id ? " is-active" : ""}" type="button" role="tab"
+      id="store-tab-${tab.id}" aria-controls="storeContent" tabindex="${currentTab === tab.id ? 0 : -1}"
       aria-selected="${currentTab === tab.id}" data-store-action="tab" data-store-tab="${tab.id}">
       <i aria-hidden="true">${tab.icon}</i><span>${tab.label}</span>
     </button>
   `).join("");
+  elements.content.setAttribute("role", "tabpanel");
+  elements.content.setAttribute("aria-labelledby", `store-tab-${currentTab}`);
 
   elements.content.classList.add("is-changing");
   elements.content.innerHTML = currentTab === "decks"
@@ -120,6 +140,11 @@ function renderStore({ preserveScroll = true } = {}) {
       : renderFeaturedTab(wallet, collection);
   requestAnimationFrame(() => elements.content?.classList.remove("is-changing"));
   if (elements.scroll) elements.scroll.scrollTop = previousScroll;
+  if (focusAction && !focused.isConnected) {
+    const replacement = [...elements.page.querySelectorAll("[data-store-action]")].find((button) =>
+      button.dataset.storeAction === focusAction && button.dataset.productId === focusProduct && button.dataset.storeTab === focusTab && !button.disabled);
+    replacement?.focus({ preventScroll: true });
+  }
   updateTimers();
 }
 
@@ -241,6 +266,15 @@ function renderProductCard(product, variant, wallet, collection) {
 }
 
 function renderArtwork(product) {
+  if (product.productType === "full_deck" && CARD_SKINS[product.collectionId]) {
+    const skin = product.collectionId;
+    const cards = [{ rank: "7", suit: "hearts", symbol: "\u2665" }, { rank: "A", suit: "spades", symbol: "\u2660" }];
+    return `<div class="store-product-art store-deck-fan" aria-hidden="true">${cards.map((card) => {
+      const image = getCardSkinAssetUrl(card, skin);
+      return image ? `<img class="store-deck-face" src="${image}" alt="" loading="lazy" decoding="async" draggable="false">`
+        : `<i class="store-deck-face deck-preview-${skin} ${card.suit}"><b>${card.rank}</b><span>${card.symbol}</span></i>`;
+    }).join("")}</div>`;
+  }
   const [column, row] = ART_SPRITES[product.artwork] ?? ART_SPRITES["mystery-pack-purple"];
   return `
     <div class="store-product-art art-${product.artwork}" aria-hidden="true">
@@ -368,6 +402,8 @@ function switchTab(tabId) {
   playGameSfx("card_select");
   haptic("tap");
   renderStore({ preserveScroll: false });
+  tabAnimation?.cancel();
+  tabAnimation = animateEntrance(elements.content, { duration: 180 });
 }
 
 async function handleProduct(product) {

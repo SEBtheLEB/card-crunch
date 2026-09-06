@@ -1,4 +1,5 @@
 import { playGameSfx } from "./audio.js?v=166";
+import { prefersReducedMotion } from "./motion.js";
 import {
   CARD_RANKS,
   CARD_SUITS,
@@ -101,7 +102,7 @@ function revealPendingPack() {
   elements.packPrompt.textContent = "Cracking the seal...";
   playGameSfx("pack_open");
 
-  const reduceMotion = document.documentElement.classList.contains("reduce-motion");
+  const reduceMotion = prefersReducedMotion();
   const openedBefore = localStorage.getItem("cardCrunchPackOpeningSeen") === "1";
   const revealDelay = reduceMotion ? 40 : openedBefore ? 280 : 520;
   localStorage.setItem("cardCrunchPackOpeningSeen", "1");
@@ -337,6 +338,7 @@ function onCollectionCardAction(event) {
 }
 
 function spawnPackBurst(reward) {
+  if (prefersReducedMotion() || document.hidden) return;
   if (!elements?.overlay) return;
   const rarity = getCardSkinRarity(reward?.skinId);
   const particleCount = 18 + rarity.order * 8;

@@ -59,7 +59,7 @@ const required = [
   "assets/icons/suits/diamond.svg",
   "assets/icons/suits/club.svg",
   "assets/icons/suits/spade.svg",
-  "assets/store/store-items.png",
+  "assets/ui/store-items.svg",
   "styles/main.css",
   "styles/collection.css",
   "styles/store.css",
@@ -267,10 +267,9 @@ const buildScript = await readFile(resolve(root, "scripts/build-web.mjs"), "utf8
 const appShellScript = await readFile(resolve(root, "src/appShell.js"), "utf8");
 const backgroundStyles = await readFile(resolve(root, "styles/main.css"), "utf8");
 if (!backgroundStyles.includes("--casino-table-bg:")
-  || !backgroundStyles.includes("pixel-casino-shell-v2.png")
-  || backgroundStyles.includes("pixel-casino-menu.jpg")
-  || backgroundStyles.includes("pixel-casino-table.jpg")) {
-  throw new Error("The rendered top-down felt table background is not connected to the UI");
+  || /assets\/backgrounds\/.*\.(png|jpg)/.test(backgroundStyles)
+  || !html.includes("/styles/presentation.css?v=206")) {
+  throw new Error("The code-drawn table presentation must replace raster scenery");
 }
 if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButton")) {
   throw new Error("Release UI hooks are missing");
@@ -290,10 +289,10 @@ if (!releaseVercelConfiguration.includes('"buildCommand": "npm run build:release
 for (const assetPath of [
   "/manifest.json",
   "/assets/icons/icon-192.svg",
-  "/styles/main.css?v=205",
+  "/styles/main.css?v=206",
   "/build-config.js",
   "/platform-config.js",
-  "/src/main.js?v=205"
+  "/src/main.js?v=206"
 ]) {
   if (!html.includes(`"${assetPath}"`)) {
     throw new Error(`App-shell asset must remain root-relative for OAuth callback routes: ${assetPath}`);

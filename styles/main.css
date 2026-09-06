@@ -20,7 +20,7 @@
   --bg-2: #121a3a;
   --casino-table-bg:
     linear-gradient(rgba(1, 18, 13, .05), rgba(1, 9, 13, .2)),
-    url("../assets/backgrounds/pixel-casino-shell-v2.png") center / cover no-repeat,
+    repeating-linear-gradient(90deg, #ffffff03 0 1px, transparent 1px 12px),
     #063526;
 
   /* Glass panels */
@@ -11640,7 +11640,7 @@ html.reduce-motion .mode-online-dot {
    ========================================================================== */
 
 :root {
-  --control-atlas: url("../assets/ui/game-controls-atlas.png");
+  --control-atlas: url("../assets/ui/game-controls-atlas.svg");
   --cabinet-ink: #040914;
   --cabinet-navy: #0a1a2d;
   --cabinet-gold-hot: #ffe36d;

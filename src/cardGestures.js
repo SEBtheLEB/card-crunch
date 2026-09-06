@@ -1,5 +1,6 @@
 import { DEAL_TIMING, getDealStartDelay } from "./dealTiming.js?v=164";
 import { playGameSfx } from "./audio.js?v=164";
+import { prefersReducedMotion } from "./motion.js";
 
 const TAP_SLOP = 12;
 const FLICK_DISTANCE = 42;
@@ -142,7 +143,7 @@ export function animateCardTransfer(card, fromRect, toRect, {
   const distance = Math.hypot(dx, dy);
   if (distance < 2) return null;
 
-  const reducedMotion = document.documentElement.classList.contains("reduce-motion");
+  const reducedMotion = prefersReducedMotion();
   const duration = reducedMotion
     ? 80
     : requestedDuration ?? Math.min(390, Math.max(260, distance * 0.82));
@@ -155,7 +156,9 @@ export function animateCardTransfer(card, fromRect, toRect, {
 
   const startScaleX = fromRect.width / Math.max(1, toRect.width);
   const startScaleY = fromRect.height / Math.max(1, toRect.height);
-  const frames = motion === "deal"
+  const frames = reducedMotion
+    ? [{ opacity: .45 }, { opacity: 1 }]
+    : motion === "deal"
     ? [
         { translate: `${dx}px ${dy}px`, scale: `${startScaleX} ${startScaleY}`, offset: 0 },
         { translate: `${dx * .68}px ${dy * .7 - 22}px`, scale: `${.98 + (startScaleX - 1) * .5} ${.98 + (startScaleY - 1) * .5}`, offset: .34 },
@@ -189,6 +192,9 @@ export function animateCardTransfer(card, fromRect, toRect, {
     if (flightAnimations.get(card) !== animation) return;
     flightAnimations.delete(card);
     card.classList.remove("card-in-flight");
+    // Release the finished animation's fill so later CSS selection/skin states
+    // can own the card again, and repeated deals do not retain animation objects.
+    animation.cancel();
   });
   return animation;
 }
@@ -197,7 +203,7 @@ export function animateCardTransfer(card, fromRect, toRect, {
    right edge for instant replacement deals so the stream reads clearly. */
 export function animateCardDealIn(card, dealOrder = 0, { zone = "hand", fromSide = "left" } = {}) {
   if (!card) return;
-  const reducedMotion = document.documentElement.classList.contains("reduce-motion");
+  const reducedMotion = prefersReducedMotion();
   const normalizedOrder = Math.max(0, dealOrder);
   const delay = getDealStartDelay(normalizedOrder, reducedMotion);
 

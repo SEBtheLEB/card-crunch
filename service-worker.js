@@ -1,4 +1,4 @@
-const CACHE_NAME = "card-crunch-v205";
+const CACHE_NAME = "card-crunch-v206";
 const PINK_ARCADE_SUITS = ["hearts", "diamonds", "clubs", "spades"];
 const PINK_ARCADE_RANKS = ["ace", "02", "03", "04", "05", "06", "07", "08", "09", "10", "jack", "queen", "king"];
 const PINK_ARCADE_ASSETS = [
@@ -22,6 +22,9 @@ const ASSETS = [
   "./styles/store.css",
   "./styles/multiplayer.css",
   "./styles/app-shell.css",
+  "./styles/presentation.css",
+  "./src/motion.js",
+  "./src/screenAccessibility.js",
   "./src/main.js",
   "./src/appShell.js",
   "./src/launchGate.js",
@@ -45,6 +48,7 @@ const ASSETS = [
   "./src/storeProducts.js",
   "./src/storeState.js",
   "./src/multiplayer.js",
+  "./src/multiplayerBot.js",
   "./src/realtimeMultiplayer.js",
   "./src/multiplayerMode.js",
   "./src/economy.js",
@@ -72,12 +76,10 @@ const ASSETS = [
   "./assets/icons/suits/diamond.svg",
   "./assets/icons/suits/club.svg",
   "./assets/icons/suits/spade.svg",
-  "./assets/store/store-items.png",
-  "./assets/ui/pot-journey-atlas.png",
-  "./assets/ui/shell-ui-atlas.png",
-  "./assets/backgrounds/pixel-casino-shell-v2.png",
-  "./assets/backgrounds/pot-journey-table-v2.png",
-  "./assets/ui/game-controls-atlas.png",
+  "./assets/ui/store-items.svg",
+  "./assets/ui/pot-journey-atlas.svg",
+  "./assets/ui/shell-ui-atlas.svg",
+  "./assets/ui/game-controls-atlas.svg",
   "./assets/fonts/press-start-2p.ttf",
   "./assets/sfx/playing-card.mp3",
   "./assets/sfx/deal-hand-1.mp3",
@@ -88,29 +90,35 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
-  self.skipWaiting();
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("card-crunch-") && key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
+
+const STATIC_PATHS = new Set(ASSETS.map((asset) => new URL(asset, self.location.href).pathname));
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-        return response;
-      })
-      .catch(() => caches.match(event.request))
-  );
+  const url = new URL(event.request.url);
+  const isNavigation = event.request.mode === "navigate";
+  // API responses, OAuth exchanges, and other origins never enter the game cache.
+  if (url.origin !== self.location.origin || (!STATIC_PATHS.has(url.pathname) && !(isNavigation && url.pathname === "/auth/callback"))) return;
+  const cacheKey = new URL(isNavigation ? "/index.html" : url.pathname, self.location.origin).href;
+  const network = fetch(event.request);
+  event.waitUntil(network.then(async (response) => {
+    if (!response.ok || (isNavigation && url.search)) return;
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(cacheKey, response.clone());
+  }).catch(() => {}));
+  event.respondWith(network.catch(async () => {
+    const cache = await caches.open(CACHE_NAME);
+    return await cache.match(cacheKey) || Response.error();
+  }));
 });

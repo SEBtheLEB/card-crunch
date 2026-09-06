@@ -25,7 +25,7 @@
   padding: calc(8px + var(--safe-top)) calc(8px + var(--safe-right)) calc(6px + var(--safe-bottom)) calc(8px + var(--safe-left)) !important;
   background:
     linear-gradient(rgba(1, 13, 10, .06), rgba(1, 7, 12, .22)),
-    url("../assets/backgrounds/pixel-casino-shell-v2.png") center / cover no-repeat,
+    repeating-linear-gradient(90deg, #ffffff03 0 1px, transparent 1px 12px),
     #052e23 !important;
 }
 
@@ -49,8 +49,8 @@
   image-rendering: pixelated;
 }
 
-.shell-ui-sprite { background-image: url("../assets/ui/shell-ui-atlas.png"); }
-.pot-ui-sprite { background-image: url("../assets/ui/pot-journey-atlas.png"); }
+.shell-ui-sprite { background-image: url("../assets/ui/shell-ui-atlas.svg"); }
+.pot-ui-sprite { background-image: url("../assets/ui/pot-journey-atlas.svg"); }
 
 .sprite-store-pack { --sprite-x: 0%; --sprite-y: 0%; }
 .sprite-collection-box { --sprite-x: 33.333%; --sprite-y: 0%; }
@@ -695,7 +695,7 @@
   border: 3px solid #06100d;
   background:
     linear-gradient(rgba(2, 19, 14, .12), rgba(2, 12, 16, .3)),
-    url("../assets/backgrounds/pot-journey-table-v2.png") top center / 100% auto repeat-y,
+    repeating-linear-gradient(90deg, #ffffff03 0 1px, transparent 1px 16px),
     #06251b;
   box-shadow: inset 0 0 0 2px #285644, inset 0 0 32px rgba(0,0,0,.55);
 }
@@ -1693,7 +1693,7 @@ html.reduce-motion .launch-auth-gate {
 .control-ui-sprite {
   display: block;
   flex: 0 0 auto;
-  background-image: url("../assets/ui/game-controls-atlas.png");
+  background-image: url("../assets/ui/game-controls-atlas.svg");
   background-repeat: no-repeat;
   background-position: var(--control-x, 0%) var(--control-y, 0%);
   background-size: 400% 400%;
@@ -1746,7 +1746,7 @@ html.reduce-motion .launch-auth-gate {
   border: 0;
   color: transparent;
   background-color: transparent;
-  background-image: url("../assets/ui/game-controls-atlas.png");
+  background-image: url("../assets/ui/game-controls-atlas.svg");
   background-repeat: no-repeat;
   background-size: 400% 400%;
   background-position: 0% 0%;
@@ -1825,7 +1825,7 @@ html.reduce-motion .launch-auth-gate {
   clip-path: polygon(7px 0, calc(100% - 7px) 0, calc(100% - 7px) 3px, calc(100% - 3px) 3px, calc(100% - 3px) 7px, 100% 7px, 100% calc(100% - 7px), calc(100% - 3px) calc(100% - 7px), calc(100% - 3px) 100%, 7px 100%, 7px calc(100% - 3px), 3px calc(100% - 3px), 3px calc(100% - 7px), 0 calc(100% - 7px), 0 7px, 3px 7px, 3px 3px, 7px 3px);
   color: transparent;
   background-color: #10263a;
-  background-image: url("../assets/ui/game-controls-atlas.png");
+  background-image: url("../assets/ui/game-controls-atlas.svg");
   background-repeat: no-repeat;
   background-size: 400% 400%;
   box-shadow: inset 0 0 0 1px #42647a, 2px 3px 0 #02060b;
@@ -1931,7 +1931,7 @@ html.reduce-motion .launch-auth-gate {
   width: 36px;
   aspect-ratio: 1;
   translate: 0 -50%;
-  background-image: url("../assets/ui/game-controls-atlas.png");
+  background-image: url("../assets/ui/game-controls-atlas.svg");
   background-repeat: no-repeat;
   background-size: 400% 400%;
   background-position: 66.667% 66.667%;
@@ -2112,7 +2112,7 @@ html.reduce-motion .launch-auth-gate {
   width: 40px;
   aspect-ratio: 1;
   translate: 0 -50%;
-  background-image: url("../assets/ui/game-controls-atlas.png");
+  background-image: url("../assets/ui/game-controls-atlas.svg");
   background-repeat: no-repeat;
   background-size: 400% 400%;
   background-position: 66.667% 66.667%;

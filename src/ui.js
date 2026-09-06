@@ -9,6 +9,7 @@ import { animateCardDealIn, animateCardTransfer, bindCardGesture } from "./cardG
 import { applyCardSkinPresentation, getCardSkinClass, getCardVisualColorClass } from "./cardSkins.js?v=169";
 import { getPotRuleFacts, renderPotInfo } from "./potInfo.js?v=196";
 import { isMultiplayerMode } from "./multiplayerMode.js?v=169";
+import { prefersReducedMotion } from "./motion.js";
 
 export function createUI() {
   const renderCache = { hand: "", stack: "", counters: null };
@@ -19,6 +20,7 @@ export function createUI() {
   let roundHandoffFrame = null;
   let potInfoHideTimer = null;
   let potInfoReturnFocus = null;
+  let screenEntrance = null;
   const potMapState = { selectedId: null, generation: 0 };
   const elements = {
     shell: document.querySelector("#gameShell"),
@@ -293,6 +295,10 @@ export function createUI() {
     showStart(show) {
       elements.startScreen.classList.toggle("is-visible", show);
       elements.startScreen.setAttribute("aria-hidden", String(!show));
+      screenEntrance?.cancel();
+      if (!show && !prefersReducedMotion()) {
+        screenEntrance = elements.shell.animate([{ opacity: .25 }, { opacity: 1 }], { duration: 200, easing: "ease-out" });
+      }
     },
     showMenuPage(pageName) {
       showMenuPage(elements, pageName);
@@ -582,7 +588,10 @@ function showMenuPage(elements, pageName = "home") {
   elements.startScreen.classList.toggle("is-store-page", pageName === "shop");
   if (isHomePage) elements.startScreen.scrollTop = 0;
   elements.startScreen.querySelectorAll("[data-page]").forEach((page) => {
-    page.classList.toggle("is-active", page.dataset.page === pageName);
+    const active = page.dataset.page === pageName;
+    page.classList.toggle("is-active", active);
+    page.inert = !active;
+    page.setAttribute("aria-hidden", String(!active));
   });
   elements.startScreen.querySelectorAll("[data-menu-page]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.menuPage === pageName);

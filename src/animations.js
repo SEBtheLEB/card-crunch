@@ -6,6 +6,7 @@ import {
 } from "./crunchCutscene.js?v=196";
 import { playGameSfx } from "./audio.js?v=164";
 import { formatCompactNumber } from "./format.js?v=164";
+import { prefersReducedMotion } from "./motion.js";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RESOLVE_HIGHLIGHT_DURATION_MS = 700;
@@ -437,6 +438,7 @@ async function showScoreBreakdown({ fromElements, steps }) {
 }
 
 export function spawnSparkBurst(x, y, amount = 12, colorMode = "gold") {
+  if (prefersReducedMotion() || document.hidden) return;
   const sparkCount = Math.min(amount, getSparkBudget());
   const palette = {
     gold: ["#fff2a8", "#ffd166", "#ff9f1c"],
@@ -573,10 +575,10 @@ export function spawnMultiplayerCrunchReward({
   const duration = reducedMotion ? 720 : 1650;
   const frames = reducedMotion
     ? [
-        { opacity: 0, transform: "translate3d(-50%, -36%, 0) scale(.84)" },
-        { opacity: 1, transform: "translate3d(-50%, -62%, 0) scale(1.12)", offset: .16 },
-        { opacity: 1, transform: "translate3d(-50%, -78%, 0) scale(1)", offset: .72 },
-        { opacity: 0, transform: "translate3d(-50%, -92%, 0) scale(.96)" }
+        { opacity: 0, transform: "translate(-50%, -50%)" },
+        { opacity: 1, transform: "translate(-50%, -50%)", offset: .16 },
+        { opacity: 1, transform: "translate(-50%, -50%)", offset: .72 },
+        { opacity: 0, transform: "translate(-50%, -50%)" }
       ]
     : [
         { opacity: 0, transform: "translate3d(-50%, -12%, 0) scale(.46) rotate(-4deg)" },
