@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 // All non-card illustrations are drawn here. No raster inputs, embedded images,
@@ -37,15 +37,24 @@ const coins = (count = 3) => shadow() + Array.from({ length: count }, (_, i) => 
   const x = 28 + (i % 3) * 33, y = 100 - Math.floor(i / 3) * 16;
   return coin(x, y, 19);
 }).join("") + star(99, 31, 8) + star(28, 35, 5);
+const walletCoins = () => coin(78, 72, 27) + coin(45, 58, 30);
+// Foil crimp, folded side, embossed seal, and a card-shaped window read at dock size.
 const pack = (color = purple, emblem = "spade", ribbon = gold) => shadow()
-  + group("rotate(-8 64 64)", path("M31 14H89L96 23V106L89 113H31L24 106V23Z", color)
-  + rect(30, 21, 59, 82, "none", paper, 2, 1)
-  + path("M24 24H95M24 102H95", "none", ink, 5)
-  + path("M32 16V22M43 16V22M54 16V22M65 16V22M76 16V22M87 16V22", "none", paper, 2)
-  + path("M30 39 87 26V39L30 52Z", ribbon, "none")
-  + suit(emblem, 59, 71, .91, paper)
-  + path("M45 94H74", "none", paper, 2))
-  + star(105, 27, 9, ribbon) + star(18, 82, 6, paper);
+  + group("rotate(-6 64 64)",
+    path("M28 17H89L102 28V108L91 118H28Z", ink)
+    + path("M89 22 99 29V105L89 113Z", color)
+    + path("M25 12H86L91 17V109L86 114H25L20 109V17Z", color)
+    + path("M25 13H86V25H25ZM25 101H86V113H25Z", paper, ink, 2)
+    + Array.from({ length: 8 }, (_, i) => path(`M${28 + i * 8} 14V23M${28 + i * 8} 103V111`, "none", color, 2)).join("")
+    + path("M27 30H84V96H27Z", "none", paper, 2)
+    + path("M29 31H82V44H29Z", ink, "none")
+    + path("M36 37H48M62 37H75", "none", ribbon, 2)
+    + star(55, 37, 4, paper)
+    + group("translate(55 70) rotate(10)", rect(-19, -22, 38, 46, paper, ink, 2, 1)
+      + rect(-15, -18, 30, 38, "none", color, 1, 0) + suit(emblem, 0, 0, .65, color))
+    + path("M24 26V99M88 29V99", "none", ribbon, 2)
+    + path("M91 36 97 40M91 87 97 91", "none", paper, 2))
+  + star(109, 22, 7, ribbon) + star(12, 86, 4, paper);
 const chest = () => shadow() + coin(37, 54, 18) + coin(63, 45, 20) + coin(89, 54, 18)
   + path("M18 59 26 51H104L112 59V104L104 112H26L18 104Z", "#508e78")
   + path("M19 73H111V86H19Z", gold) + rect(28, 60, 10, 49, gold) + rect(92, 60, 10, 49, gold)
@@ -117,7 +126,7 @@ export async function generateUIArt() {
       pot(red, "heart"), pot("#cb9980", "diamond"), pot(green, "club"), pot(blue, "spade"),
       pot(blue, "bolt"), pot(purple, "plus"), pot(green, "diamond"), pot("#a99968", "club"),
       pot(gold, "diamond"), pot(purple, "spade"), pot(red), pot(gold)],
-    "game-controls-atlas.svg": [coins(4), suit("heart", 64, 64, 2.1, red), clock(), bolt(), vault(),
+    "game-controls-atlas.svg": [walletCoins(), suit("heart", 64, 64, 2.1, red), clock(), bolt(), vault(),
       card(65, 67, -8) + bolt(81, 72, .7), circle(64, 64, 44, purple) + path("M46 46 82 82M82 46 46 82", "none", paper, 9), book(),
       arrow(), path("M14 61 64 17 114 61H101V112H27V61Z", paper) + rect(51, 74, 26, 38, green), play(), lock(),
       pack(green), pack(purple), chest(), avatar() + check(98, 96, .6, green)],
@@ -126,7 +135,15 @@ export async function generateUIArt() {
       bolt(64, 70, 1.15, red) + star(32, 34, 8) + star(99, 85, 9, gold), card(67, 66, -12, "diamond", blue, true),
       coins(3), coins(6), chest(), coins(12)]
   };
-  await Promise.all(Object.entries(atlases).map(([name, cells]) => writeFile(resolve(output, name), atlas(cells), "utf8")));
+  await Promise.all(Object.entries(atlases).map(async ([name, cells]) => {
+    const file = resolve(output, name);
+    const content = atlas(cells);
+    const existing = await readFile(file, "utf8").catch((error) => {
+      if (error.code !== "ENOENT") throw error;
+      return null;
+    });
+    if (existing !== content) await writeFile(file, content, "utf8");
+  }));
   return Object.keys(atlases);
 }
 

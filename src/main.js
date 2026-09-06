@@ -211,10 +211,12 @@ function loadSettings() {
   ui.elements.soundToggle.checked = settings.sound !== false;
   ui.elements.musicToggle.checked = settings.music !== false;
   ui.elements.motionToggle.checked = Boolean(settings.reduceMotion);
+  ui.elements.pixelFilterToggle.checked = settings.pixelFilter !== false;
+  document.documentElement.classList.toggle("pixel-filter-off", settings.pixelFilter === false);
   document.documentElement.classList.toggle("reduce-motion", Boolean(settings.reduceMotion));
   setAudioSettings(settings);
 
-  [ui.elements.soundToggle, ui.elements.musicToggle, ui.elements.motionToggle].forEach((input) => {
+  [ui.elements.soundToggle, ui.elements.musicToggle, ui.elements.motionToggle, ui.elements.pixelFilterToggle].forEach((input) => {
     input?.addEventListener("change", saveSettings);
   });
 }
@@ -223,10 +225,12 @@ function saveSettings() {
   const settings = {
     sound: ui.elements.soundToggle.checked,
     music: ui.elements.musicToggle.checked,
-    reduceMotion: ui.elements.motionToggle.checked
+    reduceMotion: ui.elements.motionToggle.checked,
+    pixelFilter: ui.elements.pixelFilterToggle.checked
   };
   localStorage.setItem("cardCrunchSettings", JSON.stringify(settings));
   document.documentElement.classList.toggle("reduce-motion", settings.reduceMotion);
+  document.documentElement.classList.toggle("pixel-filter-off", !settings.pixelFilter);
   setAudioSettings(settings);
 }
 

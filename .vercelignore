@@ -3,6 +3,7 @@
 .vercel/
 .agents/
 .codex/
+.codex-remote-attachments/
 .env*
 node_modules/
 dist/

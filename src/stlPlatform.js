@@ -95,7 +95,7 @@ class STLPlatformIntegration {
         this.profile = null;
         persistProfile(null);
         renderProfile(this.elements, null);
-        this.setStatus("Play as a guest, or continue with Google to save your progress.", "");
+        this.setStatus("Guest progress stays on this device.", "");
         setBusy(this.elements, false);
         return;
       }

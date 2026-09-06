@@ -114,6 +114,7 @@ export function createUI() {
     profilePotsCleared: document.querySelector("#profilePotsCleared"),
     profileCoins: document.querySelector("#profileCoins"),
     soundToggle: document.querySelector("#soundToggle"),
+    pixelFilterToggle: document.querySelector("#pixelFilterToggle"),
     musicToggle: document.querySelector("#musicToggle"),
     motionToggle: document.querySelector("#motionToggle"),
     resetSaveButton: document.querySelector("#resetSaveButton")

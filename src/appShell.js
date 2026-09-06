@@ -11,6 +11,7 @@ import { playGameSfx } from "./audio.js?v=164";
 import { haptic } from "./haptics.js?v=164";
 import { boosterInventory } from "./boosters.js?v=201";
 import { liveEvents } from "./liveEvents.js?v=201";
+import { calculateRunCoinReward } from "./economy.js?v=166";
 import { animateEntrance, prefersReducedMotion } from "./motion.js";
 
 const TOP_LEVEL_TABS = ["shop", "themes", "modes", "events", "account"];
@@ -168,7 +169,7 @@ export function initializeAppShell({ ui, game, bindAction }) {
     refs.sheetBest.textContent = formatCompactNumber(
       RELEASE_POTS_ONLY ? pot.progress ?? 0 : Math.max(pot.progress ?? 0, game.state.bestScore ?? 0)
     );
-    refs.sheetCoinReward.textContent = formatCompactNumber(Math.max(100, Math.round(pot.target / 10000)));
+    refs.sheetCoinReward.textContent = formatCompactNumber(calculateRunCoinReward({ potCleared: true }).clearBonus);
     refs.sheetPlayButton.textContent = `${pot.complete ? "Replay" : pot.progress > 0 ? "Continue" : "Play"} Pot ${pot.id}`;
     refs.sheetRender.innerHTML = createPotRenderMarkup(pot, progress, { large: true });
     refs.sheet.hidden = false;
@@ -238,17 +239,17 @@ export function initializeAppShell({ ui, game, bindAction }) {
     const pot = getCurrentPot(game.state.pots);
     if (!pot) return;
     const progress = getPotProgress(pot);
-    const chapterIndex = [...new Set(game.state.pots.map((item) => item.chapter))].indexOf(pot.chapter) + 1;
-    refs.hubChapter.textContent = `Table ${chapterIndex} \u2022 ${pot.chapter}`;
+    refs.hubChapter.textContent = `Pot ${pot.id}`;
     refs.hubPotNumber.textContent = String(pot.id);
-    refs.hubPotTitle.textContent = `Pot ${pot.id} \u2014 ${pot.title}`;
+    refs.hubPotTitle.textContent = pot.title;
     refs.hubModifier.textContent = pot.ruleLabel;
+    refs.hubModifier.hidden = !pot.ruleLabel || /^standard rules$/i.test(pot.ruleLabel);
     refs.hubProgressLabel.textContent = `${Math.round(progress * 100)}%`;
-    refs.hubBestScore.textContent = `Best ${formatCompactNumber(Math.max(pot.progress ?? 0, game.state.bestScore ?? 0))}`;
+    refs.hubBestScore.textContent = `${formatCompactNumber(pot.progress ?? 0)} / ${formatCompactNumber(pot.target)}`;
     refs.hubProgressFill.style.width = `${progress * 100}%`;
     refs.hubPotFill.style.height = `${Math.max(10, progress * 100)}%`;
     applySpriteCell(refs.hubPotSprite, getPotSpriteCell(pot, { current: true }));
-    refs.hubContinueLabel.textContent = `${pot.progress > 0 ? "Continue" : "Start"} Pot ${pot.id}`;
+    refs.hubContinueLabel.textContent = pot.progress > 0 ? "Continue" : "Play";
     refreshPlayHubEvent();
   }
 
@@ -330,7 +331,7 @@ export function initializeAppShell({ ui, game, bindAction }) {
       button.setAttribute("aria-pressed", String(selected));
       button.classList.toggle("is-empty", count <= 0);
       const inventoryLabel = button.querySelector("em");
-      if (inventoryLabel) inventoryLabel.textContent = count > 0 ? `Owned ${count}` : `Buy ${definition.coinPrice} \u25C6`;
+      if (inventoryLabel) inventoryLabel.textContent = count > 0 ? `Owned ${count}` : `${definition.coinPrice} coins`;
     });
     const selectedCount = state.selectedBoosters.size;
     refs.prepBoosterNote.textContent = selectedCount
@@ -344,18 +345,18 @@ export function initializeAppShell({ ui, game, bindAction }) {
     refs.playHubEventTitle.textContent = daily.description;
     refs.playHubEventReward.textContent = daily.claimed
       ? "Claimed"
-      : `Reward ${formatCompactNumber(daily.reward.coins ?? 0)} \u25C6`;
+      : `+${formatCompactNumber(daily.reward.coins ?? 0)} coins`;
   }
 
   function renderEvents() {
     const snapshot = liveEvents.getSnapshot();
-    refs.eventsResetBadge.textContent = `\u23F1 ${formatRemaining(snapshot.daily.expiresAt - Date.now())}`;
+    refs.eventsResetBadge.textContent = `Resets ${formatRemaining(snapshot.daily.expiresAt - Date.now())}`;
     refs.eventsFeatureList.replaceChildren();
     snapshot.challenges.forEach((challenge) => {
       const article = document.createElement("article");
       const complete = challenge.progress >= challenge.target;
       article.className = `event-feature-card event-${challenge.cadence}-card${complete ? " is-complete" : ""}${challenge.claimed ? " is-claimed" : ""}`;
-      const rewardParts = [`${formatCompactNumber(challenge.reward.coins ?? 0)} \u25C6`];
+      const rewardParts = [`${formatCompactNumber(challenge.reward.coins ?? 0)} coins`];
       if (challenge.reward.booster) rewardParts.push("+ Booster");
       article.innerHTML = `
         <span class="event-card-icon" aria-hidden="true"><i class="shell-ui-sprite ${getEventSpriteClass(challenge)}"></i></span>
@@ -499,6 +500,9 @@ export function initializeAppShell({ ui, game, bindAction }) {
     page.dataset.profileBestScore = bestScore;
     page.dataset.profileBestStreak = bestStreak;
     page.dataset.profilePots = String(completed);
+    root.querySelector("#profileShellBest").textContent = bestScore;
+    root.querySelector("#profileShellStreak").textContent = bestStreak;
+    root.querySelector("#profileShellPots").textContent = String(completed);
   }
 
   showPage(PLAY_LANDING_PAGE);

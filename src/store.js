@@ -50,6 +50,11 @@ const ART_SPRITES = Object.freeze({
 });
 
 const tabScrollPositions = new Map(STORE_TABS.map((tab) => [tab.id, 0]));
+const TAB_ICONS = {
+  featured: '<path d="M12 2 15 8 22 9 17 14 18 21 12 18 6 21 7 14 2 9 9 8Z" fill="currentColor"/><path d="m12 6 1 4 4 1-4 1-1 4-1-4-4-1 4-1Z" fill="var(--room-paper)"/>',
+  decks: '<path d="M3 5h13v16H3z" fill="currentColor" opacity=".5"/><path d="M7 2h14v17H7z" fill="currentColor"/><path d="m14 5 4 5-4 5-4-5Z" fill="var(--room-paper)"/>',
+  coins: '<path d="m12 2 7 0 3 3v7l-3 3h-7l-3-3V5Z" fill="currentColor"/><path d="m4 9 7 0 3 3v7l-3 3H4l-3-3v-7Z" fill="currentColor" stroke="var(--room-paper)" stroke-width="1.5"/><path d="m7.5 12 3 3.5-3 3.5L4.5 15.5Z" fill="var(--room-paper)"/>'
+};
 const pendingProducts = new Set();
 let currentTab = "featured";
 let pendingPurchaseId = null;
@@ -126,7 +131,7 @@ function renderStore({ preserveScroll = true } = {}) {
     <button class="store-tab${currentTab === tab.id ? " is-active" : ""}" type="button" role="tab"
       id="store-tab-${tab.id}" aria-controls="storeContent" tabindex="${currentTab === tab.id ? 0 : -1}"
       aria-selected="${currentTab === tab.id}" data-store-action="tab" data-store-tab="${tab.id}">
-      <i aria-hidden="true">${tab.icon}</i><span>${tab.label}</span>
+      <svg class="store-tab-icon" viewBox="0 0 24 24" aria-hidden="true">${TAB_ICONS[tab.id]}</svg><span>${tab.label}</span>
     </button>
   `).join("");
   elements.content.setAttribute("role", "tabpanel");
@@ -157,7 +162,7 @@ function renderFeaturedTab(wallet, collection) {
   const vault = getStoreProduct("coin-vault");
   return `
     ${renderDailyHero(daily, "pack", wallet, collection)}
-    ${renderSectionTitle("Limited Day Offers", "<span class=\"store-live-timer\" data-store-countdown=\"daily\">23h 59m</span>")}
+    ${renderSectionTitle("Daily Picks", "<span class=\"store-live-timer\" data-store-countdown=\"daily\">23h 59m</span>")}
     ${renderProductCard(mystery, "wide", wallet, collection)}
     ${renderProductCard(pink, "wide premium", wallet, collection)}
     <div class="store-utility-grid">
@@ -175,7 +180,7 @@ function renderDecksTab(wallet, collection) {
   const cosmetics = getStoreProductsForTab("decks").filter((product) => ["card_back", "trail"].includes(product.productType));
   const featured = getStoreProduct("pink-arcade-full-deck");
   return `
-    ${renderSectionTitle("Today's Featured Full Deck", "<span class=\"store-live-timer\" data-store-countdown=\"daily\">23h 59m</span>")}
+    ${renderSectionTitle("Featured Deck")}
     ${renderProductCard(featured, "hero-deck", wallet, collection)}
     ${renderSectionTitle("Themed Card Packs")}
     <div class="store-product-stack">${themedPacks.map((product) => renderProductCard(product, "wide", wallet, collection)).join("")}</div>
@@ -215,8 +220,8 @@ function renderDailyHero(product, kind, wallet, collection) {
       ${renderArtwork(product)}
       <div class="store-product-copy">
         <h3>${product.displayName}</h3>
-        <p>${product.subtitle}</p>
-        <small><span aria-hidden="true">\u25f7</span> Resets in <b data-store-countdown="daily">23h 59m</b></small>
+        <p>${kind === "pack" ? "1 new card. No duplicates." : `${product.coinAmount} coins, on us.`}</p>
+        <small>Next gift in <b data-store-countdown="daily">23h 59m</b></small>
       </div>
       <button class="store-action-button action-green" type="button" data-store-action="product" data-product-id="${product.id}"
         ${claimed || state.disabled ? "disabled" : ""}>${buttonLabel}</button>
@@ -229,26 +234,24 @@ function renderProductCard(product, variant, wallet, collection) {
   const progress = product.collectionId ? getCollectionProgress(product.collectionId) : null;
   const isPack = ["themed_card_pack", "generic_card_pack", "daily_free_pack"].includes(product.productType);
   const isFullDeck = product.productType === "full_deck" || product.unlockEntireCollection;
+  const copy = getProductDisplayCopy(product);
   const productClass = `store-product-card store-theme-${product.backgroundTheme} ${variant}`;
   const metadata = [];
   if (isPack && product.productType === "themed_card_pack" && progress) metadata.push(`${progress.owned} / 52 collected`);
   if (product.productType === "generic_card_pack") {
     const remaining = buildCollectiblePool(collection.owned).length;
-    metadata.push(`${remaining} remain`, "Rainbow chance: 3%");
+    metadata.push(`${remaining} cards left to collect`);
   }
   if (product.productType === "rewarded_ad") metadata.push(`${wallet.coinAdsRemaining} left today`);
-  if (isFullDeck) metadata.push("Unlock All 52 Cards", "Complete Collection");
-  if (product.contents?.length && ["mixed_bundle", "full_deck"].includes(product.productType)) metadata.push(...product.contents);
 
   return `
     <article class="${productClass}" data-product-card="${product.id}">
-      ${product.badge ? `<span class="store-product-badge">${product.badge}</span>` : ""}
-      ${isFullDeck ? "<span class=\"store-full-deck-label\">FULL DECK</span>" : ""}
+      ${isFullDeck ? '<span class="store-product-badge">52-CARD DECK</span>' : product.badge ? `<span class="store-product-badge">${product.badge}</span>` : ""}
       ${renderArtwork(product)}
       <div class="store-product-copy">
-        <h3>${product.displayName}</h3>
-        <p>${product.subtitle}</p>
-        <small>${product.description}</small>
+        <h3>${copy.title}</h3>
+        <p>${copy.subtitle}</p>
+        ${copy.detail ? `<small>${copy.detail}</small>` : ""}
         ${metadata.length ? `<ul>${metadata.map((item) => `<li>${item}</li>`).join("")}</ul>` : ""}
       </div>
       <div class="store-product-actions">
@@ -263,6 +266,18 @@ function renderProductCard(product, variant, wallet, collection) {
       </div>
     </article>
   `;
+}
+
+function getProductDisplayCopy(product) {
+  const title = product.displayName.replace(" Full Deck", "").replace("Mystery Card Pack", "Mystery Pack");
+  if (product.productType === "full_deck") return { title, subtitle: "All 52 cards", detail: product.contents?.slice(1).join(" + ") };
+  if (product.productType === "generic_card_pack") return { title, subtitle: "1 random card. No duplicates.", detail: "Rainbow chance: 3%" };
+  if (product.productType === "themed_card_pack") return { title, subtitle: "1 new card from this deck", detail: "No duplicates" };
+  if (product.productType === "coin_bundle") return { title, subtitle: product.subtitle, detail: "" };
+  if (product.productType === "mixed_bundle") return { title, subtitle: product.contents?.join(" + "), detail: "" };
+  if (product.productType === "rewarded_ad") return { title, subtitle: `+${product.rewardAmount} coins per ad`, detail: "" };
+  if (product.productType === "utility") return { title, subtitle: product.subtitle, detail: "One shield for your next Pot." };
+  return { title, subtitle: product.subtitle, detail: "" };
 }
 
 function renderArtwork(product) {

@@ -14,14 +14,24 @@
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/assets/icons/icon-192.svg">
     <link rel="icon" href="/assets/icons/icon-192.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles/main.css?v=206">
+  <link rel="stylesheet" href="/styles/main.css?v=207">
   <link rel="stylesheet" href="/styles/collection.css?v=167">
   <link rel="stylesheet" href="/styles/store.css?v=202">
   <link rel="stylesheet" href="/styles/multiplayer.css?v=189">
-  <link rel="stylesheet" href="/styles/app-shell.css?v=206">
-  <link rel="stylesheet" href="/styles/presentation.css?v=206">
+  <link rel="stylesheet" href="/styles/app-shell.css?v=207">
+  <link rel="stylesheet" href="/styles/presentation.css?v=207">
   </head>
   <body>
+    <svg class="app-filter-definitions" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- A tiled displacement map samples a small pixel grid across the final app composite. -->
+        <filter id="app-pixel-filter" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+          <feImage href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cdefs%3E%3ClinearGradient id='r'%3E%3Cstop stop-color='%23ff0000'/%3E%3Cstop offset='1' stop-color='%23000000'/%3E%3C/linearGradient%3E%3ClinearGradient id='g' x2='0' y2='1'%3E%3Cstop stop-color='%2300ff00'/%3E%3Cstop offset='1' stop-color='%23000000'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' fill='url(%23r)'/%3E%3Crect width='32' height='32' fill='url(%23g)' style='mix-blend-mode:screen'/%3E%3C/svg%3E" x="0" y="0" width="1" height="1" result="pixel-map"/>
+          <feTile in="pixel-map" result="pixel-grid"/>
+          <feDisplacementMap in="SourceGraphic" in2="pixel-grid" scale="1" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+      </defs>
+    </svg>
     <section class="launch-auth-gate is-visible" id="launchAuthGate" role="dialog" aria-modal="true" aria-labelledby="launchAuthTitle" aria-describedby="launchAuthStatus">
       <div class="launch-auth-ambient" aria-hidden="true">
         <i>&spades;</i><i>&hearts;</i><i>&diams;</i><i>&clubs;</i>
@@ -172,7 +182,7 @@
         <header class="menu-topbar" aria-label="Player stats">
           <button class="menu-chip coin-chip" data-menu-page="shop" type="button" aria-label="Open store. Coin balance 0">
             <span class="chip-icon" aria-hidden="true">&#9670;</span>
-            <span class="menu-chip-copy"><small>Coins</small><strong id="menuCoinsValue">0</strong></span>
+            <span class="menu-chip-copy"><strong id="menuCoinsValue">0</strong></span>
             <span class="menu-chip-add" aria-hidden="true">+</span>
           </button>
           <div class="menu-topbar-actions">
@@ -218,7 +228,7 @@
 
           <section class="menu-page mode-select-page play-hub-page" data-page="modes" aria-labelledby="modeSelectTitle">
             <header class="shell-page-heading play-hub-heading">
-              <span><small>Play Hub</small><h2 id="modeSelectTitle">Choose Your Table</h2></span>
+              <span><h2 id="modeSelectTitle">Let's Play</h2></span>
               <button class="shell-header-action" id="playHubTutorialButton" type="button" aria-label="Open tutorial">?</button>
             </header>
 
@@ -232,10 +242,9 @@
                 <span class="journey-scraps"><i></i><i></i><i></i></span>
               </span>
               <span class="play-hub-hero-copy">
-                <small id="playHubChapter">Table 1 &bull; Starter Tables</small>
-                <strong>Pot Journey</strong>
-                <span id="playHubPotTitle">Pot 1 &mdash; Classic Crunch</span>
-                <span class="hub-modifier" id="playHubModifier">Standard rules</span>
+                <small id="playHubChapter">Pot 1</small>
+                <strong id="playHubPotTitle">Classic Crunch</strong>
+                <span class="hub-modifier" id="playHubModifier" hidden></span>
               </span>
               <span class="hub-progress-block">
                 <span><b id="playHubProgressLabel">0%</b><em id="playHubBestScore">Best 0</em></span>
@@ -247,11 +256,11 @@
             <div class="play-hub-secondary-grid" aria-label="More Card Crunch modes">
               <button class="hub-mode-tile hub-duel-tile" id="onlineDuelButton" type="button">
                 <span class="shell-ui-sprite sprite-online-duel hub-mode-render" aria-hidden="true"></span>
-                <span><small><i class="mode-online-dot"></i> Live</small><strong>Online Duel</strong><em>Find Rival</em></span>
+                <span><strong>Online Duel</strong></span>
               </button>
-              <button class="hub-mode-tile hub-arcade-tile" id="endlessArcadeButton" type="button">
+              <button class="hub-mode-tile hub-arcade-tile" id="endlessArcadeButton" type="button" aria-label="Endless Arcade">
                 <span class="shell-ui-sprite sprite-endless-arcade hub-mode-render" aria-hidden="true"></span>
-                <span><small>Power Cards</small><strong>ENDLESS ARCADE</strong><em>Start Run</em></span>
+                <span><strong>Arcade</strong></span>
               </button>
             </div>
 
@@ -265,7 +274,7 @@
 
           <section class="menu-page shell-events-page" data-page="events" aria-labelledby="eventsTitle">
             <header class="shell-page-heading">
-              <span><small>Fresh challenges</small><h2 id="eventsTitle">Events</h2></span>
+              <span><h2 id="eventsTitle">Events</h2></span>
               <span class="event-reset-badge" id="eventsResetBadge">&#9201; --</span>
             </header>
             <div class="events-feature-list" id="eventsFeatureList" aria-live="polite"></div>
@@ -279,13 +288,17 @@
 
           <section class="menu-page card-crunch-account-page" data-page="account" aria-labelledby="cardCrunchAccountTitle">
             <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
-            <p class="card-crunch-account-kicker">Keep your run safe</p>
-            <h2 id="cardCrunchAccountTitle">Account</h2>
+            <h2 id="cardCrunchAccountTitle">Profile</h2>
+            <section class="profile-stats" aria-label="Your best runs">
+              <article><span>Best score</span><strong id="profileShellBest">0</strong></article>
+              <article><span>Streak</span><strong id="profileShellStreak">0</strong></article>
+              <article><span>Pots cleared</span><strong id="profileShellPots">0</strong></article>
+            </section>
             <div class="card-crunch-account-panel">
               <div id="cardCrunchAccountSignedOut">
-                <div class="card-crunch-account-mark" aria-hidden="true">CC</div>
-                <h3>Save your progress</h3>
-                <p>Continue with Google to keep your cards, coins, unlocks, and progress available on supported devices.</p>
+                <div class="card-crunch-account-mark" aria-hidden="true"><i class="shell-ui-sprite sprite-profile-avatar"></i></div>
+                <h3>Keep your collection</h3>
+                <p>Sign in to sync your cards and progress across devices.</p>
                 <button class="card-crunch-google-button" id="cardCrunchGoogleSignInButton" data-idle-label="Continue with Google" type="button"><svg class="card-crunch-google-mark" aria-hidden="true" viewBox="0 0 18 18"><path d="M17.64 9.205c0-.638-.057-1.252-.164-1.841H9v3.482h4.844a4.14 4.14 0 0 1-1.797 2.715v2.258h2.909c1.702-1.567 2.684-3.874 2.684-6.614Z" fill="#4285f4"/><path d="M9 18c2.43 0 4.468-.806 5.956-2.181l-2.909-2.258c-.806.54-1.835.859-3.047.859-2.344 0-4.328-1.585-5.037-3.714H.956v2.332A9 9 0 0 0 9 18Z" fill="#34a853"/><path d="M3.963 10.706A5.42 5.42 0 0 1 3.682 9c0-.592.102-1.168.281-1.706V4.962H.956A9 9 0 0 0 0 9c0 1.45.347 2.821.956 4.038l3.007-2.332Z" fill="#fbbc05"/><path d="M9 3.58c1.321 0 2.507.454 3.442 1.345l2.581-2.582C13.464.891 11.427 0 9 0A9 9 0 0 0 .956 4.962l3.007 2.332C4.672 5.165 6.656 3.58 9 3.58Z" fill="#ea4335"/></svg><span>Continue with Google</span><i aria-hidden="true">&rsaquo;</i></button>
               </div>
               <div id="cardCrunchAccountSignedIn" hidden>
@@ -307,16 +320,7 @@
               </div>
             </div>
             <p class="card-crunch-account-status" id="cardCrunchAccountStatus" aria-live="polite">Checking your account...</p>
-            <p class="card-crunch-account-fineprint">One account works across STL apps and games.</p>
-            <details class="auth-diagnostics" id="authDiagnostics" hidden>
-              <summary>STL diagnostics</summary>
-              <dl>
-                <div><dt>Origin</dt><dd id="authDiagnosticOrigin">Unavailable</dd></div>
-                <div><dt>Callback</dt><dd id="authDiagnosticCallback">Unavailable</dd></div>
-                <div><dt>Client</dt><dd id="authDiagnosticProjectRef">Unavailable</dd></div>
-                <div><dt>Variables</dt><dd id="authDiagnosticVariables">Unavailable</dd></div>
-              </dl>
-            </details>
+
           </section>
 
           <section class="menu-page" data-page="leaderboard" aria-labelledby="leaderboardTitle">
@@ -337,7 +341,7 @@
           <section class="menu-page store-page" data-page="shop" aria-labelledby="shopTitle">
             <div class="store-page-heading">
               <button class="page-back-button store-home-button" data-menu-page="home" type="button">&lsaquo; Home</button>
-              <div><span>Card Crunch</span><h2 id="shopTitle">Store</h2></div>
+              <div><h2 id="shopTitle">Store</h2></div>
               <button class="store-restore-button" type="button" data-store-action="restore-purchases">Restore</button>
             </div>
 
@@ -354,7 +358,7 @@
             </header>
 
             <div class="store-tabs" id="storeTabs" role="tablist" aria-label="Store sections"></div>
-            <p class="store-status" id="storeStatus" aria-live="polite">Daily rewards and featured offers are ready.</p>
+            <p class="store-status" id="storeStatus" aria-live="polite"></p>
             <div class="store-scroll" id="storeScroll">
               <div class="store-content" id="storeContent"></div>
             </div>
@@ -365,7 +369,7 @@
           <section class="menu-page" data-page="themes" aria-labelledby="themesTitle">
             <button class="page-back-button" data-menu-page="home" type="button">&lsaquo; Home</button>
             <h2 id="themesTitle">Card Collection</h2>
-            <p class="theme-page-copy">Open a deck pack to see its 52 cards. Owned cards stay bright; missing cards stay sealed.</p>
+            <p class="theme-page-copy">Choose a deck. Tap an owned card to equip it.</p>
             <section class="card-collection-layout" aria-label="Collected card skins">
               <div class="collection-deck-list" id="collectionDeckList" aria-label="Card skin decks"></div>
               <div class="collection-detail" id="collectionDetail"></div>
@@ -414,8 +418,18 @@
               <label><span>Sound</span><input id="soundToggle" type="checkbox" checked></label>
               <label><span>Music</span><input id="musicToggle" type="checkbox" checked></label>
               <label><span>Reduce Motion</span><input id="motionToggle" type="checkbox"></label>
+              <label><span>Pixel Filter</span><input id="pixelFilterToggle" type="checkbox" checked></label>
               <button class="danger-button" id="resetSaveButton" type="button">Reset Save Data</button>
             </div>
+            <details class="auth-diagnostics" id="authDiagnostics" hidden>
+              <summary>Connection details</summary>
+              <dl>
+                <div><dt>Origin</dt><dd id="authDiagnosticOrigin">Unavailable</dd></div>
+                <div><dt>Callback</dt><dd id="authDiagnosticCallback">Unavailable</dd></div>
+                <div><dt>Client</dt><dd id="authDiagnosticProjectRef">Unavailable</dd></div>
+                <div><dt>Variables</dt><dd id="authDiagnosticVariables">Unavailable</dd></div>
+              </dl>
+            </details>
           </section>
 
           <section class="menu-page" data-page="pots" aria-hidden="true">
@@ -499,9 +513,8 @@
               <article><small id="potSheetProgressLabel">Best Score</small><strong id="potSheetBest">0</strong></article>
           </div>
           <section class="pot-sheet-rewards">
-            <small>Possible Rewards</small>
-            <span><i aria-hidden="true">&#9670;</i><b id="potSheetCoinReward">100</b></span>
-            <span><i aria-hidden="true">&#9638;</i><b>Card progress</b></span>
+            <small>Clear bonus</small>
+            <span><b id="potSheetCoinReward">100</b> coins</span>
           </section>
           <button class="pot-sheet-play" id="potSheetPlayButton" type="button">Play Pot 1</button>
         </article>
@@ -648,6 +661,6 @@
     <div class="pixel-screen-filter" aria-hidden="true"></div>
   <script src="/build-config.js"></script>
   <script src="/platform-config.js"></script>
-  <script type="module" src="/src/main.js?v=206"></script>
+  <script type="module" src="/src/main.js?v=207"></script>
   </body>
 </html>

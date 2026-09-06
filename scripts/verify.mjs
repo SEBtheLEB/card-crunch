@@ -268,7 +268,7 @@ const appShellScript = await readFile(resolve(root, "src/appShell.js"), "utf8");
 const backgroundStyles = await readFile(resolve(root, "styles/main.css"), "utf8");
 if (!backgroundStyles.includes("--casino-table-bg:")
   || /assets\/backgrounds\/.*\.(png|jpg)/.test(backgroundStyles)
-  || !html.includes("/styles/presentation.css?v=206")) {
+  || !html.includes("/styles/presentation.css?v=207")) {
   throw new Error("The code-drawn table presentation must replace raster scenery");
 }
 if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButton")) {
@@ -289,10 +289,10 @@ if (!releaseVercelConfiguration.includes('"buildCommand": "npm run build:release
 for (const assetPath of [
   "/manifest.json",
   "/assets/icons/icon-192.svg",
-  "/styles/main.css?v=206",
+  "/styles/main.css?v=207",
   "/build-config.js",
   "/platform-config.js",
-  "/src/main.js?v=206"
+  "/src/main.js?v=207"
 ]) {
   if (!html.includes(`"${assetPath}"`)) {
     throw new Error(`App-shell asset must remain root-relative for OAuth callback routes: ${assetPath}`);
@@ -327,7 +327,7 @@ if (!html.includes("run-scoreboard") || !html.includes("summaryRecoveryTicker"))
 if (!html.includes("tutorialStartButton") || !html.includes("tutorialCoach") || !html.includes("bottom-status")) {
   throw new Error("Live-board tutorial hooks are missing");
 }
-if (!html.includes('id="endlessArcadeButton"') || !html.includes("ENDLESS ARCADE")) {
+if (!html.includes('id="endlessArcadeButton"') || !html.includes('aria-label="Endless Arcade"')) {
   throw new Error("Endless Arcade menu action is missing");
 }
 if (!html.includes('id="onlineDuelButton"')
@@ -349,9 +349,9 @@ if (!html.includes('data-page="account"')
   || !html.includes('id="cardCrunchGoogleSignInButton"')
   || !html.includes('id="cardCrunchSyncButton"')
   || !html.includes('id="authDiagnostics"')
-  || !html.includes("Save your progress")
+  || !html.includes("Keep your collection")
   || !html.includes("Continue with Google")
-  || !html.includes("One account works across STL apps and games.")
+  || !html.includes('id="profileShellBest"')
   || html.includes("Create or sign in to your STL Account")
   || html.includes("Bit Crush Core")
   || html.includes("Supabase")) {

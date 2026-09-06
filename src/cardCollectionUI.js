@@ -18,7 +18,6 @@ import {
 import { applyCardSkin, CARD_SKINS, getCardVisualColorClass } from "./cardSkins.js?v=167";
 
 const SUIT_SYMBOLS = Object.freeze({ hearts: "\u2665", diamonds: "\u2666", clubs: "\u2663", spades: "\u2660" });
-const SKIN_ICONS = Object.freeze({ dark: "\u263E", pink: "\u2665", gold: "\u2605", rainbow: "\u25C6" });
 const PACK_RARITY_CLASSES = Object.freeze(["rarity-rare", "rarity-epic", "rarity-legendary", "rarity-mythic"]);
 let selectedCollectionSkin = "dark";
 let packOpening = false;
@@ -212,10 +211,10 @@ function renderCardCollection({ preserveMatrixScroll = true } = {}) {
     const selected = skinId === selectedCollectionSkin;
     return `
       <button class="collection-deck-pack skin-${skinId}${selected ? " is-selected" : ""}" data-collection-skin="${skinId}" type="button" aria-pressed="${selected}">
-        <span class="collection-pack-art" aria-hidden="true"><i>${SKIN_ICONS[skinId]}</i></span>
+        <span class="collection-pack-art" aria-hidden="true"><i class="collection-pack-sprite"></i></span>
         <strong>${CARD_SKINS[skinId].name}</strong>
         <small>${progress.owned} / ${progress.total}</small>
-        <em class="collection-rarity rarity-${rarity.id}">${rarity.label} \u00b7 ${rarity.weight}%</em>
+        <em class="collection-rarity rarity-${rarity.id}">${rarity.label}</em>
       </button>
     `;
   }).join("");
@@ -234,12 +233,12 @@ function renderCardCollection({ preserveMatrixScroll = true } = {}) {
   const fullDeckActive = snapshot.fullDeckSkin === selectedCollectionSkin;
   elements.collectionDetail.innerHTML = `
     <header class="collection-detail-heading">
-      <div><span>Deck Collection</span><h3>${CARD_SKINS[selectedCollectionSkin].name}</h3></div>
+      <div><h3>${CARD_SKINS[selectedCollectionSkin].name}</h3></div>
       <strong>${progress.owned} / 52</strong>
     </header>
     <div class="collection-detail-rarity rarity-${selectedRarity.id}"><strong>${selectedRarity.label}</strong><span>${selectedRarity.weight}% pack chance</span></div>
     <div class="collection-progress-track"><i style="--collection-progress:${(progress.owned / progress.total) * 100}%"></i></div>
-    <p>Tap an owned card to equip only that rank and suit. Tap it again to return that card to Default.</p>
+    <p>Tap to equip a card. Tap again to reset it.</p>
     <button class="collection-full-deck-button${fullDeckActive ? " is-active" : ""}" data-test-full-deck="${selectedCollectionSkin}" type="button" ${progress.complete ? "" : "disabled"}>
       ${fullDeckActive ? "FULL DECK ACTIVE" : progress.complete ? "EQUIP COMPLETE DECK" : "COLLECT ALL 52 TO EQUIP"}
     </button>
@@ -250,7 +249,7 @@ function renderCardCollection({ preserveMatrixScroll = true } = {}) {
   restoreCollectionViewportState(viewportState);
 
   if (elements.collectionStatus && !elements.collectionStatus.textContent.trim()) {
-    elements.collectionStatus.textContent = "Open packs to build a deck, or equip a full deck for testing.";
+    elements.collectionStatus.textContent = "Open packs to collect new card styles.";
   }
 }
 
@@ -315,7 +314,7 @@ function onCollectionCardAction(event) {
     const skinId = fullDeckButton.dataset.testFullDeck;
     if (!getCollectionProgress(skinId).complete) return;
     applyCardSkin(skinId);
-    setCollectionStatus(`${CARD_SKINS[skinId].name} full deck equipped for testing.`);
+    setCollectionStatus(`${CARD_SKINS[skinId].name} deck equipped.`);
     renderCardCollection();
     playGameSfx("card_unlock");
     return;
