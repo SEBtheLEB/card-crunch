@@ -97,18 +97,30 @@ assert.equal(await request("/api/matchmaking"), null);
 assert.equal(await request("https://accounts.stlproductionz.io/session"), null);
 assert.equal(await request("/src/main.js", { method: "POST" }), null);
 offline = true;
-assert.match(await (await request("/src/main.js?v=207")).text(), /^cached:/);
+assert.match(await (await request("/src/main.js?v=208")).text(), /^cached:/);
 assert.match(await (await request("/assets/ui/store-items.svg")).text(), /^cached:/);
 assert.match(await (await request("/auth/callback", { mode: "navigate" })).text(), /index\.html/);
 assert.match(await (await request("/", { mode: "navigate" })).text(), /index\.html/);
+const activeCache = cachesByName.get([...cachesByName.keys()][0]);
+activeCache.set(absolute("/index.html"), { clone() {
+  const redirected = new Response("cached redirected HTML", { headers: { "Content-Type": "text/html" } });
+  Object.defineProperty(redirected, "redirected", { value: true });
+  return redirected;
+} });
+for (const path of ["/", "/auth/callback"]) {
+  const page = await request(path, { mode: "navigate" });
+  assert.equal(page.redirected, false, "offline navigation must strip cached host redirect metadata");
+  assert.equal(page.headers.get("Content-Type"), "text/html");
+  assert.equal(await page.text(), "cached redirected HTML");
+}
 offline = false; status = 500;
-assert.equal((await request("/src/main.js?v=207")).status, 500);
+assert.equal((await request("/src/main.js?v=208")).status, 500);
 offline = true;
-assert.match(await (await request("/src/main.js?v=207")).text(), /^cached:/, "a server failure must not poison the offline copy");
+assert.match(await (await request("/src/main.js?v=208")).text(), /^cached:/, "a server failure must not poison the offline copy");
 offline = false; status = 200;
-await request("/src/main.js?v=207");
+await request("/src/main.js?v=208");
 offline = true;
-assert.equal(await (await request("/src/main.js?v=207")).text(), "fresh");
+assert.equal(await (await request("/src/main.js?v=208")).text(), "fresh");
 cachesByName.set("card-crunch-v-old", new Map());
 cachesByName.set("another-app-cache", new Map());
 await lifecycle("activate");

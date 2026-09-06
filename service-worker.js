@@ -1,4 +1,4 @@
-const CACHE_NAME = "card-crunch-v207";
+const CACHE_NAME = "card-crunch-v208";
 const PINK_ARCADE_SUITS = ["hearts", "diamonds", "clubs", "spades"];
 const PINK_ARCADE_RANKS = ["ace", "02", "03", "04", "05", "06", "07", "08", "09", "10", "jack", "queen", "king"];
 const PINK_ARCADE_ASSETS = [
@@ -119,6 +119,13 @@ self.addEventListener("fetch", (event) => {
   }).catch(() => {}));
   event.respondWith(network.catch(async () => {
     const cache = await caches.open(CACHE_NAME);
-    return await cache.match(cacheKey) || Response.error();
+    const cached = await cache.match(cacheKey);
+    if (!cached) return Response.error();
+    // Vercel redirects /index.html to /. Navigation requests reject a cached
+    // response with redirect metadata, so return its body and headers directly.
+    if (isNavigation && cached.redirected) {
+      return new Response(cached.body, { status: cached.status, statusText: cached.statusText, headers: cached.headers });
+    }
+    return cached;
   }));
 });

@@ -268,7 +268,7 @@ const appShellScript = await readFile(resolve(root, "src/appShell.js"), "utf8");
 const backgroundStyles = await readFile(resolve(root, "styles/main.css"), "utf8");
 if (!backgroundStyles.includes("--casino-table-bg:")
   || /assets\/backgrounds\/.*\.(png|jpg)/.test(backgroundStyles)
-  || !html.includes("/styles/presentation.css?v=207")) {
+  || !html.includes("/styles/presentation.css?v=208")) {
   throw new Error("The code-drawn table presentation must replace raster scenery");
 }
 if (!html.includes("pixel-screen-filter") || !html.includes("playLeaderboardButton")) {
@@ -289,10 +289,10 @@ if (!releaseVercelConfiguration.includes('"buildCommand": "npm run build:release
 for (const assetPath of [
   "/manifest.json",
   "/assets/icons/icon-192.svg",
-  "/styles/main.css?v=207",
+  "/styles/main.css?v=208",
   "/build-config.js",
   "/platform-config.js",
-  "/src/main.js?v=207"
+  "/src/main.js?v=208"
 ]) {
   if (!html.includes(`"${assetPath}"`)) {
     throw new Error(`App-shell asset must remain root-relative for OAuth callback routes: ${assetPath}`);
